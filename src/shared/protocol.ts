@@ -707,7 +707,13 @@ export interface FloorView {
   ball: BallState;
 }
 
-export type AccountRole = 'admin' | 'member';
+/** A guest looks around, chats, plays and watches the terminals, but can't type in them or run anything. */
+export type AccountRole = 'admin' | 'member' | 'guest';
+
+/** A role from the wire or a file, with anything unknown read as a member. */
+export function accountRole(v: unknown): AccountRole {
+  return v === 'admin' || v === 'guest' ? v : 'member';
+}
 
 /** Who this browser is signed in as. */
 export interface Me {
@@ -715,6 +721,8 @@ export interface Me {
   account?: { name: string; role: AccountRole };
   /** May invite, list and revoke accounts. */
   admin: boolean;
+  /** Only watches: no typing into terminals, no hiring, no GitHub, no settings. */
+  guest?: boolean;
 }
 
 /** What someone signs in to for their own workers: Claude Code, and the GitHub CLI. */

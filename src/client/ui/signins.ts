@@ -166,5 +166,6 @@ export function openSignIns(net: Net, why?: string) {
 /** Whether the panel should greet someone who just came in: their Claude sign-in still to do. */
 export function needsSigningIn(): boolean {
   const s = store.signins;
-  return !!store.me.account && !!s && s.claude.status === 'none' && s.claude.how === 'login';
+  // A guest hires nobody, so has nothing to sign in for.
+  return !!store.me.account && !store.me.guest && !!s && s.claude.status === 'none' && s.claude.how === 'login';
 }

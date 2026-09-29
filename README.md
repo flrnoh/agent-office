@@ -167,13 +167,16 @@ ssh -L 4600:localhost:4600 office@<your-office-ip>
 
 Their key logs in as a locked-down `office` user that can only forward to the office port: no shell, no other ports. Running the office on your own computer, or on your own domain over HTTPS? Skip this step.
 
-**2. Make them an account.** Open **☰ → 🔑 Accounts** and make an invite link. Name it (or let them pick) and make them a *Member* or an *Admin*. The link works once, for 7 days, and they choose their own password. Make one for yourself too, as an admin.
+**2. Make them an account.** Open **☰ → 🔑 Accounts** and make an invite link. Name it (or let them pick) and make them a *Member*, an *Admin* or a *Guest*. The link works once, for 7 days, and they choose their own password. Make one for yourself too, as an admin.
+
+A **Guest** comes over to hang out: they walk around, chat, talk, play and watch the workers' terminals, but can't type in them, hire or send anyone home, touch the boards, the queue or the settings, or reach the workers' dev servers. The office enforces it, whatever their browser sends.
 
 The same works from a terminal on the office's machine, even while it runs:
 
 ```bash
 agent-office accounts                      # accounts and open invites
 agent-office accounts invite ada --admin   # prints a single-use /join#… link
+agent-office accounts invite bo --guest    # a guest: watches, can't type in terminals
 agent-office accounts role ada member
 agent-office accounts revoke ada           # signed out within seconds
 ```

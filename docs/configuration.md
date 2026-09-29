@@ -46,7 +46,7 @@ agent-office prune [dir] [-n|--dry-run] [-f|--force]
   office/* branches, in one floor's checkout (dir). Anything with uncommitted changes or unpushed commits is
   kept unless --force is given.
 
-agent-office accounts [list | invite [name] [--admin] | revoke <name> | role <name> admin|member | password on|off] [-d <dir>]
+agent-office accounts [list | invite [name] [--admin|--guest] | revoke <name> | role <name> admin|member|guest | password on|off] [-d <dir>]
 
   Invite, list and revoke people's own accounts, and switch the shared password
   off or on. Works while the office runs.
