@@ -51,6 +51,8 @@ export interface GymContext {
   now(): number;
   /** What `owner` is called (for a station's occupant list). */
   name(owner: string): string;
+  /** The office seat `owner` sits on right now (a peer's `seat`, e.g. "gym-sauna-low-e:1"), if any. */
+  seatKey(owner: string): string | undefined;
 }
 
 export interface GymGame {

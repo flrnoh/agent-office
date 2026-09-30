@@ -77,3 +77,6 @@
 .gym-hud.bump { animation: gym-bump .35s ease-out; }
 @keyframes gym-bump { 40% { transform: translateX(-50%) scale(1.1); } }
 body:has(.backdrop) .gym-hud, .gym-hud[hidden] { display: none; }
+/* Fork: in the sauna or the steam room (client/gym.ts): which, how hot, and whether an Aufguss is on. */
+.gym-hud .gym-room { background: #3a2412; color: #ffcf8a; border-radius: 999px; padding: 1px 9px; opacity: 1; white-space: nowrap; }
+@media (max-width: 560px) { .gym-hud { flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 32px); } }

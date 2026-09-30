@@ -538,6 +538,9 @@ const gym = new GymPlace({
   placeAt: (at) => placeAt(at),
   sound: (k) => sound.gym(k),
   noOutline: (o) => noOutline(o),
+  camera, // the spa's cabins open up for a camera outside them
+  people: () => [...store.peers.values()].filter((p) => p.id !== store.you && store.onMyFloor(p)).map((p) => ({ x: p.x, z: p.z })),
+  ambience: (level) => sound.gymSpa(level),
 });
 // flrnoh fork: the padel hall across the street, a place of its own like the casino (hall.ts).
 const hall = new HallPlace({

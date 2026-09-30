@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 import { GYM_STATIONS, JUICE_BAR, type GymClientMsg, type GymKind, type GymServerMsg, type GymStationDef } from '../../shared/gym.js';
+import { WALK_IN_BY_STATION, WALK_IN_ENTER, WALK_IN_LEAVE, inRect, walkInAt } from '../../shared/gym-rooms.js';
 import { Allowance } from '../casino/index.js';
 import { CardioMachine } from './cardio.js';
 import { Fitness } from './fitness.js';
@@ -24,6 +25,8 @@ export interface GymPlayer {
   owner: string;
   name: string;
   send(msg: GymServerMsg): void;
+  /** Where the office last saw them in the gym, and the seat they're on (fork: the walk-in rooms go by this). */
+  where?(): { x: number; z: number; seat?: string } | undefined;
 }
 
 /** How often timed games are ticked (ms). */
@@ -54,6 +57,8 @@ export class Gym {
   private players = new Map<string, GymPlayer>();
   /** Which station each owner is on. */
   private seatOf = new Map<string, string>();
+  /** Which walk-in room (its station) each connection is standing in, by where it was last seen. */
+  private roomOf = new Map<string, string>();
   private names = new Map<string, string>();
   private now: () => number;
   private random: (n: number) => number;
@@ -112,8 +117,45 @@ export class Gym {
     const p = this.players.get(id);
     if (!p) return;
     this.players.delete(id);
+    this.roomOf.delete(id);
     if (![...this.players.values()].some((o) => o.owner === p.owner)) this.standUp(p.owner);
     this.flush();
+  }
+
+  /**
+   * Connection `id` moved or sat down (server.ts, on every move and sit in the gym): walking into the
+   * sauna or the steam room puts them on it, walking out takes them off it (unless another tab of
+   * theirs is still in there). Goes by where the office saw them, never by anything the page says it
+   * is doing, with a little give at the door so standing in it doesn't flicker in and out.
+   */
+  moved(id: string) {
+    const p = this.players.get(id);
+    const at = p?.where?.();
+    if (!p || !at) return;
+    const was = this.roomOf.get(id);
+    const wasRoom = was ? WALK_IN_BY_STATION.get(was) : undefined;
+    const room = wasRoom && inRect(wasRoom.inner, at.x, at.z, WALK_IN_LEAVE) ? wasRoom : walkInAt(at.x, at.z, WALK_IN_ENTER);
+    if (room?.station === was) return;
+    if (room) this.roomOf.set(id, room.station);
+    else this.roomOf.delete(id);
+    const stillIn = (station: string) => [...this.roomOf].some(([cid, s]) => s === station && this.players.get(cid)?.owner === p.owner);
+    if (was && this.seatOf.get(p.owner) === was && !stillIn(was)) this.standUp(p.owner);
+    if (room && this.seatOf.get(p.owner) !== room.station) {
+      const g = this.stations.get(room.station);
+      if (g) {
+        this.standUp(p.owner);
+        if (!g.sit(this.seated(p), this.ctx(g))) {
+          this.seatOf.set(p.owner, g.id);
+          this.dirtyStations.add(g.id);
+        }
+      }
+    }
+    this.flush();
+  }
+
+  /** The walk-in room connection `id` is standing in, if any (for tests and hints). */
+  roomFor(id: string): string | undefined {
+    return this.roomOf.get(id);
   }
 
   isInside(id: string): boolean {
@@ -130,6 +172,8 @@ export class Gym {
         if (!this.moves.take([p.id, p.owner])) return warn('Easy there: one station at a time');
         const station = typeof msg.station === 'string' ? this.stations.get(msg.station) : undefined;
         if (!station) return warn('No such station');
+        // Fork: the sauna and the steam room are walked into, not sat at (see moved).
+        if (WALK_IN_BY_STATION.has(station.id) && this.seatOf.get(p.owner) !== station.id) return warn('Walk in through the glass door', station.id);
         if (this.seatOf.get(p.owner) === station.id) {
           p.send({ t: 'gym.station', station: station.id, state: station.view(p.owner) });
           break;
@@ -146,14 +190,18 @@ export class Gym {
         this.dirtyStations.add(station.id);
         break;
       }
-      case 'gym.stand':
+      case 'gym.stand': {
+        // Standing inside a walk-in room keeps you in it: you're out when you walk out.
+        const at = this.seatOf.get(p.owner);
+        if (at && WALK_IN_BY_STATION.has(at) && [...this.roomOf].some(([cid, s]) => s === at && this.players.get(cid)?.owner === p.owner)) break;
         this.standUp(p.owner);
         break;
+      }
       case 'gym.act': {
         const station = typeof msg.station === 'string' ? this.stations.get(msg.station) : undefined;
         if (!station) return warn('No such station');
         if (typeof msg.action !== 'string' || msg.action.length > 32) return warn('No such move', station.id);
-        if (this.seatOf.get(p.owner) !== station.id) return warn('Step on first', station.id);
+        if (this.seatOf.get(p.owner) !== station.id) return warn(WALK_IN_BY_STATION.has(station.id) ? 'Step inside first' : 'Step on first', station.id);
         if (!this.acts.take([p.id, p.owner])) return warn('Easy there: catch your breath', station.id);
         const err = station.act(this.seated(p), msg.action, msg.data, this.ctx(station));
         if (err) warn(err, station.id);
@@ -224,6 +272,13 @@ export class Gym {
       changed: () => this.dirtyStations.add(g.id),
       now: () => this.now(),
       name: (owner) => this.names.get(owner) ?? owner,
+      seatKey: (owner) => {
+        for (const p of this.players.values()) {
+          const seat = p.owner === owner ? p.where?.()?.seat : undefined;
+          if (seat) return seat;
+        }
+        return undefined;
+      },
     };
   }
 

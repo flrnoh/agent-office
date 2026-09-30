@@ -1818,13 +1818,27 @@ export class OfficeSound {
   // ---- The gym (fork, see client/gym.ts) --------------------------------------------------------
 
   /** The gym: a rep's thud, plates clanking, a treadmill's patter, a set landing, water and a smoothie. */
-  gym(kind: 'rep' | 'clank' | 'run' | 'ding' | 'splash' | 'cheer' | 'sip' | 'whoosh' | 'buzzer') {
+  gym(kind: 'rep' | 'clank' | 'run' | 'ding' | 'splash' | 'cheer' | 'sip' | 'whoosh' | 'buzzer' | 'hiss') {
     this.unlock();
     const ctx = this.ctx;
     if (!ctx) return;
     this.count(`gym.${kind}`);
     const out = this.alerts;
     const t0 = ctx.currentTime + 0.01;
+    if (kind === 'hiss') {
+      // Fork: water on the sauna's stones: a sharp sizzle, then the long hiss of the steam rising.
+      this.hiss(out, t0, 4200, 0.7, [
+        [0.03, 0.12],
+        [0.35, 0.05],
+        [0.6, 0],
+      ]);
+      this.hiss(out, t0 + 0.05, 1800, 0.5, [
+        [0.25, 0.08],
+        [1.6, 0.05],
+        [2.8, 0],
+      ]);
+      return;
+    }
     if (kind === 'rep') this.blip(out, t0, 150, 0.7, 0.1, 0.16, 'triangle');
     else if (kind === 'clank') [1600, 2100].forEach((f, i) => this.blip(out, t0 + i * 0.04, f, 0.7, 0.05, 0.05, 'square'));
     else if (kind === 'run') for (let i = 0; i < 4; i++) this.blip(out, t0 + i * 0.06, 240, 0.5, 0.04, 0.06, 'triangle');
@@ -1835,6 +1849,36 @@ export class OfficeSound {
     else if (kind === 'buzzer') [180, 150].forEach((f, i) => this.blip(out, t0 + i * 0.12, f, 0.95, 0.13, 0.09, 'sawtooth'));
     else [523, 659, 784, 1047].forEach((f, i) => this.blip(out, t0 + i * 0.08, f, 1.0, 0.15, 0.11, 'square')); // cheer
   }
+
+  /**
+   * Fork: the gym's spa (client/gym.ts), every frame: 0 outside it, up to 1 in the sauna or the steam
+   * room. A soft bed of air and trickling water under everything else; nothing until audio's on.
+   */
+  gymSpa(level: number) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    if (!this.spaBed) {
+      if (level <= 0) return;
+      const g = ctx.createGain();
+      g.gain.value = 0;
+      const air = this.noise(this.buf.brown, true);
+      air.connect(biquad(ctx, 'lowpass', 420, 0.7)).connect(g);
+      const trickle = this.noise(this.buf.gurgle, true);
+      const tg = ctx.createGain();
+      tg.gain.value = 0.35;
+      trickle.connect(biquad(ctx, 'bandpass', 1400, 0.8)).connect(tg).connect(g);
+      g.connect(this.ambience);
+      air.start();
+      trickle.start();
+      this.spaBed = g;
+    }
+    const target = Math.max(0, Math.min(1, level)) * 0.07;
+    if (Math.abs(target - this.spaLevel) < 1e-4) return;
+    this.spaLevel = target;
+    this.spaBed.gain.setTargetAtTime(target, ctx.currentTime, 0.6);
+  }
+  private spaBed: GainNode | null = null;
+  private spaLevel = 0;
 
   // ---- The padel hall (fork, see client/hall.ts) --------------------------------------------------
 

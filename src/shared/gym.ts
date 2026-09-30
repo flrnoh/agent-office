@@ -87,20 +87,22 @@ export const GYM_STATIONS: readonly GymStationDef[] = [
   { id: 'cable', kind: 'strength', machine: 'cable', name: 'Cable machine', x: 22, z: 45, rotY: 0, seats: 1 },
   { id: 'dumbbell', kind: 'strength', machine: 'dumbbell', name: 'Dumbbells', x: 22, z: 49, rotY: 0, seats: 1 },
   { id: 'bag', kind: 'strength', machine: 'bag', name: 'Heavy bag', x: 9.5, z: 53, rotY: 0, seats: 1 },
-  // ---- The stretch & studio corner (south-west) ------------------------------------------------
-  { id: 'yoga', kind: 'wellness', machine: 'yoga', name: 'Stretch studio', x: 14.5, z: 53.4, rotY: -Math.PI / 2, seats: 3 },
-  // ---- The wellness spa, walled off in the south-east corner -----------------------------------
-  { id: 'sauna', kind: 'wellness', machine: 'sauna', name: 'Finnish sauna', x: 30.2, z: 52.6, rotY: -Math.PI / 2, seats: 4 },
-  { id: 'steam', kind: 'wellness', machine: 'steam', name: 'Steam room', x: 30.2, z: 47.6, rotY: -Math.PI / 2, seats: 3 },
-  { id: 'hottub', kind: 'wellness', machine: 'hottub', name: 'Jacuzzi', x: 24.5, z: 52.6, rotY: 0, seats: 4 },
-  { id: 'coldplunge', kind: 'wellness', machine: 'coldplunge', name: 'Cold plunge', x: 24.5, z: 48.4, rotY: 0, seats: 1 },
-  { id: 'massage-1', kind: 'wellness', machine: 'massage', name: 'Massage lounger', x: 27.4, z: 44.6, rotY: 0, seats: 1 },
-  { id: 'massage-2', kind: 'wellness', machine: 'massage', name: 'Massage lounger', x: 29.4, z: 44.6, rotY: 0, seats: 1 },
+  // ---- The stretch area, south of the strength floor (shared/gym-rooms.ts STRETCH) ---------------
+  { id: 'yoga', kind: 'wellness', machine: 'yoga', name: 'Stretch studio', x: 17.8, z: 51.9, rotY: -Math.PI / 2, seats: 3 },
+  // ---- The wellness spa, walled off in the south-east corner (shared/gym-rooms.ts) ---------------
+  // The sauna and the steam room are walk-in cabins: you're in while you're inside (the server goes by
+  // where you stand), so their seats are their benches' places.
+  { id: 'sauna', kind: 'wellness', machine: 'sauna', name: 'Finnish sauna', x: 31.6, z: 53.2, rotY: -Math.PI / 2, seats: 11 },
+  { id: 'steam', kind: 'wellness', machine: 'steam', name: 'Steam room', x: 31.6, z: 48.5, rotY: -Math.PI / 2, seats: 5 },
+  { id: 'hottub', kind: 'wellness', machine: 'hottub', name: 'Jacuzzi', x: 26.9, z: 52.9, rotY: 0, seats: 4 },
+  { id: 'coldplunge', kind: 'wellness', machine: 'coldplunge', name: 'Cold plunge', x: 27.3, z: 48.3, rotY: 0, seats: 1 },
+  { id: 'massage-1', kind: 'wellness', machine: 'massage', name: 'Massage table', x: 31.9, z: 43.05, rotY: Math.PI / 2, seats: 1 },
+  { id: 'massage-2', kind: 'wellness', machine: 'massage', name: 'Massage table', x: 31.9, z: 45.35, rotY: Math.PI / 2, seats: 1 },
 ];
 export const GYM_STATION_BY_ID = new Map(GYM_STATIONS.map((s) => [s.id, s]));
 
 /** The juice bar's counter, along the west wall: your stats and the leaderboard, and a smoothie. */
-export const JUICE_BAR = { id: 'juicebar', x: GYM_ROOM.minX + 0.7, z: 44, length: 7, seats: 3 } as const;
+export const JUICE_BAR = { id: 'juicebar', x: GYM_ROOM.minX + 1.1, z: 44, length: 6, seats: 3 } as const;
 
 // ---- Fitness points, levels and energy ----------------------------------------------------------
 

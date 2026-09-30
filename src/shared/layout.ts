@@ -4,6 +4,7 @@
 
 import { RIG, RIG_SEAT } from './rig.js'; // flrnoh fork: the racing rig
 import { HALL_SEATING } from './hall-building.js'; // flrnoh fork: the padel hall
+import { GYM_SEATING } from './gym-rooms.js'; // flrnoh fork: the gym's benches, loungers and stools
 
 export const FLOOR = { minX: -18, maxX: 18, minZ: -13, maxZ: 13 } as const;
 /** How high the ceiling is: a meter over the loft's roof (LOFT.y + LOFT.height), all the way across the room. */
@@ -460,6 +461,8 @@ export interface SeatDef {
   bar?: boolean;
   /** Fork: in the padel hall across the street (shared/hall-building.ts), not in the office. */
   hall?: boolean;
+  /** Fork: in the gym across the street (shared/gym-rooms.ts), not in the office. */
+  gym?: boolean;
 }
 
 /**
@@ -490,6 +493,7 @@ export const SEATING: SeatDef[] = [
   // …and sun loungers facing out over the city.
   ...LOUNGERS.map((x, i) => ({ id: `roof-lounger-${i + 1}`, label: '🏖️ Lounger', x, y: 0, z: FLOOR.maxZ - 1.5, rotY: 0, places: [0], hips: 0.42, depth: -0.2, out: -1, roof: true })),
   ...HALL_SEATING, // fork: the padel hall's stand, bench and café chairs (shared/hall-building.ts)
+  ...GYM_SEATING, // fork: the gym's sauna and steam benches, loungers, stools (shared/gym-rooms.ts)
 ];
 export const SEATING_BY_ID = new Map(SEATING.map((s) => [s.id, s]));
 
@@ -531,10 +535,10 @@ export function seatAt(key: string): SeatPlace | undefined {
 }
 
 /** The place `key` names, if it's somewhere you can sit from where you are: up on the roof, or down on a floor. */
-export function seatHere(key: string, onRoof: boolean, inHall = false): SeatPlace | undefined {
+export function seatHere(key: string, onRoof: boolean, inHall = false, inGym = false): SeatPlace | undefined {
   const place = seatAt(key);
   const seat = place && SEATING_BY_ID.get(place.seatId)!;
-  return seat && !!seat.roof === onRoof && !!seat.hall === inHall ? place : undefined; // fork: the hall's only in the hall
+  return seat && !!seat.roof === onRoof && !!seat.hall === inHall && !!seat.gym === inGym ? place : undefined; // fork: the hall's only in the hall, the gym's in the gym
 }
 
 /**
