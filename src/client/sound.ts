@@ -13,6 +13,7 @@ import type { GongWhy } from '../shared/protocol';
 import { STREAM } from '../shared/jukebox';
 import { TunePlayer } from './music';
 import { DjPlayer } from './dnb';
+import { falloff, hearSpeakers, speakerGain, streamVolume } from './speakers';
 
 type Pos = { x: number; y: number; z: number };
 
@@ -140,6 +141,15 @@ export class OfficeSound {
   private tune: TunePlayer | null = null;
   private stream: HTMLAudioElement | null = null;
   private musicTimer = 0;
+  // flrnoh fork: the speakers all over the office (speakers.ts), fed the same tune as the jukebox.
+  private musicSrc!: GainNode;
+  private pa: { gain: GainNode; pan: StereoPannerNode } | null = null;
+  private speakerVolume = 0.4;
+  private speakersMuted = false;
+  /** How far your floor's back office is built out, with the speakers switched on there; null where there are none (the roof, the garage's elevator ride, another map). */
+  private speakerRoom: { wing: number; on: boolean } | null = null;
+  /** The speakers' level where you stand (0–1, before your speaker volume), for the stream and quick checks. */
+  speakerLevel = 0;
   // The DJ on the roof, through the speakers by the booth, at your music volume.
   private djIn!: PannerNode;
   private dj: DjPlayer | null = null;
@@ -236,6 +246,9 @@ export class OfficeSound {
     this.musicMeter.fftSize = 2048;
     this.musicIn.connect(this.musicTone).connect(this.musicBus).connect(ctx.destination);
     this.musicBus.connect(this.musicMeter);
+    this.musicSrc = ctx.createGain();
+    this.musicSrc.connect(this.musicIn);
+    this.startSpeakers(ctx);
     // Loud enough to hear from anywhere on the roof, and loudest on the dance floor.
     this.djIn = this.panner({ x: DJ_BOOTH.x, y: 2.2, z: DJ_BOOTH.z }, 7, 0.8);
     this.djIn.connect(this.musicBus);
@@ -1758,7 +1771,7 @@ export class OfficeSound {
   private applyMusicVolume() {
     if (!this.ctx) return;
     this.musicBus.gain.setTargetAtTime(this.musicGain(), this.ctx.currentTime, 0.04);
-    this.hearStream();
+    this.hearSpeakers(this.ctx.currentTime);
   }
 
   private musicGain(): number {
@@ -1781,7 +1794,7 @@ export class OfficeSound {
     const j = this.jukebox;
     if (!j) return;
     if (j.track === STREAM && j.url) return this.startStream(j.url, j.fallback);
-    const tune = (this.tune = new TunePlayer(ctx, this.musicIn, j.track));
+    const tune = (this.tune = new TunePlayer(ctx, this.musicSrc, j.track));
     this.count('tune');
     // On a timer rather than every frame, so it carries on in a background tab.
     const tick = () => tune.tick(this.musicAt());
@@ -1823,19 +1836,63 @@ export class OfficeSound {
       this.musicCutoff = cutoff;
       this.musicTone.frequency.setTargetAtTime(cutoff, now, 0.1);
     }
-    this.hearStream();
+    this.hearSpeakers(now);
   }
 
   /** A stream plays outside Web Audio (most don't allow that), so it gets quieter with distance by hand. */
   private hearStream() {
     if (!this.stream) return;
-    const d = Math.max(MUSIC_REF, this.jukeboxDistance());
-    this.stream.volume = Math.min(1, this.musicGain() * (MUSIC_REF / (MUSIC_REF + MUSIC_ROLLOFF * (d - MUSIC_REF))));
+    // flrnoh fork: or the speakers', whichever is louder where you stand (speakers.ts).
+    this.stream.volume = streamVolume(falloff(this.jukeboxDistance(), MUSIC_REF, MUSIC_ROLLOFF), this.musicGain(), this.speakerLevel, this.speakersGain());
   }
 
   private jukeboxDistance(): number {
     const l = this.listener;
     return Math.hypot(l.x - JUKEBOX.x, l.y - JUKEBOX.y, l.z - JUKEBOX.z);
+  }
+
+  // ---- The speakers all over the office (flrnoh fork, see speakers.ts) ----------------------------
+
+  /** Your own speaker volume, 0–1, apart from the jukebox's. Muting the music mutes them too. */
+  setSpeakerVolume(volume: number, muted: boolean) {
+    this.speakerVolume = Math.max(0, Math.min(1, volume));
+    this.speakersMuted = muted;
+    if (this.ctx) this.hearSpeakers(this.ctx.currentTime);
+  }
+
+  /** Your floor's speakers: `wing` is how far its back office is built out, `on` whether they're switched on there; null where there are none. */
+  setSpeakerRoom(room: { wing: number; on: boolean } | null) {
+    this.speakerRoom = room;
+  }
+
+  /** Your speaker volume as a gain, 0 when they're off. */
+  private speakersGain(): number {
+    return this.speakerRoom ? speakerGain(this.speakerVolume, this.speakersMuted, this.musicMuted, this.speakerRoom.on) : 0;
+  }
+
+  /** One PA for all of them: the jukebox's tune, a little thinner (small boxes), panned lightly. */
+  private startSpeakers(ctx: AudioContext) {
+    const low = biquad(ctx, 'highpass', 140, 0.7);
+    const tone = biquad(ctx, 'lowpass', 9000, 0.6);
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    const pan = ctx.createStereoPanner();
+    this.musicSrc.connect(low).connect(tone).connect(gain).connect(pan).connect(ctx.destination);
+    pan.connect(this.musicMeter);
+    this.pa = { gain, pan };
+  }
+
+  /** How loud the speakers are where you stand now; a stream follows it (hearStream). */
+  private hearSpeakers(now: number) {
+    const room = this.speakerRoom;
+    const l = this.listener;
+    const heard = room ? hearSpeakers(l, room.wing) : { level: 0, pan: 0 };
+    this.speakerLevel = heard.level;
+    if (this.pa) {
+      this.pa.gain.gain.setTargetAtTime(heard.level * this.speakersGain(), now, 0.12);
+      this.pa.pan.pan.setTargetAtTime(heard.pan, now, 0.2);
+    }
+    this.hearStream();
   }
 
   // ---- Plumbing --------------------------------------------------------------------------------

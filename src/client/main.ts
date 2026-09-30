@@ -88,6 +88,7 @@ import { MachineTexture } from './world/machine';
 import { officeFull, pressureNote } from '../shared/machine';
 import { mountHud } from './ui/menu';
 import { openJukebox } from './ui/jukebox';
+import { buildSpeakers } from './world/speakers'; // flrnoh fork: speakers all over the office
 import { DjSetPlayer } from './djset';
 import { openDjBooth } from './ui/djbooth';
 import { openBookshelf } from './ui/bookshelf';
@@ -294,6 +295,10 @@ function dressBoards(w: World) {
   if (w.meetingSign) showOn(w.meetingSign, meetingSignTex.texture);
 }
 
+// flrnoh fork: the speakers all over the office that play the jukebox too (speakers.ts).
+const officeSpeakers = buildSpeakers();
+office.group.add(officeSpeakers.group);
+
 // Pictures people hung on the walls
 const gallery = new Gallery();
 office.group.add(gallery.group);
@@ -449,6 +454,7 @@ store.on('dog', () => {
   if (!inOffice()) dog.root.visible = false;
 });
 sound.setMusicVolume(settings.music, settings.musicMuted);
+sound.setSpeakerVolume(settings.speakers, settings.speakersMuted); // flrnoh fork
 sound.onMusicError = (text) => toast(text, 'warn');
 sound.onMusicBlocked = () => toast('🔇 Click anywhere to hear the radio');
 // flrnoh fork: a DJ set someone put on at the roof's booth, in place of the house DJ (see FORK.md).
@@ -2847,7 +2853,9 @@ function showMeeting(preset?: MeetingPreset) {
 }
 
 function showJukebox() {
-  openJukebox(net, () => showSettings('sound'));
+  // flrnoh fork: your speaker volume in the jukebox's window too.
+  const speakers = { get: () => settings, set: (level: number, muted: boolean) => (Object.assign(settings, { speakers: level, speakersMuted: muted }), saveSettings(settings), sound.setSpeakerVolume(level, muted)) };
+  openJukebox(net, () => showSettings('sound'), speakers);
 }
 
 /** The project on GitHub, from the floor's origin remote, when that's where it is. */
@@ -4697,6 +4705,7 @@ function showSettings(pane?: SettingsPane) {
       player.setView(settings.view);
       sound.setVolume(settings.volume, settings.muted);
       sound.setMusicVolume(settings.music, settings.musicMuted);
+      sound.setSpeakerVolume(settings.speakers, settings.speakersMuted); // flrnoh fork
     },
     editProfile,
     () => sound.ding('done'),
@@ -4833,6 +4842,7 @@ function frame(ts?: number) {
 
   // Your ears are in your head, facing wherever the camera looks.
   camera.getWorldDirection(lookDir);
+  sound.setSpeakerRoom(!upTop && inOffice() ? { wing: officeWing(), on: !store.jukebox.speakersOff } : null); // flrnoh fork: speakers.ts
   sound.update({ x: player.pos.x, y: player.pos.y + EYE_HEIGHT, z: player.pos.z, fx: lookDir.x, fz: lookDir.z });
   const s = Math.floor(player.walkPhase / Math.PI);
   if (s !== stride) {
@@ -4946,6 +4956,7 @@ function frame(ts?: number) {
     if (inOffice()) {
       office.stack.update(dt, [{ x: player.pos.x, y: player.pos.y, z: player.pos.z, grip }, ...[...remotes.values()].map((r) => ({ x: r.person.root.position.x, y: r.person.root.position.y, z: r.person.root.position.z, grip: r.grip }))], camera.position);
       office.jukebox.update(t, dt, sound.beat());
+      officeSpeakers.update(dt, officeWing(), sound.beat(), store.jukebox.on, !store.jukebox.speakersOff); // flrnoh fork
     }
   }
   checkSmokeBreak(now);

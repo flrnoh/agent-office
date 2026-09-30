@@ -29,6 +29,8 @@ export interface JukeboxState {
   station?: string;
   /** Who last put something on, or turned it off. */
   by?: string;
+  /** flrnoh fork: the speakers all over this floor are switched off (see client/speakers.ts); on unless set. */
+  speakersOff?: boolean;
   /** When the track started, on the office's clock (see the 'pong' message), so everyone hears the same bar. */
   startedAt: number;
   /** How far into the track it was when this was sent, in ms, for until the clocks are compared. */

@@ -135,6 +135,22 @@ Anyone on the roof, guests too, can paste a YouTube, SoundCloud or Mixcloud link
   - `src/client/main.ts`: `djSets`/`houseDj()` (by `sound.onMusicError`), the `dj` message and `msg.dj` on arrival, `setPlace` (`djSets.setUp`, `houseDj()`), E at the booth opens `showDjBooth()`, H at the booth in `officeKey`, the booth's hint.
   - `src/client/ui/hud.ts`, `docs/features.md`, `docs/controls.md`, `docs/how-it-works.md`: words.
 
+### Speakers all over the office
+
+Small speakers hang from the ceiling round the office and play whatever the jukebox plays, so it's heard all over the floor, not only in the lounge: over both desk clusters, by the boards, between the whiteboard and the elevator, in the lounge, the kitchen, by the balcony doors, in the meeting room and the loft (smaller, under their low ceilings), and one per row of the back office once it's built out. Their LED glows green and the woofer pumps with the beat while music plays; red when the floor has them off. You hear them inside the office on your floor, a little on the balcony and fire escape, and not in the garage, the street or on the roof.
+
+They're one PA, not a source per speaker (no piling up, no phasing): the tune goes into the jukebox's panner as before and into a speaker bus (a bit thinner, like small boxes), whose level is the nearest speaker's by distance, lightly panned towards the nearest two. A radio stream stays one audio element, at the louder of the jukebox where you stand and the speakers. **⚙️ → Sound & voice → Speakers** is your own volume (default 40 %, saved with the other settings); muting the jukebox mutes them too. The jukebox's window has quick steps (✕ ▁ ▁▃ ▁▃▅), and for the team a switch that turns them off on the floor for everyone (saved in jukebox.json).
+
+- Own files: `src/client/speakers.ts` (where they hang, the level math, the steps), `src/client/world/speakers.ts` (the boxes), `src/client/ui/speakers.ts` and `src/client/ui/speakers.css` (the row in the jukebox's window); `tests/speakers.test.ts`.
+- Hooks in upstream files:
+  - `src/client/sound.ts`: the tune goes into `musicSrc` (which feeds the jukebox's panner and the speakers), a speakers section (`setSpeakerVolume`, `setSpeakerRoom`, `hearSpeakers`), `hearStream` uses `streamVolume`.
+  - `src/client/state.ts`: `Settings.speakers`/`speakersMuted`, loaded and saved. `src/client/ui/settings.ts`: the Speakers row.
+  - `src/client/ui/jukebox.ts`: `openJukebox(..., speakerControl)` puts the speakers' row in.
+  - `src/client/main.ts`: `officeSpeakers` built and updated each frame, `sound.setSpeakerRoom(...)` before `sound.update`, `setSpeakerVolume` next to `setMusicVolume`, `showJukebox` passes the control.
+  - `src/shared/jukebox.ts`: `JukeboxState.speakersOff`. `src/server/jukebox.ts`: `setSpeakers()`, kept through new tunes, saved and loaded.
+  - `src/shared/protocol.ts`: the `jukebox.speakers` message. `src/server/server.ts`: its case (toast to the floor). `src/server/guests.ts`: `jukebox.speakers` is `TEAM_ONLY`.
+  - `docs/features.md`: the speakers line.
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.

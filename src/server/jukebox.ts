@@ -10,6 +10,8 @@ interface Saved {
   /** A built-in radio station's id, when `url` is one (see shared/radio.ts). */
   station?: string;
   by?: string;
+  /** flrnoh fork: the speakers all over the floor switched off. */
+  speakersOff?: boolean;
   /** When the track started, on this machine's clock. */
   startedAt: number;
 }
@@ -28,8 +30,8 @@ export class Jukebox {
   }
 
   state(): JukeboxState {
-    const { on, track, url, station, by, startedAt } = this.s;
-    return { on, track, ...(url && track === STREAM ? { url, ...(station ? { station } : {}) } : {}), ...(by ? { by } : {}), startedAt, elapsed: Math.max(0, Date.now() - startedAt) };
+    const { on, track, url, station, by, speakersOff, startedAt } = this.s;
+    return { on, track, ...(url && track === STREAM ? { url, ...(station ? { station } : {}) } : {}), ...(by ? { by } : {}), ...(speakersOff ? { speakersOff } : {}), startedAt, elapsed: Math.max(0, Date.now() - startedAt) };
   }
 
   /** What's on, for toasts: “Rainy Window”, or where a stream comes from. */
@@ -64,6 +66,15 @@ export class Jukebox {
     this.set({ on: true, track: JUKEBOX_TUNES[(i + 1) % JUKEBOX_TUNES.length].id, by });
   }
 
+  /** flrnoh fork: switches the floor's speakers on or off (the jukebox itself plays on). Says whether that changed anything. */
+  setSpeakers(on: boolean): boolean {
+    if (!this.s.speakersOff === on) return false;
+    const { speakersOff: _, ...rest } = this.s;
+    this.s = on ? rest : { ...rest, speakersOff: true };
+    this.save();
+    return true;
+  }
+
   stop(by: string): boolean {
     if (!this.s.on) return false;
     this.s = { ...this.s, on: false, by };
@@ -72,7 +83,7 @@ export class Jukebox {
   }
 
   private set(s: Omit<Saved, 'startedAt'>) {
-    this.s = { ...s, startedAt: Date.now() };
+    this.s = { ...s, ...(this.s.speakersOff ? { speakersOff: true } : {}), startedAt: Date.now() };
     this.save();
   }
 
@@ -87,6 +98,7 @@ export class Jukebox {
         track: s.track!,
         ...(url && 'url' in url ? { url: url.url, ...(stationByUrl(url.url) ? { station: stationByUrl(url.url)!.id } : {}) } : {}),
         ...(typeof s.by === 'string' ? { by: s.by.slice(0, 24) } : {}),
+        ...(s.speakersOff === true ? { speakersOff: true } : {}),
         startedAt: typeof s.startedAt === 'number' && Number.isFinite(s.startedAt) ? s.startedAt : Date.now(),
       };
     } catch {
