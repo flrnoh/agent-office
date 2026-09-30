@@ -28,7 +28,7 @@ This repository is a fork of [AgentSystemLabs/agent-office](https://github.com/A
 
 ### Guest role (#1, #2)
 
-Friends who come over to hang out: they walk around, chat, talk, play (arcade, golf, darts, basketball, cars, jukebox, whiteboard) and watch the workers' terminals, but can't type in them, hire, send home, touch GitHub, the queue, meetings, settings or accounts, or reach the workers' dev servers. The server enforces it, whatever a guest's browser sends.
+Friends who come over to hang out: they walk around, chat, talk, play (arcade, golf, darts, basketball, cars, jukebox, whiteboard, the table games on the roof) and watch the workers' terminals, but can't type in them, hire, send home, touch GitHub, the queue, meetings, settings or accounts, or reach the workers' dev servers. The server enforces it, whatever a guest's browser sends.
 
 - `src/server/guests.ts`: the rules. Every message a page can send is sorted into `GUEST`, `QUIET` or `TEAM_ONLY`. **A message type upstream adds is in none of them, and the server doesn't compile until someone sorts it** (the error names it). Play or looking → `GUEST`; anything that acts on the machine, a worker, GitHub or the office's settings → `TEAM_ONLY`.
 - `tests/guests.test.ts`: fails when upstream adds an `/api` route nobody has looked at. New routes are refused to guests anyway; look whether a guest's page needs one to draw the office.
@@ -230,6 +230,27 @@ How it gets onto the TV: a browser can't draw another site's player into WebGL, 
   - `src/client/sound.ts`: `tvVolume()`.
   - `src/client/main.ts`: `tvStreams`/`tvPicture()` (the TV's picture: a share, the stream's card, or idle; also from `refreshShares`), the `tv` message and `msg.tv` on arrival, `setOn`/`frame` after the scene's drawn, E at the TV opens `showTv()`, the couch's E (`watchTvBig`), the TV's hint, the idle screen's words, `window.__tv`.
   - `src/client/ui/hud.ts`, `docs/features.md`, `docs/controls.md`: words.
+
+### Games on the roof
+
+Four table games on the rooftop bar: a pool table (eight-ball, simplified) and a kicker on the open deck west of the dance floor, south of the darts and axes, and an air hockey table and a table tennis table side by side in the middle of the deck, north of the sun loungers. **E** at a table steps up to it: the camera glides to your end and the mouse plays (✕ or Esc steps back). The first two up play each other, someone alone plays the computer, and with both sides taken **E** watches. Guests play too.
+
+The first player's page (the table's host) runs the game, the computer included, and sends a snapshot of the table about 25 times a second through the office to everyone on the roof; the other player's page sends its moves to the host the same way. The office only checks who may send what (only the host snapshots, only the other player moves, only on the roof, a rate limit each, plain numbers only), relays to the roof, and keeps who's at which table, the score and the last snapshot for whoever comes up later. When the host leaves (steps back, goes downstairs, closes the page), the other player runs the table against the computer; somebody new at a table starts a new game.
+
+- Own files:
+  - `src/shared/tablegames/`: the games, pure and shared: `tables.ts` (where the tables stand, the wire types, the checks), `game.ts` (what a game is), `hockey.ts`, `pingpong.ts`, `kicker.ts`, `pool.ts` (physics, rules, the computer), `index.ts`.
+  - `src/server/tablegames.ts`: the seats (`RoofTables`: join, leave, host handover, snapshot and move checks) and `tableMessage`.
+  - `src/client/tablegames/models.ts` (the four tables in 3D, and what's on them), `play.ts` (stepping up, running and drawing the games, the computer, the camera, the bar at the top, sounds), `tablegames.css`.
+  - `tests/tablegames.test.ts` (physics and rules), `tests/tablegames-server.test.ts` (sessions and relaying).
+- Hooks in upstream files:
+  - `src/shared/protocol.ts`: `table.join`/`table.leave`/`table.input`/`table.sync` (ClientMsg), `tables`/`table.sync`/`table.input` (ServerMsg), `FloorView.tables`.
+  - `src/server/server.ts`: `roofTables`, `toRoof`, `leftTable` (off the roof in `leave`, and on disconnect), `roofView` carries `tables`, the four `table.*` cases.
+  - `src/server/guests.ts`: the four `table.*` messages in `GUEST`.
+  - `src/client/world/office.ts`: `InteractKind` has `'table'`, `Interactable.table`.
+  - `src/client/world/rooftop.ts`: `buildRoofTables()` added to the roof (its group, colliders, interactables), `Rooftop.tables`.
+  - `src/client/sound.ts`: `tableGame()`, in a section of its own.
+  - `src/client/main.ts`: `tables` (made next to the thrower), E at a table, its hint, `tables.update` after the cabinet, `REACH.table`, no hands or own body while the camera's at a table, `__office.tables`.
+  - `docs/features.md`, `docs/controls.md`: words.
 
 ### Fork maintenance
 

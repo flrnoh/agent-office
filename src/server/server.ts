@@ -60,6 +60,7 @@ import { BULLI_REFUSED, mayTake } from '../shared/bulli.js';
 import { CARS } from '../shared/garage.js';
 import { RigTable, Rigs, rigMessage } from './rig.js'; // flrnoh fork: the racing rig
 import { tvMessage } from './tv.js'; // flrnoh fork: streams on the office TV
+import { RoofTables, tableMessage } from './tablegames.js'; // fork: games on the roof
 import { isBarGame, tossOk, type BarGame } from '../shared/bargames.js';
 
 const MIME: Record<string, string> = {
@@ -543,6 +544,17 @@ export async function startServer(cfg: Config) {
     if (f) toFloor(f, { t: 'rig', state: rigs.state(floorId) });
   };
   const rigLeft = (c: Client) => rigs.leave(c.id).forEach(rigChanged);
+  // flrnoh fork: the table games on the roof (see tablegames.ts), and passing things to everyone up there.
+  const roofTables = new RoofTables();
+  const toRoof = (m: ServerMsg, except?: string, droppable = false) => {
+    const json = JSON.stringify(m);
+    for (const o of clients.values()) {
+      if (o.id === except || o.peer.floor !== ROOF || o.ws.readyState !== WebSocket.OPEN) continue;
+      if (droppable && o.ws.bufferedAmount > 1024 * 1024) continue;
+      o.ws.send(json);
+    }
+  };
+  const leftTable = (id: string) => roofTables.leave(id) && toRoof({ t: 'tables', tables: roofTables.state() }, id);
   /**
    * Tells everyone about the maps, after a pick or a read of the folder. When the map everyone's on
    * changed (`was` before), everyone's off their seats (each browser forgets them too, see the
@@ -791,7 +803,7 @@ export async function startServer(cfg: Config) {
     ...(floor ? { tv: floor.tv.state() } : {}), // flrnoh fork: the TV's stream (tv.ts)
   });
   /** The rooftop bar: nobody works up there, so it has none of a floor's things. */
-  const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF, dj: djBooth.state() });
+  const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF, dj: djBooth.state(), tables: roofTables.state() });
   const screensOf = (c: Client, floor: Floor | undefined) => {
     for (const { workerId, frame } of floor?.workers.fullScreens() ?? []) sendTo(c, { t: 'screen', workerId, ...frame, full: true });
   };
@@ -1335,6 +1347,7 @@ export async function startServer(cfg: Config) {
     });
     ws.on('close', () => {
       clients.delete(id);
+      leftTable(id); // fork: games on the roof
       if (client.whiteboard) drawingChanged(floorOf(client));
       stopPlaying(client);
       rigLeft(client); // fork: the racing rig
@@ -1436,6 +1449,7 @@ export async function startServer(cfg: Config) {
   /** Off the floor (or the roof) `c` was on, to `at` on the next one, or into its elevator car. */
   const leave = (c: Client, at?: { x: number; y: number; z: number; rotY: number }) => {
     const was = floorOf(c);
+    if (c.peer.floor === ROOF) leftTable(c.id); // fork: off the roof, away from its tables
     if (was) {
       was.workers.detachAll(c.id);
       was.changes.unwatchAll(c.id);
@@ -2054,6 +2068,12 @@ export async function startServer(cfg: Config) {
         tvMessage(floor?.tv, msg, { id: c.id, who, office: maps.pick() === OFFICE_MAP, toFloor: (m) => floor && toFloor(floor, m), warn: (t) => warn(c, t) });
         break;
       }
+      case 'table.join': // fork: games on the roof
+      case 'table.leave':
+      case 'table.input':
+      case 'table.sync':
+        tableMessage(roofTables, msg, { id: c.id, who, color: c.peer.color, onRoof: c.peer.floor === ROOF, toRoof, toClient: (id, m) => { const o = clients.get(id); if (o) sendTo(o, m); }, warn: (t) => warn(c, t) });
+        break;
       case 'gh.close': {
         const floor = here();
         const n = num(msg.number);

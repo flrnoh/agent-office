@@ -16,6 +16,7 @@ import type { TvState } from './tv.js';
 import type { CustomMap } from './maps/index.js';
 import type { PromptId } from './prompts.js';
 import type { DrinkId } from './rooftop.js';
+import type { Side, TableId, TableSeat, TableSnap } from './tablegames/tables.js'; // fork: games on the roof
 import type { WbElement, WbPointer, WhiteboardView } from './whiteboard.js';
 
 export type WorkerStatus =
@@ -799,6 +800,8 @@ export interface FloorView {
   rig?: RigView;
   /** On a floor: the stream on its TV, if any (flrnoh fork, see shared/tv.ts). */
   tv?: TvState;
+  /** Up on the roof: who's at the table games (flrnoh fork, see shared/tablegames). */
+  tables?: TableSeat[];
 }
 
 /**
@@ -1190,6 +1193,11 @@ export type ClientMsg =
   | { t: 'tv.play'; url: string }
   /** Turn the TV's stream off. */
   | { t: 'tv.stop' }
+  /** Fork: step up to a table game on the roof (see shared/tablegames), step back, a move to the host, a snapshot from it. */
+  | { t: 'table.join'; table: TableId; side?: Side }
+  | { t: 'table.leave' }
+  | { t: 'table.input'; table: TableId; input: number[] }
+  | { t: 'table.sync'; table: TableId; snap: TableSnap }
   /** Close an issue, or a pull request without merging it; the answer comes back as gh.closed. */
   | { t: 'gh.close'; kind: 'issue' | 'pull'; number: number; comment?: string; reason?: GhCloseReason; deleteBranch?: boolean }
   /** Put labels on an issue or PR and take others off, as the server's gh account; answered with gh.labeled. */
@@ -1417,6 +1425,10 @@ export type ServerMsg =
   | { t: 'dj'; state: DjSetState }
   /** The stream on the floor's TV changed (sent to everyone on the floor). */
   | { t: 'tv'; state: TvState }
+  /** Fork: who's at the roof's tables (to everyone up there), a table's snapshot, and a move for its host. */
+  | { t: 'tables'; tables: TableSeat[] }
+  | { t: 'table.sync'; table: TableId; snap: TableSnap }
+  | { t: 'table.input'; table: TableId; side: Side; input: number[] }
   /** Sent to whoever asked to close it. */
   | { t: 'gh.closed'; kind: 'issue' | 'pull'; number: number; error?: string }
   /** Sent to whoever changed them: the labels it has now, or why they didn't change. */

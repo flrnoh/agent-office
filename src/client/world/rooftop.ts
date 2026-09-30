@@ -3,6 +3,7 @@ import { AXE_LANE } from '../../shared/bargames';
 import { DANCE_FLOOR, DJ_BOOTH, ELEVATOR, ELEVATOR_FRONT, FIRE_PIT, FLOOR, ROOF_BAR, ROOF_TABLES, SEATING_BY_ID, STAGE, WALL_HEIGHT, WALL_T } from '../../shared/layout';
 import type { DjFrame } from '../dnb';
 import { buildBarGames, type BarGamesView } from './bargames';
+import { buildRoofTables, type RoofTablesView } from '../tablegames/models'; // fork: games on the roof
 import { Worker } from './character';
 import { buildCity, type City } from './city';
 import { buildElevator, type Elevator } from './elevator';
@@ -46,6 +47,8 @@ export interface Rooftop {
   pourAt: { x: number; y: number; z: number };
   /** The axe lane and the dart board, and what's thrown at them. */
   games: BarGamesView;
+  /** Fork: the pool table, the kicker, air hockey and table tennis (see tablegames/). */
+  tables: RoofTablesView;
   /** Someone ordered a drink at the bar, standing (or sitting) at `z` along it: the bartender comes over. */
   serve(z: number): void;
   /**
@@ -790,6 +793,11 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
   group.add(games.group);
   colliders.push(...games.colliders);
   interactables.push(...games.interactables);
+  // Fork: the table games, west of the dance floor and in the middle of the deck.
+  const tables = buildRoofTables();
+  group.add(tables.group);
+  colliders.push(...tables.colliders);
+  interactables.push(...tables.interactables);
 
   // ---- Moving it all to the music ---------------------------------------------------------------
   const tmp = new THREE.Color();
@@ -855,6 +863,7 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
     pickables: group.children.filter((c) => c !== city.group),
     pourAt: { x: bx + 0.2, y: ROOF_BAR.height + 0.2, z: bz },
     games,
+    tables,
     serve(z: number) {
       tendZ = THREE.MathUtils.clamp(z, ROOF_BAR.minZ + 0.6, ROOF_BAR.maxZ - 0.6);
       wander = 6;
