@@ -34,11 +34,6 @@ export interface GymInterior {
 }
 
 const R = GYM_ROOM;
-const W = R.maxX - R.minX;
-const D = R.maxZ - R.minZ;
-const CX = (R.minX + R.maxX) / 2;
-const CZ = (R.minZ + R.maxZ) / 2;
-const T = 0.3;
 
 interface Cardio {
   wheel: THREE.Mesh;

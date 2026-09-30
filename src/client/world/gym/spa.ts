@@ -57,6 +57,7 @@ interface Cabin {
 /** A round dial: the sauna's thermometer and hygrometer. */
 function dial(): THREE.CanvasTexture {
   return canvasTexture(128, 128, (g) => {
+    g.clearRect(0, 0, 128, 128);
     g.fillStyle = '#6b4a2b';
     g.beginPath();
     g.arc(64, 64, 62, 0, Math.PI * 2);
@@ -311,7 +312,7 @@ export function buildGymSpa(p: GymParts): GymSpa {
     onWall(sandTop);
     onWall(sandBottom);
     for (const y of [1.3, 1.8]) onWall(blk(p, 0.2, 0.03, 0.2, '#8a5a33', hx + 0.1, y, hz));
-    onWall(picture(p, 0.3, 0.3, tex(dial()), inn.minX + 0.02, 1.6, 54.0, Math.PI / 2));
+    onWall(picture(p, 0.3, 0.3, tex(dial(), '#ffffff', { transparent: true, alphaTest: 0.5 }), inn.minX + 0.02, 1.6, 54.0, Math.PI / 2));
     // The lamp: a wooden shade in the corner over the top bench, glowing behind its slats.
     onWall(blk(p, 0.3, 0.4, 0.3, '#8a5a33', R.maxX - 0.2, 2.1, R.maxZ - 0.2));
     onWall(picture(p, 0.22, 0.3, glow(null, '#ffb36b'), R.maxX - 0.2, 2.1, R.maxZ - 0.36, Math.PI));
@@ -492,7 +493,18 @@ export function buildGymSpa(p: GymParts): GymSpa {
   for (let i = 0; i < 5; i++) cyl(p, 0.035, 0.035, 0.18, ['#c9a0ff', '#ffd36b', '#a3c9b8', '#ff9a52', '#c9a0ff'][i], R.maxX - 0.15, 1.315, 43.75 + i * 0.2, 8);
   candle(p, R.maxX - 0.15, 1.225, 44.8, 0.1);
   candle(p, R.maxX - 0.15, 1.225, 43.6, 0.07);
-  picture(p, 0.5, 0.35, glow(null, '#d9b8ff'), R.maxX - 0.02, 2.0, 44.2, -Math.PI / 2);
+  // Warm wood on the walls in here, and a small lilac sconce.
+  const warmWall = planks('#b98a5c', 10, 131);
+  warmWall.wrapS = warmWall.wrapT = THREE.RepeatWrapping;
+  warmWall.repeat.set(2, 1.2);
+  picture(p, M.maxZ - M.minZ - SPA_WALL, SPA_WALL_HEIGHT, tex(warmWall), R.maxX - 0.04, SPA_WALL_HEIGHT / 2, (M.minZ + M.maxZ - SPA_WALL) / 2, -Math.PI / 2);
+  // …and along the south wall of the spa's open part.
+  const southWall = warmWall.clone();
+  southWall.repeat.set(2.4, 1.2);
+  southWall.needsUpdate = true;
+  picture(p, SAUNA.outer.minX - SPA.minX - SPA_WALL, SPA_WALL_HEIGHT, tex(southWall), (SPA.minX + SPA_WALL + SAUNA.outer.minX) / 2, SPA_WALL_HEIGHT / 2, R.maxZ - 0.04, Math.PI);
+  cyl(p, 0.09, 0.05, 0.14, '#8a6a44', R.maxX - 0.1, 2.0, 44.2, 10);
+  p.group.add(mesh(new THREE.SphereGeometry(0.07, 10, 8), glow(null, '#f0d2ff'), R.maxX - 0.1, 2.1, 44.2, false));
   const massageLight = new THREE.PointLight('#e0b8ff', 3, 4, 1.6);
   massageLight.position.set(31.8, 2.1, 44.2);
   p.group.add(massageLight);
