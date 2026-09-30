@@ -3,9 +3,10 @@ import { RADIO_STATIONS, stationById } from '../../shared/radio';
 import type { Net } from '../net';
 import { store } from '../state';
 import { h, openModal, toast } from './dom';
+import { speakerRow, type SpeakerControl } from './speakers';
 
 /** The jukebox: what's on, the tunes and radio stations to pick from, skip and stop, and a box for a stream. */
-export function openJukebox(net: Net, openVolume: () => void) {
+export function openJukebox(net: Net, openVolume: () => void, speakerControl?: SpeakerControl) {
   const close = h('button.btn.close', { 'aria-label': 'Close' }, '✕');
   const now = h('div.jb-now');
   const list = h('ul.svc-list');
@@ -13,6 +14,7 @@ export function openJukebox(net: Net, openVolume: () => void) {
   const url = h('input', { type: 'text', placeholder: 'https://… internet radio, a .pls/.m3u, or an .mp3', 'aria-label': 'Stream or audio file link', spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
   const playUrl = h('button.btn.primary', { type: 'button' }, '📻 Play');
   const volume = h('button.btn', { type: 'button' }, '🔈 Your volume');
+  const speakers = speakerControl && speakerRow(net, speakerControl); // flrnoh fork: speakers all over the office
   const el = h(
     'div.modal.jukebox',
     { role: 'dialog', 'aria-label': 'Jukebox' },
@@ -21,6 +23,7 @@ export function openJukebox(net: Net, openVolume: () => void) {
       'div.body',
       {},
       now,
+      speakers?.el ?? '',
       h('label', { style: 'margin-top:16px' }, 'Put on a tune'),
       list,
       h('label', { style: 'margin-top:16px' }, 'Or tune in to a radio station'),
@@ -53,6 +56,7 @@ export function openJukebox(net: Net, openVolume: () => void) {
   };
 
   const render = () => {
+    speakers?.render();
     const j = store.jukebox;
     const stream = j.track === STREAM;
     const station = stream ? stationById(j.station) : undefined;

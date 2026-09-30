@@ -40,6 +40,29 @@ Friends who come over to hang out: they walk around, chat, talk, play (arcade, g
   - `src/client/ui/terminal.ts`: `watchOnly`: no keys, keypad, say box, Esc, models, changes or file drops for guests.
   - `src/client/main.ts`: guests at desks and boards (`GUEST_ONLY_WATCH`, `deskHint`, `hintFor`), no sign-ins window.
   - `src/client/ui/accounts.ts`, `src/client/join.ts`, `src/client/ui/signins.ts`, `src/client/style.css`: picking and showing the role.
+- Stricter still: **party guests** (below) are guests who don't even watch. They go through the guest rules too, minus watching terminals and the whiteboard, so sorting a new message for guests sorts it for them.
+
+### Party guests
+
+Friends Florian invites to a party on the rooftop bar (role `party`, "Party guest"): they arrive up on the roof, can ride the elevator anywhere, drink, eat, play every game (arcade, golf, darts, axe, basketball, cars, jukebox, DJ sets), chat and talk, but neither see nor change anything of the work: no terminals (not even watching), laptops on a screensaver, blank notes on the wall boards, no queue, meetings, changes, docs, search, services, spend, limits, GitHub or whiteboard. Workers still sit at their desks, by name, "busy". The server enforces it both ways, whatever a party guest's browser does.
+
+- Every FloorView field is sorted too (`VIEW_AS_IS` / `VIEW_BLANKED` in `src/server/party.ts`): a field upstream adds to the floor view breaks the build until someone decides whether party guests may see it.
+- `src/server/party.ts`: the rules.
+  - What they may send: `PARTY_MSGS` is guests.ts' `GUEST` minus `PARTY_EXCLUDED` (watching a terminal, the whiteboard), so every message is sorted for them once it's sorted for guests.
+  - What they get: `partyGate` wraps a party guest's socket, so **every** frame the office sends them (sendTo, broadcast, toFloor, toNeighbors, terminal output, anything upstream adds) is passed (`PARTY_SEES`), redacted (`PARTY_REDACT`: the welcome and floor views, workers, peers, floors, boards, gong, plan, meeting, toasts) or dropped (`PARTY_NEVER`). **A server message type upstream (or another feature of this fork) adds is in none of them, and the server doesn't compile until someone sorts it** (the error names it, as missing from `PARTY_REDACT`). Play or people → `PARTY_SEES`; anything of the work → `PARTY_NEVER`. A type the gate doesn't know is dropped at runtime too. Toasts only get through when they're about play (`PARTY_TOASTS`); their own notes go past the gate (`partyNote`).
+  - HTTP: `roleMayFetch` (guests' rules, minus the whiteboard's pictures); `watchesOnly` keeps them out of workers' service tunnels.
+- `src/client/party.ts`: the page: `partyRefuses()` at the top of every window of the work, `PARTY_OFF` things in the office, desk lines, the screensaver, the ☰ menu (`partyMenu`), `body.party`, and a reload when the role changes.
+- `tests/party.test.ts` (role plumbing, what they send, what they get); `tests/party-e2e.mjs`: against a throwaway office on port 4711 (`npm run build && node tests/party-e2e.mjs`; a shell worker, never a Claude one).
+- Hooks in upstream files:
+  - `src/shared/protocol.ts`: `AccountRole` has `'party'`, `accountRole()`, `Me.party` (always with `Me.guest`).
+  - `src/server/server.ts`: `party` on `Client`; `partyGate(ws, …)` in `onConnection`; party guests arrive on the roof (`onRoof`); the party check before the guest check in `handleMessage`; `warn` goes by `partyNote`; `roleMayFetch` in the HTTP handler; `meOf`, `accountsChanged` (`partyChanged`), the heartbeat and the `accounts.role` toast.
+  - `src/server/auth.ts`: `fromAnyCookie`'s `noGuests` uses `watchesOnly`.
+  - `src/server/accounts.ts`: `--party` for `accounts invite`, `party` for `accounts role`.
+  - `src/client/ui/{boards,bookshelf,changes,meeting,pull,queue,search,services,terminal,whiteboard}.ts`: `partyRefuses()` as the first line of each window's `open…`.
+  - `src/client/main.ts`: `interact` and `hintFor` (party lines first), `openShell`/`promptAtDesk`/`hireAtDesk`/`goToNextWaiting`/`startHanging` refuse, the laptop's placeholder, `partyMenu([...])` round the ☰ menu, `watchParty()`.
+  - `src/client/ui/bossdesk.ts`: `bossWorker()` is nobody for a party guest (Minesweeper only).
+  - `src/client/ui/elevator.ts`: no "Add a project" for a party guest.
+  - `src/client/ui/accounts.ts`, `src/client/join.ts` ("invited you to a party on the rooftop bar 🎉"), `src/client/style.css` (`body.party`), `README.md`, `docs/configuration.md`.
 
 ### In-progress issues leave the wall board
 
@@ -134,6 +157,79 @@ Anyone on the roof, guests too, can paste a YouTube, SoundCloud or Mixcloud link
   - `src/client/sound.ts`: `djSetVolume()`.
   - `src/client/main.ts`: `djSets`/`houseDj()` (by `sound.onMusicError`), the `dj` message and `msg.dj` on arrival, `setPlace` (`djSets.setUp`, `houseDj()`), E at the booth opens `showDjBooth()`, H at the booth in `officeKey`, the booth's hint.
   - `src/client/ui/hud.ts`, `docs/features.md`, `docs/controls.md`, `docs/how-it-works.md`: words.
+
+### Speakers all over the office
+
+Small speakers hang from the ceiling round the office and play whatever the jukebox plays, so it's heard all over the floor, not only in the lounge: over both desk clusters, by the boards, between the whiteboard and the elevator, in the lounge, the kitchen, by the balcony doors, in the meeting room and the loft (smaller, under their low ceilings), and one per row of the back office once it's built out. Their LED glows green and the woofer pumps with the beat while music plays; red when the floor has them off. You hear them inside the office on your floor, a little on the balcony and fire escape, and not in the garage, the street or on the roof.
+
+They're one PA, not a source per speaker (no piling up, no phasing): the tune goes into the jukebox's panner as before and into a speaker bus (a bit thinner, like small boxes), whose level is the nearest speaker's by distance, lightly panned towards the nearest two. A radio stream stays one audio element, at the louder of the jukebox where you stand and the speakers. **⚙️ → Sound & voice → Speakers** is your own volume (default 40 %, saved with the other settings); muting the jukebox mutes them too. The jukebox's window has quick steps (✕ ▁ ▁▃ ▁▃▅), and for the team a switch that turns them off on the floor for everyone (saved in jukebox.json).
+
+- Own files: `src/client/speakers.ts` (where they hang, the level math, the steps), `src/client/world/speakers.ts` (the boxes), `src/client/ui/speakers.ts` and `src/client/ui/speakers.css` (the row in the jukebox's window); `tests/speakers.test.ts`.
+- Hooks in upstream files:
+  - `src/client/sound.ts`: the tune goes into `musicSrc` (which feeds the jukebox's panner and the speakers), a speakers section (`setSpeakerVolume`, `setSpeakerRoom`, `hearSpeakers`), `hearStream` uses `streamVolume`.
+  - `src/client/state.ts`: `Settings.speakers`/`speakersMuted`, loaded and saved. `src/client/ui/settings.ts`: the Speakers row.
+  - `src/client/ui/jukebox.ts`: `openJukebox(..., speakerControl)` puts the speakers' row in.
+  - `src/client/main.ts`: `officeSpeakers` built and updated each frame, `sound.setSpeakerRoom(...)` before `sound.update`, `setSpeakerVolume` next to `setMusicVolume`, `showJukebox` passes the control.
+  - `src/shared/jukebox.ts`: `JukeboxState.speakersOff`. `src/server/jukebox.ts`: `setSpeakers()`, kept through new tunes, saved and loaded.
+  - `src/shared/protocol.ts`: the `jukebox.speakers` message. `src/server/server.ts`: its case (toast to the floor). `src/server/guests.ts`: `jukebox.speakers` is `TEAM_ONLY`.
+  - `docs/features.md`: the speakers line.
+
+### Flogge's own car
+
+Florian's own car stands in the garage: **Flogge's Bulli**, a split-window camper van (teal below, cream above with the V down its nose, round headlights, whitewalls, a surfboard on the roof rack, FLOGGE on the plates front and back), backed into the east corner of the back wall under a sign of its own, with lines round its spot. Only its keyholders take the wheel; everyone else hears "That's Flogge's Bulli — ask him for a ride" and may sit in the passenger seat. The server enforces it at `car.enter`, whatever a page sends. It's slower and softer than the supercars (about 45 km/h flat out, gentle brakes, a slow big wheel), rocks on its springs, and its horn is an old buzzy "möp möp".
+
+Who holds the keys is set, not written in: `.agent-office/car-keys.json` lists account ids, set with `agent-office car keys <name>...` (`agent-office car` shows them, `agent-office car keys --admins` goes back to the default), picked up while the office runs. With nobody named, every admin (and the shared office password) holds them. Each page learns whether it may drive from `Me.bulli`.
+
+Driving somewhere comes next: `src/shared/destinations.ts` is where named places to drive to (the supermarket, first) go, with the steps for adding one: its own lot in `PAVEMENT` (or off the scenic loop), listed there, drawn, and named in the drive hint.
+
+- Own files: `src/shared/bulli.ts` (its driving, seats, heights, who may take which seat), `src/server/carkeys.ts` (the keys and the `agent-office car` command), `src/client/world/bulli.ts` (the van, its plates, its springs, its corner), `src/shared/destinations.ts`; `tests/bulli.test.ts`.
+- Hooks in upstream files:
+  - `src/shared/garage.ts`: `CarKind` has `'bulli'`, `CarDef.owned`/`plate`, the Bulli in `CARS` (last, so no other car's index moves), `DriveTuning`, `drive(..., t)`, `steerLimit(..., t)`, `tuningOf`, `seatsOf`, `hipsOf`, `heightOf`.
+  - `src/server/garage.ts`: `drive` clamps to the car's own `tuningOf`.
+  - `src/shared/protocol.ts`: `Me.bulli`.
+  - `src/server/server.ts`: `carKeys`, `keysOf` in `meOf`, `Client.bulli` (passed on like `admin`/`guest` in `accountsChanged` and the heartbeat), and the refusal in the `car.enter` case.
+  - `src/server/cli.ts`: the `car` command; `src/server/config.ts`: its line in the help.
+  - `src/client/world/cars.ts`: the Bulli's model and corner in `Fleet`, `CarModel.sway` and `wobble` in `update`, per-car seats and heights in `seatAt` and `show`.
+  - `src/client/driving.ts`: `tuningOf` and `seatsOf` for the car you're in.
+  - `src/client/main.ts`: `carIcon`, `mayDrive`, passenger seat for non-keyholders in `getIn`, `hipsOf`, the car hints, no "got in first" toast when refused; `sound.honk` takes the car's kind.
+  - `src/client/sound.ts`: `honk(at, kind)` and `bulliHorn`, in a section of their own.
+  - `src/client/ui/whereabouts.ts`, `src/client/ui/hud.ts`, `docs/features.md`, `docs/configuration.md`: words.
+
+### Racing rig
+
+A racing rig in the lounge, next to the arcade cabinet: out between the lounge and the meeting room's glass (x 14.2–15.6, z 5.9–8.0), a bucket seat on an aluminium frame, a wheel, pedals and a TV on a stand, facing the glass so the lounge sees its screen. **E** there sits you down (hands on the wheel, for everyone to see), the camera glides up to the TV, and you race OFFICE GP: a pseudo-3D arcade racer, three laps against five CPU cars (CLAUDE, CODEX, GROK, GEMINI, OPENCODE) after a 3-2-1 countdown, lap timer, best lap, off-road slowdown, bumps, a boost meter. Arrows or WASD, Space boost, R restart, a gamepad or wheel through the Gamepad API. One driver a floor; everyone else sees the race on the rig's TV (the driver's page sends a compact frame ten times a second, the office passes it on, each page draws it) and can press **E** to watch up close. Esc or ✕ gets you out of the seat; leaving the floor or the office frees it. The building's fastest races and laps are kept in the office's `.agent-office/rig.json` and shown on the TV when nobody's racing. The office only takes a result whose laps could have been driven (none quicker than a lap flat out on the boost) and no quicker than its own clock saw since the green.
+
+- Own files: `src/shared/racing.ts` (the track, the race, the CPU cars, the autopilot), `src/shared/rig.ts` (where the rig stands, its seat, frames, results and tables), `src/server/rig.ts` (one driver a floor, relaying, checking results, the tables), `src/client/world/rig.ts` (the model), `src/client/ui/rig.ts` (sitting, driving, watching, the TV), `src/client/ui/rigscreen.ts` (drawing the race); `tests/rig.test.ts`.
+- Hooks in upstream files:
+  - `src/shared/protocol.ts`: `rig.play`, `rig.leave`, `rig.frame`, `rig.finish` (ClientMsg), `rig`, `rig.frame` (ServerMsg), `FloorView.rig`.
+  - `src/server/guests.ts`: the four `rig.*` messages in `GUEST`.
+  - `src/server/server.ts`: `rigs`/`rigChanged`/`rigLeft`, `floorView` carries `rig`, the `rig.*` cases, and `rigLeft` when someone leaves a floor or the office.
+  - `src/shared/layout.ts`: the rig's seat (`RIG_SEAT`) in `SEATING`. `src/shared/nav.ts`: the rig in the office's obstacles.
+  - `src/client/world/office.ts`: `InteractKind` has `'rig'`, `OfficeWorld.rig`, built next to the cabinet with its collider and interactable.
+  - `src/client/world/character.ts`: `wheel`, hands on the wheel while sitting.
+  - `src/client/state.ts`: `store.rig`/`store.rigFrame`, from the floor view and the `rig`/`rig.frame` messages.
+  - `src/client/sound.ts`: `rig()`, the TV's beeps, fanfare and knocks, in a section of its own (the engine goes through `setEngines`).
+  - `src/client/main.ts`: `rig` next to `cabinet` (made, stopped, updated), `sitInRig`, E at the rig, its hint, its `REACH`, the engine in `setEngines`, `wheel` for you and everyone else, no first-person hands while zoomed.
+  - `src/client/ui/hud.ts`, `docs/features.md`: words.
+
+### Streams on the office TV
+
+The lounge TV plays streams by itself too: **E** at the TV opens its window, where anyone on the floor, guests too, pastes a YouTube link (a video, a live one, shorts, with its `t=`) or a Twitch one (a channel, live; a past broadcast, from its `t=`). Everyone on that floor sees it on the TV, from the same moment (a video is put back in step when it drifts more than 3 s; a live channel just plays live), louder the closer they stand (music and master volume, silent from 30 m or off the floor). **Watch full screen** opens it big, with the player's own controls (pausing it there is yours; closing puts it back in step). **Stop stream** turns it off. Screen sharing is as it was, and goes first: while someone shares, the TV shows their screen and the stream waits, carrying on from where everyone is once they stop. The window also offers **Watch <name>'s screen** and **Share your screen**. Each floor keeps what's on in `.agent-office/tv.json`; the toast says "📺 <who> put on <title>".
+
+How it gets onto the TV: a browser can't draw another site's player into WebGL, so the player is a real iframe laid over the page and bent each frame with a CSS `matrix3d` onto where the TV's screen is (the projective transform of its four corners, `client/tvquad.ts`). It shows while you're in the room in front of the TV, within 26 m, with the screen in view and no wall or other box between (a line against the floor's colliders, a few times a second); `pointer-events: none`, so it never steals mouse-look. Otherwise the TV shows a card with the title and how it's going ("click anywhere to start it", "can't play here: …", "it has ended"). People walking in front of the TV don't hide it (it's on top of the scene). Twitch's player gets `parent=<this page's host>`; YouTube's the `strict-origin-when-cross-origin` referrer. Both start muted and are turned up to your volume.
+
+- `src/shared/embeds.ts`: what the DJ's and the TV's links share (plain web link check, `t=`, YouTube's one video). `src/shared/tv.ts`: reading a TV link (only YouTube and Twitch, by exact host; clips refused), `tests/tv.test.ts`.
+- `src/server/embeds.ts`: `LinkPlayer` (what's on, saved, its title from oEmbed, not too often per person), shared with the DJ booth. `src/server/tv.ts`: `OfficeTv` (tv.json) and `tvMessage` (tv.play/tv.stop: on a floor of the office map, rate limited, told to the floor).
+- `src/client/embeds.ts`: `EmbedPlayer` (keeping a site's player in step on the office clock, its volume, blocked/failed/ended/held) and YouTube's player, shared with the DJ sets. `src/client/tv.ts`: `TvStreams` (Twitch's player, laying the iframe over the TV or the big player, the TV's card), `src/client/tvquad.ts` (the matrix and the line of sight), `src/client/ui/tv.ts` (the TV's window and the big player).
+- The DJ sets now use these shared files (`src/shared/djset.ts`, `src/server/djset.ts`, `src/client/djset.ts` keep only their own parts); they behave as before, except that a set whose title arrived before you went up no longer gets stuck loading.
+- Hooks in upstream files:
+  - `src/shared/protocol.ts`: `tv.play`/`tv.stop` (ClientMsg), `tv` (ServerMsg), `FloorView.tv`.
+  - `src/server/floor.ts`: `Floor.tv` (an `OfficeTv` in the floor's data folder).
+  - `src/server/server.ts`: `floorView` carries `tv`; the `tv.play`/`tv.stop` case.
+  - `src/server/guests.ts`: `tv.play`, `tv.stop` in `GUEST`.
+  - `src/client/sound.ts`: `tvVolume()`.
+  - `src/client/main.ts`: `tvStreams`/`tvPicture()` (the TV's picture: a share, the stream's card, or idle; also from `refreshShares`), the `tv` message and `msg.tv` on arrival, `setOn`/`frame` after the scene's drawn, E at the TV opens `showTv()`, the couch's E (`watchTvBig`), the TV's hint, the idle screen's words, `window.__tv`.
+  - `src/client/ui/hud.ts`, `docs/features.md`, `docs/controls.md`: words.
 
 ### Fork maintenance
 

@@ -8,6 +8,7 @@ import { h, openModal, timeAgo, type Modal } from './dom';
 import { markdown, repoUrlOf } from './markdown';
 import { buildTree, looksGenerated, parseDiff, renderFileDiff, renderThread, repliesOf, Reviewed, STATUS_WORD, treeOrder, type DiffFile, type TreeDir } from './pulldiff';
 import { providerPicker } from './provider';
+import { partyRefuses } from '../party';
 
 // The windows behind the board cards. A PR opens on its conversation (description, comments,
 // reviews, line comments, checks) with a Files tab for the diff, where you tick files off as
@@ -632,6 +633,7 @@ function labelButton(kind: 'issue' | 'pull', it: () => GhIssue | GhPull, net: Ne
 // ---- The PR window ------------------------------------------------------------------------------
 
 export function openPull(first: GhPull, net: Net, actions: BoardActions) {
+  if (partyRefuses()) return; // fork: party guests see none of the work (party.ts)
   let it = first;
   const itemUrl = it.url;
   const reviewed = new Reviewed(it.url);
@@ -1137,6 +1139,7 @@ export function openPull(first: GhPull, net: Net, actions: BoardActions) {
 // ---- The issue window -----------------------------------------------------------------------------
 
 export function openIssue(first: GhIssue, net: Net, actions: BoardActions) {
+  if (partyRefuses()) return; // fork: party guests see none of the work (party.ts)
   let it = first;
   const itemUrl = it.url;
   let detail: GhIssueDetail | null = null;

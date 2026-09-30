@@ -31,7 +31,8 @@ async function peek() {
     const { name: invited, role, by, project } = r.body as { name?: string; role: string; by: string; project: string };
     $('title').textContent = `Join the ${project} office`;
     const sub = $('sub');
-    sub.replaceChildren(`${by} invited you${role === 'admin' ? ' as an ' : role === 'guest' ? ' as a ' : '. '}`);
+    sub.replaceChildren(`${by} invited you${role === 'admin' ? ' as an ' : role === 'guest' ? ' as a ' : role === 'party' ? ' to a party on the rooftop bar 🎉 ' : '. '}`);
+    if (role === 'party') sub.append('Drinks, games, music and the city at night: come up and join in.'); // fork: party guests
     if (role === 'admin' || role === 'guest') {
       const pill = document.createElement('span');
       pill.className = 'role';

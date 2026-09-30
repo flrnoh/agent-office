@@ -374,6 +374,8 @@ export class Person {
   private hips: number | null = null;
   /** The last seat's, so getting up eases back down from it. */
   private seatHips = HIPS;
+  /** Fork: in the racing rig's seat, hands up on its wheel (see world/rig.ts). */
+  wheel = false;
   /** 0 standing … 1 sitting, eased between so sitting down and getting up take a moment. */
   private sitK = 0;
   /** Holding on to the ladder or a fire pole (see setGrip). */
@@ -1153,6 +1155,12 @@ export class Person {
       // Legs out over the edge of the seat, hands in the lap (a cigarette still comes up for a drag).
       for (const leg of [this.legL, this.legR]) leg.rotation.x = THREE.MathUtils.lerp(leg.rotation.x, -1.35, sit);
       for (const arm of [this.armL, this.armR]) arm.rotation.x = THREE.MathUtils.lerp(arm.rotation.x, -0.55, sit);
+      // Fork: at the racing rig, both hands out on the wheel.
+      if (this.wheel) {
+        for (const arm of [this.armL, this.armR]) arm.rotation.x = THREE.MathUtils.lerp(arm.rotation.x, -1.2, sit);
+        this.armL.rotation.z = THREE.MathUtils.lerp(this.armL.rotation.z, 0.3, sit);
+        this.armR.rotation.z = THREE.MathUtils.lerp(this.armR.rotation.z, -0.3, sit);
+      }
     }
     if (this.smokeT >= 0) this.smokeStep(dt, moving, airborne);
     if (this.book) {

@@ -12,6 +12,7 @@ import { findLine } from '../../shared/search';
 import { DROP_MAX_BYTES, droppedPaths } from '../../shared/drops';
 import { providerLabel, providerUsageNote, providerUsageState, providerWaitingLabel, resolvedProvider } from './provider';
 import { naturalKey } from './termkeys';
+import { partyRefuses } from '../party';
 
 /** A line to scroll to once the terminal has loaded: a search hit (see search.ts). */
 export interface TerminalFind {
@@ -96,6 +97,7 @@ export function openTerminalFor(): string | null {
 }
 
 export function openTerminal(net: Net, workerId: string, onChanges?: () => void, find?: TerminalFind, opts: TerminalOptions = {}) {
+  if (partyRefuses()) return; // fork: party guests see none of the work (party.ts)
   if (current?.workerId === workerId) {
     if (find) current.find(find);
     return;

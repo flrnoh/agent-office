@@ -14,7 +14,8 @@ import { SignIns, type GhAs } from './signins.js';
 import { agentProviders, configuredProvider, OPEN_CODE_MODEL_MAX } from './agents.js';
 import { createGrokModelCatalogue, createOpenCodeModelCatalogue } from './models.js';
 import { Tailnet } from './tailnet.js';
-import { GUEST_MSGS, GUEST_QUIET, guestMayFetch } from './guests.js';
+import { GUEST_MSGS, GUEST_QUIET } from './guests.js';
+import { PARTY_MSGS, PARTY_QUIET, PARTY_REFUSED, partyGate, partyNote, roleMayFetch } from './party.js'; // fork: party guests
 import { Team } from './team.js';
 import { Upgrader } from './upgrade.js';
 import { Services } from './services.js';
@@ -54,6 +55,11 @@ import { PROMPTS, PROMPT_MAX, isPromptId } from '../shared/prompts.js';
 import { ROOF } from '../shared/rooftop.js';
 import { heldDrink, keepsHeld } from './held.js';
 import { DjBooth, djMessage } from './djset.js';
+import { CarKeys } from './carkeys.js'; // flrnoh fork: the Bulli's keys
+import { BULLI_REFUSED, mayTake } from '../shared/bulli.js';
+import { CARS } from '../shared/garage.js';
+import { RigTable, Rigs, rigMessage } from './rig.js'; // flrnoh fork: the racing rig
+import { tvMessage } from './tv.js'; // flrnoh fork: streams on the office TV
 import { isBarGame, tossOk, type BarGame } from '../shared/bargames.js';
 
 const MIME: Record<string, string> = {
@@ -86,8 +92,12 @@ interface Client {
   admin: boolean;
   /** Whether this person was last told they're a guest, who only watches (see GUEST_MSGS). */
   guest: boolean;
+  /** flrnoh fork: whether they were last told they hold the Bulli's keys (see Me.bulli). */
+  bulli: boolean;
   /** When a guest was last told they can only watch, so a held key doesn't flood them. */
   lastGuestNoteAt: number;
+  /** A party guest (flrnoh fork, party.ts): a guest who sees none of the work; everything sent to them goes through partyGate. */
+  party: boolean;
   /** Signed out while connected; whatever it still sends is dropped until the socket closes. */
   out?: boolean;
   attached: Set<string>;
@@ -297,6 +307,7 @@ export async function startServer(cfg: Config) {
   };
   /** Tells just this person why their request didn't happen; nothing when there's no error. */
   const warn = (c: Client, error: string | undefined) => {
+    if (error && c.party) return partyNote(c.ws, error); // fork: their own notes get past the gate's toast filter
     if (error) sendTo(c, { t: 'toast', text: error, level: 'warn' });
   };
 
@@ -524,6 +535,14 @@ export async function startServer(cfg: Config) {
   // What the building looks like inside: the office, the castle, or a map of your own (⚙️ Settings).
   const maps = new Maps(cfg.dataDir);
   const djBooth = new DjBooth(cfg.dataDir); // flrnoh fork: DJ sets on the roof
+  const carKeys = new CarKeys(cfg.dataDir); // flrnoh fork: who drives the Bulli
+  // flrnoh fork: the racing rig in the lounge (server/rig.ts), one driver a floor, one table for the building.
+  const rigs = new Rigs(new RigTable(cfg.dataDir));
+  const rigChanged = (floorId: string) => {
+    const f = floors.get(floorId);
+    if (f) toFloor(f, { t: 'rig', state: rigs.state(floorId) });
+  };
+  const rigLeft = (c: Client) => rigs.leave(c.id).forEach(rigChanged);
   /**
    * Tells everyone about the maps, after a pick or a read of the folder. When the map everyone's on
    * changed (`was` before), everyone's off their seats (each browser forgets them too, see the
@@ -768,6 +787,8 @@ export async function startServer(cfg: Config) {
     whiteboard: { elements: floor?.whiteboard.scene() ?? [], people: floor ? drawing(floor) : [] },
     meeting: floor?.meetings.state() ?? { current: null, past: [] },
     cabinet: { ...cabinetState(floor), frame: (floor && cabinetPlayer(floor)?.frame) ?? null },
+    rig: rigs.view(floor?.id), // flrnoh fork
+    ...(floor ? { tv: floor.tv.state() } : {}), // flrnoh fork: the TV's stream (tv.ts)
   });
   /** The rooftop bar: nobody works up there, so it has none of a floor's things. */
   const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF, dj: djBooth.state() });
@@ -947,7 +968,7 @@ export async function startServer(cfg: Config) {
         return;
       }
       if (p === '/api/whoami') return send(res, 200, { ok: true, me: meOf(session.account?.id) });
-      if (session.account?.role === 'guest' && !guestMayFetch(p, url, onAWall)) return send(res, 403, { error: 'Guests only watch here' });
+      if (!roleMayFetch(session.account?.role, p, url, onAWall)) return send(res, 403, { error: 'Guests only watch here' });
       if (p === '/api/agents/opencode/models' && req.method === 'GET') {
         try {
           return send(res, 200, { models: await openCodeModels.get() });
@@ -1138,11 +1159,13 @@ export async function startServer(cfg: Config) {
   /** A picture hanging on some floor's wall: the one thing a guest may fetch through the image proxy. */
   const onAWall = (imageUrl: string) => [...floors.values()].some((f) => f.decor.list().some((d) => d.url === imageUrl));
 
+  /** flrnoh fork: whether they hold the Bulli's keys (server/carkeys.ts). */
+  const keysOf = (accountId: string | undefined, admin: boolean) => (carKeys.mayDrive(accountId, admin) ? { bulli: true } : {});
   /** Who a connection is: its account's current name and role, or an admin guest on the shared password. */
   const meOf = (accountId: string | undefined): Me => {
     const a = accounts.get(accountId);
-    if (!a) return { admin: !accountId };
-    return { account: { name: a.name, role: a.role }, admin: a.role === 'admin', ...(a.role === 'guest' ? { guest: true } : {}) };
+    if (!a) return { admin: !accountId, ...keysOf(accountId, !accountId) };
+    return { account: { name: a.name, role: a.role }, admin: a.role === 'admin', ...(a.role === 'guest' ? { guest: true } : a.role === 'party' ? { guest: true, party: true } : {}), ...keysOf(a.id, a.role === 'admin') };
   };
   /** Still signed in: the account wasn't revoked, and the shared password wasn't switched off. */
   const stillIn = (c: Client) => (c.accountId ? !!accounts.get(c.accountId) : accounts.sharedPassword);
@@ -1151,6 +1174,22 @@ export async function startServer(cfg: Config) {
     c.ws.close(SIGNED_OUT, 'Signed out');
   };
   const onlineAccounts = () => new Set([...clients.values()].map((c) => c.accountId).filter((id): id is string => !!id));
+  /** fork (party.ts): made a party guest, or no longer one. Their page reloads on the `me` that follows; from now on they watch and draw nothing. */
+  const partyChanged = (c: Client, party: boolean) => {
+    c.party = party;
+    if (!party) return;
+    for (const f of floors.values()) {
+      f.workers.detachAll(c.id);
+      f.changes.unwatchAll(c.id);
+    }
+    c.attached.clear();
+    c.stale.clear();
+    c.typingAt.clear();
+    if (c.whiteboard) {
+      c.whiteboard = false;
+      drawingChanged(floorOf(c));
+    }
+  };
   /** Tells each admin what the accounts are now, and everyone whether they're (still) an admin. */
   const accountsChanged = () => {
     let state: ReturnType<Accounts['state']> | undefined;
@@ -1161,8 +1200,10 @@ export async function startServer(cfg: Config) {
         continue;
       }
       const me = meOf(c.accountId);
-      if (me.admin !== c.admin || !!me.guest !== c.guest) {
+      if (me.admin !== c.admin || !!me.guest !== c.guest || !!me.bulli !== c.bulli || !!me.party !== c.party) {
         c.admin = me.admin;
+        c.bulli = !!me.bulli;
+        if (!!me.party !== c.party) partyChanged(c, !!me.party); // fork: party guests
         if (!!me.guest !== c.guest) {
           c.guest = !!me.guest;
           // Made a guest while at a keyboard: they keep watching, but stop typing.
@@ -1176,12 +1217,13 @@ export async function startServer(cfg: Config) {
 
   const onConnection = (ws: WebSocket, url: URL, session: Session) => {
     const id = randomBytes(5).toString('hex');
+    const me = meOf(session.account?.id);
     // Back on the floor they were on before a reload, a restart or closing the tab, else the first floor.
     const wanted = url.searchParams.get('floor');
     // Their floor's gone since (taken off the building, or its checkout deleted): up to the roof instead.
     const gone = !!wanted && wanted !== ROOF && !floors.has(wanted);
     // Up on the roof, as long as there's a building under it.
-    const onRoof = (wanted === ROOF || gone) && floors.size > 0;
+    const onRoof = (wanted === ROOF || gone || (!wanted && !!me.party)) && floors.size > 0; // fork: party guests arrive at the rooftop bar
     const floor = onRoof ? undefined : arrivalFloor(wanted);
     // Back where they were standing on it too; anywhere else, they arrive by elevator.
     const back = !gone && wanted !== null && (onRoof || floor?.id === wanted);
@@ -1191,14 +1233,15 @@ export async function startServer(cfg: Config) {
     const name = account?.name ?? (str(url.searchParams.get('name'), 24).trim() || `Guest ${id.slice(0, 3)}`);
     const colorParam = url.searchParams.get('color') ?? '';
     const intParam = (k: string) => (url.searchParams.get(k) ? Number(url.searchParams.get(k)) : undefined);
-    const me = meOf(account?.id);
     const client: Client = {
       id,
       ws,
       accountId: account?.id,
       admin: me.admin,
       guest: !!me.guest,
+      bulli: !!me.bulli,
       lastGuestNoteAt: 0,
+      party: !!me.party,
       attached: new Set(),
       stale: new Set(),
       lastMoveAt: 0,
@@ -1237,6 +1280,7 @@ export async function startServer(cfg: Config) {
     // Maps of your own may have been added or edited since: everyone already in hears first.
     const mapWas = maps.pick();
     if (maps.reload()) mapNews(mapWas);
+    partyGate(ws, () => client.party); // fork: all a party guest gets goes through party.ts
     clients.set(id, client);
     if (account) accounts.seen(account.id);
     ws.on('pong', () => (client.isAlive = true));
@@ -1293,6 +1337,7 @@ export async function startServer(cfg: Config) {
       clients.delete(id);
       if (client.whiteboard) drawingChanged(floorOf(client));
       stopPlaying(client);
+      rigLeft(client); // fork: the racing rig
       for (const f of floors.values()) {
         f.workers.detachAll(id);
         f.changes.unwatchAll(id);
@@ -1407,6 +1452,7 @@ export async function startServer(cfg: Config) {
     const wasDrawing = c.whiteboard;
     c.whiteboard = false;
     stopPlaying(c, was);
+    rigLeft(c); // fork: the racing rig
     const spot = at ?? { ...elevatorSpot(), y: 0, rotY: 0 };
     Object.assign(c.peer, { x: spot.x, y: spot.y, z: spot.z, rotY: spot.rotY, moving: false });
     delete c.peer.seat;
@@ -1492,6 +1538,15 @@ export async function startServer(cfg: Config) {
       if (!f) warn(c, 'Take the elevator to a floor first');
       return f;
     };
+    if (c.party && !PARTY_MSGS.has(msg.t)) {
+      // fork: party guests (party.ts), checked before the guest rules they're stricter than
+      const now = Date.now();
+      if (!PARTY_QUIET.has(msg.t) && now - c.lastGuestNoteAt > 3000) {
+        c.lastGuestNoteAt = now;
+        warn(c, PARTY_REFUSED);
+      }
+      return;
+    }
     if (c.guest && !GUEST_MSGS.has(msg.t)) {
       // Checked here, on the office's side, whatever the page lets them click.
       const now = Date.now();
@@ -1714,7 +1769,11 @@ export async function startServer(cfg: Config) {
       case 'car.leave': {
         const floor = floorOf(c);
         if (!floor) break;
-        const changed = msg.t === 'car.enter' ? floor.garage.enter(c.id, Math.trunc(num(msg.car)), msg.seat) : floor.garage.leave(c.id);
+        const car = msg.t === 'car.enter' ? Math.trunc(num(msg.car)) : -1;
+        // flrnoh fork: an owned car's wheel only for its keyholders (see server/carkeys.ts).
+        const refused = msg.t === 'car.enter' && !mayTake(CARS[car], msg.seat, carKeys.mayDrive(c.accountId, meOf(c.accountId).admin));
+        if (refused) warn(c, BULLI_REFUSED);
+        const changed = refused ? false : msg.t === 'car.enter' ? floor.garage.enter(c.id, car, msg.seat) : floor.garage.leave(c.id);
         // They hear back either way: someone who didn't get in (someone beat them to the seat) learns who did.
         if (changed) toNeighbors(c, { t: 'cars', cars: floor.garage.state() });
         sendTo(c, { t: 'cars', cars: floor.garage.state(), answer: true });
@@ -1989,6 +2048,12 @@ export async function startServer(cfg: Config) {
       case 'dj.stop':
         djMessage(djBooth, msg, { id: c.id, who, onRoof: c.peer.floor === ROOF, toRoof: (m) => { for (const o of clients.values()) if (o.peer.floor === ROOF) sendTo(o, m); }, warn: (t) => warn(c, t) });
         break;
+      case 'tv.play':
+      case 'tv.stop': {
+        const floor = floorOf(c); // flrnoh fork: streams on the office TV (tv.ts)
+        tvMessage(floor?.tv, msg, { id: c.id, who, office: maps.pick() === OFFICE_MAP, toFloor: (m) => floor && toFloor(floor, m), warn: (t) => warn(c, t) });
+        break;
+      }
       case 'gh.close': {
         const floor = here();
         const n = num(msg.number);
@@ -2415,6 +2480,26 @@ export async function startServer(cfg: Config) {
       case 'cabinet.leave':
         stopPlaying(c);
         break;
+      // flrnoh fork: the racing rig (server/rig.ts).
+      case 'rig.play':
+      case 'rig.leave':
+      case 'rig.frame':
+      case 'rig.finish': {
+        const floor = floorOf(c);
+        rigMessage(rigs, msg, {
+          id: c.id,
+          who,
+          color: c.peer.color,
+          floor: floor?.id,
+          send: (m) => sendTo(c, m),
+          toNeighbors: (m, droppable) => toNeighbors(c, m, droppable),
+          changed: () => floor && rigChanged(floor.id),
+          tablesChanged: () => [...floors.keys()].forEach(rigChanged),
+          toastFloor: (t) => toastFloor(floor, t),
+          warn: (t) => warn(c, t),
+        });
+        break;
+      }
       case 'cabinet.frame': {
         const floor = floorOf(c);
         const frame = checkFrame(msg.frame);
@@ -2426,6 +2511,14 @@ export async function startServer(cfg: Config) {
         if (now - c.lastFrameAt < 40) break;
         c.lastFrameAt = now;
         toNeighbors(c, { t: 'cabinet.frame', frame }, true);
+        break;
+      }
+      case 'jukebox.speakers': {
+        // flrnoh fork: the speakers all over the floor (client/speakers.ts); guests can't (guests.ts).
+        const floor = here();
+        if (!floor || !floor.jukebox.setSpeakers(msg.on === true)) break;
+        jukeboxChanged(floor);
+        toastFloor(floor, msg.on === true ? `🔊 ${who} switched the speakers on` : `🔈 ${who} switched the speakers off`);
         break;
       }
       case 'jukebox.stop': {
@@ -2510,7 +2603,7 @@ export async function startServer(cfg: Config) {
         const a = accounts.setRole(id, accountRole(msg.role));
         if (!a || a.role === before) break;
         toastAll(
-          a.role === 'admin' ? `${who} made ${a.name} an admin` : a.role === 'guest' ? `${a.name} is a guest now: watching, not typing` : before === 'admin' ? `${a.name} is no longer an admin` : `${who} made ${a.name} a member`,
+          a.role === 'admin' ? `${who} made ${a.name} an admin` : a.role === 'party' ? `🎉 ${a.name} is a party guest now` : a.role === 'guest' ? `${a.name} is a guest now: watching, not typing` : before === 'admin' ? `${a.name} is no longer an admin` : `${who} made ${a.name} a member`,
         );
         accountsChanged();
         // Only admins may use the office's own sign-ins: a demoted one is back on their own.
@@ -2552,7 +2645,7 @@ export async function startServer(cfg: Config) {
       }
       if (!c.out) {
         const me = meOf(c.accountId);
-        if (!stillIn(c) || c.admin !== me.admin || c.guest !== !!me.guest) accountsMoved = true;
+        if (!stillIn(c) || c.admin !== me.admin || c.guest !== !!me.guest || c.bulli !== !!me.bulli || c.party !== !!me.party) accountsMoved = true;
       }
       c.isAlive = false;
       c.ws.ping();

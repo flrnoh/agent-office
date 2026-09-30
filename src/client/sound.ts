@@ -10,9 +10,13 @@
  */
 import { CABINET, DESKS, DJ_BOOTH, FLOOR, GONG, JUKEBOX, WINDOWS as OPENINGS, inWing } from '../shared/layout';
 import type { GongWhy } from '../shared/protocol';
+import type { CarKind } from '../shared/garage';
 import { STREAM } from '../shared/jukebox';
 import { TunePlayer } from './music';
+import { RIG } from '../shared/rig'; // flrnoh fork: the racing rig
+import type { RaceEvent } from '../shared/racing';
 import { DjPlayer } from './dnb';
+import { falloff, hearSpeakers, speakerGain, streamVolume } from './speakers';
 
 type Pos = { x: number; y: number; z: number };
 
@@ -140,6 +144,15 @@ export class OfficeSound {
   private tune: TunePlayer | null = null;
   private stream: HTMLAudioElement | null = null;
   private musicTimer = 0;
+  // flrnoh fork: the speakers all over the office (speakers.ts), fed the same tune as the jukebox.
+  private musicSrc!: GainNode;
+  private pa: { gain: GainNode; pan: StereoPannerNode } | null = null;
+  private speakerVolume = 0.4;
+  private speakersMuted = false;
+  /** How far your floor's back office is built out, with the speakers switched on there; null where there are none (the roof, the garage's elevator ride, another map). */
+  private speakerRoom: { wing: number; on: boolean } | null = null;
+  /** The speakers' level where you stand (0–1, before your speaker volume), for the stream and quick checks. */
+  speakerLevel = 0;
   // The DJ on the roof, through the speakers by the booth, at your music volume.
   private djIn!: PannerNode;
   private dj: DjPlayer | null = null;
@@ -236,6 +249,9 @@ export class OfficeSound {
     this.musicMeter.fftSize = 2048;
     this.musicIn.connect(this.musicTone).connect(this.musicBus).connect(ctx.destination);
     this.musicBus.connect(this.musicMeter);
+    this.musicSrc = ctx.createGain();
+    this.musicSrc.connect(this.musicIn);
+    this.startSpeakers(ctx);
     // Loud enough to hear from anywhere on the roof, and loudest on the dance floor.
     this.djIn = this.panner({ x: DJ_BOOTH.x, y: 2.2, z: DJ_BOOTH.z }, 7, 0.8);
     this.djIn.connect(this.musicBus);
@@ -906,10 +922,12 @@ export class OfficeSound {
     return { saw, sub, tone, gain, pan, born: now };
   }
 
-  /** A car's horn: two notes a third apart, a Lambo's higher than a Ferrari's. */
-  honk(at: Pos, high: boolean) {
+  /** A car's horn: two notes a third apart, a Lambo's higher than a Ferrari's; the Bulli's is its own. */
+  honk(at: Pos, kind: CarKind) {
     const ctx = this.ctx;
     if (!ctx) return;
+    if (kind === 'bulli') return this.bulliHorn(at); // flrnoh fork
+    const high = kind === 'lambo';
     this.count('honk');
     const out = this.panner(at, 4, 0.9);
     out.connect(this.ambience);
@@ -930,6 +948,52 @@ export class OfficeSound {
       o.start(t0);
       o.stop(t0 + 0.55);
     }
+  }
+
+  // ---- flrnoh fork: Flogge's Bulli ------------------------------------------------------------------
+
+  /**
+   * The Bulli's horn: an old electric one, a single buzzy, slightly sour note (a reed rattling on a
+   * coil, not a chord), twice, "möp möp", with a wobble in it as the contact chatters.
+   */
+  private bulliHorn(at: Pos) {
+    const ctx = this.ctx!;
+    this.count('honk');
+    const out = this.panner(at, 4, 0.9);
+    out.connect(this.ambience);
+    const t0 = ctx.currentTime + 0.005;
+    const tone = biquad(ctx, 'bandpass', 900, 1.4);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t0);
+    for (const [start, len] of [
+      [0, 0.17],
+      [0.24, 0.3],
+    ]) {
+      g.gain.setValueAtTime(0, t0 + start);
+      g.gain.linearRampToValueAtTime(0.16, t0 + start + 0.015);
+      g.gain.setValueAtTime(0.14, t0 + start + len - 0.03);
+      g.gain.linearRampToValueAtTime(0, t0 + start + len);
+    }
+    tone.connect(g).connect(out);
+    const wobble = ctx.createOscillator();
+    wobble.frequency.value = 23;
+    const depth = ctx.createGain();
+    depth.gain.value = 6;
+    wobble.connect(depth);
+    for (const [f, type] of [
+      [311, 'sawtooth'],
+      [318, 'square'],
+    ] as const) {
+      const o = ctx.createOscillator();
+      o.type = type;
+      o.frequency.value = f;
+      depth.connect(o.frequency);
+      o.connect(tone);
+      o.start(t0);
+      o.stop(t0 + 0.6);
+    }
+    wobble.start(t0);
+    wobble.stop(t0 + 0.6);
   }
 
   /** A car door shutting behind someone getting in or out. */
@@ -1555,6 +1619,18 @@ export class OfficeSound {
     return Math.min(1, this.musicGain() * (7 / (7 + 0.8 * (d - 7))));
   }
 
+  /**
+   * How loud a stream on the office TV (flrnoh fork, see client/tv.ts) is where you stand, 0–1: your
+   * music and master volume, fading with distance from `at` (the TV) and gone beyond 30 m.
+   */
+  tvVolume(at: Pos): number {
+    const l = this.listener;
+    const d = Math.max(6, Math.hypot(l.x - at.x, l.y - at.y, l.z - at.z));
+    if (d > 30) return 0;
+    const master = this.muted ? 0 : this.volume * this.volume;
+    return Math.min(1, master * this.musicGain() * (6 / (6 + 0.5 * (d - 6))) * Math.min(1, (30 - d) / 6));
+  }
+
   /** Someone at the DJ booth blew the air horn. */
   horn() {
     if (!this.dj) return;
@@ -1645,6 +1721,34 @@ export class OfficeSound {
     n.connect(biquad(ctx, 'bandpass', 1800, 1)).connect(ng).connect(this.ambience);
     n.start(t0 - 0.015);
     n.stop(t0 + 0.02);
+  }
+
+  // ---- The racing rig (fork, see ui/rig.ts) -----------------------------------------------------
+
+  /**
+   * The rig's TV: the countdown's beeps and the green, a lap (a quicker one gets a third note), the
+   * chequered flag's fanfare, and a knock into a rival or the wall. From the TV, and soft: the lounge
+   * only hears it from close by.
+   */
+  rig(kind: RaceEvent) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.count(`rig.${kind}`);
+    const at = { x: RIG.x, y: RIG.screen.y, z: RIG.screen.z };
+    const out = this.panner(at, 1, 1.8);
+    out.connect(this.ambience);
+    const t0 = ctx.currentTime + 0.01;
+    if (kind === 'count') this.blip(out, t0, 440, 1, 0.16, 0.08, 'square');
+    else if (kind === 'go') this.blip(out, t0, 880, 1, 0.45, 0.09, 'square');
+    else if (kind === 'lap' || kind === 'best') (kind === 'best' ? [660, 880, 1175] : [660, 880]).forEach((f, i) => this.blip(out, t0 + i * 0.09, f, 1, 0.1, 0.07, 'square'));
+    else if (kind === 'finish') [523, 659, 784, 1047, 784, 1047].forEach((f, i) => this.blip(out, t0 + i * 0.12, f, 1, i === 5 ? 0.4 : 0.11, 0.08, 'square'));
+    else {
+      this.blip(out, t0, kind === 'wall' ? 70 : 110, 0.5, 0.18, 0.12);
+      this.hiss(out, t0, kind === 'wall' ? 700 : 1400, 0.9, [
+        [0.01, 0.06],
+        [0.2, 0],
+      ]);
+    }
   }
 
   // ---- The kitchen fridge (fork, see ui/fridge.ts) -----------------------------------------------
@@ -1758,7 +1862,7 @@ export class OfficeSound {
   private applyMusicVolume() {
     if (!this.ctx) return;
     this.musicBus.gain.setTargetAtTime(this.musicGain(), this.ctx.currentTime, 0.04);
-    this.hearStream();
+    this.hearSpeakers(this.ctx.currentTime);
   }
 
   private musicGain(): number {
@@ -1781,7 +1885,7 @@ export class OfficeSound {
     const j = this.jukebox;
     if (!j) return;
     if (j.track === STREAM && j.url) return this.startStream(j.url, j.fallback);
-    const tune = (this.tune = new TunePlayer(ctx, this.musicIn, j.track));
+    const tune = (this.tune = new TunePlayer(ctx, this.musicSrc, j.track));
     this.count('tune');
     // On a timer rather than every frame, so it carries on in a background tab.
     const tick = () => tune.tick(this.musicAt());
@@ -1823,19 +1927,63 @@ export class OfficeSound {
       this.musicCutoff = cutoff;
       this.musicTone.frequency.setTargetAtTime(cutoff, now, 0.1);
     }
-    this.hearStream();
+    this.hearSpeakers(now);
   }
 
   /** A stream plays outside Web Audio (most don't allow that), so it gets quieter with distance by hand. */
   private hearStream() {
     if (!this.stream) return;
-    const d = Math.max(MUSIC_REF, this.jukeboxDistance());
-    this.stream.volume = Math.min(1, this.musicGain() * (MUSIC_REF / (MUSIC_REF + MUSIC_ROLLOFF * (d - MUSIC_REF))));
+    // flrnoh fork: or the speakers', whichever is louder where you stand (speakers.ts).
+    this.stream.volume = streamVolume(falloff(this.jukeboxDistance(), MUSIC_REF, MUSIC_ROLLOFF), this.musicGain(), this.speakerLevel, this.speakersGain());
   }
 
   private jukeboxDistance(): number {
     const l = this.listener;
     return Math.hypot(l.x - JUKEBOX.x, l.y - JUKEBOX.y, l.z - JUKEBOX.z);
+  }
+
+  // ---- The speakers all over the office (flrnoh fork, see speakers.ts) ----------------------------
+
+  /** Your own speaker volume, 0–1, apart from the jukebox's. Muting the music mutes them too. */
+  setSpeakerVolume(volume: number, muted: boolean) {
+    this.speakerVolume = Math.max(0, Math.min(1, volume));
+    this.speakersMuted = muted;
+    if (this.ctx) this.hearSpeakers(this.ctx.currentTime);
+  }
+
+  /** Your floor's speakers: `wing` is how far its back office is built out, `on` whether they're switched on there; null where there are none. */
+  setSpeakerRoom(room: { wing: number; on: boolean } | null) {
+    this.speakerRoom = room;
+  }
+
+  /** Your speaker volume as a gain, 0 when they're off. */
+  private speakersGain(): number {
+    return this.speakerRoom ? speakerGain(this.speakerVolume, this.speakersMuted, this.musicMuted, this.speakerRoom.on) : 0;
+  }
+
+  /** One PA for all of them: the jukebox's tune, a little thinner (small boxes), panned lightly. */
+  private startSpeakers(ctx: AudioContext) {
+    const low = biquad(ctx, 'highpass', 140, 0.7);
+    const tone = biquad(ctx, 'lowpass', 9000, 0.6);
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    const pan = ctx.createStereoPanner();
+    this.musicSrc.connect(low).connect(tone).connect(gain).connect(pan).connect(ctx.destination);
+    pan.connect(this.musicMeter);
+    this.pa = { gain, pan };
+  }
+
+  /** How loud the speakers are where you stand now; a stream follows it (hearStream). */
+  private hearSpeakers(now: number) {
+    const room = this.speakerRoom;
+    const l = this.listener;
+    const heard = room ? hearSpeakers(l, room.wing) : { level: 0, pan: 0 };
+    this.speakerLevel = heard.level;
+    if (this.pa) {
+      this.pa.gain.gain.setTargetAtTime(heard.level * this.speakersGain(), now, 0.12);
+      this.pa.pan.pan.setTargetAtTime(heard.pan, now, 0.2);
+    }
+    this.hearStream();
   }
 
   // ---- Plumbing --------------------------------------------------------------------------------

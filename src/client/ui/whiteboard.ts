@@ -7,6 +7,7 @@ import type { Net } from '../net';
 import { store } from '../state';
 import { h, openModal, toast, type Modal } from './dom';
 import type { WhiteboardApp } from './whiteboard-app';
+import { partyRefuses } from '../party';
 
 declare const __EXCALIDRAW_ASSETS__: string;
 
@@ -36,6 +37,7 @@ let redrawBoard = () => {};
 
 /** Opens the floor's whiteboard, to draw on with everyone else who has it open. */
 export function openWhiteboard(net: Net) {
+  if (partyRefuses()) return; // fork: party guests see none of the work (party.ts)
   if (open) return;
   const floor = store.floor;
   if (!floor) return toast('Take the elevator to a floor first', 'warn');

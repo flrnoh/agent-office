@@ -1,25 +1,20 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { DJ_SET_SITES, djSetTitle, parseDjSetUrl, sameDjSet, type DjSet, type DjSetState } from '../shared/djset.js';
+import { DJ_SET_SITES, djSetTitle, parseDjSetUrl, sameDjSet, type DjSet } from '../shared/djset.js';
 import type { ClientMsg, ServerMsg } from '../shared/protocol.js';
+import { CHANGE_EVERY, LinkPlayer, oembed, type TitleLookup as LookupOf } from './embeds.js';
 
 /*
  * DJ sets on the roof (flrnoh fork, see FORK.md). The roof has no Floor of its own, so the office
  * keeps one booth for the whole building, saved in its data folder as dj.json. Like the jukebox it
  * only says what's on and since when; every browser on the roof plays it in the site's own player.
+ * What's kept and how is embeds.ts's, shared with the office TV (tv.ts).
  */
 
-interface Saved {
-  set: DjSet | null;
-  by?: string;
-  startedAt: number;
-}
-
 /** Asks the site what a set is called; undefined when it won't say. */
-export type TitleLookup = (set: DjSet) => Promise<string | undefined>;
+export type TitleLookup = LookupOf<DjSet>;
 
 /** The least time between two changes by one person (ms): enough for a tap on Play, not for a flood. */
-export const DJ_CHANGE_EVERY = 3000;
+export const DJ_CHANGE_EVERY = CHANGE_EVERY;
 
 const OEMBED: Record<DjSet['kind'], string> = {
   youtube: 'https://www.youtube.com/oembed?format=json&url=',
@@ -28,99 +23,11 @@ const OEMBED: Record<DjSet['kind'], string> = {
 };
 
 /** The site's oEmbed answer for the set's own (tidied) link, from these three hosts only; a few seconds at most. */
-export const oembedTitle: TitleLookup = async (set) => {
-  try {
-    const res = await fetch(OEMBED[set.kind] + encodeURIComponent(set.url), { signal: AbortSignal.timeout(4000), redirect: 'follow' });
-    if (!res.ok) return undefined;
-    const text = await res.text();
-    if (text.length > 200_000) return undefined;
-    const title = (JSON.parse(text) as { title?: unknown }).title;
-    return typeof title === 'string' ? cleanTitle(title) : undefined;
-  } catch {
-    return undefined;
-  }
-};
+export const oembedTitle: TitleLookup = (set) => oembed(OEMBED[set.kind], set.url);
 
-const cleanTitle = (t: string): string | undefined => t.replace(/\s+/g, ' ').trim().slice(0, 120) || undefined;
-
-export class DjBooth {
-  private s: Saved = { set: null, startedAt: Date.now() };
-  private file: string;
-  /** When each person last changed the set (by client id), for DJ_CHANGE_EVERY. */
-  private lastChange = new Map<string, number>();
-
-  constructor(
-    dataDir: string,
-    private lookup: TitleLookup = oembedTitle,
-  ) {
-    this.file = path.join(dataDir, 'dj.json');
-    this.load();
-  }
-
-  state(): DjSetState {
-    const { set, by, startedAt } = this.s;
-    return { set, ...(by ? { by } : {}), startedAt, elapsed: Math.max(0, Date.now() - startedAt) };
-  }
-
-  /**
-   * Puts on the set a link points to. The same set again changes nothing (it plays on); a link it
-   * can't play says why. `titled` resolves once the site has said what it's called (or wouldn't).
-   */
-  play(raw: unknown, by: string): { changed: false } | { changed: true; titled: Promise<void> } | { error: string } {
-    const set = parseDjSetUrl(raw);
-    if ('error' in set) return set;
-    if (sameDjSet(this.s.set, set)) return { changed: false };
-    this.s = { set, by, startedAt: Date.now() };
-    this.save();
-    return { changed: true, titled: this.fetchTitle(set) };
-  }
-
-  /** The house DJ back on; false when it already was. */
-  stop(by: string): boolean {
-    if (!this.s.set) return false;
-    this.s = { set: null, by, startedAt: Date.now() };
-    this.save();
-    return true;
-  }
-
-  /** Whether `who` may change the set now (and, if so, counts it). */
-  allow(who: string, now = Date.now()): boolean {
-    const last = this.lastChange.get(who) ?? -Infinity;
-    if (now - last < DJ_CHANGE_EVERY) return false;
-    this.lastChange.set(who, now);
-    for (const [k, t] of this.lastChange) if (now - t > 60_000) this.lastChange.delete(k);
-    return true;
-  }
-
-  private async fetchTitle(set: DjSet): Promise<void> {
-    const title = await this.lookup(set).catch(() => undefined);
-    // Someone may have put another one on while the site was answering.
-    if (!title || this.s.set !== set) return;
-    this.s = { ...this.s, set: { ...set, title } };
-    this.save();
-  }
-
-  private load() {
-    if (!existsSync(this.file)) return;
-    try {
-      const s = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Saved>;
-      const startedAt = typeof s.startedAt === 'number' && Number.isFinite(s.startedAt) ? s.startedAt : Date.now();
-      const by = typeof s.by === 'string' ? s.by.slice(0, 24) : undefined;
-      // Read back through the same check as a pasted link, so a hand-edited file can't smuggle anything in.
-      const parsed = s.set && typeof s.set === 'object' ? parseDjSetUrl(s.set.url) : null;
-      const set = parsed && !('error' in parsed) ? { ...parsed, ...(typeof s.set?.title === 'string' && cleanTitle(s.set.title) ? { title: cleanTitle(s.set.title) } : {}) } : null;
-      this.s = { set, ...(by ? { by } : {}), startedAt };
-    } catch {
-      // a broken file just means the house DJ plays
-    }
-  }
-
-  private save() {
-    try {
-      writeFileSync(this.file, JSON.stringify(this.s, null, 2), { mode: 0o600 });
-    } catch {
-      // disk issues shouldn't take the office down
-    }
+export class DjBooth extends LinkPlayer<DjSet> {
+  constructor(dataDir: string, lookup: TitleLookup = oembedTitle) {
+    super({ file: path.join(dataDir, 'dj.json'), parse: parseDjSetUrl, same: sameDjSet, lookup });
   }
 }
 
