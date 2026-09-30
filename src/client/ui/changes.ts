@@ -3,6 +3,7 @@ import type { Net } from '../net';
 import { store } from '../state';
 import { h, openModal, type Modal } from './dom';
 import { confirmDialog, openPrompt } from './prompt';
+import { partyRefuses } from '../party';
 
 // The Changes window at a desk: the files a worker changed and their diff against the branch the
 // office was opened on, refreshed while the worker works, with commit / discard / open-a-PR.
@@ -109,6 +110,7 @@ function renderPreview(workerId: string, repo: string | undefined, f: ChangedFil
  * repository, its own floor's first; `repo` opens on another floor's one.
  */
 export function openChanges(net: Net, workerId: string, onTerminal?: () => void, repo?: string) {
+  if (partyRefuses()) return; // fork: party guests see none of the work (party.ts)
   if (current?.workerId === workerId) return current.show(repo);
   const info = store.workers.get(workerId);
   if (!info) return;

@@ -1,6 +1,7 @@
 import { createHash, createHmac, timingSafeEqual, randomBytes, scrypt } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import type { Account, Accounts } from './accounts.js';
+import { watchesOnly } from './party.js'; // fork: party guests
 
 export const COOKIE_NAME = 'ao_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14;
@@ -126,7 +127,7 @@ export class Auth {
     for (const [name, value] of Object.entries(parseCookies(req.headers.cookie))) {
       if (!OFFICE_COOKIE.test(name)) continue;
       const s = this.verify(value);
-      if (s && !(opts.noGuests && s.account?.role === 'guest')) return true;
+      if (s && !(opts.noGuests && watchesOnly(s.account?.role))) return true; // fork: guests and party guests
     }
     return false;
   }

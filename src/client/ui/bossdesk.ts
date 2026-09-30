@@ -52,6 +52,7 @@ function addStyles() {
 
 /** The one at the boss's desk on this floor. */
 export function bossWorker(): WorkerInfo | undefined {
+  if (store.me.party) return undefined; // fork: a party guest's boss PC is just Minesweeper (party.ts)
   return store.workerAtDesk(BOSS_DESK.id);
 }
 

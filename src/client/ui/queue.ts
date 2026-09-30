@@ -5,6 +5,7 @@ import { h, openModal, timeAgo, STATUS_LABEL } from './dom';
 import { confirmDialog } from './prompt';
 import { providerPicker, providerLabel, providerUsageState, providerWaitingLabel, resolvedProvider, modelBadge } from './provider';
 import { officeFull } from '../../shared/machine';
+import { partyRefuses } from '../party';
 
 export interface QueueActions {
   openTerminal(workerId: string): void;
@@ -34,6 +35,7 @@ function outcome(t: QueueTask): string {
 }
 
 export function openQueue(net: Net, actions: QueueActions) {
+  if (partyRefuses()) return; // fork: party guests see none of the work (party.ts)
   const body = h('div.body.queue');
   const close = h('button.btn.close', { 'aria-label': 'Close' }, '✕');
   const limitValue = h('b');

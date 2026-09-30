@@ -8,7 +8,7 @@ import { radioRequestShape } from './radio.js';
  * doesn't compile (see `allReviewed`) until someone decides whether guests may send it.
  */
 
-/** All a guest may send: walking about, talking, playing, and opening a worker's terminal to watch. */
+/** All a guest may send: walking about, talking, playing, and opening a worker's terminal to watch. Party guests (party.ts) get these minus watching and the whiteboard. */
 const GUEST = [
   'move', 'act', 'golf', 'emote', 'sit', 'profile',
   'voice', 'rtc', 'chat', 'floor.go', 'ball.take', 'ball.throw',
