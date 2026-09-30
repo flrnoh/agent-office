@@ -17,6 +17,7 @@ const GUEST = [
   'wb.update', 'wb.pointer', 'jukebox.play', 'jukebox.skip', 'jukebox.stop', 'cabinet.play',
   'cabinet.leave', 'cabinet.frame', 'ping',
   'casino.sit', 'casino.stand', 'casino.act', // fork: the casino, for play chips
+  'gym.sit', 'gym.stand', 'gym.act', // fork: the gym across the street
   // The racing rig (fork, see server/rig.ts).
   'rig.play', 'rig.leave', 'rig.frame', 'rig.finish',
   'table.join', 'table.leave', 'table.input', 'table.sync', // fork: games on the roof

@@ -1,0 +1,79 @@
+/* The gym's windows and fitness HUD (flrnoh fork, see client/gym.ts). A fresh slate-and-lime look. */
+
+.modal.gym-modal { width: min(600px, 100%); }
+.modal.gym-modal header { background: #16241f; color: #d8f5c8; }
+.modal.gym-modal header h2 { color: #d8f5c8; }
+
+/* A pill for a number in the header: level, XP, energy. */
+.gym-stat { font-weight: 900; font-size: 15px; padding: 4px 10px; border-radius: 999px; background: #d8f5c8; color: #16241f; border: 2px solid var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gym-stat.energy { background: #bfe9ff; }
+.gym-stats { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+/* A labelled progress bar (XP into level, energy, a power meter). */
+.gym-bar { position: relative; height: 12px; border-radius: 999px; background: var(--paper-2); border: 2px solid var(--ink); overflow: hidden; }
+.gym-bar > i { position: absolute; inset: 0 auto 0 0; display: block; background: linear-gradient(90deg, #34d399, #a3e635); transition: width .25s ease; }
+.gym-bar.energy > i { background: linear-gradient(90deg, #38bdf8, #22d3ee); }
+.gym-bar.power > i { transition: none; background: linear-gradient(90deg, #f59e0b, #ef4444); }
+.gym-barrow { display: grid; grid-template-columns: 64px 1fr auto; gap: 8px; align-items: center; margin-top: 8px; font-weight: 800; font-size: 13px; }
+.gym-barrow .cap { color: var(--muted); }
+.gym-barrow .val { font-variant-numeric: tabular-nums; }
+
+/* The equipment panel, like the casino cabinet. */
+.gym-panel { position: relative; background: linear-gradient(#1f3a30, #16241f); border: 3px solid var(--ink); border-radius: 16px; padding: 16px; box-shadow: inset 0 0 0 3px #34d399; color: #d8f5c8; }
+.gym-message { margin-top: 10px; min-height: 1.4em; text-align: center; font-weight: 900; font-size: 17px; color: #d8f5c8; }
+
+/* Big readouts (distance, calories, reps, energy). */
+.gym-readout { display: flex; justify-content: space-around; gap: 12px; text-align: center; }
+.gym-readout .num { font-size: 28px; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
+.gym-readout .cap { font-size: 12px; font-weight: 800; color: #8fceb0; margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* Controls: a row of segmented buttons and a primary action. */
+.gym-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.gym-label { font-weight: 900; font-size: 14px; color: var(--muted); }
+.gym-opt { min-width: 46px; justify-content: center; font-variant-numeric: tabular-nums; }
+.gym-opt.on { background: #34d399; color: var(--ink); }
+.gym-go { margin-left: auto; font-size: 16px; padding: 9px 18px; }
+.gym-go.stop { background: #ef4444; color: #fff; }
+@media (max-width: 480px) { .gym-go { margin-left: 0; width: 100%; justify-content: center; } }
+
+/* The weight/target stepper. */
+.gym-step { display: inline-flex; align-items: center; gap: 6px; }
+.gym-step .amt { min-width: 82px; text-align: center; font-weight: 900; font-size: 18px; font-variant-numeric: tabular-nums; }
+.gym-step .cap { font-size: 12px; color: var(--muted); font-weight: 800; }
+
+/* The leaderboard. */
+.gym-board { margin: 4px 0 0; border-collapse: collapse; width: 100%; font-size: 15px; }
+.gym-board caption { text-align: left; font-size: 12px; color: var(--muted); font-weight: 800; padding-bottom: 4px; }
+.gym-board td, .gym-board th { padding: 4px 8px; border-top: 1px solid var(--paper-2); text-align: left; }
+.gym-board th { font-size: 12px; color: var(--muted); border: 0; }
+.gym-board td.n, .gym-board td.xp { text-align: right; font-variant-numeric: tabular-nums; font-weight: 900; }
+.gym-board tr.you td { background: #eafbe0; font-weight: 900; }
+.gym-board .rank { color: var(--muted); font-size: 12px; font-weight: 800; }
+
+/* The smoothie menu. */
+.gym-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.gym-smoothie { display: flex; gap: 10px; align-items: center; text-align: left; padding: 8px 10px; }
+.gym-smoothie .ic { font-size: 22px; }
+.gym-smoothie b { display: block; }
+.gym-smoothie small { color: var(--muted); font-weight: 700; }
+@media (max-width: 480px) { .gym-menu { grid-template-columns: 1fr; } }
+
+/* Who else is in a shared spot. */
+.gym-occupants { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.gym-chip { padding: 3px 10px; border-radius: 999px; background: var(--paper-2); border: 2px solid var(--ink); font-weight: 800; font-size: 13px; }
+.gym-chip.me { background: #d8f5c8; }
+
+.gym-note { margin: 10px 0 0; font-size: 13px; color: var(--muted); font-weight: 700; }
+.gym-won .gym-panel { animation: gym-flash .3s ease-in-out 4 alternate; }
+@keyframes gym-flash { to { box-shadow: inset 0 0 0 3px #34d399, 0 0 22px 6px #a3e635; } }
+
+/* Your fitness, top middle, while you're in the gym. */
+.gym-hud { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 5; pointer-events: none; display: flex; align-items: center; gap: 10px; padding: 6px 14px; border-radius: 999px; background: #16241f; color: #d8f5c8; border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); font-weight: 900; font-size: 15px; }
+.gym-hud .lvl { background: #a3e635; color: #16241f; border-radius: 999px; padding: 1px 9px; font-size: 13px; }
+.gym-hud .track { width: 90px; height: 8px; border-radius: 999px; background: #2c463a; overflow: hidden; }
+.gym-hud .track > i { display: block; height: 100%; background: linear-gradient(90deg, #34d399, #a3e635); }
+.gym-hud .track.energy > i { background: linear-gradient(90deg, #38bdf8, #22d3ee); }
+.gym-hud small { font-weight: 700; opacity: .8; font-size: 12px; }
+.gym-hud.bump { animation: gym-bump .35s ease-out; }
+@keyframes gym-bump { 40% { transform: translateX(-50%) scale(1.1); } }
+body:has(.backdrop) .gym-hud, .gym-hud[hidden] { display: none; }

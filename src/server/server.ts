@@ -56,8 +56,10 @@ import { ROOF } from '../shared/rooftop.js';
 import { heldDrink, keepsHeld } from './held.js';
 import { DjBooth, djMessage } from './djset.js';
 import { Casino, type CasinoPlayer } from './casino/index.js'; // flrnoh fork: the casino
+import { Gym, type GymPlayer } from './gym/index.js'; // flrnoh fork: the gym
 import { Turn, readTurnKey } from './turn.js'; // flrnoh fork: TURN for voice
 import { CASINO, CASINO_ENTRY, isCasinoMsg } from '../shared/casino.js';
+import { GYM, GYM_ENTRY, isGymMsg } from '../shared/gym.js';
 import { HALL } from '../shared/hall.js'; // flrnoh fork: the padel hall
 import { HALL_ARRIVAL, backInHall, hallView } from './hall.js';
 import { SOCCER, isSoccerMsg, type SoccerClientMsg } from '../shared/soccer.js'; // flrnoh fork: the soccer hall
@@ -547,6 +549,7 @@ export async function startServer(cfg: Config) {
   const maps = new Maps(cfg.dataDir);
   const djBooth = new DjBooth(cfg.dataDir); // flrnoh fork: DJ sets on the roof
   const casino = new Casino(cfg.dataDir); // flrnoh fork: the casino across the street (casino/)
+  const gym = new Gym(cfg.dataDir); // flrnoh fork: the gym across the street (gym/)
   const turn = new Turn(readTurnKey(cfg.dataDir), cfg.iceServers); // flrnoh fork: TURN so voice gets through from outside (turn.ts)
   const carKeys = new CarKeys(cfg.dataDir); // flrnoh fork: who drives the Bulli
   // flrnoh fork: the racing rig in the lounge (server/rig.ts), one driver a floor, one table for the building.
@@ -839,6 +842,9 @@ export async function startServer(cfg: Config) {
   // flrnoh fork: the casino, a place of its own like the roof, and who's in it by their chips.
   const casinoView = (): FloorView => ({ ...floorView(undefined), floor: CASINO });
   const casinoPlayer = (c: Client): CasinoPlayer => ({ id: c.id, owner: c.accountId ? `account:${c.accountId}` : `name:${c.peer.name}`, name: c.peer.name, send: (m) => sendTo(c, m) });
+  // flrnoh fork: the gym, a place of its own like the casino, and who's in it by their fitness.
+  const gymView = (): FloorView => ({ ...floorView(undefined), floor: GYM });
+  const gymPlayer = (c: Client): GymPlayer => ({ id: c.id, owner: c.accountId ? `account:${c.accountId}` : `name:${c.peer.name}`, name: c.peer.name, send: (m) => sendTo(c, m) });
   const screensOf = (c: Client, floor: Floor | undefined) => {
     for (const { workerId, frame } of floor?.workers.fullScreens() ?? []) sendTo(c, { t: 'screen', workerId, ...frame, full: true });
   };
@@ -1268,15 +1274,16 @@ export async function startServer(cfg: Config) {
     // Back on the floor they were on before a reload, a restart or closing the tab, else the first floor.
     const wanted = url.searchParams.get('floor');
     // Their floor's gone since (taken off the building, or its checkout deleted): up to the roof instead.
-    const gone = !!wanted && wanted !== ROOF && wanted !== CASINO && wanted !== HALL && wanted !== SOCCER && !floors.has(wanted);
+    const gone = !!wanted && wanted !== ROOF && wanted !== CASINO && wanted !== GYM && wanted !== HALL && wanted !== SOCCER && !floors.has(wanted);
     // Up on the roof, as long as there's a building under it.
     const onRoof = (wanted === ROOF || gone || (!wanted && !!me.party)) && floors.size > 0; // fork: party guests arrive at the rooftop bar
     const inCasino = wanted === CASINO && floors.size > 0; // fork: back in the casino
+    const inGym = wanted === GYM && floors.size > 0; // fork: back in the gym
     const inHall = backInHall(wanted, floors.size); // fork: back in the padel hall
     const inSoccer = backInSoccer(wanted, floors.size); // fork: back in the soccer hall
-    const floor = onRoof || inCasino || inHall || inSoccer ? undefined : arrivalFloor(wanted);
+    const floor = onRoof || inCasino || inGym || inHall || inSoccer ? undefined : arrivalFloor(wanted);
     // Back where they were standing on it too; anywhere else, they arrive by elevator.
-    const back = !gone && wanted !== null && (onRoof || inCasino || inHall || inSoccer || floor?.id === wanted);
+    const back = !gone && wanted !== null && (onRoof || inCasino || inGym || inHall || inSoccer || floor?.id === wanted);
     const spot = (back && spotFrom(url.searchParams)) || { ...elevatorSpot(), y: 0, rotY: 0 };
     const account = session.account;
     // An account's name is its own; on the shared password people pick one.
@@ -1324,7 +1331,7 @@ export async function startServer(cfg: Config) {
         sharing: false,
         ...(account ? { account: true } : {}),
         ...(url.searchParams.get('lite') === '1' ? { lite: true } : {}),
-        ...(onRoof ? { floor: ROOF } : inCasino ? { floor: CASINO } : inHall ? { floor: HALL } : inSoccer ? { floor: SOCCER } : floor ? { floor: floor.id } : {}),
+        ...(onRoof ? { floor: ROOF } : inCasino ? { floor: CASINO } : inGym ? { floor: GYM } : inHall ? { floor: HALL } : inSoccer ? { floor: SOCCER } : floor ? { floor: floor.id } : {}),
       },
     };
     // Maps of your own may have been added or edited since: everyone already in hears first.
@@ -1356,9 +1363,10 @@ export async function startServer(cfg: Config) {
       map: maps.state(),
       prompts: prompts.state(),
       leaveOnMerge: leaveOnMerge.state(),
-      ...(onRoof ? roofView() : inCasino ? casinoView() : inHall ? hallView(floorView(undefined)) : inSoccer ? soccerView(floorView(undefined)) : floorView(floor)),
+      ...(onRoof ? roofView() : inCasino ? casinoView() : inGym ? gymView() : inHall ? hallView(floorView(undefined)) : inSoccer ? soccerView(floorView(undefined)) : floorView(floor)),
     });
     if (inCasino) casino.enter(casinoPlayer(client));
+    if (inGym) gym.enter(gymPlayer(client)); // fork
     if (inSoccer) soccer.enter({ id, name: client.peer.name, send: (m) => sendTo(client, m) }); // fork
     screensOf(client, floor);
     broadcast({ t: 'peer.join', peer: client.peer }, id);
@@ -1388,6 +1396,7 @@ export async function startServer(cfg: Config) {
     ws.on('close', () => {
       clients.delete(id);
       casino.leave(id); // fork
+      gym.leave(id); // fork
       leftTable(id); // fork: games on the roof
       leftCourt(id); // fork: padel in the hall
       soccer.leave(id); // fork: off the soccer pitch
@@ -1468,6 +1477,17 @@ export async function startServer(cfg: Config) {
     floorsChanged();
   };
 
+  /** flrnoh fork: into the gym across the street, just inside its door. */
+  const goToGym = (c: Client) => {
+    if (c.peer.floor === GYM) return;
+    const left = leave(c, { x: GYM_ENTRY.x, y: 0, z: GYM_ENTRY.z, rotY: GYM_ENTRY.rotY });
+    c.peer.floor = GYM;
+    sendTo(c, { t: 'floor.enter', peers: [...clients.values()].map((o) => o.peer), ...gymView() });
+    gym.enter(gymPlayer(c));
+    arrived(c, left);
+    floorsChanged();
+  };
+
   /** flrnoh fork: into the padel hall across the street, just inside its doors (hall.ts). */
   const goToHall = (c: Client) => {
     if (c.peer.floor === HALL) return;
@@ -1526,6 +1546,7 @@ export async function startServer(cfg: Config) {
   const leave = (c: Client, at?: { x: number; y: number; z: number; rotY: number }) => {
     const was = floorOf(c);
     casino.leave(c.id); // fork: up from the casino's tables
+    gym.leave(c.id); // fork: off the gym's stations
     if (c.peer.floor === ROOF) leftTable(c.id); // fork: off the roof, away from its tables
     if (c.peer.floor === HALL) leftCourt(c.id); // fork: out of the padel hall, off its courts
     soccer.leave(c.id); // fork: out of the soccer hall, off its pitch
@@ -1658,6 +1679,7 @@ export async function startServer(cfg: Config) {
     };
     if (isCasinoMsg(msg.t)) return casino.message(c.id, msg as Parameters<Casino['message']>[1]); // fork: the casino
     if (isSoccerMsg(msg.t)) return soccer.message(c.id, msg as SoccerClientMsg); // fork: the soccer hall
+    if (isGymMsg(msg.t)) return gym.message(c.id, msg as Parameters<Gym['message']>[1]); // fork: the gym
     switch (msg.t) {
       case 'move': {
         const p = c.peer;
@@ -1787,6 +1809,10 @@ export async function startServer(cfg: Config) {
       case 'floor.go': {
         if (msg.floor === CASINO) {
           if (floors.size) goToCasino(c); // fork: the casino
+          break;
+        }
+        if (msg.floor === GYM) {
+          if (floors.size) goToGym(c); // fork: the gym
           break;
         }
         if (msg.floor === HALL) {
@@ -2793,6 +2819,7 @@ export async function startServer(cfg: Config) {
     arcade.flush();
     casino.stop();
     soccer.stop(); // fork
+    gym.stop(); // fork
     turn.stop(); // fork
     upgrader.stop();
     services.stop();
