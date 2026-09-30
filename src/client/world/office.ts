@@ -5,6 +5,7 @@ import { deskPoint } from '../../shared/nav';
 import { FLOOR_PALETTES, type FloorPalette } from '../../shared/floors';
 import { buildGarage, buildStreet, bulb, type NightParts } from './outside';
 import { buildCasinoExterior } from './casino/exterior'; // fork: the casino
+import { buildHallExterior } from './hall/exterior'; // fork: the padel hall
 import { Fleet } from './cars';
 import { buildScenic, type Scenic } from './scenic';
 import { mergeByMaterial, mesh, roundedBox, textPlane, toon, toonUnique } from './toon';
@@ -24,6 +25,7 @@ import { buildKitchen } from './kitchen';
 import { buildDeskSigns, type DeskSigns } from './desksigns';
 import { HOOP } from '../../shared/hoop';
 import type { TableId } from '../../shared/tablegames/tables'; // fork: games on the roof
+import type { CourtId } from '../../shared/hall'; // fork: padel in the hall
 
 export interface Collider {
   minX: number;
@@ -37,7 +39,7 @@ export interface Collider {
   fence?: boolean;
 }
 
-export type InteractKind = 'desk' | 'station' | 'issues' | 'pulls' | 'services' | 'queue' | 'tv' | 'coffee' | 'decor' | 'smoke' | 'elevator' | 'gong' | 'dog' | 'jukebox' | 'seat' | 'whiteboard' | 'cabinet' | 'ladder' | 'pole' | 'meeting' | 'bar' | 'dj' | 'golf' | 'ball' | 'bookshelf' | 'darts' | 'axe' | 'telescope' | 'car' | 'expand' | 'herald' | 'fridge' | 'rig' | 'table' | 'casino' | 'casino-table' | 'bungee';
+export type InteractKind = 'desk' | 'station' | 'issues' | 'pulls' | 'services' | 'queue' | 'tv' | 'coffee' | 'decor' | 'smoke' | 'elevator' | 'gong' | 'dog' | 'jukebox' | 'seat' | 'whiteboard' | 'cabinet' | 'ladder' | 'pole' | 'meeting' | 'bar' | 'dj' | 'golf' | 'ball' | 'bookshelf' | 'darts' | 'axe' | 'telescope' | 'car' | 'expand' | 'herald' | 'fridge' | 'rig' | 'table' | 'casino' | 'casino-table' | 'hall' | 'cafe' | 'padel' | 'bungee';
 
 /** Something you can use. Its scene object carries it as `userData.interact`, for clicking. */
 export interface Interactable {
@@ -62,6 +64,8 @@ export interface Interactable {
   label?: string;
   /** Fork: which of the casino's tables (shared/casino.ts CASINO_TABLES), for a 'casino-table'. */
   casinoTable?: string;
+  /** Fork: which of the padel hall's courts (shared/hall.ts COURTS), for 'padel'. */
+  court?: CourtId;
 }
 
 /** A desk, a bean bag, a board agent's kiosk or a chair at the meeting table: somewhere a worker sits (or stands). */
@@ -1390,6 +1394,8 @@ export function buildOffice(): Office {
   buildStreet(ground, groundColliders, night, group);
   const casinoOut = buildCasinoExterior(ground, groundColliders, interactables, night); // fork: the casino (world/casino/)
   doors.push(casinoOut.door);
+  const hallOut = buildHallExterior(ground, groundColliders, interactables, night); // fork: the padel hall (world/hall/)
+  doors.push(hallOut.door);
   const green = buildGreen(ground, groundColliders, night);
   // Off either end of the street, the scenic loop: the farm, the pines, the mountains and the beach.
   const scenic = buildScenic(ground, groundColliders, night);
@@ -1709,6 +1715,7 @@ export function buildOffice(): Office {
     garageLift.setFloor(streetBelow(index));
     cars.setStreet(streetBelow(index));
     casinoOut.setStreet(streetBelow(index)); // fork
+    hallOut.setStreet(streetBelow(index)); // fork
     plug.group.visible = index > 0;
     const i = colliders.indexOf(plug.collider);
     if (index > 0 && i < 0) colliders.push(plug.collider);
@@ -1739,6 +1746,7 @@ export function buildOffice(): Office {
     scenic.update(t);
     hoop.update(dt);
     casinoOut.update(t); // fork
+    hallOut.update(t); // fork
   };
 
   return { group, colliders, interactables, desks, setBeanbags, boardMeshes, tvScreen, bossScreen, machineScreen, meetingBoard: meeting.board, meetingSign: meeting.sign, fixtures: () => fixtures, elevator, garageLift, cars, scenic, gong, jukebox, cabinet, rig, whiteboard, tee, green, hoop, stack, wing, setWing, signs, setProjectName, setLook, setLevel, night, plants, update };

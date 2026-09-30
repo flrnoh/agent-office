@@ -51,6 +51,8 @@ export function openFridge(opts: FridgeOptions) {
         li.addEventListener('keydown', (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
+            // (or the office's own Enter, with the menu gone, would open the chat)
+            e.stopPropagation();
             pick();
           }
         });

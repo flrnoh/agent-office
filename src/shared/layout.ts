@@ -3,6 +3,7 @@
 // upstairs over a garage whose floor is level with the street (STREET_Y).
 
 import { RIG, RIG_SEAT } from './rig.js'; // flrnoh fork: the racing rig
+import { HALL_SEATING } from './hall-building.js'; // flrnoh fork: the padel hall
 
 export const FLOOR = { minX: -18, maxX: 18, minZ: -13, maxZ: 13 } as const;
 /** How high the ceiling is: a meter over the loft's roof (LOFT.y + LOFT.height), all the way across the room. */
@@ -457,6 +458,8 @@ export interface SeatDef {
   roof?: boolean;
   /** At the bar: E there, sitting down, orders a drink. */
   bar?: boolean;
+  /** Fork: in the padel hall across the street (shared/hall-building.ts), not in the office. */
+  hall?: boolean;
 }
 
 /**
@@ -486,6 +489,7 @@ export const SEATING: SeatDef[] = [
   { id: 'roof-sofa-3', label: '🛋️ Sofa', x: FIRE_PIT.x + 2.9, y: 0, z: FIRE_PIT.z + 0.4, rotY: -Math.PI / 2, places: [-0.6, 0.6], hips: 0.5, depth: -0.05, out: 0.8, roof: true },
   // …and sun loungers facing out over the city.
   ...LOUNGERS.map((x, i) => ({ id: `roof-lounger-${i + 1}`, label: '🏖️ Lounger', x, y: 0, z: FLOOR.maxZ - 1.5, rotY: 0, places: [0], hips: 0.42, depth: -0.2, out: -1, roof: true })),
+  ...HALL_SEATING, // fork: the padel hall's stand, bench and café chairs (shared/hall-building.ts)
 ];
 export const SEATING_BY_ID = new Map(SEATING.map((s) => [s.id, s]));
 
@@ -527,9 +531,10 @@ export function seatAt(key: string): SeatPlace | undefined {
 }
 
 /** The place `key` names, if it's somewhere you can sit from where you are: up on the roof, or down on a floor. */
-export function seatHere(key: string, onRoof: boolean): SeatPlace | undefined {
+export function seatHere(key: string, onRoof: boolean, inHall = false): SeatPlace | undefined {
   const place = seatAt(key);
-  return place && !!SEATING_BY_ID.get(place.seatId)!.roof === onRoof ? place : undefined;
+  const seat = place && SEATING_BY_ID.get(place.seatId)!;
+  return seat && !!seat.roof === onRoof && !!seat.hall === inHall ? place : undefined; // fork: the hall's only in the hall
 }
 
 /**

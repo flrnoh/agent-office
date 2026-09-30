@@ -17,7 +17,7 @@ export const INPUTS_PER_SEC = 60;
 const BURST = 6;
 
 /** A bucket of `rate` a second, up to BURST: whether there was one to take now. */
-class Bucket {
+export class Bucket {
   private tokens = BURST;
   private at = 0;
   constructor(private readonly rate: number) {}
