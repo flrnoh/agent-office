@@ -32,6 +32,7 @@ import { GolfBalls, PIN_DISTANCE, TEE_BALL, fly, lieText, pinText, type Flight, 
 import { Golfer } from './golf';
 import { Thrower } from './throwing';
 import { TableGames } from './tablegames/play'; // fork: games on the roof
+import { Bungee } from './bungee'; // fork: bungee off the roof
 import { ROUND, score, targetFrame, type BarGame, type Score, type Toss } from '../shared/bargames';
 import { Hands } from './world/hands';
 import { Basketball, IN_HANDS } from './world/hoop';
@@ -669,6 +670,8 @@ const thrower = new Thrower(player, me, camera, canvas, {
 
 // Fork: the pool table, the kicker, air hockey and table tennis on the roof (see tablegames/).
 const tables = new TableGames({ net, camera, canvas, player, sound, view: () => roof?.tables ?? null });
+// Fork: bungee off the roof (bungee.ts, world/bungee.ts).
+const bungee = new Bungee({ scene, camera, player, me: me.root, bodyOf: (id) => remotes.get(id)?.person.root, you: () => store.you, officeNow: () => store.officeNow(), jetty: () => roof?.bungee ?? null, drop: () => roofDrop(roofFloors()), send: (m) => net.send(m), toast, sound });
 
 /** Who's at a game's line up here already, if anyone. */
 function lineTaken(game: BarGame): string | null {
@@ -1167,6 +1170,7 @@ net.onMessage((msg) => {
   routeElevatorMessage(msg);
   routeWhiteboardMessage(msg, net);
   casino.onMessage(msg); // fork
+  bungee.onMessage(msg); // fork: bungee off the roof
   switch (msg.t) {
     case 'welcome': {
       doorbell.know(msg.peers); // fork: whoever's already here doesn't ring
@@ -3065,6 +3069,7 @@ const GUEST_ONLY_WATCH = new Set<InteractKind>(['issues', 'pulls', 'services', '
 function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   if (!target) return;
   if (casino.use(target, key)) return; // fork: the casino (guests play too)
+  if (bungee.use(target, key)) return; // fork: bungee off the roof
   // fork: a party guest uses none of the work's things (party.ts)
   if (isParty() && ((target.kind === 'desk' && target.deskId) || PARTY_OFF.has(target.kind))) return void (key === 'E' && toast(PARTY_NOPE));
   if (store.me.guest) {
@@ -3878,6 +3883,7 @@ function hintFor(it: Interactable): Hint {
   const title = (text: string) => h('span.title', {}, text);
   const board = (name: string): Hint => ({ k: '', parts: [title(name), key('E', 'Open')] });
   if (it.kind === 'casino' || it.kind === 'casino-table') return casino.hint(it, title, key, aside); // fork
+  if (it.kind === 'bungee') return bungee.hint(title, key, aside); // fork: bungee off the roof
   // fork: party guests (party.ts): who's at a desk, busy or not; the work's things are the team's
   if (isParty() && (it.kind === 'desk' || it.kind === 'station') && it.deskId) {
     const line = partyDeskLine(store.workerAtDesk(it.deskId), plan().byId.get(it.deskId)?.label ?? '');
@@ -4380,6 +4386,7 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     return;
   }
+  if (bungee.key(e)) return; // fork: on the bungee rope, F flips and nothing else is in reach
   // On the ladder, E gets you off it (and nothing else is in reach); W, S and Space climb.
   if (climber.active && (e.code === 'KeyE' || e.code === 'KeyF' || e.code in DESK_KEYS)) {
     if (e.code === 'KeyE') climber.letGo();
@@ -4593,7 +4600,7 @@ document.addEventListener('pointerlockchange', () => {
 const raycaster = new THREE.Raycaster();
 const CROSSHAIR = new THREE.Vector2(0, 0);
 /** How close (meters from your eyes) you must be to use each kind of thing. */
-const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3, rig: 4, table: 4, casino: 4, 'casino-table': 3.5 };
+const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3, rig: 4, table: 4, casino: 4, 'casino-table': 3.5, bungee: 3.5 };
 const eye = new THREE.Vector3();
 
 /** What the ray through `ndc` lands on first, whether it is within reach (plus `slack` meters), and where it hit. */
@@ -5084,6 +5091,8 @@ function frame(ts?: number) {
     voice.setVolume(id, d < 4 ? 1 : Math.max(0.2, 1 - (d - 4) / 16));
   }
 
+  bungee.update(upTop, player.view === 'first'); // fork: the jumper on the bungee rope, and your camera if it's you
+
   // The engines of the cars being driven on this floor, yours (by how hard you're on the gas) and theirs.
   const engines: Parameters<typeof sound.setEngines>[0] = [];
   if (!upTop && inOffice()) {
@@ -5287,7 +5296,7 @@ void whoami().then(() => {
 });
 
 // Debug handle for quick checks from the console / headless screenshots.
-(window as any).__office = { world: () => world, court: () => court, sendoffs, jail, plan, applyMap, roof: () => roof, booze, dj: () => djFrame(djAt()), store, player, caffeine, camera, arcade, cabinet, rig, tables, workerViews, departures, arrivals, scene, net, renderer, hands, me, remotes, settings, gallery, hanger, office, ride, switchFloor, climber, driver, getIn, getOut, golf, balls, thrower, elevatorPanelOpen, confetti, dog, sky, holiday, carried: () => carrying, emoteWheel, emote, ball };
+(window as any).__office = { world: () => world, court: () => court, sendoffs, jail, plan, applyMap, roof: () => roof, booze, dj: () => djFrame(djAt()), store, player, caffeine, camera, arcade, cabinet, rig, tables, bungee, workerViews, departures, arrivals, scene, net, renderer, hands, me, remotes, settings, gallery, hanger, office, ride, switchFloor, climber, driver, getIn, getOut, golf, balls, thrower, elevatorPanelOpen, confetti, dog, sky, holiday, carried: () => carrying, emoteWheel, emote, ball };
 (window as any).__voice = voice;
 (window as any).__sound = sound;
 (window as any).__tv = tvStreams; // fork: the TV's stream (client/tv.ts)
