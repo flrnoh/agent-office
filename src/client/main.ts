@@ -536,6 +536,11 @@ const gym = new GymPlace({
   placeAt: (at) => placeAt(at),
   sound: (k) => sound.gym(k),
   noOutline: (o) => noOutline(o),
+  people: () => [...remotes].map(([id, r]) => ({ name: store.peers.get(id)?.name ?? '', person: r.person })),
+  you: () => ({ name: store.peers.get(store.you)?.name ?? '', person: me }),
+  now: () => store.officeNow(),
+  camera,
+  soundAt: (k, at) => sound.gymAt(k, at),
 });
 // flrnoh fork: the padel hall across the street, a place of its own like the casino (hall.ts).
 const hall = new HallPlace({
@@ -5109,9 +5114,9 @@ function frame(ts?: number) {
   // In first person you are the camera; in third, hide yourself when it's zoomed in right behind your head.
   // At the tee the camera's behind the ball, and you're the one holding the club.
   // So is the camera over your shoulder at the dart board or the axe lane.
-  me.root.visible = !tables.zoomed && !padel.zoomed && (golf.active || thrower.active || (!firstPerson && camera.position.distanceTo(headPos.set(player.pos.x, player.pos.y + 1.3, player.pos.z)) > 1.5));
+  me.root.visible = !tables.zoomed && !padel.zoomed && (gym.showsYou || golf.active || thrower.active || (!firstPerson && !gym.zoomed && camera.position.distanceTo(headPos.set(player.pos.x, player.pos.y + 1.3, player.pos.z)) > 1.5));
   // In a car, your hands are on the wheel, out of sight.
-  if (firstPerson && !golf.active && !thrower.active && !driver.active) hands.update(dt, t, { yaw: player.camYaw, pitch: player.lookPitch, walkPhase: player.walkPhase, walking: player.moving && player.grounded, airborne: !player.grounded, jitter: player.jitter, grip });
+  if (firstPerson && !golf.active && !thrower.active && !driver.active && !gym.zoomed) hands.update(dt, t, { yaw: player.camYaw, pitch: player.lookPitch, walkPhase: player.walkPhase, walking: player.moving && player.grounded, airborne: !player.grounded, jitter: player.jitter, grip });
   // Down a pole: the view widens and the edges streak past.
   const rush = reduceMotion.matches ? 0 : climber.rush;
   // At the oche or the line, the view narrows onto the target.
@@ -5322,7 +5327,7 @@ function frame(ts?: number) {
   tvStreams.frame(tvHere && !tvStream ? { camera, screen: office.tvScreen, boxes: world.colliders } : null);
   pointToWaiting(now);
   // Not while the camera's up at the boss's monitor or the arcade, where they'd cover the screen.
-  if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !tables.zoomed && !padel.zoomed && !golf.active && !thrower.active && !driver.active) {
+  if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !tables.zoomed && !padel.zoomed && !golf.active && !thrower.active && !driver.active && !gym.zoomed) {
     // Hands go on top of everything, so they never clip into a desk you walk up to. They have
     // lights of their own, turned down to match wherever you're standing.
     renderer.clearDepth();
