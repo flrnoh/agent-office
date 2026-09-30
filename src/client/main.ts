@@ -87,6 +87,7 @@ import { mountHud } from './ui/menu';
 import { openJukebox } from './ui/jukebox';
 import { openBookshelf } from './ui/bookshelf';
 import { Arcade } from './ui/arcade';
+import { BossDesk } from './ui/bossdesk';
 import { Cabinet } from './ui/cabinet';
 import { trackTitle } from '../shared/jukebox';
 import { GAME, scoreText } from '../shared/cabinet';
@@ -333,6 +334,8 @@ tvMat.map = tvIdle;
 tvMat.toneMapped = false;
 // The boss's monitor upstairs: Minesweeper, from the boss's chair.
 const arcade = new Arcade(office.bossScreen);
+// Fork: …and the boss desk's own worker or shell, on the same monitor (ui/bossdesk.ts).
+const bossDesk = new BossDesk(office.bossScreen, { hire: (id) => hireAtDesk(id), shell: (id) => openShell(id), terminal: (id) => openWorkerTerminal(id), resume: (w) => resumeWorker(w), sendHome: (id) => killWorker(id), play: () => arcade.play() });
 
 // ---- The rooftop bar ------------------------------------------------------------------------------
 /** Up on the roof: built the first time anyone goes up there. */
@@ -1726,6 +1729,7 @@ function applyMap() {
   hands.holdBall(false);
   for (const r of remotes.values()) r.person.holdBall(false);
   arcade.stop();
+  bossDesk.stop();
   cabinet.stop();
   world.group.visible = false;
   world = next.world;
@@ -2572,7 +2576,7 @@ function standAt(desk: DeskDef) {
     const [x, z] = world.nav.nearestWalkable([spot.x, spot.z]);
     spot = { x, z };
   }
-  player.pos.set(spot.x, 0, spot.z);
+  player.pos.set(spot.x, desk.y ?? 0, spot.z);
   player.vy = 0;
   player.facing = Math.atan2(desk.x - spot.x, desk.z - spot.z);
   player.camYaw = player.facing - Math.PI;
@@ -3475,7 +3479,7 @@ function useSeat(seatId: string) {
   if (!seat) return;
   if (player.seat?.seatId === seatId) {
     if (seat.tv && tvShowing()) watchShare();
-    else if (seat.game) arcade.play();
+    else if (seat.game) bossDesk.open();
     else if (seat.bar) showBar();
     else standUp();
     return;
@@ -3530,7 +3534,7 @@ function burstOver(deskId: string, n: number) {
     return confetti.burst(at.x, at.y + 2.1, at.z, n);
   }
   const d = plan().byId.get(deskId);
-  if (d) confetti.burst(d.x, 2.3, d.z, n);
+  if (d) confetti.burst(d.x, (d.y ?? 0) + 2.3, d.z, n);
 }
 
 /** Where a worker at `desk` climbs up to dance, in the frame of whatever it sits or stands in. */
@@ -3778,11 +3782,12 @@ function hintFor(it: Interactable): Hint {
       if (!seat) return { k: '', parts: [] };
       if (player.seat?.seatId === seat.id) {
         const tv = !!seat.tv && tvShowing();
-        const use = tv ? 'Watch the TV' : seat.game ? 'Play Minesweeper' : seat.bar ? 'Order a drink' : '';
-        return { k: `${seat.id}|sitting|${tv}`, parts: [title(seat.label), aside('sitting'), ...(use ? [key('E', use), key('W A S D', 'Get up')] : [key('E', 'Get up')])] };
+        const use = tv ? 'Watch the TV' : seat.game ? bossDesk.useLabel() : seat.bar ? 'Order a drink' : '';
+        return { k: `${seat.id}|sitting|${tv}|${use}`, parts: [title(seat.label), aside('sitting'), ...(use ? [key('E', use), key('W A S D', 'Get up')] : [key('E', 'Get up')])] };
       }
       const full = !freePlace(seat);
-      return { k: `${seat.id}|${full}`, parts: [title(seat.label), seat.game ? aside('💣 Minesweeper on the monitor') : '', full ? aside('no room') : key('E', 'Sit down')] };
+      const monitor = seat.game ? bossDesk.aside() : '';
+      return { k: `${seat.id}|${full}|${monitor}`, parts: [title(seat.label), monitor ? aside(monitor) : '', full ? aside('no room') : key('E', 'Sit down')] };
     }
     case 'ladder': {
       const up = floorThere(1)?.name;
@@ -4729,6 +4734,7 @@ function frame(ts?: number) {
   const hole = inOffice() && office.stack.polesGoDown() ? office.stack.poles().find((s) => Math.hypot(player.pos.x - s.x, player.pos.z - s.z) < POLE.hole - 0.15) : undefined;
   if (hole && !climber.active && !trip && !player.seat && player.enabled && player.pos.y > -1.35 && player.pos.y < 0.6) climber.slide(hole);
   arcade.update(camera, dt);
+  bossDesk.update();
   cabinet.update(camera, dt);
   // Pulled away from the tee (sat down, off up the ladder, into the elevator): the club goes back.
   if (golf.active && (trip || hanger.active || climber.active || player.seat || upTop)) golf.stop();

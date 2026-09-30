@@ -1723,6 +1723,8 @@ export async function startServer(cfg: Config) {
       case 'worker.spawn': {
         const floor = here();
         if (!floor) break;
+        // Fork: the boss's desk is up in the office's loft, on no other map.
+        if (DESK_BY_ID.get(str(msg.deskId, 32))?.boss && maps.pick() !== OFFICE_MAP) return warn(c, 'The boss desk is in the office’s loft: switch the building back to the office');
         const kind = msg.kind === 'shell' ? 'shell' : 'agent';
         if (kind === 'agent' && msg.provider !== undefined && (!isAgentProvider(msg.provider) || !floor.project.agentProviders.includes(msg.provider))) {
           warn(c, 'Unknown agent provider');
