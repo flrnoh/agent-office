@@ -10,6 +10,7 @@ import type { EmoteId } from './emotes.js';
 import type { CarSeat, CarState } from './garage.js';
 import type { BallState } from './hoop.js';
 import type { JukeboxState } from './jukebox.js';
+import type { DjSetState } from './djset.js';
 import type { CustomMap } from './maps/index.js';
 import type { PromptId } from './prompts.js';
 import type { DrinkId } from './rooftop.js';
@@ -790,6 +791,8 @@ export interface FloorView {
   cars: CarState[];
   /** Workers sent home and locked up in the dungeon, on a map that has one. */
   jail: JailState;
+  /** Up on the roof: the DJ set someone put on, if any (flrnoh fork, see shared/djset.ts). */
+  dj?: DjSetState;
 }
 
 /** A guest looks around, chats, plays and watches the terminals, but can't type in them or run anything. */
@@ -1166,6 +1169,10 @@ export type ClientMsg =
   | { t: 'gong' }
   /** Blow the DJ's air horn on the roof; everyone up there hears it. */
   | { t: 'horn' }
+  /** Put a YouTube, SoundCloud or Mixcloud set on at the DJ booth, for everyone on the roof (see shared/djset.ts). */
+  | { t: 'dj.play'; url: string }
+  /** Back to the house DJ. */
+  | { t: 'dj.stop' }
   /** Close an issue, or a pull request without merging it; the answer comes back as gh.closed. */
   | { t: 'gh.close'; kind: 'issue' | 'pull'; number: number; comment?: string; reason?: GhCloseReason; deleteBranch?: boolean }
   /** Put labels on an issue or PR and take others off, as the server's gh account; answered with gh.labeled. */
@@ -1380,6 +1387,8 @@ export type ServerMsg =
   | { t: 'gong'; why: GongWhy; by?: string; pr?: number }
   /** Someone on the roof blew the DJ's air horn (sent to everyone up there, them too). */
   | { t: 'horn'; by: string }
+  /** The DJ set on the roof changed (sent to everyone up there). */
+  | { t: 'dj'; state: DjSetState }
   /** Sent to whoever asked to close it. */
   | { t: 'gh.closed'; kind: 'issue' | 'pull'; number: number; error?: string }
   /** Sent to whoever changed them: the labels it has now, or why they didn't change. */

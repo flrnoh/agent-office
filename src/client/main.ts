@@ -85,6 +85,8 @@ import { MachineTexture } from './world/machine';
 import { officeFull, pressureNote } from '../shared/machine';
 import { mountHud } from './ui/menu';
 import { openJukebox } from './ui/jukebox';
+import { DjSetPlayer } from './djset';
+import { openDjBooth } from './ui/djbooth';
 import { openBookshelf } from './ui/bookshelf';
 import { Arcade } from './ui/arcade';
 import { Cabinet } from './ui/cabinet';
@@ -441,6 +443,13 @@ store.on('dog', () => {
 });
 sound.setMusicVolume(settings.music, settings.musicMuted);
 sound.onMusicError = (text) => toast(text, 'warn');
+// flrnoh fork: a DJ set someone put on at the roof's booth, in place of the house DJ (see FORK.md).
+const djWatchers = new Set<() => void>();
+const djSets = new DjSetPlayer({ now: () => store.officeNow(), volume: () => sound.djSetVolume(), toast, changed: () => (houseDj(), djWatchers.forEach((fn) => fn())) });
+/** The house DJ plays on the roof unless a set does. */
+function houseDj() {
+  sound.setDj(upTop && !djSets.silencesHouse() ? djAt : null);
+}
 // The jukebox on your floor: everyone there hears it from the same bar, and its lights say what's on.
 // It's the office's: on a map of its own there's none to hear.
 function playJukebox() {
@@ -1058,6 +1067,7 @@ net.onMessage((msg) => {
   }
   if (msg.t === 'worker.remove') sentHome.add(msg.workerId);
   store.apply(msg);
+  if ((msg.t === 'welcome' || msg.t === 'floor.enter') && msg.dj) djSets.set(msg.dj);
   // A floor's cars where they are before anything asks if there's room to stand beside one (see welcome).
   if (msg.t === 'welcome' || msg.t === 'floor.enter') office.cars.snap(store.cars);
   seatedAlready = false;
@@ -1252,6 +1262,9 @@ net.onMessage((msg) => {
         gotUp();
         toast(`${msg.by} got there first`, 'warn');
       }
+      break;
+    case 'dj':
+      djSets.set(msg.state);
       break;
     case 'horn':
       if (!upTop) break;
@@ -1593,7 +1606,8 @@ function setPlace() {
   player.colliders = up ? r!.colliders : world.colliders;
   sky.setRoof(up, roofDrop(roofFloors()));
   sound.setOutdoors(up);
-  sound.setDj(up ? djAt : null);
+  djSets.setUp(up);
+  houseDj();
   // You can see the whole city from up there (and its clouds); from the top floors, as far as the haze.
   camera.far = up ? 700 : FAR;
   camera.updateProjectionMatrix();
@@ -2974,7 +2988,7 @@ function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   else if (target.kind === 'pole' && target.pole !== undefined) usePole(target.pole);
   else if (target.kind === 'meeting') showMeeting();
   else if (target.kind === 'bar') showBar();
-  else if (target.kind === 'dj') blowHorn();
+  else if (target.kind === 'dj') showDjBooth();
   else if (target.kind === 'golf') teeOff();
   else if (target.kind === 'darts' || target.kind === 'axe') stepUp(target.kind);
   else if (target.kind === 'ball') takeBall();
@@ -3048,7 +3062,12 @@ function orderDrink(d: Drink) {
 }
 
 let lastHorn = 0;
-/** E at the DJ booth: the air horn, for everyone on the roof. */
+/** E at the DJ booth: what's playing, a set of your own, the air horn. */
+function showDjBooth() {
+  openDjBooth({ net, player: djSets, house: () => djFrame(djAt()).part, horn: blowHorn, openVolume: () => showSettings('sound'), watch: (fn) => (djWatchers.add(fn), () => djWatchers.delete(fn)) });
+}
+
+/** H at the DJ booth (or its button): the air horn, for everyone on the roof. */
 function blowHorn() {
   const now = performance.now();
   if (now - lastHorn < 1500) return;
@@ -3804,8 +3823,11 @@ function hintFor(it: Interactable): Hint {
     }
     case 'dj': {
       const f = djFrame(djAt());
-      const what = f.part === 'drop' ? '🔥 the drop' : f.part === 'build' ? 'building up…' : f.part === 'breakdown' ? 'the breakdown' : 'mixing in the next track';
-      return { k: what, parts: [title('🎧 DJ Merge Conflict'), aside(`drum & bass · ${what}`), key('E', '📯 Air horn!')] };
+      const set = djSets.silencesHouse() ? djSets.current().set : null;
+      const what = set
+        ? `🎶 ${djSets.titleNow()}${djSets.phase() === 'blocked' ? ' · click to hear it' : ''}`
+        : `drum & bass · ${f.part === 'drop' ? '🔥 the drop' : f.part === 'build' ? 'building up…' : f.part === 'breakdown' ? 'the breakdown' : 'mixing in the next track'}`;
+      return { k: what, parts: [title('🎧 DJ Merge Conflict'), aside(what), key('E', set ? 'Change the set' : 'Put on a set'), key('H', '📯 Air horn!')] };
     }
     case 'ball':
       return { k: String(ball.still), parts: [title('🏀 Basketball'), ball.still ? aside('shoot some hoops') : '', key('E', ball.still ? 'Pick it up' : 'Catch it!')] };
@@ -4216,7 +4238,9 @@ function officeKey(e: KeyboardEvent): boolean {
       voice.toggleMute();
       return true;
     case 'KeyH':
-      openHelp();
+      // At the DJ booth on the roof, H is the air horn (flrnoh fork).
+      if (upTop && target?.kind === 'dj') blowHorn();
+      else openHelp();
       return true;
     case 'KeyF':
       startHanging();
