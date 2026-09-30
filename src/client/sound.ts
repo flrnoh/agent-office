@@ -1619,6 +1619,18 @@ export class OfficeSound {
     return Math.min(1, this.musicGain() * (7 / (7 + 0.8 * (d - 7))));
   }
 
+  /**
+   * How loud a stream on the office TV (flrnoh fork, see client/tv.ts) is where you stand, 0–1: your
+   * music and master volume, fading with distance from `at` (the TV) and gone beyond 30 m.
+   */
+  tvVolume(at: Pos): number {
+    const l = this.listener;
+    const d = Math.max(6, Math.hypot(l.x - at.x, l.y - at.y, l.z - at.z));
+    if (d > 30) return 0;
+    const master = this.muted ? 0 : this.volume * this.volume;
+    return Math.min(1, master * this.musicGain() * (6 / (6 + 0.5 * (d - 6))) * Math.min(1, (30 - d) / 6));
+  }
+
   /** Someone at the DJ booth blew the air horn. */
   horn() {
     if (!this.dj) return;

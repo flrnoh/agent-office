@@ -93,6 +93,8 @@ import { openJukebox } from './ui/jukebox';
 import { buildSpeakers } from './world/speakers'; // flrnoh fork: speakers all over the office
 import { DjSetPlayer } from './djset';
 import { openDjBooth } from './ui/djbooth';
+import { TV_AT, TV_OFF, TvStreams } from './tv'; // flrnoh fork: streams on the office TV
+import { openTvBig, openTvMenu } from './ui/tv';
 import { openBookshelf } from './ui/bookshelf';
 import { Arcade } from './ui/arcade';
 import { BossDesk } from './ui/bossdesk';
@@ -339,7 +341,7 @@ const tvIdle = (() => {
   g.font = '900 88px Nunito, ui-rounded, system-ui, sans-serif';
   g.fillText('📺 Office TV', 640, 330);
   g.font = '700 44px Nunito, ui-rounded, system-ui, sans-serif';
-  g.fillText('Click “Share screen” to put something up here', 640, 420);
+  g.fillText('Press E: put on a stream or share your screen', 640, 420); // fork: streams on the TV
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -465,6 +467,18 @@ sound.onMusicBlocked = () => toast('🔇 Click anywhere to hear the radio');
 // flrnoh fork: a DJ set someone put on at the roof's booth, in place of the house DJ (see FORK.md).
 const djWatchers = new Set<() => void>();
 const djSets = new DjSetPlayer({ now: () => store.officeNow(), volume: () => sound.djSetVolume(), toast, changed: () => (houseDj(), djWatchers.forEach((fn) => fn())) });
+// flrnoh fork: a YouTube or Twitch stream on the floor's TV, laid over the TV itself (see client/tv.ts).
+const tvWatchers = new Set<() => void>();
+// Shares come and go through voice: the TV's window follows those too.
+voice.onChange(() => tvWatchers.forEach((fn) => fn()));
+const tvStreams = new TvStreams({ now: () => store.officeNow(), volume: () => (inOffice() && !upTop ? sound.tvVolume(TV_AT) : 0), toast, changed: () => (tvPicture(), tvWatchers.forEach((fn) => fn())) }, canvas);
+/** The TV's picture: a shared screen, else the stream's card (under its player), else the idle screen. */
+function tvPicture() {
+  const map = tvStream ? tvTexture : tvStreams.showing() ? tvStreams.card() : tvIdle;
+  if (tvMat.map === map) return;
+  tvMat.map = map;
+  tvMat.needsUpdate = true;
+}
 /** The house DJ plays on the roof unless a set does. */
 function houseDj() {
   sound.setDj(upTop && !djSets.silencesHouse() ? djAt : null);
@@ -1111,6 +1125,7 @@ net.onMessage((msg) => {
   if (msg.t === 'worker.remove') sentHome.add(msg.workerId);
   store.apply(msg);
   if ((msg.t === 'welcome' || msg.t === 'floor.enter') && msg.dj) djSets.set(msg.dj);
+  if (msg.t === 'welcome' || msg.t === 'floor.enter') tvStreams.set(msg.tv ?? TV_OFF); // fork: the floor's TV
   // A floor's cars where they are before anything asks if there's room to stand beside one (see welcome).
   if (msg.t === 'welcome' || msg.t === 'floor.enter') office.cars.snap(store.cars);
   seatedAlready = false;
@@ -1308,6 +1323,9 @@ net.onMessage((msg) => {
       break;
     case 'dj':
       djSets.set(msg.state);
+      break;
+    case 'tv':
+      tvStreams.set(msg.state);
       break;
     case 'horn':
       if (!upTop) break;
@@ -2950,6 +2968,19 @@ function boardActions() {
   };
 }
 
+/** E at the TV (flrnoh fork): watch a share, put on a stream or stop it, share your screen (ui/tv.ts). */
+function showTv() {
+  const sharer = () => currentShares().find(([who]) => who !== 'You')?.[0];
+  openTvMenu({ net, tv: tvStreams, sharer, sharing: () => voice.sharing, watchShare, toggleShare: () => void toggleShare(), watchBig: watchTvBig, openVolume: () => showSettings('sound'), watch: tvWatch });
+}
+function watchTvBig() {
+  openTvBig(tvStreams, tvWatch);
+}
+function tvWatch(fn: () => void) {
+  tvWatchers.add(fn);
+  return () => void tvWatchers.delete(fn);
+}
+
 function watchShare() {
   const streams = currentShares();
   if (!streams.length) {
@@ -3019,7 +3050,7 @@ function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   else if (target.kind === 'issues' || target.kind === 'pulls') openBoard(target.kind, net, boardActions());
   else if (target.kind === 'services') openServices();
   else if (target.kind === 'queue') showQueue();
-  else if (target.kind === 'tv') watchShare();
+  else if (target.kind === 'tv') showTv();
   else if (target.kind === 'jukebox') showJukebox();
   else if (target.kind === 'bookshelf') showBookshelf();
   else if (target.kind === 'decor' && target.decorId) hanger.view(target.decorId);
@@ -3568,6 +3599,7 @@ function useSeat(seatId: string) {
   if (!seat) return;
   if (player.seat?.seatId === seatId) {
     if (seat.tv && tvShowing()) watchShare();
+    else if (seat.tv && tvStreams.showing()) watchTvBig();
     else if (seat.game) bossDesk.open();
     else if (seat.bar) showBar();
     else standUp();
@@ -3813,7 +3845,8 @@ function hintFor(it: Interactable): Hint {
     }
     case 'tv': {
       const any = currentShares().length > 0;
-      return { k: String(any), parts: [title('📺 Office TV'), key('E', any ? 'Watch full screen' : 'Share your screen')] };
+      const on = !any && tvStreams.showing() ? tvStreams.titleNow() : '';
+      return { k: `${any}|${on}`, parts: [title('📺 Office TV'), ...(on ? [aside(on)] : []), key('E', any ? 'Watch or put on a stream' : 'Stream or share your screen')] };
     }
     case 'fridge': {
       const cut = booze.cutOff(performance.now() / 1000);
@@ -4636,8 +4669,7 @@ function refreshShares() {
     tvStream = stream;
     tvVideo.srcObject = stream;
     if (stream) void tvVideo.play().catch(() => {});
-    tvMat.map = stream ? tvTexture : tvIdle;
-    tvMat.needsUpdate = true;
+    tvPicture();
   }
   const box = $('shares');
   box.replaceChildren(
@@ -5095,6 +5127,10 @@ function frame(ts?: number) {
   else if (drunkVisionOn) drunkVision.release();
   drunkVisionOn = blurry;
   effect.render(scene, camera);
+  // fork: the TV's stream plays while you're on its floor and nobody's sharing a screen (client/tv.ts).
+  const tvHere = !!store.floor && inOffice() && !upTop;
+  tvStreams.setOn(tvHere && !tvStream);
+  tvStreams.frame(tvHere && !tvStream ? { camera, screen: office.tvScreen, boxes: world.colliders } : null);
   pointToWaiting(now);
   // Not while the camera's up at the boss's monitor or the arcade, where they'd cover the screen.
   if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !golf.active && !thrower.active && !driver.active) {
@@ -5182,4 +5218,5 @@ void whoami().then(() => {
 (window as any).__office = { world: () => world, court: () => court, sendoffs, jail, plan, applyMap, roof: () => roof, booze, dj: () => djFrame(djAt()), store, player, caffeine, camera, arcade, cabinet, rig, workerViews, departures, arrivals, scene, net, renderer, hands, me, remotes, settings, gallery, hanger, office, ride, switchFloor, climber, driver, getIn, getOut, golf, balls, thrower, elevatorPanelOpen, confetti, dog, sky, holiday, carried: () => carrying, emoteWheel, emote, ball };
 (window as any).__voice = voice;
 (window as any).__sound = sound;
+(window as any).__tv = tvStreams; // fork: the TV's stream (client/tv.ts)
 (window as any).__notify = notifier;

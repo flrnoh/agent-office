@@ -12,6 +12,7 @@ import type { BallState } from './hoop.js';
 import type { JukeboxState } from './jukebox.js';
 import type { RigFrame, RigResult, RigState, RigView } from './rig.js'; // flrnoh fork: the racing rig
 import type { DjSetState } from './djset.js';
+import type { TvState } from './tv.js';
 import type { CustomMap } from './maps/index.js';
 import type { PromptId } from './prompts.js';
 import type { DrinkId } from './rooftop.js';
@@ -796,6 +797,8 @@ export interface FloorView {
   dj?: DjSetState;
   /** Fork: the racing rig in the lounge: who's at the wheel, their race, and the building's tables. */
   rig?: RigView;
+  /** On a floor: the stream on its TV, if any (flrnoh fork, see shared/tv.ts). */
+  tv?: TvState;
 }
 
 /**
@@ -1183,6 +1186,10 @@ export type ClientMsg =
   | { t: 'dj.play'; url: string }
   /** Back to the house DJ. */
   | { t: 'dj.stop' }
+  /** Put a YouTube or Twitch link on the floor's TV, for everyone there (flrnoh fork, see shared/tv.ts). */
+  | { t: 'tv.play'; url: string }
+  /** Turn the TV's stream off. */
+  | { t: 'tv.stop' }
   /** Close an issue, or a pull request without merging it; the answer comes back as gh.closed. */
   | { t: 'gh.close'; kind: 'issue' | 'pull'; number: number; comment?: string; reason?: GhCloseReason; deleteBranch?: boolean }
   /** Put labels on an issue or PR and take others off, as the server's gh account; answered with gh.labeled. */
@@ -1408,6 +1415,8 @@ export type ServerMsg =
   | { t: 'horn'; by: string }
   /** The DJ set on the roof changed (sent to everyone up there). */
   | { t: 'dj'; state: DjSetState }
+  /** The stream on the floor's TV changed (sent to everyone on the floor). */
+  | { t: 'tv'; state: TvState }
   /** Sent to whoever asked to close it. */
   | { t: 'gh.closed'; kind: 'issue' | 'pull'; number: number; error?: string }
   /** Sent to whoever changed them: the labels it has now, or why they didn't change. */

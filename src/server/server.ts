@@ -59,6 +59,7 @@ import { CarKeys } from './carkeys.js'; // flrnoh fork: the Bulli's keys
 import { BULLI_REFUSED, mayTake } from '../shared/bulli.js';
 import { CARS } from '../shared/garage.js';
 import { RigTable, Rigs, rigMessage } from './rig.js'; // flrnoh fork: the racing rig
+import { tvMessage } from './tv.js'; // flrnoh fork: streams on the office TV
 import { isBarGame, tossOk, type BarGame } from '../shared/bargames.js';
 
 const MIME: Record<string, string> = {
@@ -787,6 +788,7 @@ export async function startServer(cfg: Config) {
     meeting: floor?.meetings.state() ?? { current: null, past: [] },
     cabinet: { ...cabinetState(floor), frame: (floor && cabinetPlayer(floor)?.frame) ?? null },
     rig: rigs.view(floor?.id), // flrnoh fork
+    ...(floor ? { tv: floor.tv.state() } : {}), // flrnoh fork: the TV's stream (tv.ts)
   });
   /** The rooftop bar: nobody works up there, so it has none of a floor's things. */
   const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF, dj: djBooth.state() });
@@ -2046,6 +2048,12 @@ export async function startServer(cfg: Config) {
       case 'dj.stop':
         djMessage(djBooth, msg, { id: c.id, who, onRoof: c.peer.floor === ROOF, toRoof: (m) => { for (const o of clients.values()) if (o.peer.floor === ROOF) sendTo(o, m); }, warn: (t) => warn(c, t) });
         break;
+      case 'tv.play':
+      case 'tv.stop': {
+        const floor = floorOf(c); // flrnoh fork: streams on the office TV (tv.ts)
+        tvMessage(floor?.tv, msg, { id: c.id, who, office: maps.pick() === OFFICE_MAP, toFloor: (m) => floor && toFloor(floor, m), warn: (t) => warn(c, t) });
+        break;
+      }
       case 'gh.close': {
         const floor = here();
         const n = num(msg.number);
