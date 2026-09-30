@@ -31,7 +31,7 @@ import { RELAY_LOGIN, relayRequest, relayUpgrade, signInPage, stoppedPage, tunne
 import { ChatLog } from './history.js';
 import { Arcade, HighScores } from './cabinet.js';
 import type { ChatLine, ClientMsg, FloorInfo, FloorView, Me, MeetingRequest, PeerInfo, SearchResults, ServerMsg, ServicesState, SignInKind } from '../shared/protocol.js';
-import { GH_COMMENT_MAX, GH_LABEL_MAX, isAgentEffort, isAgentProvider } from '../shared/protocol.js';
+import { GH_COMMENT_MAX, GH_LABEL_MAX, accountRole, isAgentEffort, isAgentProvider } from '../shared/protocol.js';
 import { DESK_BY_ID, elevatorSpot, seatHere, streetBelow } from '../shared/layout.js';
 import { JUKEBOX_TUNES, STREAM } from '../shared/jukebox.js';
 import { checkFrame, scoreText, type CabinetFrame, type CabinetState } from '../shared/cabinet.js';
@@ -72,6 +72,10 @@ interface Client {
   accountId?: string;
   /** Whether this person was last told they're an admin (see `me`). */
   admin: boolean;
+  /** Whether this person was last told they're a guest, who only watches (see GUEST_MSGS). */
+  guest: boolean;
+  /** When a guest was last told they can only watch, so a held key doesn't flood them. */
+  lastGuestNoteAt: number;
   /** Signed out while connected; whatever it still sends is dropped until the socket closes. */
   out?: boolean;
   attached: Set<string>;
@@ -100,6 +104,22 @@ interface Client {
   /** Cleared at each heartbeat ping and set again by the pong; still clear at the next one means gone. */
   isAlive: boolean;
 }
+
+/**
+ * All a guest may send: walking about, talking, playing, and opening a worker's terminal to watch.
+ * Everything else (typing into terminals, hiring, GitHub, queues, settings, accounts) is refused.
+ */
+const GUEST_MSGS = new Set<ClientMsg['t']>([
+  'move', 'act', 'golf', 'emote', 'sit', 'profile', 'voice', 'rtc', 'chat', 'floor.go',
+  'ball.take', 'ball.throw', 'toss', 'dog.pet', 'gong', 'horn',
+  'worker.attach', 'worker.detach',
+  'wb.open', 'wb.close', 'wb.update', 'wb.pointer',
+  'jukebox.play', 'jukebox.skip', 'jukebox.stop',
+  'cabinet.play', 'cabinet.leave', 'cabinet.frame',
+  'ping',
+]);
+/** What a guest's page sends on its own (resizing a terminal it watches, polling boards): dropped without a word. */
+const GUEST_QUIET = new Set<ClientMsg['t']>(['term.resize', 'term.typing', 'gh.refresh', 'limits.refresh', 'floor.repos', 'team.get', 'accounts.get', 'signins.get', 'changes.watch', 'changes.unwatch', 'upgrade.check', 'doing']);
 
 const SLOW_CLIENT_BYTES = 8 * 1024 * 1024;
 /** The least time between two 'term.typing' notes from one person in one terminal. */
@@ -697,7 +717,7 @@ export async function startServer(cfg: Config) {
       const svc = tunneled ? services.lookup(tunneled) : undefined;
       if (tunneled && svc) {
         if (req.method === 'POST' && req.url === RELAY_LOGIN) return await login(req, res);
-        if (!auth.fromAnyCookie(req)) return signInPage(res, tunneled, loginOptions());
+        if (!auth.fromAnyCookie(req, { noGuests: true })) return signInPage(res, tunneled, loginOptions());
         if (svc === 'gone') return stoppedPage(res, tunneled);
         return relayRequest(req, res, svc);
       }
@@ -759,6 +779,7 @@ export async function startServer(cfg: Config) {
         return;
       }
       if (p === '/api/whoami') return send(res, 200, { ok: true, me: meOf(session.account?.id) });
+      if (session.account?.role === 'guest' && !guestMayFetch(p, url)) return send(res, 403, { error: 'Guests only watch here' });
       if (p === '/api/agents/opencode/models' && req.method === 'GET') {
         try {
           return send(res, 200, { models: await openCodeModels.get() });
@@ -897,7 +918,7 @@ export async function startServer(cfg: Config) {
     const tunneled = tunneledPort(req, cfg.port);
     const svc = tunneled ? services.lookup(tunneled) : undefined;
     if (tunneled && svc) {
-      if (svc !== 'gone' && auth.fromAnyCookie(req)) return relayUpgrade(req, socket, head, svc);
+      if (svc !== 'gone' && auth.fromAnyCookie(req, { noGuests: true })) return relayUpgrade(req, socket, head, svc);
       return refuseUpgrade(socket);
     }
     let url: URL;
@@ -912,10 +933,26 @@ export async function startServer(cfg: Config) {
     wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws, url, session));
   });
 
+  /**
+   * What a guest's page may load besides the page itself: the whiteboard's pictures, and pictures
+   * already hanging on a wall (the image proxy fetches any address, so not just any).
+   * Not a worker's changes, the project's docs, GitHub details or search.
+   */
+  const guestMayFetch = (p: string, url: URL): boolean => {
+    if (!p.startsWith('/api/')) return true;
+    if (p === '/api/whiteboard/file') return true;
+    if (p === '/api/image') {
+      const want = url.searchParams.get('url') ?? '';
+      return [...floors.values()].some((f) => f.decor.list().some((d) => d.url === want));
+    }
+    return false;
+  };
+
   /** Who a connection is: its account's current name and role, or an admin guest on the shared password. */
   const meOf = (accountId: string | undefined): Me => {
     const a = accounts.get(accountId);
-    return a ? { account: { name: a.name, role: a.role }, admin: a.role === 'admin' } : { admin: !accountId };
+    if (!a) return { admin: !accountId };
+    return { account: { name: a.name, role: a.role }, admin: a.role === 'admin', ...(a.role === 'guest' ? { guest: true } : {}) };
   };
   /** Still signed in: the account wasn't revoked, and the shared password wasn't switched off. */
   const stillIn = (c: Client) => (c.accountId ? !!accounts.get(c.accountId) : accounts.sharedPassword);
@@ -934,8 +971,13 @@ export async function startServer(cfg: Config) {
         continue;
       }
       const me = meOf(c.accountId);
-      if (me.admin !== c.admin) {
+      if (me.admin !== c.admin || !!me.guest !== c.guest) {
         c.admin = me.admin;
+        if (!!me.guest !== c.guest) {
+          c.guest = !!me.guest;
+          // Made a guest while at a keyboard: they keep watching, but stop typing.
+          if (c.guest) c.typingAt.clear();
+        }
         sendTo(c, { t: 'me', me });
       }
       if (me.admin) sendTo(c, { t: 'accounts', state: (state ??= accounts.state(onlineAccounts())) });
@@ -965,6 +1007,8 @@ export async function startServer(cfg: Config) {
       ws,
       accountId: account?.id,
       admin: me.admin,
+      guest: !!me.guest,
+      lastGuestNoteAt: 0,
       attached: new Set(),
       stale: new Set(),
       lastMoveAt: 0,
@@ -1228,6 +1272,15 @@ export async function startServer(cfg: Config) {
       if (!f) warn(c, 'Take the elevator to a floor first');
       return f;
     };
+    if (c.guest && !GUEST_MSGS.has(msg.t)) {
+      // Checked here, on the office's side, whatever the page lets them click.
+      const now = Date.now();
+      if (!GUEST_QUIET.has(msg.t) && now - c.lastGuestNoteAt > 3000) {
+        c.lastGuestNoteAt = now;
+        warn(c, 'Guests only watch here: grab a drink, play, and look over the workers’ shoulders');
+      }
+      return;
+    }
     /** A worker by id, with the floor it sits on. */
     const worker = (id: unknown) => {
       const wid = str(id, 32);
@@ -2064,7 +2117,7 @@ export async function startServer(cfg: Config) {
         sendTo(c, { t: 'accounts', state: accounts.state(onlineAccounts()) });
         break;
       case 'accounts.invite': {
-        const r = accounts.invite(who, msg.role === 'admin' ? 'admin' : 'member', typeof msg.name === 'string' ? msg.name : undefined);
+        const r = accounts.invite(who, accountRole(msg.role), typeof msg.name === 'string' ? msg.name : undefined);
         if (typeof r === 'string') return sendTo(c, { t: 'accounts.invited', error: r });
         sendTo(c, { t: 'accounts.invited', invite: r });
         accountsChanged();
@@ -2089,9 +2142,12 @@ export async function startServer(cfg: Config) {
       case 'accounts.role': {
         const id = str(msg.accountId, 32);
         if (id === c.accountId) return warn(c, "You can't change your own role");
-        const a = accounts.setRole(id, msg.role === 'admin' ? 'admin' : 'member');
-        if (!a) break;
-        toastAll(a.role === 'admin' ? `${who} made ${a.name} an admin` : `${a.name} is no longer an admin`);
+        const before = accounts.get(id)?.role;
+        const a = accounts.setRole(id, accountRole(msg.role));
+        if (!a || a.role === before) break;
+        toastAll(
+          a.role === 'admin' ? `${who} made ${a.name} an admin` : a.role === 'guest' ? `${a.name} is a guest now: watching, not typing` : before === 'admin' ? `${a.name} is no longer an admin` : `${who} made ${a.name} a member`,
+        );
         accountsChanged();
         // Only admins may use the office's own sign-ins: a demoted one is back on their own.
         void signins.look(a.id, true);
@@ -2130,7 +2186,10 @@ export async function startServer(cfg: Config) {
         c.ws.terminate();
         continue;
       }
-      if (!c.out && (!stillIn(c) || c.admin !== meOf(c.accountId).admin)) accountsMoved = true;
+      if (!c.out) {
+        const me = meOf(c.accountId);
+        if (!stillIn(c) || c.admin !== me.admin || c.guest !== !!me.guest) accountsMoved = true;
+      }
       c.isAlive = false;
       c.ws.ping();
     }

@@ -71,14 +71,23 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
   const changesBtn = h('button.btn', { type: 'button', title: 'What this worker changed: files, diff, commit, open a PR (C at the desk)' }, '🌿 Changes');
   const closeBtn = h('button.btn.close', { title: 'Leave terminal (Esc) · Ctrl+[ sends Esc to the terminal', 'aria-label': 'Close' }, '✕');
   const host = h('div.term-host');
-  const el = h('div.modal.term', { role: 'dialog', 'aria-label': `${info.name} terminal` }, h('header', {}, dot, title, pill, cost, viewers, typed, modelsBtn, onChanges ? changesBtn : null, closeBtn), host);
+  // A guest watches: the office drops whatever they'd type, so the terminal doesn't take keys at all.
+  const watchOnly = !!store.me.guest;
+  const watching = watchOnly ? h('span.pill.watching', { title: 'Guests watch the terminals; they can’t type in them' }, '👀 Watching') : null;
+  const el = h(
+    'div.modal.term',
+    { role: 'dialog', 'aria-label': `${info.name} terminal` },
+    h('header', {}, dot, title, pill, watching, cost, viewers, typed, watchOnly ? null : modelsBtn, onChanges && !watchOnly ? changesBtn : null, closeBtn),
+    host,
+  );
 
   const term = new Terminal({
     fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
     fontSize: 14,
     lineHeight: 1.1,
     theme: TERM_THEME,
-    cursorBlink: true,
+    cursorBlink: !watchOnly,
+    disableStdin: watchOnly,
     scrollback: 5000,
     allowProposedApi: true,
     macOptionIsMeta: true,
@@ -96,7 +105,7 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
    */
   const sendSize = (typing = false) => {
     if (!ready) return;
-    if (!typing && (store.workers.get(workerId)?.viewers.length ?? 0) > 1) {
+    if (watchOnly || (!typing && (store.workers.get(workerId)?.viewers.length ?? 0) > 1)) {
       const w = store.workers.get(workerId);
       if (w && (w.cols !== term.cols || w.rows !== term.rows)) term.resize(w.cols, w.rows);
       return;
@@ -287,13 +296,16 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
     return true;
   });
   term.onData((data) => {
+    if (watchOnly) return;
     sendSize(true);
     net.send({ t: 'term.input', workerId, data });
   });
   // Only your own keys and pastes count as typing, not the terminal answering the program's queries.
-  term.onKey(sayTyping);
-  term.textarea?.addEventListener('input', sayTyping);
-  term.textarea?.addEventListener('paste', sayTyping);
+  if (!watchOnly) {
+    term.onKey(sayTyping);
+    term.textarea?.addEventListener('input', sayTyping);
+    term.textarea?.addEventListener('paste', sayTyping);
+  }
   modelsBtn.addEventListener('click', () => {
     if (modelsBtn.hasAttribute('disabled')) return;
     sendSize(true);

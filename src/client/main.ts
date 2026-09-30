@@ -825,7 +825,7 @@ net.onMessage((msg) => {
       }
       break;
     case 'signins.needed':
-      openSignIns(net, msg.why);
+      if (!store.me.guest) openSignIns(net, msg.why);
       break;
     case 'floor.enter':
       // Not a trip of yours: the floor you were on was taken off the building, and the elevator took you away.
@@ -1912,8 +1912,25 @@ function watchShare() {
 }
 
 /** `note` is the issue note you're pointing at on the issues board, if any (see aimedNote). */
+/** What a guest can't do at desks, boards and the queue (the office refuses it anyway). */
+const GUEST_ONLY_WATCH = new Set<InteractKind>(['issues', 'pulls', 'services', 'queue', 'bookshelf', 'meeting']);
+
 function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   if (!target) return;
+  if (store.me.guest) {
+    // A guest watches: E opens a worker's terminal to look at, everything else is for the team.
+    const deskId = target.kind === 'desk' || target.kind === 'station' ? target.deskId : undefined;
+    const w = deskId ? store.workerAtDesk(deskId) : undefined;
+    if (deskId) {
+      if (w && (key === 'E' || (target.kind === 'station' && key === 'O'))) return openWorkerTerminal(w.id);
+      if (key === 'E' || key === 'P') toast('👀 Guests watch the workers — grab a coffee or head up to the roof');
+      return;
+    }
+    if (GUEST_ONLY_WATCH.has(target.kind)) {
+      if (key === 'E') toast('👀 That’s for the team — as a guest you watch');
+      return;
+    }
+  }
   if (target.kind !== 'issues') note = null;
   if (key === 'E' && carrying && dropCard(target, carrying, note)) return;
   if (target.kind === 'desk' && target.deskId) {
@@ -2602,6 +2619,13 @@ function renderHint() {
 function hintFor(it: Interactable): Hint {
   const title = (text: string) => h('span.title', {}, text);
   const board = (name: string): Hint => ({ k: '', parts: [title(name), key('E', 'Open')] });
+  if (store.me.guest && (GUEST_ONLY_WATCH.has(it.kind) || (it.kind === 'station' && !(it.deskId && store.workerAtDesk(it.deskId))))) {
+    return { k: 'guest', parts: [aside('👀 for the team — you’re a guest')] };
+  }
+  if (store.me.guest && it.kind === 'station' && it.deskId) {
+    const w = store.workerAtDesk(it.deskId)!;
+    return { k: `guest${w.id}${w.status}`, parts: [title(`${w.name} · ${STATUS_LABEL[w.status]}`), key('O', '👀 Watch')] };
+  }
   switch (it.kind) {
     case 'desk':
       return it.deskId ? deskHint(it.deskId) : { k: '', parts: [] };
@@ -2766,6 +2790,12 @@ function carryHint(card: CarriedIssue, it: Interactable | null): Hint {
 
 function deskHint(deskId: string): Hint {
   const w = store.workerAtDesk(deskId);
+  if (store.me.guest) {
+    const label = DESK_BY_ID.get(deskId)!.label;
+    if (!w) return { k: 'guest', parts: [h('span.title', {}, `${label} · empty`)] };
+    const doing = w.activity ? clip(w.activity, 48) : '';
+    return { k: `guest${w.id}${w.status}${doing}`, parts: [h('span.title', {}, `${w.name} · ${STATUS_LABEL[w.status]}`), doing ? aside(doing) : '', key('E', '👀 Watch')] };
+  }
   if (!w && DESK_BY_ID.get(deskId)?.room) return { k: 'room', parts: [h('span.title', {}, `🤝 ${DESK_BY_ID.get(deskId)!.label} · free`), key('E', 'Call a meeting')] };
   if (!w) {
     const paused = hiringPaused();
@@ -3396,7 +3426,7 @@ const hud = mountHud(
     { id: 'decor', icon: '🖼️', label: () => (hanger.active ? 'Stop hanging the picture' : 'Hang a picture'), section: 'Together', key: 'F', on: () => hanger.active, status: () => hanger.active, run: () => (hanger.active ? hanger.cancel() : startHanging()) },
     { id: 'team', icon: '👥', label: 'Invite teammates', section: 'Together', shown: () => store.invites, run: () => openTeam(net) },
     { id: 'accounts', icon: '🔑', label: 'Accounts', section: 'Together', shown: () => store.me.admin, title: () => 'Invite people, see who has an account, revoke them', run: () => openAccounts(net) },
-    { id: 'signins', icon: '🔐', label: 'Your sign-ins', section: 'Together', shown: () => !!store.me.account, tone: () => (needsSigningIn() ? 'danger' : undefined), status: needsSigningIn, chip: () => 'Sign in to Claude', title: () => 'The Claude plan and GitHub account your workers run on: your own', run: () => openSignIns(net) },
+    { id: 'signins', icon: '🔐', label: 'Your sign-ins', section: 'Together', shown: () => !!store.me.account && !store.me.guest, tone: () => (needsSigningIn() ? 'danger' : undefined), status: needsSigningIn, chip: () => 'Sign in to Claude', title: () => 'The Claude plan and GitHub account your workers run on: your own', run: () => openSignIns(net) },
     { id: 'settings', icon: '⚙️', label: 'Settings', section: 'Office', run: showSettings },
     { id: 'help', icon: '❓', label: 'Controls', section: 'Office', key: 'H', run: openHelp },
     {
