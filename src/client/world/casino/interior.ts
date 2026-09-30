@@ -5,6 +5,8 @@ import { cardLabel, suitOf, type BlackjackView, type Card } from '../../../share
 import type { Collider, Interactable } from '../office';
 import { mergeByMaterial, mesh, textPlane, toon } from '../toon';
 import { Reels, drawReels } from '../../ui/casino/reels';
+import { WheelClock } from '../../ui/casino/roulette-wheel';
+import type { RouletteView } from '../../../shared/casino-roulette';
 import { box, canvasTexture, carpetTexture, chaser, glow, neonSign, FONT } from './parts';
 
 /*
@@ -347,6 +349,10 @@ export function buildCasinoInterior(): CasinoInterior {
   };
   let wheel: THREE.Mesh | null = null;
   const bjTables = new Map<string, BlackjackFelt>();
+  // The roulette ball, and where the wheel's hub is (the ball runs round it).
+  let ball: THREE.Mesh | null = null;
+  const hub = { x: 0, y: 0, z: 0, r: 0.5 };
+  const rouletteClock = new WheelClock();
   for (const def of CASINO_TABLES) {
     if (def.kind === 'roulette') {
       const w = 3.6;
@@ -363,6 +369,10 @@ export function buildCasinoInterior(): CasinoInterior {
       wheel = mesh(new THREE.CircleGeometry(0.5, 37), new THREE.MeshToonMaterial({ map: wheelTexture() }), wx, 1.075, def.z, false);
       wheel.rotation.x = -Math.PI / 2;
       group.add(wheel);
+      ball = mesh(new THREE.SphereGeometry(0.035, 10, 8), new THREE.MeshBasicMaterial({ color: '#ffffff' }), wx, 1.11, def.z, false);
+      ball.visible = false;
+      group.add(ball);
+      Object.assign(hub, { x: wx, y: 1.075 + 0.035, z: def.z });
       parts.add(mesh(new THREE.ConeGeometry(0.08, 0.2, 8), gold, wx, 1.17, def.z, false));
       tableMesh(def, felt, rim, { w, d });
       for (let i = 0; i < 3; i++) for (const s of [-1, 1]) stool(def.x - 0.6 + i * 0.9, def.z + s * (d / 2 + 0.55));
@@ -544,6 +554,10 @@ export function buildCasinoInterior(): CasinoInterior {
       if (state && typeof state === 'object' && (state as BlackjackView).kind === 'blackjack') drawBlackjack(bj, state as BlackjackView);
       return;
     }
+    if (state && typeof state === 'object' && (state as RouletteView).kind === 'roulette') {
+      rouletteClock.set(state as RouletteView);
+      return;
+    }
     const m = machines.get(id);
     if (!m || !state || typeof state !== 'object' || (state as SlotsView).kind !== 'slots') return;
     const s = state as SlotsView;
@@ -558,7 +572,19 @@ export function buildCasinoInterior(): CasinoInterior {
   let redrawAt = 0;
   const update = (t: number) => {
     welcome.update(t);
-    if (wheel) wheel.rotation.z = t * 0.6;
+    if (wheel) {
+      // The wheel turns (rotation.z turns its face the other way: see ui/casino/roulette-wheel.ts), the ball runs and lands on the drawn number.
+      const pose = rouletteClock.pose();
+      wheel.rotation.z = -pose.wheel;
+      if (ball) {
+        ball.visible = pose.ball !== null;
+        if (pose.ball !== null) {
+          const a = pose.wheel + pose.ball;
+          const r = hub.r * pose.ballR;
+          ball.position.set(hub.x + Math.cos(a) * r, hub.y, hub.z + Math.sin(a) * r);
+        }
+      }
+    }
     const flick = Math.sin(t * 19) > 0.985 ? 0.3 : 1;
     pink.color.setRGB(flick, 0.31 * flick, 0.64 * flick);
     const now = performance.now();

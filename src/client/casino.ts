@@ -9,6 +9,7 @@ import { casinoUiFor, chipText, type CasinoSoundKind, type CasinoUi } from './ui
 import { openComingSoon, TABLE_ICON } from './ui/casino/soon';
 import './ui/casino/slots'; // registers the slot machines' window
 import './ui/casino/blackjack'; // registers the blackjack tables' window
+import './ui/casino/roulette'; // registers the roulette table's window
 import './ui/casino/casino.css';
 
 /*
