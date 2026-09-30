@@ -14,6 +14,7 @@ import { buildGong, type Gong } from './gong';
 import { buildJukebox, type JukeboxView } from './jukebox';
 import { buildBookshelf } from './bookshelf';
 import { buildCabinet, type CabinetModel } from './cabinet';
+import { buildRig, type RigModel } from './rig'; // flrnoh fork: the racing rig
 import { buildWhiteboard, type WhiteboardStand } from './whiteboard';
 import { buildGreen, buildTee, type Green, type Tee } from './golf';
 import { buildStack, type Stack } from './stack';
@@ -22,6 +23,7 @@ import { buildHoop, type HoopView } from './hoop';
 import { buildKitchen } from './kitchen';
 import { buildDeskSigns, type DeskSigns } from './desksigns';
 import { HOOP } from '../../shared/hoop';
+import type { TableId } from '../../shared/tablegames/tables'; // fork: games on the roof
 
 export interface Collider {
   minX: number;
@@ -35,7 +37,7 @@ export interface Collider {
   fence?: boolean;
 }
 
-export type InteractKind = 'desk' | 'station' | 'issues' | 'pulls' | 'services' | 'queue' | 'tv' | 'coffee' | 'decor' | 'smoke' | 'elevator' | 'gong' | 'dog' | 'jukebox' | 'seat' | 'whiteboard' | 'cabinet' | 'ladder' | 'pole' | 'meeting' | 'bar' | 'dj' | 'golf' | 'ball' | 'bookshelf' | 'darts' | 'axe' | 'telescope' | 'car' | 'expand' | 'herald' | 'fridge' | 'casino' | 'casino-table';
+export type InteractKind = 'desk' | 'station' | 'issues' | 'pulls' | 'services' | 'queue' | 'tv' | 'coffee' | 'decor' | 'smoke' | 'elevator' | 'gong' | 'dog' | 'jukebox' | 'seat' | 'whiteboard' | 'cabinet' | 'ladder' | 'pole' | 'meeting' | 'bar' | 'dj' | 'golf' | 'ball' | 'bookshelf' | 'darts' | 'axe' | 'telescope' | 'car' | 'expand' | 'herald' | 'fridge' | 'rig' | 'table' | 'casino' | 'casino-table';
 
 /** Something you can use. Its scene object carries it as `userData.interact`, for clicking. */
 export interface Interactable {
@@ -52,12 +54,14 @@ export interface Interactable {
   pole?: number;
   /** Which of CARS (shared/garage.ts), for a car. */
   car?: number;
+  /** Fork: which of the roof's table games (shared/tablegames), for a table. */
+  table?: TableId;
   /** Put away for now (a bean bag nobody needs yet): can't be used. */
   off?: boolean;
   /** What the hint calls it, where a map's own looks differ from the office's (the castle's ale for the coffee machine). */
   label?: string;
   /** Fork: which of the casino's tables (shared/casino.ts CASINO_TABLES), for a 'casino-table'. */
-  table?: string;
+  casinoTable?: string;
 }
 
 /** A desk, a bean bag, a board agent's kiosk or a chair at the meeting table: somewhere a worker sits (or stands). */
@@ -111,6 +115,8 @@ export interface Office {
   jukebox: JukeboxView;
   /** The arcade cabinet in the lounge, where BLOCKFALL plays (ui/cabinet.ts). */
   cabinet: CabinetModel;
+  /** Fork: the racing rig next to it, where OFFICE GP plays (ui/rig.ts). */
+  rig: RigModel;
   /** The rolling whiteboard everyone draws on together. */
   whiteboard: WhiteboardStand;
   /** The golf tee on the balcony, and the hole across the street it's hit at. */
@@ -1561,6 +1567,11 @@ export function buildOffice(): Office {
   colliders.push(cabinet.collider);
   interactables.push(cabinet.interactable);
   fixture('east', CABINET.z, CABINET.height / 2, CABINET.width + 0.1, CABINET.height);
+  // Fork: the racing rig, out between the lounge and the meeting room's glass.
+  const rig = buildRig();
+  group.add(rig.group);
+  colliders.push(rig.collider);
+  interactables.push(rig.interactable);
 
   // The bookshelf of the project's docs, on the south wall between the middle window and the balcony doors.
   const shelf = buildBookshelf();
@@ -1730,7 +1741,7 @@ export function buildOffice(): Office {
     casinoOut.update(t); // fork
   };
 
-  return { group, colliders, interactables, desks, setBeanbags, boardMeshes, tvScreen, bossScreen, machineScreen, meetingBoard: meeting.board, meetingSign: meeting.sign, fixtures: () => fixtures, elevator, garageLift, cars, scenic, gong, jukebox, cabinet, whiteboard, tee, green, hoop, stack, wing, setWing, signs, setProjectName, setLook, setLevel, night, plants, update };
+  return { group, colliders, interactables, desks, setBeanbags, boardMeshes, tvScreen, bossScreen, machineScreen, meetingBoard: meeting.board, meetingSign: meeting.sign, fixtures: () => fixtures, elevator, garageLift, cars, scenic, gong, jukebox, cabinet, rig, whiteboard, tee, green, hoop, stack, wing, setWing, signs, setProjectName, setLook, setLevel, night, plants, update };
 }
 
 /** A chair at the meeting table, with its laptop on the table in front of it. */

@@ -200,9 +200,9 @@ export class CasinoPlace {
       return true;
     }
     if (it.kind !== 'casino-table') return false;
-    if (key !== 'E' || !it.table) return true;
-    if (it.table === 'cashier') this.cashier();
-    else this.sitAt(it.table);
+    if (key !== 'E' || !it.casinoTable) return true;
+    if (it.casinoTable === 'cashier') this.cashier();
+    else this.sitAt(it.casinoTable);
     return true;
   }
 
@@ -295,8 +295,8 @@ export class CasinoPlace {
   /** The hint bar over something of the casino's. */
   hint(it: Interactable, title: (t: string) => HTMLElement, key: (k: string, label: string) => HTMLElement, aside: (t: string) => HTMLElement): { k: string; parts: (HTMLElement | string)[] } {
     if (it.kind === 'casino') return this.active ? { k: 'casino-out', parts: [title('🚪 Street'), key('E', 'Go out')] } : { k: 'casino-in', parts: [title(`🎰 ${CASINO_NAME}`), aside('play chips only'), key('E', 'Go in')] };
-    if (it.table === 'cashier') return { k: `cashier${this.chips}`, parts: [title('💰 Cashier'), aside(`🪙 ${chipText(this.chips)}`), key('E', 'Chips')] };
-    const def = it.table ? CASINO_TABLE_BY_ID.get(it.table) : undefined;
+    if (it.casinoTable === 'cashier') return { k: `cashier${this.chips}`, parts: [title('💰 Cashier'), aside(`🪙 ${chipText(this.chips)}`), key('E', 'Chips')] };
+    const def = it.casinoTable ? CASINO_TABLE_BY_ID.get(it.casinoTable) : undefined;
     if (!def) return { k: '', parts: [] };
     const state = this.tables.get(def.id) as { player?: string; soon?: boolean; seated?: string[] } | undefined;
     const icon = TABLE_ICON[def.kind];

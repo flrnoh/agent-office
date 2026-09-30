@@ -10,11 +10,14 @@ import type { EmoteId } from './emotes.js';
 import type { CarSeat, CarState } from './garage.js';
 import type { BallState } from './hoop.js';
 import type { JukeboxState } from './jukebox.js';
+import type { RigFrame, RigResult, RigState, RigView } from './rig.js'; // flrnoh fork: the racing rig
 import type { DjSetState } from './djset.js';
 import type { CasinoClientMsg, CasinoServerMsg } from './casino.js'; // flrnoh fork: the casino
+import type { TvState } from './tv.js';
 import type { CustomMap } from './maps/index.js';
 import type { PromptId } from './prompts.js';
 import type { DrinkId } from './rooftop.js';
+import type { Side, TableId, TableSeat, TableSnap } from './tablegames/tables.js'; // fork: games on the roof
 import type { WbElement, WbPointer, WhiteboardView } from './whiteboard.js';
 
 export type WorkerStatus =
@@ -794,14 +797,23 @@ export interface FloorView {
   jail: JailState;
   /** Up on the roof: the DJ set someone put on, if any (flrnoh fork, see shared/djset.ts). */
   dj?: DjSetState;
+  /** Fork: the racing rig in the lounge: who's at the wheel, their race, and the building's tables. */
+  rig?: RigView;
+  /** On a floor: the stream on its TV, if any (flrnoh fork, see shared/tv.ts). */
+  tv?: TvState;
+  /** Up on the roof: who's at the table games (flrnoh fork, see shared/tablegames). */
+  tables?: TableSeat[];
 }
 
-/** A guest looks around, chats, plays and watches the terminals, but can't type in them or run anything. */
-export type AccountRole = 'admin' | 'member' | 'guest';
+/**
+ * A guest looks around, chats, plays and watches the terminals, but can't type in them or run anything.
+ * A party guest (flrnoh fork, see server/party.ts) only parties: no terminals, boards or anything else of the work.
+ */
+export type AccountRole = 'admin' | 'member' | 'guest' | 'party';
 
 /** A role from the wire or a file, with anything unknown read as a member. */
 export function accountRole(v: unknown): AccountRole {
-  return v === 'admin' || v === 'guest' ? v : 'member';
+  return v === 'admin' || v === 'guest' || v === 'party' ? v : 'member';
 }
 
 /** Who this browser is signed in as. */
@@ -812,6 +824,10 @@ export interface Me {
   admin: boolean;
   /** Only watches: no typing into terminals, no hiring, no GitHub, no settings. */
   guest?: boolean;
+  /** flrnoh fork: holds the keys to Flogge's Bulli, so may drive it (server/carkeys.ts). */
+  bulli?: boolean;
+  /** A party guest (flrnoh fork): a guest who doesn't even watch; sees none of the work. Always with `guest`. */
+  party?: boolean;
 }
 
 /** What someone signs in to for their own workers: Claude Code, and the GitHub CLI. */
@@ -1175,6 +1191,15 @@ export type ClientMsg =
   | { t: 'dj.play'; url: string }
   /** Back to the house DJ. */
   | { t: 'dj.stop' }
+  /** Put a YouTube or Twitch link on the floor's TV, for everyone there (flrnoh fork, see shared/tv.ts). */
+  | { t: 'tv.play'; url: string }
+  /** Turn the TV's stream off. */
+  | { t: 'tv.stop' }
+  /** Fork: step up to a table game on the roof (see shared/tablegames), step back, a move to the host, a snapshot from it. */
+  | { t: 'table.join'; table: TableId; side?: Side }
+  | { t: 'table.leave' }
+  | { t: 'table.input'; table: TableId; input: number[] }
+  | { t: 'table.sync'; table: TableId; snap: TableSnap }
   /** Close an issue, or a pull request without merging it; the answer comes back as gh.closed. */
   | { t: 'gh.close'; kind: 'issue' | 'pull'; number: number; comment?: string; reason?: GhCloseReason; deleteBranch?: boolean }
   /** Put labels on an issue or PR and take others off, as the server's gh account; answered with gh.labeled. */
@@ -1256,6 +1281,8 @@ export type ClientMsg =
   /** On to the next tune. */
   | { t: 'jukebox.skip' }
   | { t: 'jukebox.stop' }
+  /** flrnoh fork: switch the speakers all over your floor on or off. */
+  | { t: 'jukebox.speakers'; on: boolean }
   /**
    * Step up to the arcade cabinet on your floor to carry on with `game` (one the office started for
    * you), or to start a new game, even while you're at it; the office answers with `cabinet`, naming
@@ -1268,6 +1295,11 @@ export type ClientMsg =
    * how your score gets on the high-score table: the office follows the game frame by frame.
    */
   | { t: 'cabinet.frame'; frame: CabinetFrame }
+  /** Fork: get in the racing rig on your floor (the office answers with `rig`), out of it, your race as it looks now, and your laps at the flag. */
+  | { t: 'rig.play' }
+  | { t: 'rig.leave' }
+  | { t: 'rig.frame'; frame: RigFrame }
+  | { t: 'rig.finish'; result: RigResult }
   /** You opened the whiteboard (or closed it): everyone on the floor sees who's drawing. */
   | { t: 'wb.open' }
   | { t: 'wb.close' }
@@ -1394,6 +1426,12 @@ export type ServerMsg =
   | { t: 'horn'; by: string }
   /** The DJ set on the roof changed (sent to everyone up there). */
   | { t: 'dj'; state: DjSetState }
+  /** The stream on the floor's TV changed (sent to everyone on the floor). */
+  | { t: 'tv'; state: TvState }
+  /** Fork: who's at the roof's tables (to everyone up there), a table's snapshot, and a move for its host. */
+  | { t: 'tables'; tables: TableSeat[] }
+  | { t: 'table.sync'; table: TableId; snap: TableSnap }
+  | { t: 'table.input'; table: TableId; side: Side; input: number[] }
   /** Sent to whoever asked to close it. */
   | { t: 'gh.closed'; kind: 'issue' | 'pull'; number: number; error?: string }
   /** Sent to whoever changed them: the labels it has now, or why they didn't change. */
@@ -1422,6 +1460,9 @@ export type ServerMsg =
   | { t: 'cabinet'; state: CabinetState }
   /** The game on your floor's cabinet, as its player sees it (sent to everyone else on the floor). */
   | { t: 'cabinet.frame'; frame: CabinetFrame }
+  /** Fork: who's at the racing rig on your floor now and the building's tables, and their race (to everyone else on the floor). */
+  | { t: 'rig'; state: RigState }
+  | { t: 'rig.frame'; frame: RigFrame }
   /** Someone changed these elements on the floor's whiteboard (sent to everyone else on the floor). */
   | { t: 'wb.update'; elements: WbElement[] }
   /** Who has the floor's whiteboard open now. */

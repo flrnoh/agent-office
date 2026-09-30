@@ -7,11 +7,12 @@ import { newer, type WbElement } from '../shared/whiteboard';
 import type { DogState } from '../shared/dog';
 import { JUKEBOX_TUNES, type JukeboxState } from '../shared/jukebox';
 import type { CabinetFrame, CabinetState } from '../shared/cabinet';
+import { EMPTY_RIG, type RigFrame, type RigState } from '../shared/rig'; // flrnoh fork: the racing rig
 import type { BallState } from '../shared/hoop';
 import { parked, type CarSeat, type CarState } from '../shared/garage';
 import { OFFICE_MAP, planOf, type MapPlan } from '../shared/maps';
 
-export type Topic = 'peers' | 'workers' | 'issues' | 'pulls' | 'chat' | 'project' | 'screens' | 'team' | 'upgrade' | 'services' | 'decor' | 'floorPlan' | 'usage' | 'limits' | 'queue' | 'me' | 'accounts' | 'signins' | 'notify' | 'machine' | 'floors' | 'floor' | 'projectsDir' | 'repos' | 'dog' | 'jukebox' | 'sky' | 'theme' | 'map' | 'leaveOnMerge' | 'whiteboard' | 'drawing' | 'cabinet' | 'cabinetFrame' | 'meeting' | 'prompts' | 'ball' | 'cars' | 'jail';
+export type Topic = 'peers' | 'workers' | 'issues' | 'pulls' | 'chat' | 'project' | 'screens' | 'team' | 'upgrade' | 'services' | 'decor' | 'floorPlan' | 'usage' | 'limits' | 'queue' | 'me' | 'accounts' | 'signins' | 'notify' | 'machine' | 'floors' | 'floor' | 'projectsDir' | 'repos' | 'dog' | 'jukebox' | 'sky' | 'theme' | 'map' | 'leaveOnMerge' | 'whiteboard' | 'drawing' | 'cabinet' | 'cabinetFrame' | 'rig' | 'rigFrame' | 'meeting' | 'prompts' | 'ball' | 'cars' | 'jail';
 
 const zeroUsage = (): Usage => ({ input: 0, output: 0, cacheWrite: 0, cacheRead: 0, cost: 0, calls: 0 });
 
@@ -61,6 +62,9 @@ export interface Settings {
   /** The lounge jukebox, 0–1, apart from the office sounds. */
   music: number;
   musicMuted: boolean;
+  /** flrnoh fork: the speakers all over the office that play the jukebox too, 0–1 (see speakers.ts). */
+  speakers: number;
+  speakersMuted: boolean;
   /** The swish of a page turning as you read at the bookshelf. */
   pageTurns: boolean;
   /** Voice chat starts muted and V is held down to talk, instead of an open mic. */
@@ -133,7 +137,7 @@ export function rememberSpot(s: Spot) {
 }
 
 export function loadSettings(): Settings {
-  const s: Settings = { view: 'first', volume: 0.7, muted: false, music: 0.5, musicMuted: false, pageTurns: true, pushToTalk: false, notify: true, hud: { ...HUD_DEFAULTS }, pins: [] };
+  const s: Settings = { view: 'first', volume: 0.7, muted: false, music: 0.5, musicMuted: false, speakers: 0.4, speakersMuted: false, pageTurns: true, pushToTalk: false, notify: true, hud: { ...HUD_DEFAULTS }, pins: [] };
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null');
     if (saved?.view === 'first' || saved?.view === 'third') s.view = saved.view;
@@ -141,6 +145,8 @@ export function loadSettings(): Settings {
     if (typeof saved?.muted === 'boolean') s.muted = saved.muted;
     if (typeof saved?.music === 'number' && Number.isFinite(saved.music)) s.music = Math.max(0, Math.min(1, saved.music));
     if (typeof saved?.musicMuted === 'boolean') s.musicMuted = saved.musicMuted;
+    if (typeof saved?.speakers === 'number' && Number.isFinite(saved.speakers)) s.speakers = Math.max(0, Math.min(1, saved.speakers));
+    if (typeof saved?.speakersMuted === 'boolean') s.speakersMuted = saved.speakersMuted;
     if (typeof saved?.pageTurns === 'boolean') s.pageTurns = saved.pageTurns;
     if (typeof saved?.pushToTalk === 'boolean') s.pushToTalk = saved.pushToTalk;
     if (typeof saved?.notify === 'boolean') s.notify = saved.notify;
@@ -205,6 +211,9 @@ class Store {
   cabinet: CabinetState = { player: null, scores: [] };
   /** The game on the cabinet as its player last sent it; null while nobody plays. */
   cabinetFrame: CabinetFrame | null = null;
+  /** Fork: who's at the racing rig on your floor and the building's tables, and their race as it last came in. */
+  rig: RigState = { driver: null, scores: EMPTY_RIG.scores };
+  rigFrame: RigFrame | null = null;
   usage: UsageState = { total: zeroUsage(), today: zeroUsage(), day: '', pauseHiring: false };
   /** The Claude plan's 5-hour and weekly limits. */
   limits: PlanLimits = { windows: [], at: 0 };
@@ -317,12 +326,15 @@ class Store {
     this.drawing = v.whiteboard.people;
     this.cabinet = { player: v.cabinet.player, scores: v.cabinet.scores };
     this.cabinetFrame = v.cabinet.frame;
+    const rig = v.rig ?? EMPTY_RIG;
+    this.rig = { driver: rig.driver, scores: rig.scores };
+    this.rigFrame = rig.frame;
     this.setDog(v.dog);
     this.setJukebox(v.jukebox);
     this.ball = v.ball ?? {};
     this.setCars(v.cars ?? parked());
     this.jail = v.jail ?? { prisoners: [], bones: 0 };
-    for (const t of ['floor', 'project', 'workers', 'issues', 'pulls', 'queue', 'meeting', 'decor', 'floorPlan', 'services', 'dog', 'jukebox', 'whiteboard', 'drawing', 'cabinet', 'cabinetFrame', 'ball', 'cars', 'jail'] as Topic[]) this.emit(t);
+    for (const t of ['floor', 'project', 'workers', 'issues', 'pulls', 'queue', 'meeting', 'decor', 'floorPlan', 'services', 'dog', 'jukebox', 'whiteboard', 'drawing', 'cabinet', 'cabinetFrame', 'rig', 'rigFrame', 'ball', 'cars', 'jail'] as Topic[]) this.emit(t);
   }
 
   private setCars(cars: CarState[]) {
@@ -484,6 +496,16 @@ class Store {
       case 'cabinet.frame':
         this.cabinetFrame = msg.frame;
         this.emit('cabinetFrame');
+        break;
+      // Fork: the racing rig. Nobody at the wheel any more: their race goes with them.
+      case 'rig':
+        if (!msg.state.driver || msg.state.driver.id !== this.rig.driver?.id) this.rigFrame = null;
+        this.rig = msg.state;
+        this.emit('rig');
+        break;
+      case 'rig.frame':
+        this.rigFrame = msg.frame;
+        this.emit('rigFrame');
         break;
       case 'pong': {
         // The answer that came back quickest says best how the two clocks line up.

@@ -74,7 +74,7 @@ export function openSettings(net: Net, settings: Settings, onChange: (s: Setting
   paint();
 
   /** A volume slider with its mute button. Dragging it turns the sound back on; letting go plays `preview`. */
-  const volumeRow = (label: string, level: 'volume' | 'music', muted: 'muted' | 'musicMuted', preview?: () => void) => {
+  const volumeRow = (label: string, level: 'volume' | 'music' | 'speakers', muted: 'muted' | 'musicMuted' | 'speakersMuted', preview?: () => void) => {
     const slider = h('input', { type: 'range', min: 0, max: 100, step: 1, 'aria-label': label });
     const pct = h('span.vol-pct');
     const mute = h('button.btn', { type: 'button' });
@@ -137,6 +137,7 @@ export function openSettings(net: Net, settings: Settings, onChange: (s: Setting
   };
   paintTalk();
   const musicRow = volumeRow('Jukebox volume', 'music', 'musicMuted');
+  const speakersRow = volumeRow('Speakers volume', 'speakers', 'speakersMuted'); // flrnoh fork (speakers.ts)
 
   // The swish of the book's pages at the bookshelf, on or off.
   const pagesRow = h('div.seg', { role: 'radiogroup', 'aria-label': 'Page turns at the bookshelf' });
@@ -513,6 +514,7 @@ export function openSettings(net: Net, settings: Settings, onChange: (s: Setting
       setting('Office sounds', 'you', soundRow, h('p.setting-note', {}, 'Workers typing, footsteps, the coffee machine, birds and rain outside, the dog, and the ding when a worker is done. Voice chat isn’t affected.')),
       setting('Page turns at the bookshelf', 'you', pagesRow, h('p.setting-note', {}, 'A soft swish each time the book in your hands turns a page, as you open a doc or scroll through one. The 🔈 at the top of the bookshelf turns it off too.')),
       setting('Jukebox', 'you', musicRow, h('p.setting-note', {}, 'The jukebox in the lounge. Everyone on the floor hears the same song, louder the closer they are to it; this is how loud it is for you alone.')),
+      setting('Speakers', 'you', speakersRow, h('p.setting-note', {}, 'The speakers hanging all over the office play the jukebox too, wherever you are on the floor. This is how loud they are for you; muting the jukebox mutes them as well.')),
       setting('Voice chat', 'you', talkRow, h('p.setting-note', {}, 'Either way, V joins voice, holding V talks and you’re muted once you let go, and M mutes or unmutes. With push to talk you join muted. Leave voice from the ☰ menu.')),
     ],
     notify: [

@@ -7,6 +7,7 @@ import { labelChip, openIssue, openLabels, openPull } from './pull';
 import { providerLabel } from './provider';
 import type { MeetingPreset } from './meeting';
 import { officePrompt } from './prompts';
+import { partyRefuses } from '../party';
 
 export interface BoardActions {
   /** Start a worker on a ready-made prompt (shown for editing first). */
@@ -151,6 +152,7 @@ function card(n: number, title: string, meta: (Node | string)[], i: number, oncl
 }
 
 export function openBoard(kind: 'issues' | 'pulls', net: Net, actions: BoardActions) {
+  if (partyRefuses()) return; // fork: party guests see none of the work (party.ts)
   const body = h('div.body');
   const status = h('span.board-status');
   const refresh = h('button.btn', { title: 'Refresh from GitHub', onclick: () => net.send({ t: 'gh.refresh' }) }, '🔄 Refresh');

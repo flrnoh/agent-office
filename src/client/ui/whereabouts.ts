@@ -18,6 +18,7 @@ export function whereabouts(p: PeerInfo, car?: { car: number; seat: CarSeat }, p
   if (p.lite) return '📱 on the 2D view';
   // In one of the garage's cars (see Store.carOf).
   const def = car && CARS[car.car];
+  if (car && def?.kind === 'bulli') return `🚐 ${car.seat === 'driver' ? 'driving' : 'riding in'} ${def.name}`; // flrnoh fork
   if (def) return `🏎️ ${car.seat === 'driver' ? 'driving' : 'riding in'} the ${def.name}`;
   if (p.smoking) return '🚬 on a smoke break';
   if (p.golfing) return '🏌️ teeing off';

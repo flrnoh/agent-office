@@ -8,15 +8,18 @@ import { radioRequestShape } from './radio.js';
  * doesn't compile (see `allReviewed`) until someone decides whether guests may send it.
  */
 
-/** All a guest may send: walking about, talking, playing, and opening a worker's terminal to watch. */
+/** All a guest may send: walking about, talking, playing, and opening a worker's terminal to watch. Party guests (party.ts) get these minus watching and the whiteboard. */
 const GUEST = [
   'move', 'act', 'golf', 'emote', 'sit', 'profile',
   'voice', 'rtc', 'chat', 'floor.go', 'ball.take', 'ball.throw',
-  'toss', 'dog.pet', 'gong', 'horn', 'dj.play', 'dj.stop', 'car.enter', 'car.leave',
+  'toss', 'dog.pet', 'gong', 'horn', 'dj.play', 'dj.stop', 'tv.play', 'tv.stop', 'car.enter', 'car.leave',
   'car.drive', 'car.honk', 'worker.attach', 'worker.detach', 'wb.open', 'wb.close',
   'wb.update', 'wb.pointer', 'jukebox.play', 'jukebox.skip', 'jukebox.stop', 'cabinet.play',
   'cabinet.leave', 'cabinet.frame', 'ping',
   'casino.sit', 'casino.stand', 'casino.act', // fork: the casino, for play chips
+  // The racing rig (fork, see server/rig.ts).
+  'rig.play', 'rig.leave', 'rig.frame', 'rig.finish',
+  'table.join', 'table.leave', 'table.input', 'table.sync', // fork: games on the roof
 ] as const satisfies readonly ClientMsg['t'][];
 
 /** What a guest's page sends on its own (resizing a terminal it watches, polling boards): dropped without a word. */
@@ -31,7 +34,7 @@ const TEAM_ONLY = [
   'carry', 'changes.commit', 'changes.diff', 'changes.discard', 'changes.pr',
   'decor.add', 'decor.remove', 'decor.update', 'desk.label', 'dog.name',
   'floor.add', 'floor.expand', 'floor.order', 'floor.projectsDir', 'floor.remove', 'floor.shrink',
-  'gh.close', 'gh.comment', 'gh.labels', 'gh.merge', 'leaveOnMerge.set',
+  'gh.close', 'gh.comment', 'gh.labels', 'gh.merge', 'jukebox.speakers', 'leaveOnMerge.set',
   'machine.limit', 'map.set', 'meeting.clear', 'meeting.start', 'meeting.stop',
   'notify.test', 'notify.webhook', 'prompts.agent', 'prompts.set', 'queue.add',
   'queue.clear', 'queue.limit', 'queue.move', 'queue.remove', 'queue.retry',

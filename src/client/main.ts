@@ -31,11 +31,13 @@ import { BACKSWING_TIME, IMPACT, Person, Worker, type Stage } from './world/char
 import { GolfBalls, PIN_DISTANCE, TEE_BALL, fly, lieText, pinText, type Flight, type Hit, type Shot } from './world/golf';
 import { Golfer } from './golf';
 import { Thrower } from './throwing';
+import { TableGames } from './tablegames/play'; // fork: games on the roof
 import { ROUND, score, targetFrame, type BarGame, type Score, type Toss } from '../shared/bargames';
 import { Hands } from './world/hands';
 import { Basketball, IN_HANDS } from './world/hoop';
 import { HOOP, SWEET, idealSpeed, lookAtRim, meter, shotSpeed, throwPitch, tossSpeed, underCeiling } from '../shared/hoop';
-import { CARS, SEAT_HIPS, type CarSeat } from '../shared/garage';
+import { CARS, hipsOf, type CarDef, type CarSeat } from '../shared/garage';
+import { BULLI_REFUSED, mayTake } from '../shared/bulli'; // flrnoh fork: Flogge's Bulli
 import { PLACES, placeAt as loopPlace } from '../shared/scenic';
 import { LapTimer, lapTime } from './laps';
 import { Smoke } from './world/smoke';
@@ -87,15 +89,22 @@ import { renderLimits } from './ui/limits';
 import { MachineTexture } from './world/machine';
 import { officeFull, pressureNote } from '../shared/machine';
 import { mountHud } from './ui/menu';
+import { isParty, partyDeskLine, partyMenu, partyRefuses, PARTY_NOPE, PARTY_OFF, PARTY_SCREENSAVER, watchParty } from './party'; // fork: party guests
 import { openJukebox } from './ui/jukebox';
+import { buildSpeakers } from './world/speakers'; // flrnoh fork: speakers all over the office
 import { DjSetPlayer } from './djset';
 import { CasinoPlace } from './casino'; // fork: the casino across the street
 import { CASINO } from '../shared/casino';
 import { openDjBooth } from './ui/djbooth';
+import { TV_AT, TV_OFF, TvStreams } from './tv'; // flrnoh fork: streams on the office TV
+import { openTvBig, openTvMenu } from './ui/tv';
 import { openBookshelf } from './ui/bookshelf';
 import { Arcade } from './ui/arcade';
 import { BossDesk } from './ui/bossdesk';
 import { Cabinet } from './ui/cabinet';
+import { RacingRig } from './ui/rig'; // flrnoh fork: the racing rig
+import { RIG_SEAT, onRig } from '../shared/rig';
+import { LAPS, lapText, ordinal } from '../shared/racing';
 import { trackTitle } from '../shared/jukebox';
 import { radioSources } from '../shared/radio';
 import { GAME, scoreText } from '../shared/cabinet';
@@ -296,6 +305,10 @@ function dressBoards(w: World) {
   if (w.meetingSign) showOn(w.meetingSign, meetingSignTex.texture);
 }
 
+// flrnoh fork: the speakers all over the office that play the jukebox too (speakers.ts).
+const officeSpeakers = buildSpeakers();
+office.group.add(officeSpeakers.group);
+
 // Pictures people hung on the walls
 const gallery = new Gallery();
 office.group.add(gallery.group);
@@ -331,7 +344,7 @@ const tvIdle = (() => {
   g.font = '900 88px Nunito, ui-rounded, system-ui, sans-serif';
   g.fillText('📺 Office TV', 640, 330);
   g.font = '700 44px Nunito, ui-rounded, system-ui, sans-serif';
-  g.fillText('Click “Share screen” to put something up here', 640, 420);
+  g.fillText('Press E: put on a stream or share your screen', 640, 420); // fork: streams on the TV
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -451,11 +464,24 @@ store.on('dog', () => {
   if (!inOffice()) dog.root.visible = false;
 });
 sound.setMusicVolume(settings.music, settings.musicMuted);
+sound.setSpeakerVolume(settings.speakers, settings.speakersMuted); // flrnoh fork
 sound.onMusicError = (text) => toast(text, 'warn');
 sound.onMusicBlocked = () => toast('🔇 Click anywhere to hear the radio');
 // flrnoh fork: a DJ set someone put on at the roof's booth, in place of the house DJ (see FORK.md).
 const djWatchers = new Set<() => void>();
 const djSets = new DjSetPlayer({ now: () => store.officeNow(), volume: () => sound.djSetVolume(), toast, changed: () => (houseDj(), djWatchers.forEach((fn) => fn())) });
+// flrnoh fork: a YouTube or Twitch stream on the floor's TV, laid over the TV itself (see client/tv.ts).
+const tvWatchers = new Set<() => void>();
+// Shares come and go through voice: the TV's window follows those too.
+voice.onChange(() => tvWatchers.forEach((fn) => fn()));
+const tvStreams = new TvStreams({ now: () => store.officeNow(), volume: () => (inOffice() && !upTop ? sound.tvVolume(TV_AT) : 0), toast, changed: () => (tvPicture(), tvWatchers.forEach((fn) => fn())) }, canvas);
+/** The TV's picture: a shared screen, else the stream's card (under its player), else the idle screen. */
+function tvPicture() {
+  const map = tvStream ? tvTexture : tvStreams.showing() ? tvStreams.card() : tvIdle;
+  if (tvMat.map === map) return;
+  tvMat.map = map;
+  tvMat.needsUpdate = true;
+}
 /** The house DJ plays on the roof unless a set does. */
 function houseDj() {
   sound.setDj(upTop && !djSets.silencesHouse() ? djAt : null);
@@ -492,6 +518,15 @@ function playJukebox() {
 store.on('jukebox', playJukebox);
 // The arcade cabinet next to it: BLOCKFALL up close, and on its screen for everyone else on the floor.
 const cabinet = new Cabinet(office.cabinet.screen, net, { openTerminal: (id) => openWorkerTerminal(id), sound: (kind, lines) => sound.arcade(kind, lines) });
+// Fork: the racing rig next to it (ui/rig.ts): OFFICE GP up close, sitting in its seat, and on its TV for everyone else.
+const rig = new RacingRig(office.rig, net, {
+  sit: () => sitInRig(),
+  stand: () => {
+    if (player.seat?.seatId === RIG_SEAT) standUp();
+  },
+  seated: () => player.seat?.seatId === RIG_SEAT,
+  sound: (e) => sound.rig(e),
+});
 const notifier = new DesktopNotifier(() => settings.notify, (id) => openWorkerTerminal(id));
 
 // ---- Golf off the balcony --------------------------------------------------------------------------
@@ -628,6 +663,9 @@ const thrower = new Thrower(player, me, camera, canvas, {
     hintKey = 'stale';
   },
 });
+
+// Fork: the pool table, the kicker, air hockey and table tennis on the roof (see tablegames/).
+const tables = new TableGames({ net, camera, canvas, player, sound, view: () => roof?.tables ?? null });
 
 /** Who's at a game's line up here already, if anyone. */
 function lineTaken(game: BarGame): string | null {
@@ -819,20 +857,26 @@ function carAt(i: number): { x: number; y: number; z: number } {
   return { x: p.x, y: player.street + 0.6, z: p.z };
 }
 
-/** E at a car: behind the wheel if nobody's driving it, else beside whoever is. */
+/** flrnoh fork: a car's icon in hints (the Bulli's a van), and whether you may take its wheel. */
+const carIcon = (def: CarDef) => (def.kind === 'bulli' ? '🚐' : '🏎️');
+const mayDrive = (def: CarDef) => mayTake(def, 'driver', !!store.me.bulli);
+
+/** E at a car: behind the wheel if nobody's driving it (and you may), else beside whoever is. */
 function getIn(i: number) {
   const c = store.cars[i];
   const def = CARS[i];
   if (trip || climber.active || driver.active || !c || !def) return;
   if (carrying) return toast('🗂️ Your hands are full: put the card back first (Q)', 'warn');
   if (holdingBall()) return toast('🏀 Put the ball down first (Q)', 'warn');
-  const seat: CarSeat | null = !c.driver ? 'driver' : !c.passenger ? 'passenger' : null;
-  if (!seat) return toast(`🏎️ The ${def.name} is full`, 'warn');
+  const keys = mayDrive(def);
+  const seat: CarSeat | null = !c.driver && keys ? 'driver' : !c.passenger ? 'passenger' : null;
+  if (!seat) return toast(keys || c.driver ? `${carIcon(def)} The ${def.name} is full` : BULLI_REFUSED, 'warn');
+  if (!keys && !c.driver) toast(`${BULLI_REFUSED} (you can wait in the passenger seat)`, 'info');
   if (player.seat) standUp();
   if (hanger.active) hanger.cancel();
   if (walkingTo) stopWalking();
   driver.enter(i, seat);
-  me.sit(SEAT_HIPS);
+  me.sit(hipsOf(i));
   carPending++;
   net.send({ t: 'car.enter', car: i, seat });
   sound.carDoor(carAt(i));
@@ -874,7 +918,7 @@ function honk() {
   const now = performance.now();
   if (i === null || now - honkedAt < 300) return;
   honkedAt = now;
-  sound.honk(carAt(i), CARS[i].kind === 'lambo');
+  sound.honk(carAt(i), CARS[i].kind);
   net.send({ t: 'car.honk' });
 }
 
@@ -915,8 +959,9 @@ function carNews(answer: boolean) {
   if (driver.active) {
     if (mine?.car === driver.car && mine.seat === driver.seat) return;
     const who = store.cars[driver.car!]?.[driver.seat!];
+    const refused = driver.driving && !mayDrive(CARS[driver.car!]); // flrnoh fork: the office said why
     getOut(true);
-    toast(`🏎️ ${(who && store.peers.get(who)?.name) || 'Someone'} got in there first`, 'warn');
+    if (!refused) toast(`🏎️ ${(who && store.peers.get(who)?.name) || 'Someone'} got in there first`, 'warn');
   } else if (mine) {
     // You got out while it was answering something else of yours.
     carPending++;
@@ -966,11 +1011,11 @@ function renderDriveHint(el: HTMLElement) {
     const lap = done ? ` · 🏁 ${lapTime(done.time)}${done.best ? ' best!' : ''}` : running !== null ? ` · ⏱ ${lapTime(running)}` : '';
     hint = {
       k: `drive|${kmh}|${other}|${where}|${lap}`,
-      parts: [h('span.title', {}, `🏎️ ${CARS[i].name}`), aside(`${kmh} km/h${where}${lap}${other ? ` · with ${clip(other, 20)}` : ''}`), key('W A S D', 'Drive'), key('Space', 'Brake'), key('H', 'Honk'), key('E', 'Get out')],
+      parts: [h('span.title', {}, `${carIcon(CARS[i])} ${CARS[i].name}`), aside(`${kmh} km/h${where}${lap}${other ? ` · with ${clip(other, 20)}` : ''}`), key('W A S D', 'Drive'), key('Space', 'Brake'), key('H', 'Honk'), key('E', 'Get out')],
     };
   } else {
     const at = name(c?.driver);
-    hint = { k: `ride|${at}|${where}`, parts: [h('span.title', {}, `🏎️ ${CARS[i].name}`), aside(`${at ? `${clip(at, 24)} is driving` : 'nobody at the wheel'}${where}`), key('H', 'Honk'), key('E', 'Get out')] };
+    hint = { k: `ride|${at}|${where}`, parts: [h('span.title', {}, `${carIcon(CARS[i])} ${CARS[i].name}`), aside(`${at ? `${clip(at, 24)} is driving` : 'nobody at the wheel'}${where}`), key('H', 'Honk'), key('E', 'Get out')] };
   }
   const k = `car|${hint.k}`;
   if (k === hintKey) return;
@@ -1106,6 +1151,7 @@ net.onMessage((msg) => {
   if (msg.t === 'worker.remove') sentHome.add(msg.workerId);
   store.apply(msg);
   if ((msg.t === 'welcome' || msg.t === 'floor.enter') && msg.dj) djSets.set(msg.dj);
+  if (msg.t === 'welcome' || msg.t === 'floor.enter') tvStreams.set(msg.tv ?? TV_OFF); // fork: the floor's TV
   // A floor's cars where they are before anything asks if there's room to stand beside one (see welcome).
   if (msg.t === 'welcome' || msg.t === 'floor.enter') office.cars.snap(store.cars);
   seatedAlready = false;
@@ -1215,7 +1261,7 @@ net.onMessage((msg) => {
       carNews(!!msg.answer);
       break;
     case 'car.honk':
-      if (msg.car >= 0 && msg.car < CARS.length) sound.honk(carAt(msg.car), CARS[msg.car].kind === 'lambo');
+      if (msg.car >= 0 && msg.car < CARS.length) sound.honk(carAt(msg.car), CARS[msg.car].kind);
       break;
     case 'floors':
       noticeWaiting();
@@ -1306,6 +1352,9 @@ net.onMessage((msg) => {
       break;
     case 'dj':
       djSets.set(msg.state);
+      break;
+    case 'tv':
+      tvStreams.set(msg.state);
       break;
     case 'horn':
       if (!upTop) break;
@@ -1807,6 +1856,7 @@ function applyMap() {
   arcade.stop();
   bossDesk.stop();
   cabinet.stop();
+  rig.stop();
   world.group.visible = false;
   world = next.world;
   court = next.court;
@@ -1949,7 +1999,8 @@ function syncPeers() {
     r.person.holdDrink(peer.drink ? (DRINK_BY_ID.get(peer.drink) ?? null) : null);
     r.person.carry(peer.carrying);
     r.person.read(!!peer.reading);
-    r.person.sit(store.carOf(id) ? SEAT_HIPS : peer.seat ? (seatOn(plan(), peer.seat)?.hips ?? null) : null);
+    r.person.sit(store.carOf(id) ? hipsOf(store.carOf(id)!.car) : peer.seat ? (seatOn(plan(), peer.seat)?.hips ?? null) : null);
+    r.person.wheel = onRig(peer.seat);
     r.person.setDoing(whereabouts(peer, store.carOf(id), plan()));
   }
   for (const [id, r] of remotes) {
@@ -2151,7 +2202,7 @@ function syncWorkers() {
     // Keys clack while it types, not while it reads, watches its tests or browses.
     if (deskDef) sound.setTyping(w.id, deskDef.x, deskDef.z, w.status === 'working' && (!w.action || w.action === 'edit'));
     const again = w.kind === 'shell' ? 'restart' : 'resume';
-    v.laptop.setPlaceholder(w.lost ? `🌿 ${w.name}'s worktree was deleted — press E to fix it` : w.status === 'offline' ? `💤 ${w.name} is asleep — press R to ${again}` : w.status === 'exited' ? `${w.name} exited` : 'booting…');
+    v.laptop.setPlaceholder(isParty() ? PARTY_SCREENSAVER : w.lost ? `🌿 ${w.name}'s worktree was deleted — press E to fix it` : w.status === 'offline' ? `💤 ${w.name} is asleep — press R to ${again}` : w.status === 'exited' ? `${w.name} exited` : 'booting…');
   }
   for (const [id, v] of workerViews) {
     if (store.workers.has(id)) continue;
@@ -2406,11 +2457,13 @@ function repoChoices(): { id: string; name: string }[] {
 }
 
 function openShell(deskId: string) {
+  if (partyRefuses()) return; // fork: party guests
   if (officeIsFull()) return;
   net.send({ t: 'worker.spawn', deskId, kind: 'shell' });
 }
 
 function promptAtDesk(deskId: string) {
+  if (partyRefuses()) return; // fork: party guests
   const w = store.workerAtDesk(deskId);
   const desk = plan().byId.get(deskId)!;
   if (!w) {
@@ -2447,6 +2500,7 @@ function promptAtDesk(deskId: string) {
 
 /** Direct hire from an empty desk, with an optional first prompt and provider choice. */
 function hireAtDesk(deskId: string) {
+  if (partyRefuses()) return; // fork: party guests
   const desk = plan().byId.get(deskId)!;
   if (officeIsFull()) return;
   openPrompt({
@@ -2668,7 +2722,7 @@ let nextToast: HTMLElement | null = null;
 
 /** N: to the worker that has waited longest on someone, and on each press after, the next. */
 function goToNextWaiting() {
-  if (trip) return;
+  if (trip || partyRefuses()) return; // fork: party guests
   const w = nextUp.next(store.workers.values(), waitingBeside());
   const desk = w && plan().byId.get(w.deskId);
   nextToast?.remove();
@@ -2897,7 +2951,9 @@ function showMeeting(preset?: MeetingPreset) {
 }
 
 function showJukebox() {
-  openJukebox(net, () => showSettings('sound'));
+  // flrnoh fork: your speaker volume in the jukebox's window too.
+  const speakers = { get: () => settings, set: (level: number, muted: boolean) => (Object.assign(settings, { speakers: level, speakersMuted: muted }), saveSettings(settings), sound.setSpeakerVolume(level, muted)) };
+  openJukebox(net, () => showSettings('sound'), speakers);
 }
 
 /** The project on GitHub, from the floor's origin remote, when that's where it is. */
@@ -2966,6 +3022,19 @@ function boardActions() {
   };
 }
 
+/** E at the TV (flrnoh fork): watch a share, put on a stream or stop it, share your screen (ui/tv.ts). */
+function showTv() {
+  const sharer = () => currentShares().find(([who]) => who !== 'You')?.[0];
+  openTvMenu({ net, tv: tvStreams, sharer, sharing: () => voice.sharing, watchShare, toggleShare: () => void toggleShare(), watchBig: watchTvBig, openVolume: () => showSettings('sound'), watch: tvWatch });
+}
+function watchTvBig() {
+  openTvBig(tvStreams, tvWatch);
+}
+function tvWatch(fn: () => void) {
+  tvWatchers.add(fn);
+  return () => void tvWatchers.delete(fn);
+}
+
 function watchShare() {
   const streams = currentShares();
   if (!streams.length) {
@@ -2989,6 +3058,8 @@ const GUEST_ONLY_WATCH = new Set<InteractKind>(['issues', 'pulls', 'services', '
 function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   if (!target) return;
   if (casino.use(target, key)) return; // fork: the casino (guests play too)
+  // fork: a party guest uses none of the work's things (party.ts)
+  if (isParty() && ((target.kind === 'desk' && target.deskId) || PARTY_OFF.has(target.kind))) return void (key === 'E' && toast(PARTY_NOPE));
   if (store.me.guest) {
     // A guest watches: E opens a worker's terminal to look at, everything else is for the team.
     const deskId = target.kind === 'desk' || target.kind === 'station' ? target.deskId : undefined;
@@ -3034,7 +3105,7 @@ function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   else if (target.kind === 'issues' || target.kind === 'pulls') openBoard(target.kind, net, boardActions());
   else if (target.kind === 'services') openServices();
   else if (target.kind === 'queue') showQueue();
-  else if (target.kind === 'tv') watchShare();
+  else if (target.kind === 'tv') showTv();
   else if (target.kind === 'jukebox') showJukebox();
   else if (target.kind === 'bookshelf') showBookshelf();
   else if (target.kind === 'decor' && target.decorId) hanger.view(target.decorId);
@@ -3053,6 +3124,7 @@ function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   } else if (target.kind === 'gong') hitGong();
   else if (target.kind === 'whiteboard') openWhiteboard(net);
   else if (target.kind === 'cabinet') cabinet.play();
+  else if (target.kind === 'rig') rig.play();
   else if (target.kind === 'ladder') grabLadder();
   else if (target.kind === 'pole' && target.pole !== undefined) usePole(target.pole);
   else if (target.kind === 'meeting') showMeeting();
@@ -3060,6 +3132,7 @@ function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   else if (target.kind === 'dj') showDjBooth();
   else if (target.kind === 'golf') teeOff();
   else if (target.kind === 'darts' || target.kind === 'axe') stepUp(target.kind);
+  else if (target.kind === 'table' && target.table) tables.use(target.table); // fork
   else if (target.kind === 'ball') takeBall();
   else if (target.kind === 'telescope') telescope.enter();
   else if (target.kind === 'car' && target.car !== undefined) getIn(target.car);
@@ -3582,6 +3655,7 @@ function useSeat(seatId: string) {
   if (!seat) return;
   if (player.seat?.seatId === seatId) {
     if (seat.tv && tvShowing()) watchShare();
+    else if (seat.tv && tvStreams.showing()) watchTvBig();
     else if (seat.game) bossDesk.open();
     else if (seat.bar) showBar();
     else standUp();
@@ -3597,6 +3671,22 @@ function useSeat(seatId: string) {
   net.send({ t: 'sit', seat: place.key });
   // The couch in front of the TV is where you watch whoever's sharing.
   if (seat.tv && tvShowing()) watchShare();
+}
+
+/** Fork: into the racing rig's seat (ui/rig.ts), if nobody else is in it. Says whether you're in. */
+function sitInRig(): boolean {
+  const seat = plan().seatingById.get(RIG_SEAT);
+  if (!seat) return false;
+  if (player.seat?.seatId === RIG_SEAT) return true;
+  const place = freePlace(seat);
+  if (!place) {
+    toast('Someone is sitting in the rig right now', 'warn');
+    return false;
+  }
+  player.sit(place);
+  me.sit(place.hips);
+  net.send({ t: 'sit', seat: place.key });
+  return true;
 }
 
 function standUp() {
@@ -3781,6 +3871,12 @@ function hintFor(it: Interactable): Hint {
   const title = (text: string) => h('span.title', {}, text);
   const board = (name: string): Hint => ({ k: '', parts: [title(name), key('E', 'Open')] });
   if (it.kind === 'casino' || it.kind === 'casino-table') return casino.hint(it, title, key, aside); // fork
+  // fork: party guests (party.ts): who's at a desk, busy or not; the work's things are the team's
+  if (isParty() && (it.kind === 'desk' || it.kind === 'station') && it.deskId) {
+    const line = partyDeskLine(store.workerAtDesk(it.deskId), plan().byId.get(it.deskId)?.label ?? '');
+    return { k: `party${line}`, parts: [title(line)] };
+  }
+  if (isParty() && PARTY_OFF.has(it.kind)) return { k: 'party', parts: [aside('🎉 the team’s — you’re here for the party')] };
   if (store.me.guest && (GUEST_ONLY_WATCH.has(it.kind) || (it.kind === 'station' && !(it.deskId && store.workerAtDesk(it.deskId))))) {
     return { k: 'guest', parts: [aside('👀 for the team — you’re a guest')] };
   }
@@ -3806,7 +3902,8 @@ function hintFor(it: Interactable): Hint {
     }
     case 'tv': {
       const any = currentShares().length > 0;
-      return { k: String(any), parts: [title('📺 Office TV'), key('E', any ? 'Watch full screen' : 'Share your screen')] };
+      const on = !any && tvStreams.showing() ? tvStreams.titleNow() : '';
+      return { k: `${any}|${on}`, parts: [title('📺 Office TV'), ...(on ? [aside(on)] : []), key('E', any ? 'Watch or put on a stream' : 'Stream or share your screen')] };
     }
     case 'fridge': {
       const cut = booze.cutOff(performance.now() / 1000);
@@ -3837,6 +3934,11 @@ function hintFor(it: Interactable): Hint {
       const about = best !== undefined ? `your best round: ${best}` : game === 'darts' ? 'three darts a visit' : 'five axes a round';
       return { k: about, parts: [title(name), aside(about), key('E', game === 'darts' ? 'Step up to the oche' : 'Step up to the line')] };
     }
+    case 'table': {
+      // Fork: the table games on the roof.
+      const t = tables.hint(it.table!);
+      return { k: `${t.aside}|${t.action}`, parts: [title(t.title), aside(t.aside), key('E', t.action)] };
+    }
     case 'golf': {
       const other = teeTaken();
       if (other) return { k: `taken|${other}`, parts: [title('⛳ Golf tee'), aside(`🏌️ ${clip(other, 24)} is teeing off`)] };
@@ -3860,6 +3962,19 @@ function hintFor(it: Interactable): Hint {
       const best = c.scores[0];
       const about = left !== null ? `your game's paused at ${scoreText(left)}` : best ? `🏆 ${clip(best.name, 24)} · ${scoreText(best.score)}` : 'no high score yet';
       return { k: `${left}|${best?.name}|${best?.score}`, parts: [title(`🕹️ ${GAME}`), aside(about), key('E', left !== null ? 'Carry on' : 'Play')] };
+    }
+    // Fork: the racing rig.
+    case 'rig': {
+      const r = store.rig;
+      const d = r.driver;
+      if (d && d.id !== store.you) {
+        const f = store.rigFrame;
+        const how = f ? (f.phase === 'done' ? ` · ${ordinal(f.place)} 🏁` : f.phase === 'race' ? ` · lap ${Math.min(LAPS, f.laps.length + 1)}/${LAPS} · ${ordinal(f.place)}` : ' · on the grid') : '';
+        return { k: `${d.name}|${how}`, parts: [title('🏎️ Racing rig'), aside(`▶ ${clip(d.name, 24)} is racing${how}`), key('E', 'Watch')] };
+      }
+      const best = r.scores.races[0];
+      const about = best ? `🏆 ${clip(best.name, 24)} · ${lapText(best.ms)}` : 'no times yet';
+      return { k: about, parts: [title('🏎️ Racing rig'), aside(about), key('E', 'Race')] };
     }
     case 'bookshelf': {
       const names = [...store.peers.values()].filter((p) => p.reading && p.id !== store.you && store.onMyFloor(p)).map((p) => p.name).join(', ');
@@ -3940,10 +4055,13 @@ function hintFor(it: Interactable): Hint {
       if (!c || !def) return { k: '', parts: [] };
       const name = (id?: string) => (id ? clip(store.peers.get(id)?.name ?? 'Someone', 20) : '');
       const [at, beside] = [name(c.driver), name(c.passenger)];
-      const k = `${it.car}|${at}|${beside}`;
-      if (!at) return { k, parts: [title(`🏎️ ${def.name}`), aside(beside ? `${beside} is waiting in it` : 'keys in the ignition'), key('E', 'Drive it')] };
-      if (!beside) return { k, parts: [title(`🏎️ ${def.name}`), aside(`${at} is driving`), key('E', 'Hop in')] };
-      return { k, parts: [title(`🏎️ ${def.name}`), aside(`${at} and ${beside} · full`)] };
+      const keys = mayDrive(def);
+      const k = `${it.car}|${at}|${beside}|${keys}`;
+      const icon = carIcon(def);
+      if (!at && !keys) return { k, parts: [title(`${icon} ${def.name}`), aside(beside ? `${beside} is waiting in it` : 'ask Flogge for a ride'), ...(beside ? [] : [key('E', 'Sit in the passenger seat')])] };
+      if (!at) return { k, parts: [title(`${icon} ${def.name}`), aside(beside ? `${beside} is waiting in it` : 'keys in the ignition'), key('E', 'Drive it')] };
+      if (!beside) return { k, parts: [title(`${icon} ${def.name}`), aside(`${at} is driving`), key('E', 'Hop in')] };
+      return { k, parts: [title(`${icon} ${def.name}`), aside(`${at} and ${beside} · full`)] };
     }
     case 'expand': {
       const level = store.floorPlan.wing;
@@ -4468,7 +4586,7 @@ document.addEventListener('pointerlockchange', () => {
 const raycaster = new THREE.Raycaster();
 const CROSSHAIR = new THREE.Vector2(0, 0);
 /** How close (meters from your eyes) you must be to use each kind of thing. */
-const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3, casino: 4, 'casino-table': 3.5 };
+const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3, rig: 4, table: 4, casino: 4, 'casino-table': 3.5 };
 const eye = new THREE.Vector3();
 
 /** What the ray through `ndc` lands on first, whether it is within reach (plus `slack` meters), and where it hit. */
@@ -4613,8 +4731,7 @@ function refreshShares() {
     tvStream = stream;
     tvVideo.srcObject = stream;
     if (stream) void tvVideo.play().catch(() => {});
-    tvMat.map = stream ? tvTexture : tvIdle;
-    tvMat.needsUpdate = true;
+    tvPicture();
   }
   const box = $('shares');
   box.replaceChildren(
@@ -4649,7 +4766,7 @@ $('project').addEventListener('click', () => {
 const waitingNow = () => waitingInOrder(store.workers.values());
 const noMedia = () => (window.isSecureContext ? undefined : 'Voice and screen sharing need HTTPS or localhost — use a TLS proxy, --self-signed, or an SSH tunnel');
 const hud = mountHud(
-  [
+  partyMenu([ // fork: party guests
     { id: 'issues', icon: '📌', label: 'Issues', section: 'Open', count: () => store.issues.items.filter((i) => i.state === 'OPEN').length, run: () => openBoard('issues', net, boardActions()) },
     { id: 'pulls', icon: '🔀', label: 'Pull requests', section: 'Open', count: () => store.pulls.items.filter((p) => p.state === 'OPEN').length, run: () => openBoard('pulls', net, boardActions()) },
     { id: 'queue', icon: '📋', label: 'Task queue', section: 'Open', count: () => store.queue.tasks.filter((t) => t.status !== 'done').length, title: () => 'Issues and tasks waiting for a worker', run: showQueue },
@@ -4723,12 +4840,14 @@ const hud = mountHud(
       title: () => 'Go to the worker that has waited longest on someone (N)',
       run: goToNextWaiting,
     },
-  ],
+  ]),
   settings,
   () => saveSettings(settings),
 );
+watchParty(); // fork: party guests
 /** F: hang a picture on a wall of this floor. There are no walls for them up on the roof. */
 function startHanging() {
+  if (partyRefuses()) return; // fork: party guests
   if (upTop) return toast('No walls to hang pictures on up here — take the elevator down to a floor', 'warn');
   if (!inOffice()) return toast(`${plan().icon} ${plan().name}'s walls are hung already — pictures go up in the office`, 'warn');
   hanger.start();
@@ -4749,6 +4868,7 @@ function showSettings(pane?: SettingsPane) {
       player.setView(settings.view);
       sound.setVolume(settings.volume, settings.muted);
       sound.setMusicVolume(settings.music, settings.musicMuted);
+      sound.setSpeakerVolume(settings.speakers, settings.speakersMuted); // flrnoh fork
     },
     editProfile,
     () => sound.ding('done'),
@@ -4849,6 +4969,9 @@ function frame(ts?: number) {
   arcade.update(camera, dt);
   bossDesk.update();
   cabinet.update(camera, dt);
+  rig.update(camera, dt);
+  me.wheel = player.seat?.seatId === RIG_SEAT;
+  tables.update(dt); // fork: the table games on the roof, and the camera at one
   // Pulled away from the tee (sat down, off up the ladder, into the elevator): the club goes back.
   if (golf.active && (trip || hanger.active || climber.active || player.seat || upTop)) golf.stop();
   golf.update(dt);
@@ -4869,7 +4992,7 @@ function frame(ts?: number) {
   // In first person you are the camera; in third, hide yourself when it's zoomed in right behind your head.
   // At the tee the camera's behind the ball, and you're the one holding the club.
   // So is the camera over your shoulder at the dart board or the axe lane.
-  me.root.visible = golf.active || thrower.active || (!firstPerson && camera.position.distanceTo(headPos.set(player.pos.x, player.pos.y + 1.3, player.pos.z)) > 1.5);
+  me.root.visible = !tables.zoomed && (golf.active || thrower.active || (!firstPerson && camera.position.distanceTo(headPos.set(player.pos.x, player.pos.y + 1.3, player.pos.z)) > 1.5));
   // In a car, your hands are on the wheel, out of sight.
   if (firstPerson && !golf.active && !thrower.active && !driver.active) hands.update(dt, t, { yaw: player.camYaw, pitch: player.lookPitch, walkPhase: player.walkPhase, walking: player.moving && player.grounded, airborne: !player.grounded, jitter: player.jitter, grip });
   // Down a pole: the view widens and the edges streak past.
@@ -4885,6 +5008,7 @@ function frame(ts?: number) {
 
   // Your ears are in your head, facing wherever the camera looks.
   camera.getWorldDirection(lookDir);
+  sound.setSpeakerRoom(!upTop && inOffice() ? { wing: officeWing(), on: !store.jukebox.speakersOff } : null); // flrnoh fork: speakers.ts
   sound.update({ x: player.pos.x, y: player.pos.y + EYE_HEIGHT, z: player.pos.z, fx: lookDir.x, fz: lookDir.z });
   const s = Math.floor(player.walkPhase / Math.PI);
   if (s !== stride) {
@@ -4963,6 +5087,9 @@ function frame(ts?: number) {
       engines.push({ car: i, at: { x: pose.x, y: player.street + 0.5, z: pose.z }, speed: pose.speed, gas: mine ? driver.gas : Math.min(1, Math.abs(pose.speed) / 10) });
     }
   }
+  // Fork: the racing rig's engine, whoever's at the wheel.
+  const rigEngine = !upTop && inOffice() ? rig.engine() : null;
+  if (rigEngine) engines.push({ car: -1, ...rigEngine });
   sound.setEngines(engines);
 
   const camPos = camera.position;
@@ -4998,6 +5125,7 @@ function frame(ts?: number) {
     if (inOffice()) {
       office.stack.update(dt, [{ x: player.pos.x, y: player.pos.y, z: player.pos.z, grip }, ...[...remotes.values()].map((r) => ({ x: r.person.root.position.x, y: r.person.root.position.y, z: r.person.root.position.z, grip: r.grip }))], camera.position);
       office.jukebox.update(t, dt, sound.beat());
+      officeSpeakers.update(dt, officeWing(), sound.beat(), store.jukebox.on, !store.jukebox.speakersOff); // flrnoh fork
     }
   }
   checkSmokeBreak(now);
@@ -5064,9 +5192,13 @@ function frame(ts?: number) {
   else if (drunkVisionOn) drunkVision.release();
   drunkVisionOn = blurry;
   effect.render(scene, camera);
+  // fork: the TV's stream plays while you're on its floor and nobody's sharing a screen (client/tv.ts).
+  const tvHere = !!store.floor && inOffice() && !upTop;
+  tvStreams.setOn(tvHere && !tvStream);
+  tvStreams.frame(tvHere && !tvStream ? { camera, screen: office.tvScreen, boxes: world.colliders } : null);
   pointToWaiting(now);
   // Not while the camera's up at the boss's monitor or the arcade, where they'd cover the screen.
-  if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !golf.active && !thrower.active && !driver.active) {
+  if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !tables.zoomed && !golf.active && !thrower.active && !driver.active) {
     // Hands go on top of everything, so they never clip into a desk you walk up to. They have
     // lights of their own, turned down to match wherever you're standing.
     renderer.clearDepth();
@@ -5148,7 +5280,8 @@ void whoami().then(() => {
 });
 
 // Debug handle for quick checks from the console / headless screenshots.
-(window as any).__office = { world: () => world, court: () => court, sendoffs, jail, plan, applyMap, roof: () => roof, booze, dj: () => djFrame(djAt()), store, player, caffeine, camera, arcade, cabinet, workerViews, departures, arrivals, scene, net, renderer, hands, me, remotes, settings, gallery, hanger, office, ride, switchFloor, climber, driver, getIn, getOut, golf, balls, thrower, elevatorPanelOpen, confetti, dog, sky, holiday, carried: () => carrying, emoteWheel, emote, ball };
+(window as any).__office = { world: () => world, court: () => court, sendoffs, jail, plan, applyMap, roof: () => roof, booze, dj: () => djFrame(djAt()), store, player, caffeine, camera, arcade, cabinet, rig, tables, workerViews, departures, arrivals, scene, net, renderer, hands, me, remotes, settings, gallery, hanger, office, ride, switchFloor, climber, driver, getIn, getOut, golf, balls, thrower, elevatorPanelOpen, confetti, dog, sky, holiday, carried: () => carrying, emoteWheel, emote, ball };
 (window as any).__voice = voice;
 (window as any).__sound = sound;
+(window as any).__tv = tvStreams; // fork: the TV's stream (client/tv.ts)
 (window as any).__notify = notifier;

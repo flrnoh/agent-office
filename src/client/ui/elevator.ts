@@ -229,6 +229,7 @@ export function openElevator(opts: ElevatorOptions): void {
   };
 
   const renderAdd = () => {
+    if (store.me.party) return addEl.replaceChildren(); // fork: party guests add no projects (party.ts)
     if (!showAdd) {
       const open = h('button.btn', { type: 'button' }, '➕ Add a project');
       open.addEventListener('click', () => {

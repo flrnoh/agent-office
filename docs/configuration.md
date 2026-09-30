@@ -48,8 +48,14 @@ agent-office prune [dir] [-n|--dry-run] [-f|--force]
   kept unless --force is given. A worker across several projects has worktrees of them in its
   own floor's workspace: prune each project to clear those out.
 
-agent-office accounts [list | invite [name] [--admin|--guest] | revoke <name> | role <name> admin|member|guest | password on|off] [-d <dir>]
+agent-office accounts [list | invite [name] [--admin|--guest|--party] | revoke <name> | role <name> admin|member|guest|party | password on|off] [-d <dir>]
 
   Invite, list and revoke people's own accounts, and switch the shared password
   off or on. Works while the office runs.
+
+agent-office car [keys <name>... | keys --admins] [-d <dir>]
+
+  Who may drive Flogge's Bulli (this fork's own car in the garage): with no
+  names, every admin and the shared password; named, only those accounts.
+  Anyone may ride along. Works while the office runs.
 ```

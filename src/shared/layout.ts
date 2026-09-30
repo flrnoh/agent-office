@@ -2,6 +2,8 @@
 // Units are meters; +y is up. The office floor spans FLOOR.minX..maxX / minZ..maxZ at y = 0,
 // upstairs over a garage whose floor is level with the street (STREET_Y).
 
+import { RIG, RIG_SEAT } from './rig.js'; // flrnoh fork: the racing rig
+
 export const FLOOR = { minX: -18, maxX: 18, minZ: -13, maxZ: 13 } as const;
 /** How high the ceiling is: a meter over the loft's roof (LOFT.y + LOFT.height), all the way across the room. */
 export const WALL_HEIGHT = 6.8;
@@ -467,6 +469,8 @@ export const SEATING: SeatDef[] = [
   // Beanbags either side of the lounge, turned to the TV.
   { id: 'lounge-beanbag-1', label: '🫘 Beanbag', x: 12.5, y: 0, z: 3.5, rotY: Math.atan2(TV.x - 12.5, TV.z - 3.5), places: [0], hips: 0.42, depth: -0.1, out: 1.2 },
   { id: 'lounge-beanbag-2', label: '🫘 Beanbag', x: 14.5, y: 0, z: -3.4, rotY: Math.atan2(TV.x - 14.5, TV.z + 3.4), places: [0], hips: 0.42, depth: -0.1, out: 1.2 },
+  // Fork: the racing rig's bucket seat (shared/rig.ts), low down, facing its screen; you get out behind it.
+  { id: RIG_SEAT, label: '🏎️ Racing rig', x: RIG.x, y: 0, z: RIG.seatZ, rotY: 0, places: [0], hips: 0.36, depth: 0.02, out: -0.95 },
   // Up in the boss office: the couch against the east wall, and the chair at the big desk, facing the glass.
   { id: 'loft-couch', label: '🛋️ Couch', x: LOFT.maxX - 0.65, y: LOFT.y, z: (LOFT.minZ + LOFT.maxZ) / 2, rotY: -Math.PI / 2, places: [-0.5, 0.5], hips: 0.5, depth: -0.05, out: 0.9 },
   { id: 'boss-chair', label: "🪑 Boss's chair", x: (LOFT.minX + LOFT.maxX) / 2 + 0.5, y: LOFT.y, z: (LOFT.minZ + LOFT.maxZ) / 2 + 0.7, rotY: Math.PI, places: [0], hips: 0.62, depth: -0.05, out: -0.8, game: true },

@@ -74,6 +74,7 @@ Usage:
   agent-office setup [--projects <dir>] [--project <owner/repo>]...
   agent-office prune [dir] [--dry-run] [--force]
   agent-office accounts [list|invite|revoke|role|password] ...
+  agent-office car [keys <name>...|keys --admins]
 
 Runs the office. Every project is a floor of the building: ride the elevator,
 pick one of the repositories your \`gh\` login can see, and the office clones it
