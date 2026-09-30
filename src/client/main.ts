@@ -244,6 +244,14 @@ store.on('peers', () => {
   carriedOff = k;
   renderIssuesBoard();
 });
+// A queued task starting on an issue takes it off the wall (see inprogress.ts): redraw when that set changes.
+let runningOff = '';
+store.on('queue', () => {
+  const k = store.queue.tasks.filter((t) => t.status === 'running' && t.issue !== undefined).map((t) => t.issue).join(',');
+  if (k === runningOff) return;
+  runningOff = k;
+  renderIssuesBoard();
+});
 const pullsTex = new BoardTexture('pulls');
 const renderPullsBoard = () => pullsTex.render(store.pulls, store.workers);
 mountBoard(office.boardMeshes.pulls, pullsTex.texture, renderPullsBoard, ['pulls']);
