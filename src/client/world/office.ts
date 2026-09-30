@@ -25,6 +25,7 @@ import { buildKitchen } from './kitchen';
 import { buildDeskSigns, type DeskSigns } from './desksigns';
 import { HOOP } from '../../shared/hoop';
 import type { TableId } from '../../shared/tablegames/tables'; // fork: games on the roof
+import type { CourtId } from '../../shared/hall'; // fork: padel in the hall
 
 export interface Collider {
   minX: number;
@@ -38,7 +39,7 @@ export interface Collider {
   fence?: boolean;
 }
 
-export type InteractKind = 'desk' | 'station' | 'issues' | 'pulls' | 'services' | 'queue' | 'tv' | 'coffee' | 'decor' | 'smoke' | 'elevator' | 'gong' | 'dog' | 'jukebox' | 'seat' | 'whiteboard' | 'cabinet' | 'ladder' | 'pole' | 'meeting' | 'bar' | 'dj' | 'golf' | 'ball' | 'bookshelf' | 'darts' | 'axe' | 'telescope' | 'car' | 'expand' | 'herald' | 'fridge' | 'rig' | 'table' | 'casino' | 'casino-table' | 'hall' | 'cafe';
+export type InteractKind = 'desk' | 'station' | 'issues' | 'pulls' | 'services' | 'queue' | 'tv' | 'coffee' | 'decor' | 'smoke' | 'elevator' | 'gong' | 'dog' | 'jukebox' | 'seat' | 'whiteboard' | 'cabinet' | 'ladder' | 'pole' | 'meeting' | 'bar' | 'dj' | 'golf' | 'ball' | 'bookshelf' | 'darts' | 'axe' | 'telescope' | 'car' | 'expand' | 'herald' | 'fridge' | 'rig' | 'table' | 'casino' | 'casino-table' | 'hall' | 'cafe' | 'padel';
 
 /** Something you can use. Its scene object carries it as `userData.interact`, for clicking. */
 export interface Interactable {
@@ -63,6 +64,8 @@ export interface Interactable {
   label?: string;
   /** Fork: which of the casino's tables (shared/casino.ts CASINO_TABLES), for a 'casino-table'. */
   casinoTable?: string;
+  /** Fork: which of the padel hall's courts (shared/hall.ts COURTS), for 'padel'. */
+  court?: CourtId;
 }
 
 /** A desk, a bean bag, a board agent's kiosk or a chair at the meeting table: somewhere a worker sits (or stands). */
