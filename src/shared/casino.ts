@@ -30,7 +30,7 @@ export const CASINO_ROOM = {
   height: 5.2,
 } as const;
 /** Where you stand when you come in, facing into the room (+z), and where you land outside when you leave, facing the street. */
-export const CASINO_ENTRY = { x: CASINO_DOOR.x, z: CASINO_ROOM.minZ + 1.6, rotY: 0 } as const;
+export const CASINO_ENTRY = { x: CASINO_DOOR.x, z: CASINO_ROOM.minZ + 2.2, rotY: 0 } as const;
 export const CASINO_STREET_SPOT = { x: CASINO_DOOR.x, z: CASINO_BOX.minZ - 1.8, rotY: Math.PI } as const;
 
 export type CasinoKind = 'slots' | 'roulette' | 'blackjack' | 'poker';
@@ -42,7 +42,7 @@ export interface CasinoTableDef {
   name: string;
   x: number;
   z: number;
-  /** Which way the dealer's side (a machine's screen) faces, as a facing angle: (sin, cos) on x/z. */
+  /** Which way someone playing at it faces (toward the dealer, or the machine's screen), as a facing angle: (sin, cos) on x/z. */
   rotY: number;
   seats: number;
 }
@@ -53,8 +53,8 @@ export const SLOT_COUNT = 8;
 export const CASINO_TABLES: readonly CasinoTableDef[] = [
   { id: 'roulette', kind: 'roulette', name: 'Roulette', x: -37, z: 44, rotY: 0, seats: 6 },
   { id: 'poker', kind: 'poker', name: 'Poker', x: -37, z: 51.5, rotY: 0, seats: 6 },
-  { id: 'blackjack-1', kind: 'blackjack', name: 'Blackjack', x: -28.5, z: 42, rotY: 0, seats: 5 },
-  { id: 'blackjack-2', kind: 'blackjack', name: 'Blackjack', x: -28.5, z: 50, rotY: 0, seats: 5 },
+  { id: 'blackjack-1', kind: 'blackjack', name: 'Blackjack', x: -28.5, z: 42, rotY: Math.PI / 2, seats: 5 },
+  { id: 'blackjack-2', kind: 'blackjack', name: 'Blackjack', x: -28.5, z: 50, rotY: Math.PI / 2, seats: 5 },
   // The slot bank, screens facing east into the room.
   ...Array.from({ length: SLOT_COUNT }, (_, i) => ({
     id: `slots-${i + 1}`,
@@ -62,7 +62,7 @@ export const CASINO_TABLES: readonly CasinoTableDef[] = [
     name: `Slot machine ${i + 1}`,
     x: CASINO_ROOM.minX + 0.55,
     z: 39.6 + i * 1.9,
-    rotY: Math.PI / 2,
+    rotY: -Math.PI / 2,
     seats: 1,
   })),
 ];

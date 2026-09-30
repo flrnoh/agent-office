@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto';
-import { CASINO_TABLES, MAX_BET, MIN_BET, START_CHIPS, validBet, type CasinoClientMsg, type CasinoServerMsg } from '../../shared/casino.js';
+import { CASINO_TABLES, MAX_BET, MIN_BET, START_CHIPS, validBet, type CasinoClientMsg, type CasinoKind, type CasinoServerMsg, type CasinoTableDef } from '../../shared/casino.js';
 import type { CasinoContext, CasinoGame, Seated } from './game.js';
 import { SlotMachine } from './slots.js';
 import { ComingSoon } from './soon.js';
@@ -23,6 +23,20 @@ export interface CasinoPlayer {
   name: string;
   send(msg: CasinoServerMsg): void;
 }
+
+/**
+ * What stands at each kind of table in CASINO_TABLES. Phase 2 swaps a ComingSoon for its game here
+ * (one line each, kept apart so parallel branches merge cleanly).
+ */
+export const GAMES: Record<CasinoKind, (t: CasinoTableDef) => CasinoGame> = {
+  slots: (t) => new SlotMachine(t.id),
+
+  roulette: (t) => new ComingSoon(t.id, t.kind, t.seats),
+
+  blackjack: (t) => new ComingSoon(t.id, t.kind, t.seats),
+
+  poker: (t) => new ComingSoon(t.id, t.kind, t.seats),
+};
 
 /** How often timed games are ticked (ms). */
 export const TICK_MS = 250;
@@ -87,7 +101,7 @@ export class Casino {
     this.acts = new Allowance(8, 4, this.now);
     this.moves = new Allowance(6, 2, this.now);
     if (!opts.empty) {
-      for (const t of CASINO_TABLES) this.register(t.kind === 'slots' ? new SlotMachine(t.id) : new ComingSoon(t.id, t.kind, t.seats));
+      for (const t of CASINO_TABLES) this.register(GAMES[t.kind](t));
     }
     if (!opts.manualTick) {
       this.timer = setInterval(() => this.tick(), TICK_MS);

@@ -48,7 +48,8 @@ export class SlotMachine implements CasinoGame {
     this.s = { kind: 'slots', stops, spin: this.s.spin + 1, spinning: true, until: now + SPIN_MS, player: p.name, bet: data, won };
     const result: SlotsResult = { stops, spin: this.s.spin, bet: data, won };
     const shown = line.map((s) => SLOT_EMOJI[s]).join(' ');
-    ctx.result(p.owner, won ? `${shown} · you win ${won} chips!` : `${shown} · no luck`, won - data, result);
+    const said = won > data ? `you win ${won} chips!` : won ? 'your stake back' : 'no luck';
+    ctx.result(p.owner, `${shown} · ${said}`, won - data, result);
     ctx.changed();
   }
 

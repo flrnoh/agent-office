@@ -127,3 +127,20 @@ test('out of chips: no spin, and nothing below zero', () => {
     s.done();
   }
 });
+
+test('the window’s reels land exactly on the stops the office drew', async () => {
+  const { Reels } = await import('../src/client/ui/casino/reels.js');
+  const r = new Reels([3, 30, 12]);
+  r.spin([7, 1, 31], SPIN_MS, 1000);
+  assert.equal(r.spinning, true);
+  assert.equal(r.update(1000 + SPIN_MS * 0.3), true);
+  const landed: number[] = [];
+  for (let t = 1000; t <= 1000 + SPIN_MS; t += 50) {
+    r.update(t);
+    landed.push(...r.landed);
+  }
+  assert.equal(r.update(1000 + SPIN_MS), false);
+  assert.deepEqual(r.pos, [7, 1, 31]);
+  assert.deepEqual(landed, [0, 1, 2], 'left to right, once each');
+  assert.equal(r.spinning, false);
+});
