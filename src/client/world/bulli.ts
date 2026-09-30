@@ -165,17 +165,20 @@ export function bulli(def: CarDef): BulliModel {
   stripe.scale.set(0.035, 0.035, 1.2);
   closed.add(stripe);
 
-  // Always there: the split windshield in its cream frame, and the mirrors.
+  // The split windshield in its cream frame: it folds away with the roof (like a supercar's glass),
+  // or whoever sits up front would look at the dark panes instead of the road.
+  for (const sx of [-1, 1]) closed.add(mesh(new THREE.BoxGeometry(0.56, 0.4, 0.03), glass, sx * 0.33, 1.42, L - 0.03, false));
+  closed.add(mesh(new THREE.BoxGeometry(0.08, 0.44, 0.05), cream, 0, 1.42, L - 0.04, false));
+  closed.add(mesh(new THREE.BoxGeometry(W * 2 - 0.1, 0.06, 0.1), cream, 0, 1.64, L - 0.06, false));
+
+  // Always there: the mirrors.
   const always = new THREE.Group();
   for (const sx of [-1, 1]) {
-    always.add(mesh(new THREE.BoxGeometry(0.56, 0.4, 0.03), glass, sx * 0.33, 1.42, L - 0.03, false));
     const arm = mesh(new THREE.BoxGeometry(0.02, 0.02, 0.26), chrome, sx * (W + 0.12), 1.24, L - 0.3, false);
     arm.rotation.y = sx * 0.6;
     always.add(arm);
     always.add(mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 14).rotateX(Math.PI / 2), chrome, sx * (W + 0.2), 1.3, L - 0.2, false));
   }
-  always.add(mesh(new THREE.BoxGeometry(0.08, 0.44, 0.05), cream, 0, 1.42, L - 0.04, false));
-  always.add(mesh(new THREE.BoxGeometry(W * 2 - 0.1, 0.06, 0.1), cream, 0, 1.64, L - 0.06, false));
 
   // Roof off: the seats up front (and the bench behind) and the big thin bus wheel, nearly flat.
   const open = new THREE.Group();
@@ -186,8 +189,9 @@ export function bulli(def: CarDef): BulliModel {
     open.add(back);
   }
   open.add(mesh(new THREE.BoxGeometry(1.5, 0.5, 0.12), toon('#e76f51'), 0, BELT - 0.05, -0.6));
-  const wheelHoop = mesh(new THREE.TorusGeometry(0.21, 0.02, 6, 22), dark, BULLI_SEATS.driver.x, 1.22, BULLI_SEATS.driver.z + 0.42);
-  wheelHoop.rotation.x = -1.1;
+  // Low, far and nearly flat, like a real bus wheel: the driver looks over it, not through it.
+  const wheelHoop = mesh(new THREE.TorusGeometry(0.21, 0.02, 6, 22), dark, BULLI_SEATS.driver.x, 1.08, BULLI_SEATS.driver.z + 0.55);
+  wheelHoop.rotation.x = -1.3;
   open.add(wheelHoop);
 
   const body = new THREE.Group();
