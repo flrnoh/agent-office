@@ -109,7 +109,9 @@ jobs:
           if [ $build -eq 0 ]; then npm test > test.log 2>&1; test=$?; fi
           echo "build=$build" >> "$GITHUB_OUTPUT"
           echo "test=$test" >> "$GITHUB_OUTPUT"
-          tail -n 60 build.log > build-tail.log
+          # The TypeScript errors (an unsorted message type names itself here), else the end of the log.
+          grep -E 'error TS|npm ERR|npm error' build.log | head -n 30 > build-tail.log || true
+          [ -s build-tail.log ] || tail -n 30 build.log > build-tail.log
           [ -f test.log ] && grep -E '✖|not ok|unreviewed|new /api routes|^ℹ (tests|pass|fail)' test.log | head -n 60 > test-tail.log || true
 
       - name: Pull request
