@@ -954,7 +954,11 @@ function syncStack() {
   const count = index < 0 ? 1 : floors.length;
   const wings = floorWings(floors);
   // A map of its own is a hall on the ground: nothing under its floor to fall to, but its dungeon's.
-  player.street = inOffice() ? streetBelow(index) : streetOf(world);
+  const street = inOffice() ? streetBelow(index) : streetOf(world);
+  // Floors in any order (flrnoh fork): your floor moved in the stack while you're down on the street, so you go with the street.
+  if (store.floor === streetFloor && street !== player.street && player.pos.y < -SLAB - 0.05) player.pos.y += street - player.street;
+  streetFloor = store.floor;
+  player.street = street;
   const s = office.stack.state;
   const same = s.index === Math.max(0, index) && s.count === count && s.up === up && s.down === down;
   if (same && wings.join() === wingsShown) return;
@@ -967,6 +971,8 @@ function floorWings(floors: FloorInfo[]): number[] {
   return floors.map((f) => (f.id === store.floor ? store.floorPlan.wing : (f.wing ?? 0)));
 }
 let wingsShown = '';
+/** The floor the street was last set for (see syncStack). */
+let streetFloor: string | null | undefined;
 store.on('floors', syncStack);
 
 function showMyProfile(p: Profile) {
