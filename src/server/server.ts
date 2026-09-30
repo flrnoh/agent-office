@@ -67,7 +67,6 @@ import { RigTable, Rigs, rigMessage } from './rig.js'; // flrnoh fork: the racin
 import { tvMessage } from './tv.js'; // flrnoh fork: streams on the office TV
 import { RoofTables, tableMessage } from './tablegames.js'; // fork: games on the roof
 import { PadelCourts, padelMessage } from './padel.js'; // flrnoh fork: padel in the hall
-import { HALL } from '../shared/hall.js'; // flrnoh fork: the padel hall
 import { isBarGame, tossOk, type BarGame } from '../shared/bargames.js';
 
 const MIME: Record<string, string> = {
