@@ -5,6 +5,7 @@
 // helpers take how many rows it's built out (`wing`), and each level gets a grid of its own.
 
 import { BALCONY, BALCONY_DOOR, BEANBAGS, BOOKSHELF, CABINET, DESK_SIZE, ELEVATOR, ELEVATOR_FRONT, EXIT_DOOR, EXIT_STAIRS, FLOOR, GONG, JUKEBOX, KIOSK, LADDER, LOFT, MEETING_ROOM, MEETING_SEATS, MEETING_TABLE, PARACHUTE, POLE, POLES, ROAD, STAIRS, STATIONS, WHITEBOARD, WING, builtDesks, plantsAt, wingLevel, wingMinZ, type DeskDef } from './layout.js';
+import { RIG } from './rig.js'; // flrnoh fork
 
 
 export type Pt = [number, number];
@@ -70,6 +71,8 @@ function obstacles(wing: number): Obstacles {
   rects.push([JUKEBOX.x - JUKEBOX.depth / 2 - 0.05, FLOOR.maxX, JUKEBOX.z - JUKEBOX.width / 2 - 0.05, JUKEBOX.z + JUKEBOX.width / 2 + 0.05]);
   // The arcade cabinet next to it, as world/cabinet.ts puts it (its control panel sticks out a little).
   rects.push([CABINET.x - 0.45, FLOOR.maxX, CABINET.z - CABINET.width / 2 - 0.02, CABINET.z + CABINET.width / 2 + 0.02]);
+  // Fork: the racing rig between the lounge and the meeting room, as world/rig.ts puts it.
+  rects.push([RIG.minX, RIG.maxX, RIG.minZ, RIG.maxZ]);
   // The bookshelf against the south wall, as world/bookshelf.ts puts it.
   rects.push([BOOKSHELF.x - BOOKSHELF.width / 2 - 0.04, BOOKSHELF.x + BOOKSHELF.width / 2 + 0.04, BOOKSHELF.z - BOOKSHELF.depth / 2 - 0.03, FLOOR.maxZ]);
   // The ladder up the west wall, and the fire poles: a hole with a railing round it, or a landing mat.
