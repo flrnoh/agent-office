@@ -6,3 +6,4 @@
 - When a change affects how people run, deploy or use the office, update `README.md` and the matching `docs/*.md` page in the same PR.
 - Every modal needs a top-right ✕, and closing it by ✕ or Esc must put the player straight back into mouse-look with no extra click.
 - When asked to merge PRs, merge only webdevcody's (anyone else's only when linked, after a security review), resolve conflicts so both sides survive, and squash-merge.
+- This is the flrnoh fork: read `FORK.md` first; it overrides the rules above where they differ (sync PRs from upstream use a merge commit, never squash; nothing goes back upstream).
