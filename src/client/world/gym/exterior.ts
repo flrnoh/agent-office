@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { STREET_Y } from '../../../shared/layout';
-import { GYM_BOX, GYM_DOOR, GYM_HEIGHT, GYM_STREET_SPOT } from '../../../shared/gym';
+import { GYM_HEIGHT, GYM_STREET_BOX, GYM_STREET_DOOR, GYM_STREET_SPOT } from '../../../shared/gym';
 import type { Collider, Interactable } from '../office';
 import type { NightParts } from '../outside';
 import { mergeByMaterial, mesh, toon, toonUnique } from '../toon';
@@ -15,13 +15,13 @@ import { box, canvasTexture, chaser, glow, neonSign } from './parts';
  */
 
 const G = STREET_Y;
-const B = GYM_BOX;
+const B = GYM_STREET_BOX; // fork: next to the padel hall (shared/gym.ts GYM_SHIFT)
 const H = GYM_HEIGHT;
 const W = B.maxX - B.minX;
 const D = B.maxZ - B.minZ;
 const CX = (B.minX + B.maxX) / 2;
 const CZ = (B.minZ + B.maxZ) / 2;
-const DX = GYM_DOOR.x;
+const DX = GYM_STREET_DOOR.x;
 /** The front face (north, toward the street). */
 const FRONT = B.minZ;
 
@@ -111,8 +111,8 @@ export function buildGymExterior(group: THREE.Group, colliders: Collider[], inte
   root.add(windows);
 
   // The doorway: a lime frame round glass doors, which slide apart.
-  const dw = GYM_DOOR.width;
-  const dh = GYM_DOOR.height;
+  const dw = GYM_STREET_DOOR.width;
+  const dh = GYM_STREET_DOOR.height;
   parts.add(mesh(box(dw + 0.5, 0.35, 0.3), lime, DX, G + dh + 0.17, FRONT - 0.1));
   for (const s of [-1, 1]) parts.add(mesh(box(0.25, dh, 0.3), lime, DX + s * (dw / 2 + 0.12), G + dh / 2, FRONT - 0.1));
   const glimpse = canvasTexture(128, 160, (g) => {

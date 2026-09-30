@@ -36,7 +36,15 @@ export const GYM_ROOM = {
 } as const;
 /** Where you stand when you come in, facing into the room (+z), and where you land outside when you leave, facing the street. */
 export const GYM_ENTRY = { x: GYM_DOOR.x, z: GYM_ROOM.minZ + 2.4, rotY: 0 } as const;
-export const GYM_STREET_SPOT = { x: GYM_DOOR.x, z: GYM_BOX.minZ - 1.8, rotY: Math.PI } as const;
+/**
+ * flrnoh fork: on the street the gym stands GYM_SHIFT further east than its interior's coordinates,
+ * next to the padel hall (hall.ts HALL_BOX), which took the lot the gym was first planned on. The
+ * interior is a scene of its own, so it keeps its coordinates; only the building outside moves.
+ */
+export const GYM_SHIFT = 52;
+export const GYM_STREET_BOX = { minX: GYM_BOX.minX + GYM_SHIFT, maxX: GYM_BOX.maxX + GYM_SHIFT, minZ: GYM_BOX.minZ, maxZ: GYM_BOX.maxZ } as const;
+export const GYM_STREET_DOOR = { ...GYM_DOOR, x: GYM_DOOR.x + GYM_SHIFT } as const;
+export const GYM_STREET_SPOT = { x: GYM_STREET_DOOR.x, z: GYM_BOX.minZ - 1.8, rotY: Math.PI } as const;
 
 /**
  * What kind of thing a station is, and so which window opens at it and which server game runs it.

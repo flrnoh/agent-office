@@ -32,6 +32,9 @@ import { GolfBalls, PIN_DISTANCE, TEE_BALL, fly, lieText, pinText, type Flight, 
 import { Golfer } from './golf';
 import { Thrower } from './throwing';
 import { TableGames } from './tablegames/play'; // fork: games on the roof
+import { PadelPlay } from './hall/padel'; // fork: padel in the hall
+import { buildCourts } from './hall/courts';
+import { Bungee } from './bungee'; // fork: bungee off the roof
 import { ROUND, score, targetFrame, type BarGame, type Score, type Toss } from '../shared/bargames';
 import { Hands } from './world/hands';
 import { Basketball, IN_HANDS } from './world/hoop';
@@ -98,6 +101,9 @@ import { CasinoPlace } from './casino'; // fork: the casino across the street
 import { CASINO } from '../shared/casino';
 import { GymPlace } from './gym'; // fork: the gym across the street
 import { GYM } from '../shared/gym';
+import { HallPlace } from './hall'; // fork: the padel hall across the street
+import { HALL } from '../shared/hall';
+import type { CafeItem } from '../shared/cafe';
 import { openDjBooth } from './ui/djbooth';
 import { TV_AT, TV_OFF, TvStreams } from './tv'; // flrnoh fork: streams on the office TV
 import { openTvBig, openTvMenu } from './ui/tv';
@@ -531,6 +537,34 @@ const gym = new GymPlace({
   sound: (k) => sound.gym(k),
   noOutline: (o) => noOutline(o),
 });
+// flrnoh fork: the padel hall across the street, a place of its own like the casino (hall.ts).
+const hall = new HallPlace({
+  scene,
+  send: (m) => net.send(m),
+  floor: () => store.floor,
+  floors: () => builtFloors(),
+  inOffice: () => inOffice(),
+  player,
+  showOffice: (on) => {
+    world.group.visible = on && !upTop;
+    holiday.group.visible = on && !upTop && inOffice();
+  },
+  officeColliders: () => world.colliders,
+  officeRoom: () => ({ ...plan().bounds, ...world.room }),
+  setIndoors: (on) => sky.setIndoors(on || world.room.enclosed),
+  trip: (floor, at) => casinoTrip(floor, at),
+  placeAt: (at) => placeAt(at),
+  sound: (k) => sound.padelHall(k),
+  served: (d) => serveFromCafe(d),
+});
+// fork: the padel courts, built into the hall's interior when it's first built (hall/courts.ts).
+hall.add({
+  build: (room) => {
+    const courts = buildCourts(room.group);
+    room.colliders.push(...courts.colliders);
+    room.interactables.push(...courts.interactables);
+  },
+});
 // The jukebox on your floor: everyone there hears it from the same bar, and its lights say what's on.
 // It's the office's: on a map of its own there's none to hear.
 function playJukebox() {
@@ -691,6 +725,9 @@ const thrower = new Thrower(player, me, camera, canvas, {
 
 // Fork: the pool table, the kicker, air hockey and table tennis on the roof (see tablegames/).
 const tables = new TableGames({ net, camera, canvas, player, sound, view: () => roof?.tables ?? null });
+const padel = new PadelPlay({ net, camera, canvas, player, sound }); // fork: padel in the hall (hall/padel.ts)
+// Fork: bungee off the roof (bungee.ts, world/bungee.ts).
+const bungee = new Bungee({ scene, camera, player, me: me.root, bodyOf: (id) => remotes.get(id)?.person.root, you: () => store.you, officeNow: () => store.officeNow(), jetty: () => roof?.bungee ?? null, drop: () => roofDrop(roofFloors()), send: (m) => net.send(m), toast, sound });
 
 /** Who's at a game's line up here already, if anyone. */
 function lineTaken(game: BarGame): string | null {
@@ -1190,6 +1227,8 @@ net.onMessage((msg) => {
   routeWhiteboardMessage(msg, net);
   casino.onMessage(msg); // fork
   gym.onMessage(msg); // fork
+  hall.onMessage(msg); // fork
+  bungee.onMessage(msg); // fork: bungee off the roof
   switch (msg.t) {
     case 'welcome': {
       doorbell.know(msg.peers); // fork: whoever's already here doesn't ring
@@ -1226,6 +1265,7 @@ net.onMessage((msg) => {
       offTheRoof();
       casino.arrived(); // fork
       gym.arrived(); // fork
+      hall.arrived(); // fork
       if (voice.inVoice || voice.sharing) net.send({ t: 'voice', voice: voice.inVoice, muted: voice.muted, sharing: voice.sharing });
       if (player.seat) net.send({ t: 'sit', seat: player.seat.key });
       if (carrying) net.send({ t: 'carry', issue: carrying.issue, title: carrying.title });
@@ -1283,6 +1323,7 @@ net.onMessage((msg) => {
       offTheRoof();
       casino.arrived(); // fork
       gym.arrived(); // fork
+      hall.arrived(); // fork
       break;
     case 'ball':
       ballNews(true);
@@ -1407,8 +1448,8 @@ store.on('upgrade', renderUpgrade);
 function renderProject() {
   const p = store.project;
   renderTitle();
-  if (store.floor === CASINO) {
-    const c = casino.title(); // fork: in the casino
+  if (store.floor === CASINO || store.floor === HALL) {
+    const c = store.floor === HALL ? hall.title() : casino.title(); // fork: in the casino, or the padel hall
     $('project-meta').classList.remove('lobby');
     $('project-name').textContent = c.name;
     $('project-meta').textContent = c.meta;
@@ -1573,7 +1614,7 @@ function ride(to: string, keepWalking = false): void {
     return switchFloor(to, keepWalking);
   }
   const garage = to === GARAGE;
-  const floorId = garage ? (upTop || !store.floor || casino.active || gym.active ? builtFloors()[0]?.id : store.floor) : to;
+  const floorId = garage ? (upTop || !store.floor || casino.active || gym.active || hall.active ? builtFloors()[0]?.id : store.floor) : to;
   if (trip || !floorId || (floorId === store.floor && garage === downstairs())) return;
   closeAllModals();
   if (hanger.active) hanger.cancel();
@@ -1748,6 +1789,7 @@ function setPlace() {
   telescope.exit();
   casino.setPlace(store.floor === CASINO); // fork: in or out of the casino
   gym.setPlace(store.floor === GYM); // fork: in or out of the gym
+  hall.setPlace(store.floor === HALL); // fork: in or out of the padel hall
   const up = store.floor === ROOF;
   if (up === upTop) return;
   upTop = up;
@@ -1782,6 +1824,7 @@ function setPlace() {
 function usable(): Interactable[][] {
   if (casino.active) return [casino.interactables]; // fork
   if (gym.active) return [gym.interactables]; // fork
+  if (hall.active) return [hall.interactables]; // fork
   if (upTop && roof) return [roof.interactables];
   return inOffice() ? [office.interactables, gallery.interactables, dog.interactables, ball.interactables] : [world.interactables, court?.interactables ?? []];
 }
@@ -1938,6 +1981,7 @@ function applyMap() {
   offTheRoof();
   casino.refresh(); // fork: still in the casino (or off to a floor, on a map without one)
   gym.refresh(); // fork: still in the gym (or off to a floor, on a map without one)
+  hall.refresh(); // fork: the same for the padel hall
   hintKey = 'stale';
   hud.refresh();
 }
@@ -3101,6 +3145,8 @@ function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   if (!target) return;
   if (casino.use(target, key)) return; // fork: the casino (guests play too)
   if (gym.use(target, key)) return; // fork: the gym (guests work out too)
+  if (hall.use(target, key)) return; // fork: the padel hall (guests play too)
+  if (bungee.use(target, key)) return; // fork: bungee off the roof
   // fork: a party guest uses none of the work's things (party.ts)
   if (isParty() && ((target.kind === 'desk' && target.deskId) || PARTY_OFF.has(target.kind))) return void (key === 'E' && toast(PARTY_NOPE));
   if (store.me.guest) {
@@ -3176,6 +3222,7 @@ function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   else if (target.kind === 'golf') teeOff();
   else if (target.kind === 'darts' || target.kind === 'axe') stepUp(target.kind);
   else if (target.kind === 'table' && target.table) tables.use(target.table); // fork
+  else if (target.kind === 'padel' && target.court) padel.use(target.court); // fork: padel in the hall
   else if (target.kind === 'ball') takeBall();
   else if (target.kind === 'telescope') telescope.enter();
   else if (target.kind === 'car' && target.car !== undefined) getIn(target.car);
@@ -3327,6 +3374,19 @@ function grabFromFridge(d: FridgeItem) {
   sound.opener(d.glass === 'bottle' || d.glass === 'can' ? d.glass : 'bite');
   if (player.view === 'first') hands.sip();
   toast(`${d.emoji} ${d.name}. ${d.says}`);
+}
+
+/** Fork: handed over the padel hall café's counter (hall.ts): a coffee's buzz like the kitchen machine's, a cake in bites. */
+function serveFromCafe(d: CafeItem) {
+  const now = performance.now() / 1000;
+  booze.drink(d, now);
+  let jittery = false;
+  if (d.coffee) jittery = caffeine.drink(now);
+  else caffeine.top(now, d.caffeine);
+  reach();
+  if (player.view === 'first') hands.sip();
+  if (jittery) toast(`${d.emoji} ${d.name}… one cup too many, you’ve got the jitters!`, 'warn');
+  else toast(`${d.emoji} ${d.name}. ${d.says}${d.coffee ? ' · a minute of quicker feet' : ''}`);
 }
 
 // ---- Smoke breaks ------------------------------------------------------------------------------------
@@ -3915,6 +3975,9 @@ function hintFor(it: Interactable): Hint {
   const board = (name: string): Hint => ({ k: '', parts: [title(name), key('E', 'Open')] });
   if (it.kind === 'casino' || it.kind === 'casino-table') return casino.hint(it, title, key, aside); // fork
   if (it.kind === 'gym' || it.kind === 'gym-station') return gym.hint(it, title, key, aside); // fork
+  const hallHint = hall.hint(it, title, key, aside); // fork: the padel hall
+  if (hallHint) return hallHint;
+  if (it.kind === 'bungee') return bungee.hint(title, key, aside); // fork: bungee off the roof
   // fork: party guests (party.ts): who's at a desk, busy or not; the work's things are the team's
   if (isParty() && (it.kind === 'desk' || it.kind === 'station') && it.deskId) {
     const line = partyDeskLine(store.workerAtDesk(it.deskId), plan().byId.get(it.deskId)?.label ?? '');
@@ -3981,6 +4044,11 @@ function hintFor(it: Interactable): Hint {
     case 'table': {
       // Fork: the table games on the roof.
       const t = tables.hint(it.table!);
+      return { k: `${t.aside}|${t.action}`, parts: [title(t.title), aside(t.aside), key('E', t.action)] };
+    }
+    case 'padel': {
+      // Fork: padel in the hall.
+      const t = padel.hint(it.court!);
       return { k: `${t.aside}|${t.action}`, parts: [title(t.title), aside(t.aside), key('E', t.action)] };
     }
     case 'golf': {
@@ -4112,6 +4180,9 @@ function hintFor(it: Interactable): Hint {
       if (level >= WING.rows) return { k: 'full', parts: [title('🏢 Back office'), aside('built all the way out'), key('E', 'Wall a row up')] };
       return { k: String(level), parts: [title(level ? '🚧 Room to grow' : '🚧 Room to grow through the wall'), aside(level ? `${level} of ${WING.rows} rows built` : 'the office can get bigger here'), key('E', level ? 'Another row: 2 more desks' : 'Knock through: 2 more desks')] };
     }
+    case 'hall':
+    case 'cafe':
+      return { k: '', parts: [] }; // fork: hall.hint has these
   }
 }
 
@@ -4417,6 +4488,7 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     return;
   }
+  if (bungee.key(e)) return; // fork: on the bungee rope, F flips and nothing else is in reach
   // On the ladder, E gets you off it (and nothing else is in reach); W, S and Space climb.
   if (climber.active && (e.code === 'KeyE' || e.code === 'KeyF' || e.code in DESK_KEYS)) {
     if (e.code === 'KeyE') climber.letGo();
@@ -4630,7 +4702,7 @@ document.addEventListener('pointerlockchange', () => {
 const raycaster = new THREE.Raycaster();
 const CROSSHAIR = new THREE.Vector2(0, 0);
 /** How close (meters from your eyes) you must be to use each kind of thing. */
-const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3, rig: 4, table: 4, casino: 4, 'casino-table': 3.5, gym: 4, 'gym-station': 3.5 };
+const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3, rig: 4, table: 4, casino: 4, 'casino-table': 3.5, gym: 4, 'gym-station': 3.5, hall: 4, padel: 5, cafe: 3.5, bungee: 3.5 };
 const eye = new THREE.Vector3();
 
 /** What the ray through `ndc` lands on first, whether it is within reach (plus `slack` meters), and where it hit. */
@@ -4638,7 +4710,7 @@ function aimedAt(ndc: THREE.Vector2, slack = 0): { it: Interactable; near: boole
   raycaster.setFromCamera(ndc, camera);
   eye.set(player.pos.x, player.pos.y + EYE_HEIGHT, player.pos.z);
   // (Workers standing in line in the castle carry their spot's interactable: see Court.)
-  for (const hit of raycaster.intersectObjects(casino.active ? casino.pickables : gym.active ? gym.pickables : upTop && roof ? roof.pickables : inOffice() ? [office.group, dog.root] : world.pickables, true)) {
+  for (const hit of raycaster.intersectObjects(casino.active ? casino.pickables : gym.active ? gym.pickables : hall.active ? hall.pickables : upTop && roof ? roof.pickables : inOffice() ? [office.group, dog.root] : world.pickables, true)) {
     let it: Interactable | undefined;
     let shown = true;
     for (let o: THREE.Object3D | null = hit.object; o; o = o.parent) {
@@ -5016,6 +5088,7 @@ function frame(ts?: number) {
   rig.update(camera, dt);
   me.wheel = player.seat?.seatId === RIG_SEAT;
   tables.update(dt); // fork: the table games on the roof, and the camera at one
+  padel.update(dt); // fork: padel in the hall, and the camera on a court
   // Pulled away from the tee (sat down, off up the ladder, into the elevator): the club goes back.
   if (golf.active && (trip || hanger.active || climber.active || player.seat || upTop)) golf.stop();
   golf.update(dt);
@@ -5036,7 +5109,7 @@ function frame(ts?: number) {
   // In first person you are the camera; in third, hide yourself when it's zoomed in right behind your head.
   // At the tee the camera's behind the ball, and you're the one holding the club.
   // So is the camera over your shoulder at the dart board or the axe lane.
-  me.root.visible = !tables.zoomed && (golf.active || thrower.active || (!firstPerson && camera.position.distanceTo(headPos.set(player.pos.x, player.pos.y + 1.3, player.pos.z)) > 1.5));
+  me.root.visible = !tables.zoomed && !padel.zoomed && (golf.active || thrower.active || (!firstPerson && camera.position.distanceTo(headPos.set(player.pos.x, player.pos.y + 1.3, player.pos.z)) > 1.5));
   // In a car, your hands are on the wheel, out of sight.
   if (firstPerson && !golf.active && !thrower.active && !driver.active) hands.update(dt, t, { yaw: player.camYaw, pitch: player.lookPitch, walkPhase: player.walkPhase, walking: player.moving && player.grounded, airborne: !player.grounded, jitter: player.jitter, grip });
   // Down a pole: the view widens and the edges streak past.
@@ -5102,6 +5175,7 @@ function frame(ts?: number) {
     if (r.grip === 'pole' && !holding && Math.abs(p.y) < 0.2) sound.poleLanding(6, { x: pos.x, y: 0.5, z: pos.z });
     r.grip = holding;
     r.person.setGrip(holding);
+    r.person.root.visible = !padel.hides(id); // fork: on a padel court, the court draws them
     const walking = !sat && p.moving && !airborne;
     r.person.update(dt, t, walking || (holding === 'ladder' && p.moving), airborne && !holding && Math.abs(pos.y - r.target.y) > 0.01);
     // Their walk cycle takes a step every π/11 seconds.
@@ -5120,6 +5194,8 @@ function frame(ts?: number) {
     const d = Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z);
     voice.setVolume(id, d < 4 ? 1 : Math.max(0.2, 1 - (d - 4) / 16));
   }
+
+  bungee.update(upTop, player.view === 'first'); // fork: the jumper on the bungee rope, and your camera if it's you
 
   // The engines of the cars being driven on this floor, yours (by how hard you're on the gas) and theirs.
   const engines: Parameters<typeof sound.setEngines>[0] = [];
@@ -5177,6 +5253,7 @@ function frame(ts?: number) {
   confetti.update(dt);
   casino.update(t, dt); // fork
   gym.update(t, dt); // fork
+  hall.update(t, dt); // fork
   hanger.update();
   // Out along the scenic loop, the haze thins (there's more out there to see), and the sun's shadows
   // come with you: otherwise they're only cast round the office.
@@ -5192,6 +5269,7 @@ function frame(ts?: number) {
   if (!upTop) world.mood?.({ sun, hemi, ambient, scene }, sky.daylight, t, camera.position);
   casino.mood({ sun, hemi, ambient, scene }); // fork: the casino lights itself
   gym.mood({ sun, hemi, ambient, scene }); // fork: the gym lights itself
+  hall.mood({ sun, hemi, ambient, scene }); // fork: so does the padel hall
   if (!upTop && inOffice()) holiday.update(t, sky.lampsOn, camera);
   sound.setWeather(sky.rain, 1 - sky.daylight);
   if (upTop && roof) {
@@ -5244,7 +5322,7 @@ function frame(ts?: number) {
   tvStreams.frame(tvHere && !tvStream ? { camera, screen: office.tvScreen, boxes: world.colliders } : null);
   pointToWaiting(now);
   // Not while the camera's up at the boss's monitor or the arcade, where they'd cover the screen.
-  if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !tables.zoomed && !golf.active && !thrower.active && !driver.active) {
+  if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !tables.zoomed && !padel.zoomed && !golf.active && !thrower.active && !driver.active) {
     // Hands go on top of everything, so they never clip into a desk you walk up to. They have
     // lights of their own, turned down to match wherever you're standing.
     renderer.clearDepth();
@@ -5326,7 +5404,7 @@ void whoami().then(() => {
 });
 
 // Debug handle for quick checks from the console / headless screenshots.
-(window as any).__office = { world: () => world, court: () => court, sendoffs, jail, plan, applyMap, roof: () => roof, booze, dj: () => djFrame(djAt()), store, player, caffeine, camera, arcade, cabinet, rig, tables, workerViews, departures, arrivals, scene, net, renderer, hands, me, remotes, settings, gallery, hanger, office, ride, switchFloor, climber, driver, getIn, getOut, golf, balls, thrower, elevatorPanelOpen, confetti, dog, sky, holiday, carried: () => carrying, emoteWheel, emote, ball };
+(window as any).__office = { world: () => world, court: () => court, sendoffs, jail, plan, applyMap, roof: () => roof, booze, dj: () => djFrame(djAt()), store, player, caffeine, camera, arcade, cabinet, rig, tables, padel, bungee, workerViews, departures, arrivals, scene, net, renderer, hands, me, remotes, settings, gallery, hanger, office, ride, switchFloor, climber, driver, getIn, getOut, golf, balls, thrower, elevatorPanelOpen, confetti, dog, sky, holiday, carried: () => carrying, emoteWheel, emote, ball };
 (window as any).__voice = voice;
 (window as any).__sound = sound;
 (window as any).__tv = tvStreams; // fork: the TV's stream (client/tv.ts)

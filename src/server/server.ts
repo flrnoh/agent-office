@@ -60,12 +60,16 @@ import { Gym, type GymPlayer } from './gym/index.js'; // flrnoh fork: the gym
 import { Turn, readTurnKey } from './turn.js'; // flrnoh fork: TURN for voice
 import { CASINO, CASINO_ENTRY, isCasinoMsg } from '../shared/casino.js';
 import { GYM, GYM_ENTRY, isGymMsg } from '../shared/gym.js';
+import { HALL } from '../shared/hall.js'; // flrnoh fork: the padel hall
+import { HALL_ARRIVAL, backInHall, hallView } from './hall.js';
 import { CarKeys } from './carkeys.js'; // flrnoh fork: the Bulli's keys
 import { BULLI_REFUSED, mayTake } from '../shared/bulli.js';
 import { CARS } from '../shared/garage.js';
 import { RigTable, Rigs, rigMessage } from './rig.js'; // flrnoh fork: the racing rig
 import { tvMessage } from './tv.js'; // flrnoh fork: streams on the office TV
 import { RoofTables, tableMessage } from './tablegames.js'; // fork: games on the roof
+import { PadelCourts, padelMessage } from './padel.js'; // flrnoh fork: padel in the hall
+import { BungeeRope, bungeeMessage } from './bungee.js'; // fork: bungee off the roof
 import { isBarGame, tossOk, type BarGame } from '../shared/bargames.js';
 
 const MIME: Record<string, string> = {
@@ -563,6 +567,19 @@ export async function startServer(cfg: Config) {
     }
   };
   const leftTable = (id: string) => roofTables.leave(id) && toRoof({ t: 'tables', tables: roofTables.state() }, id);
+  // flrnoh fork: padel in the hall (see padel.ts), and passing things to everyone in there.
+  const padelCourts = new PadelCourts();
+  const toHall = (m: ServerMsg, except?: string, droppable = false) => {
+    const json = JSON.stringify(m);
+    for (const o of clients.values()) {
+      if (o.id === except || o.peer.floor !== HALL || o.ws.readyState !== WebSocket.OPEN) continue;
+      if (droppable && o.ws.bufferedAmount > 1024 * 1024) continue;
+      o.ws.send(json);
+    }
+  };
+  const leftCourt = (id: string) => padelCourts.leave(id) && toHall({ t: 'padel', courts: padelCourts.state() }, id);
+  const bungeeRope = new BungeeRope(); // fork: bungee off the roof (bungee.ts)
+  const offRope = (id: string) => bungeeRope.leave(id) && toRoof({ t: 'bungee', state: bungeeRope.state() }, id);
   /**
    * Tells everyone about the maps, after a pick or a read of the folder. When the map everyone's on
    * changed (`was` before), everyone's off their seats (each browser forgets them too, see the
@@ -811,7 +828,7 @@ export async function startServer(cfg: Config) {
     ...(floor ? { tv: floor.tv.state() } : {}), // flrnoh fork: the TV's stream (tv.ts)
   });
   /** The rooftop bar: nobody works up there, so it has none of a floor's things. */
-  const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF, dj: djBooth.state(), tables: roofTables.state() });
+  const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF, dj: djBooth.state(), tables: roofTables.state(), bungee: bungeeRope.state() });
   // flrnoh fork: the casino, a place of its own like the roof, and who's in it by their chips.
   const casinoView = (): FloorView => ({ ...floorView(undefined), floor: CASINO });
   const casinoPlayer = (c: Client): CasinoPlayer => ({ id: c.id, owner: c.accountId ? `account:${c.accountId}` : `name:${c.peer.name}`, name: c.peer.name, send: (m) => sendTo(c, m) });
@@ -1247,14 +1264,15 @@ export async function startServer(cfg: Config) {
     // Back on the floor they were on before a reload, a restart or closing the tab, else the first floor.
     const wanted = url.searchParams.get('floor');
     // Their floor's gone since (taken off the building, or its checkout deleted): up to the roof instead.
-    const gone = !!wanted && wanted !== ROOF && wanted !== CASINO && wanted !== GYM && !floors.has(wanted);
+    const gone = !!wanted && wanted !== ROOF && wanted !== CASINO && wanted !== GYM && wanted !== HALL && !floors.has(wanted);
     // Up on the roof, as long as there's a building under it.
     const onRoof = (wanted === ROOF || gone || (!wanted && !!me.party)) && floors.size > 0; // fork: party guests arrive at the rooftop bar
     const inCasino = wanted === CASINO && floors.size > 0; // fork: back in the casino
     const inGym = wanted === GYM && floors.size > 0; // fork: back in the gym
-    const floor = onRoof || inCasino || inGym ? undefined : arrivalFloor(wanted);
+    const inHall = backInHall(wanted, floors.size); // fork: back in the padel hall
+    const floor = onRoof || inCasino || inGym || inHall ? undefined : arrivalFloor(wanted);
     // Back where they were standing on it too; anywhere else, they arrive by elevator.
-    const back = !gone && wanted !== null && (onRoof || inCasino || inGym || floor?.id === wanted);
+    const back = !gone && wanted !== null && (onRoof || inCasino || inGym || inHall || floor?.id === wanted);
     const spot = (back && spotFrom(url.searchParams)) || { ...elevatorSpot(), y: 0, rotY: 0 };
     const account = session.account;
     // An account's name is its own; on the shared password people pick one.
@@ -1302,7 +1320,7 @@ export async function startServer(cfg: Config) {
         sharing: false,
         ...(account ? { account: true } : {}),
         ...(url.searchParams.get('lite') === '1' ? { lite: true } : {}),
-        ...(onRoof ? { floor: ROOF } : inCasino ? { floor: CASINO } : inGym ? { floor: GYM } : floor ? { floor: floor.id } : {}),
+        ...(onRoof ? { floor: ROOF } : inCasino ? { floor: CASINO } : inGym ? { floor: GYM } : inHall ? { floor: HALL } : floor ? { floor: floor.id } : {}),
       },
     };
     // Maps of your own may have been added or edited since: everyone already in hears first.
@@ -1334,7 +1352,7 @@ export async function startServer(cfg: Config) {
       map: maps.state(),
       prompts: prompts.state(),
       leaveOnMerge: leaveOnMerge.state(),
-      ...(onRoof ? roofView() : inCasino ? casinoView() : inGym ? gymView() : floorView(floor)),
+      ...(onRoof ? roofView() : inCasino ? casinoView() : inGym ? gymView() : inHall ? hallView(floorView(undefined)) : floorView(floor)),
     });
     if (inCasino) casino.enter(casinoPlayer(client));
     if (inGym) gym.enter(gymPlayer(client)); // fork
@@ -1368,6 +1386,8 @@ export async function startServer(cfg: Config) {
       casino.leave(id); // fork
       gym.leave(id); // fork
       leftTable(id); // fork: games on the roof
+      leftCourt(id); // fork: padel in the hall
+      offRope(id); // fork: bungee
       if (client.whiteboard) drawingChanged(floorOf(client));
       stopPlaying(client);
       rigLeft(client); // fork: the racing rig
@@ -1455,6 +1475,16 @@ export async function startServer(cfg: Config) {
     floorsChanged();
   };
 
+  /** flrnoh fork: into the padel hall across the street, just inside its doors (hall.ts). */
+  const goToHall = (c: Client) => {
+    if (c.peer.floor === HALL) return;
+    const left = leave(c, HALL_ARRIVAL);
+    c.peer.floor = HALL;
+    sendTo(c, { t: 'floor.enter', peers: [...clients.values()].map((o) => o.peer), ...hallView(floorView(undefined)) });
+    arrived(c, left);
+    floorsChanged();
+  };
+
   /** Out to the lobby, where the elevator has nowhere to go: the building's last floor was taken off. */
   const toLobby = (c: Client) => {
     const left = leave(c);
@@ -1475,7 +1505,7 @@ export async function startServer(cfg: Config) {
     floorsSent = JSON.stringify(list);
     broadcast({ t: 'floors', floors: list });
     for (const c of clients.values()) {
-      if (c.peer.floor === floor.id || (!next && c.peer.floor === ROOF)) {
+      if (c.peer.floor === floor.id || (!next && (c.peer.floor === ROOF || c.peer.floor === HALL))) { // fork: nor a padel hall
         if (next) goToFloor(c, next);
         else toLobby(c);
         sendTo(c, { t: 'toast', text: next ? `🛗 ${who} took ${name} off the building, so you rode the elevator to ${next.def.name}` : `🛗 ${who} took ${name}, the last floor, off the building`, level: 'warn' });
@@ -1494,6 +1524,8 @@ export async function startServer(cfg: Config) {
     casino.leave(c.id); // fork: up from the casino's tables
     gym.leave(c.id); // fork: off the gym's stations
     if (c.peer.floor === ROOF) leftTable(c.id); // fork: off the roof, away from its tables
+    if (c.peer.floor === HALL) leftCourt(c.id); // fork: out of the padel hall, off its courts
+    if (c.peer.floor === ROOF) offRope(c.id); // fork: and off the bungee rope
     if (was) {
       was.workers.detachAll(c.id);
       was.changes.unwatchAll(c.id);
@@ -1697,7 +1729,7 @@ export async function startServer(cfg: Config) {
         // Everyone sees them sit down (or get up), and anyone who comes in later finds them sitting.
         // Only on a seat where they are: the roof's up on the roof, the office's on a floor.
         const key = str(msg.seat, 40);
-        const seat = seatHereOn(maps.plan(), key, c.peer.floor === ROOF) ? key : undefined;
+        const seat = seatHereOn(maps.plan(), key, c.peer.floor === ROOF, c.peer.floor === HALL) ? key : undefined; // fork: the padel hall's seats in there
         if (seat === c.peer.seat) break;
         // Somebody on the floor got there first (two people arriving at an empty throne at once).
         // (Not yourself, on a connection that hasn't timed out yet after a reconnect.)
@@ -1755,6 +1787,10 @@ export async function startServer(cfg: Config) {
         }
         if (msg.floor === GYM) {
           if (floors.size) goToGym(c); // fork: the gym
+          break;
+        }
+        if (msg.floor === HALL) {
+          if (floors.size) goToHall(c); // fork: the padel hall
           break;
         }
         if (msg.floor === ROOF) {
@@ -2127,6 +2163,16 @@ export async function startServer(cfg: Config) {
       case 'table.input':
       case 'table.sync':
         tableMessage(roofTables, msg, { id: c.id, who, color: c.peer.color, onRoof: c.peer.floor === ROOF, toRoof, toClient: (id, m) => { const o = clients.get(id); if (o) sendTo(o, m); }, warn: (t) => warn(c, t) });
+        break;
+      case 'padel.look': // fork: padel in the hall
+      case 'padel.join':
+      case 'padel.leave':
+      case 'padel.input':
+      case 'padel.sync':
+        padelMessage(padelCourts, msg, { id: c.id, who, color: c.peer.color, inHall: c.peer.floor === HALL, toHall, toClient: (id, m) => { const o = clients.get(id); if (o) sendTo(o, m); }, warn: (t) => warn(c, t) });
+        break;
+      case 'bungee.jump': // fork: bungee off the roof
+        bungeeMessage(bungeeRope, msg, { id: c.id, who, color: c.peer.color, onRoof: c.peer.floor === ROOF, floors: floors.size, toRoof, warn: (t) => warn(c, t) });
         break;
       case 'gh.close': {
         const floor = here();

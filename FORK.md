@@ -28,7 +28,7 @@ This repository is a fork of [AgentSystemLabs/agent-office](https://github.com/A
 
 ### Guest role (#1, #2)
 
-Friends who come over to hang out: they walk around, chat, talk, play (arcade, golf, darts, basketball, cars, jukebox, whiteboard, the table games on the roof) and watch the workers' terminals, but can't type in them, hire, send home, touch GitHub, the queue, meetings, settings or accounts, or reach the workers' dev servers. The server enforces it, whatever a guest's browser sends.
+Friends who come over to hang out: they walk around, chat, talk, play (arcade, golf, darts, basketball, cars, jukebox, whiteboard, the table games on the roof, padel in the hall) and watch the workers' terminals, but can't type in them, hire, send home, touch GitHub, the queue, meetings, settings or accounts, or reach the workers' dev servers. The server enforces it, whatever a guest's browser sends.
 
 - `src/server/guests.ts`: the rules. Every message a page can send is sorted into `GUEST`, `QUIET` or `TEAM_ONLY`. **A message type upstream adds is in none of them, and the server doesn't compile until someone sorts it** (the error names it). Play or looking → `GUEST`; anything that acts on the machine, a worker, GitHub or the office's settings → `TEAM_ONLY`.
 - `tests/guests.test.ts`: fails when upstream adds an `/api` route nobody has looked at. New routes are refused to guests anyway; look whether a guest's page needs one to draw the office.
@@ -190,6 +190,7 @@ Across the street from the office to the east (x 6..34, z 36..56, where two neig
 
 Four kinds of station, all decided on the server, all speaking the one generic sit/act/stand protocol (mirrors the casino's, so a new machine needs no new message types): a **cardio deck** (treadmills, bikes, a rower, a cross-trainer) whose sessions run on the office's clock, piling up distance and calories and spending energy the harder you push; a **strength floor** (bench, squat, deadlift, leg press, lat pulldown, shoulder press, cable, dumbbells, heavy bag) where the office grinds a chosen set out rep by rep (heavier over your level → the last reps risk breaking form); a **wellness spa** (sauna, steam room, jacuzzi, cold plunge, massage loungers, stretch studio) that tops energy back up over time and earns recovery XP; and a **juice bar** (the casino's cashier, but a place to sit) showing your fitness and the building's leaderboard, and pouring a smoothie for a quick top-up. Everyone's fitness is kept in `gym.json` in the data folder.
 
+- **Where it stands:** on the street the gym is `GYM_SHIFT` (52 m) east of its interior's coordinates, `GYM_STREET_BOX` x 58..86, right next to the padel hall (`HALL_BOX` x 22..54), which took the lot the gym was first planned on. Only the building outside uses the street box, door and spot (`GYM_STREET_*`); the interior is a scene of its own and keeps `GYM_BOX`/`GYM_ROOM`. Two far-side street lamps (x 62, 82) light its front. `tests/gym-lot.test.ts` keeps it clear of the hall and the casino.
 - Own files:
   - `src/shared/gym.ts`: `GYM`, the building's box, the room, the door, where you land coming in and going out, `GYM_STATIONS` (every machine: id, kind, machine, position, seats), `JUICE_BAR`, the fitness maths (`xpForLevel`/`levelFor`/`rankFor`, `STAMINA_MAX`/`STAMINA_REGEN`, `FitnessProfile`, `LeaderRow`, the smoothies, `JuiceBarView`), and the generic protocol (`GymClientMsg`, `GymServerMsg`, `isGymMsg`).
   - `src/shared/gym-strength.ts`, `gym-cardio.ts`, `gym-wellness.ts`: the exercise/machine/spot catalogs and the pure scoring maths (a set rep by rep, a cardio step, recovery over time) and the views, shared by the server and the tests.
@@ -210,6 +211,28 @@ Four kinds of station, all decided on the server, all speaking the one generic s
   - `src/client/sound.ts`: `gym(kind)`, a section of its own. `src/client/ui/whereabouts.ts`, `src/client/ui/hud.ts`: "🏋️ in the gym".
   - `src/client/lab/props.ts`: `gym_interior` (cutaway, no ceiling), `gym_exterior` and `gym_city` for eyeballing the models.
   - `docs/features.md`: the gym line.
+
+### The padel hall
+
+Across the street to the east (x 22..54, z 36..72, where the neighbour at x 30 stood), the casino's counterpart: a padel hall with a gallery and a café. A pale grey sports hall under a curved roof, a big glass front with the warm-lit courts showing through, PADEL in lime LED letters with a racket and a ball, a canopy over glass doors that slide apart, bike racks, benches and a flag. **E** at the doors goes in; **E** at the doors inside comes back out onto the street of the floor you came from. Inside is a place of its own like the casino (`HALL = '@hall'` is your `floor` while you're in there), so people from every floor meet, see and hear each other there (guests and party guests too: going in and out is `floor.go`, sitting `sit`, a café item `act`, so there's nothing new to sort in `guests.ts` or `party.ts`). The building's half is below; the padel game's (courts, glass, fence, net, lines, court lights, the game) is its own section. It adds itself to the room with `hall.add({ build })` (`client/hall.ts`), nothing of the building stands on a court or within `COURT_MARGIN` of one.
+
+- The shared plan: `src/shared/hall.ts` (`HALL`, the room, the courts, the entry and the inside door, the gallery, `COURT_MARGIN`; plus the building on the street: `HALL_BOX`, `HALL_HEIGHT`, `HALL_ROOF_RISE`, `HALL_DOOR`, `HALL_STREET_SPOT`).
+- Own files (the building and the café):
+  - `src/shared/hall-building.ts`: where the furniture stands inside (the stairs a step at a time, the gallery's pillars, the stand's rows and risers, reception, lockers, the door bench, the café's counter and tables), `HALL_SEATING` (the stand's benches, the door bench, the café chairs, all `hall: true`), `COURT_KEEP_OUT` / `onCourt`.
+  - `src/shared/cafe.ts`: the café's menu (`CAFE_ITEMS`: coffees with the kitchen machine's buzz, cold drinks, cakes and bakes), `isCafeItem`.
+  - `src/server/hall.ts`: `hallView`, `HALL_ARRIVAL`, `backInHall`.
+  - `src/client/hall.ts` (`HallPlace`: in and out, the room, the café's counter, hints, the light inside, and `add(part)` for the padel game), `src/client/ui/cafe.ts` (the menu), `src/client/world/hall/` (`exterior.ts`, also the block the roof's city shows; `interior.ts`; `cafeitems.ts`, the cups, glasses and plates in your hand).
+  - `tests/hall-building.test.ts` (the lot, the doors, the courts kept clear, the stairs, the café, the seats only in the hall), `tests/cafe.test.ts` (the menu, what the server lets you hold where).
+- Hooks in upstream files:
+  - `src/shared/layout.ts`: `SeatDef.hall`, `...HALL_SEATING` in `SEATING`, `seatHere(key, onRoof, inHall)`. `src/shared/maps/index.ts`: `seatHereOn(..., inHall)`.
+  - `src/shared/rooftop.ts`: `Glass`, `DrinkId` and `DRINK_BY_ID` take the café's too. `src/shared/fridge.ts` (fork file): `heldAnywhere`, and `holdSeconds`/`isSnack` know the café's; `src/server/held.ts` and `src/client/booze.ts` use `heldAnywhere` (the café's things may be held anywhere and come along, like the fridge's). `src/client/world/fridgeitems.ts`: hands the café's shapes to `cafeItem`.
+  - `src/server/server.ts`: `goToHall` (through `leave`, like the casino), `floor.go` to `HALL`, back in after a reload (`inHall` in `onConnection`), the hall's view for arrivals, seats in the hall only in there, and taking the last floor off the building sends people in the hall to the lobby.
+  - `src/client/world/office.ts`: `InteractKind` has `'hall' | 'cafe'`; the exterior built with the street, its door in `doors`, `setStreet` in `setLevel`, `update` in `update`.
+  - `src/client/world/outside.ts`: the neighbour at x 30 across the street is gone, `neighbourBoxes()` has the hall (golf balls and the scenic loop's trees keep clear of it), and a far-side street lamp moved from x 36 to 46, out of the doorway.
+  - `src/client/world/city.ts`: the roof's city leaves the hall's lot free and draws `cityHall()` there.
+  - `src/client/main.ts`: `hall` (a `HallPlace`, going in and out by `casinoTrip`) and `serveFromCafe` (the coffee's buzz, like `drinkCoffee`); `setPlace`, `usable`, `aimedAt`, `REACH`, `hintFor`, `interact`, `renderProject`, the message router, `arrived()` after welcome and floor.enter, `refresh` in `applyMap`, `update` and `mood` in the frame, the garage ride from inside.
+  - `src/client/sound.ts`: `padelHall(kind)`: the doors, the espresso machine (grinder, shot, steam wand) at the counter, a pour, a plate. `src/client/ui/whereabouts.ts` ("🎾 in the padel hall", "☕ at the padel hall café"), `src/client/ui/hud.ts` ("🎾 Padel Hall", a help line).
+  - `docs/features.md`: the padel hall line.
 
 ### Speakers all over the office
 
@@ -305,6 +328,32 @@ The first player's page (the table's host) runs the game, the computer included,
   - `src/client/main.ts`: `tables` (made next to the thrower), E at a table, its hint, `tables.update` after the cabinet, `REACH.table`, no hands or own body while the camera's at a table, `__office.tables`.
   - `docs/features.md`, `docs/controls.md`: words.
 
+### Padel
+
+Two padel courts in the padel hall (the building, the way in, the stand, the gallery and its café are the hall's own, see `src/shared/hall.ts`): blue courts with white lines, the net on its posts, glass back walls (3 m) with the wire fence on top to 4 m, side glass 2 m out from each back wall and fence between, an opening in each side on either side of the net, lights overhead, and a scoreboard hanging over each court's north end for the gallery (both faces). **E** at an opening opens a chooser (✕ top right): a place (south or north end, right or left; 1–4) or 👀 Watch. It's always two against two: the computer plays every place nobody has, so one person plays with a computer partner against two computer players, and two can play each other (a computer partner each) or together. Guests and party guests play too.
+
+Playing, the camera glides in behind your player; they run for the ball by themselves (the chooser's "run for the ball" box; **WASD** steers while held), the mouse aims (a ring on the court), click or **Space** swings (the racket meets the ball as it comes past, and how well the swing's timed decides how hard and true it goes: early or late floats, strays, and now and then finds the net or their glass on the full), **Shift** lobs, a high ball near the net is smashed. ✕ or **Esc** steps off through the nearest opening, back to mouse-look.
+
+Rules, simplified but recognisable: the serve is underhand after a bounce, diagonally into the box across (from the right when the game's points add up even), two tries; the ball must bounce once in the other half before it touches that half's walls; after the bounce it may come off the glass (any number of times) and be played, volleys are fine except on the return of serve; a second bounce, the wire fence, or out through an opening or over the top ends the point (for the hitter after the bounce, against them before it); into the net and down on your own side is the other side's. 15, 30, 40, game, a **golden point** at 40–40, first to **four games** (no sets or tie-break: four computer players take 5–8 minutes, `tests/padel.test.ts` checks it). The teams serve a game each in turn, the players within a team by turns. A new match starts by itself 8 s after one ends.
+
+It runs like the table games on the roof: the first person on a court hosts it (their page runs the game and the computer players and sends a snapshot about 25 times a second through the office to everyone in the hall); the others on the court send their moves (how they move, a swing with its aim) to the host. The office checks who may send what (only inside the hall, only the court's host snapshots, only its other players move, a rate limit each, plain numbers of a bounded size), relays, and keeps who's on which place, the games and the last snapshot for whoever comes in later. When the host leaves (steps off, leaves the hall, closes the page) the next person on the court takes over from the last snapshot; someone joining mid-match takes a computer player's place and the match goes on; the last one off frees the court.
+
+- Own files:
+  - `src/shared/padel/`: `court.ts` (the court's frame, glass/fence/openings, slots and teams, the wire types and checks, `PadelClientMsg`/`PadelServerMsg`), `rules.ts` (scoring, the golden point, who serves and receives), `game.ts` (ball physics, the rules in play, the players' legs, swings and shots, the computer, encode/decode; pure).
+  - `src/server/padel.ts`: the places (`PadelCourts`: join, leave, host handover, snapshot and move checks) and `padelMessage`.
+  - `src/client/hall/courts.ts` (the courts in 3D, figures with rackets, the ball, scoreboards; **the hook for the hall**: `buildCourts(parent)` returns `{ group, colliders, interactables, views, update }`, and the hall adds the colliders and interactables to its own; `currentCourts()` hands them to the game), `src/client/hall/padel.ts` (`PadelPlay`: the chooser, hosting and drawing the courts, the camera, input, the bar at the top, sounds), `padel.css`.
+  - `src/client/lab/padel.html` + `padel.ts`: a lab page for the courts and a computer rally (`view=play|watch|gallery|top`, `t=`), for headless screenshots with `lab/shot.mjs`.
+  - `tests/padel.test.ts` (scoring, serving, the court's edges, the rules in play, physics, snapshots, four computer players play a match), `tests/padel-server.test.ts` (sessions, handover, checks, relaying).
+- Hooks in upstream files:
+  - `src/shared/protocol.ts`: `PadelClientMsg`/`PadelServerMsg` in `ClientMsg`/`ServerMsg`.
+  - `src/server/server.ts`: `padelCourts`, `toHall`, `leftCourt` (out of the hall in `leave`, and on disconnect), the five `padel.*` cases.
+  - `src/server/guests.ts`: the five `padel.*` messages in `GUEST`. `src/server/party.ts`: `padel`, `padel.sync`, `padel.input` in `PARTY_SEES`.
+  - `src/server/tablegames.ts`: `Bucket` exported (padel's rate limits).
+  - `src/client/world/office.ts`: `InteractKind` has `'padel'`, `Interactable.court`.
+  - `src/client/sound.ts`: `padel()`, a section of its own (racket, bounce, glass knock, fence rattle, net, chimes; quiet from far away).
+  - `src/client/main.ts`: `padel` (a `PadelPlay`), E at a court, its hint, `REACH.padel`, `padel.update` after the tables, your own body and hands hidden while the camera's on a court, the people on a court hidden in the hall (the court draws them), `__office.padel`.
+  - `docs/features.md`, `docs/controls.md`: words.
+
 ### TURN for voice from outside
 
 Voice and screen sharing connect browsers directly (WebRTC). With only STUN that fails for people outside the Mac's network behind strict routers, office networks or mobile data: they are "in voice" and their mic lights up, but nothing arrives. With a Cloudflare TURN key the office fetches short-lived TURN credentials (48 h, refreshed every 12 h, retried after 5 min on failure) and hands them to every page in the welcome's `ice`, after the office's own STUN servers. Without a key nothing changes. Port-53 URLs are dropped (browsers block them).
@@ -319,6 +368,26 @@ A ding-dong for everyone in the office when a person comes in, with a toast "�
 
 - `src/client/doorbell.ts`: who's here and whether an arrival rings; `tests/doorbell.test.ts`.
 - Hooks in upstream files: `src/client/sound.ts` (`doorbell()`, its own section), `src/client/main.ts` (the bell, and one line each in the `welcome`, `floor.enter` and `peer.join`/`peer.leave` cases).
+
+### Bungee off the roof
+
+A wooden jetty with railings runs from the rooftop bar's deck out over the street-side (south) edge, east of the sun loungers (x 10.25..11.75, through a gap in the glass railing and the planters), to a steel platform with a yellow-and-black edge 3.4 m past the facade. A yellow gantry over it holds the rope's anchor on an arm out past the edge, with a BUNGEE sign; a board at the jetty's start shows the day's jumps. **E** on the platform: the office puts you on the rope (one jumper at a time; "Someone's on the rope" otherwise, and a few seconds' breather after your own jump), the gate swings open, 3-2-1, and you dive off head first: free fall down past the facade, the rope pulls taut, two or three damped bounces, a moment hanging head down, the winch pulls you back up and you swing over onto the platform, 12–18 s in all. The fall is as deep as the building is tall (`roofDrop`), the rope sized so your head stops 2.2 m over the street, and the drop comes down between the plaza's two trees in front of the building. Your controls are off meanwhile (**F** or **Space** mid-fall does a salto); in first person you see it through your own eyes (straight down at the street, then upside down out at the city), in third the camera follows your body and never goes through the facade. Everyone on the roof sees the jumper fall and bounce on the same curve (worked out from when the office said the jump started) with the rope from the anchor to their ankles, and gets a toast "🪂 Ada jumped!". Wind rises while you fall and the rope twangs as it catches (synth, effects volume). Guests and party guests jump too.
+
+- Own files:
+  - `src/shared/bungee.ts`: where the jetty and the anchor are, `BungeeState`, and the jump: `bungeePlan(drop)` (the rope's length and stiffness fitted so it never goes deeper than the margin, damping included; a fixed-step simulation of the fall and bounces, kept per height) and `bungeePose(drop, t)` (count, fall, hang, winch, climb, done), `bungeeDuration`, `bungeeDay`.
+  - `src/server/bungee.ts`: `BungeeRope` (who's on the rope and since when, one at a time, the per-person cooldown, the day's jumps reset at local midnight; in memory) and `bungeeMessage` (only from the roof; the drop from the building's floors).
+  - `src/client/world/bungee.ts`: the jetty, platform, railings, gantry, gate, signs, colliders and the interactable. `src/client/bungee.ts`: `Bungee` (asks for the rope, holds your player on the platform while you're on it, poses the jumper's body, draws the rope, flies your camera, the countdown, the toast, the sounds, the keys).
+  - `tests/bungee.test.ts`.
+- The protocol: `bungee.jump` (ClientMsg), `bungee {state}` (ServerMsg, to everyone on the roof), `FloorView.bungee` in the roof's view for arrivals.
+- Hooks in upstream files:
+  - `src/shared/protocol.ts`: the two messages and `FloorView.bungee`.
+  - `src/server/server.ts`: `bungeeRope`/`offRope` next to the roof tables, `roofView` carries `bungee`, the `bungee.jump` case, off the rope when leaving the roof and on disconnect.
+  - `src/server/guests.ts`: `bungee.jump` in `GUEST`. `src/server/party.ts`: `bungee` in `PARTY_SEES` and `VIEW_AS_IS`.
+  - `src/client/world/office.ts`: `InteractKind` has `'bungee'`.
+  - `src/client/world/rooftop.ts`: the south edge's railing and the planters there leave a gap for the jetty, `buildBungeeJetty()` added to the roof, `Rooftop.bungee`.
+  - `src/client/sound.ts`: `bungee()` and `bungeeWind()`, a section of their own.
+  - `src/client/main.ts`: `bungee` (made next to the table games), its message, E at the platform (`interact`), its hint, `REACH.bungee`, its keys in the keydown handler, `bungee.update` after everyone's moved in the frame, `__office.bungee`.
+  - `docs/features.md`, `docs/controls.md`: words.
 
 ### Fork maintenance
 

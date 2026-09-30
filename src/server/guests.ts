@@ -21,6 +21,8 @@ const GUEST = [
   // The racing rig (fork, see server/rig.ts).
   'rig.play', 'rig.leave', 'rig.frame', 'rig.finish',
   'table.join', 'table.leave', 'table.input', 'table.sync', // fork: games on the roof
+  'padel.look', 'padel.join', 'padel.leave', 'padel.input', 'padel.sync', // fork: padel in the hall
+  'bungee.jump', // fork: bungee off the roof
 ] as const satisfies readonly ClientMsg['t'][];
 
 /** What a guest's page sends on its own (resizing a terminal it watches, polling boards): dropped without a word. */

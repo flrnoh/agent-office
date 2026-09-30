@@ -44,6 +44,8 @@ export interface Listener extends Pos {
 // The kitchen props (kitchen.ts puts the kitchen at x -14.5, z 12.2).
 const COFFEE_MACHINE: Pos = { x: -15.7, y: 1.4, z: 12.2 };
 const FRIDGE: Pos = { x: -11.3, y: 1.1, z: 12.2 };
+/** Fork: the espresso machine on the padel hall café's counter (hall coordinates, see shared/hall-building.ts). */
+const CAFE_MACHINE: Pos = { x: -7.8, y: 4.9, z: -15.9 };
 /** Just outside the office's windows (not the loft's). */
 const WINDOWS: Pos[] = OPENINGS.filter((o) => o.y0 < 2).map((o) =>
   o.wall === 'south' || o.wall === 'north'
@@ -1723,6 +1725,60 @@ export class OfficeSound {
     n.stop(t0 + 0.02);
   }
 
+  // ---- Bungee off the roof (fork, see client/bungee.ts) ------------------------------------------
+
+  private bungeeAir: { src: AudioBufferSourceNode; band: BiquadFilterNode; gain: GainNode } | null = null;
+
+  /**
+   * The countdown's beeps and the go (in your own ears), and the rope's twang as it pulls taut: from
+   * `at` when someone else is on it, in your own ears when it's you. On the effects volume.
+   */
+  bungee(kind: 'count' | 'go' | 'twang', at?: Pos) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.count(`bungee.${kind}`);
+    const out: AudioNode = at ? this.panner(at, 4, 1) : this.alerts;
+    if (at) out.connect(this.alerts);
+    const t0 = ctx.currentTime + 0.01;
+    if (kind === 'count') this.blip(out, t0, 660, 1, 0.14, 0.08, 'square');
+    else if (kind === 'go') this.blip(out, t0, 990, 1, 0.4, 0.09, 'square');
+    else {
+      // A low, stretched thrum sliding down, and the creak of the harness.
+      this.blip(out, t0, 95, 0.55, 0.9, 0.22, 'sawtooth');
+      this.blip(out, t0, 142, 0.6, 0.6, 0.1, 'triangle');
+      this.hiss(out, t0, 380, 2, [
+        [0.01, 0.12],
+        [0.35, 0],
+      ]);
+    }
+  }
+
+  /** The wind past your ears on the rope: 0 (still) to 1 (flat out), rising in pitch and loudness. */
+  bungeeWind(level: number) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    level = Math.max(0, Math.min(1, level));
+    if (!this.bungeeAir) {
+      if (level <= 0.01) return;
+      this.count('bungee.wind');
+      const src = this.noise(this.buf.white, true);
+      const band = biquad(ctx, 'bandpass', 400, 0.7);
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      src.connect(band).connect(gain).connect(this.alerts);
+      src.start();
+      this.bungeeAir = { src, band, gain };
+    }
+    const a = this.bungeeAir;
+    const now = ctx.currentTime;
+    a.gain.gain.setTargetAtTime(0.35 * level * level, now, 0.08);
+    a.band.frequency.setTargetAtTime(300 + 1500 * level, now, 0.1);
+    if (level <= 0.01) {
+      a.src.stop(now + 0.4);
+      this.bungeeAir = null;
+    }
+  }
+
   // ---- The doorbell (fork, see client/doorbell.ts) ----------------------------------------------
 
   /** Ding-dong: two soft bell tones a major third apart, each with a little shimmer on top. On the effects volume. */
@@ -1778,6 +1834,70 @@ export class OfficeSound {
     else if (kind === 'whoosh') [700, 500, 340].forEach((f, i) => this.blip(out, t0 + i * 0.05, f, 0.6, 0.08, 0.05, 'sine'));
     else if (kind === 'buzzer') [180, 150].forEach((f, i) => this.blip(out, t0 + i * 0.12, f, 0.95, 0.13, 0.09, 'sawtooth'));
     else [523, 659, 784, 1047].forEach((f, i) => this.blip(out, t0 + i * 0.08, f, 1.0, 0.15, 0.11, 'square')); // cheer
+  }
+
+  // ---- The padel hall (fork, see client/hall.ts) --------------------------------------------------
+
+  /**
+   * The padel hall's: its glass doors sliding (a soft whoosh and a chime), and up at the café the
+   * espresso machine (the grinder, then the steam wand's hiss), a pour, or a plate set down.
+   */
+  padelHall(kind: 'door' | 'espresso' | 'pour' | 'plate') {
+    this.unlock();
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.count(`hall.${kind}`);
+    const t0 = ctx.currentTime + 0.02;
+    if (kind === 'door') {
+      const out = this.alerts;
+      this.hiss(out, t0, 700, 0.7, [
+        [0.05, 0.05],
+        [0.35, 0.02],
+        [0.5, 0],
+      ]);
+      [880, 1175].forEach((f, i) => this.blip(out, t0 + 0.08 + i * 0.12, f, 1, 0.3, 0.05));
+      return;
+    }
+    const out = this.panner(CAFE_MACHINE, 1.4, 1);
+    out.connect(this.ambience);
+    if (kind === 'espresso') {
+      // The grinder's buzz, then the shot, then the steam wand hissing into the milk.
+      const motor = ctx.createOscillator();
+      motor.type = 'sawtooth';
+      motor.frequency.setValueAtTime(90, t0);
+      motor.frequency.linearRampToValueAtTime(125, t0 + 0.2);
+      const g = ctx.createGain();
+      envelope(g.gain, t0, [
+        [0.05, 0.05],
+        [0.7, 0.05],
+        [0.8, 0],
+      ]);
+      motor.connect(biquad(ctx, 'lowpass', 1000, 0.8)).connect(g).connect(out);
+      motor.start(t0);
+      motor.stop(t0 + 0.85);
+      this.hiss(out, t0 + 0.9, 380, 0.9, [
+        [0.1, 0.08],
+        [1.1, 0.07],
+        [1.3, 0],
+      ]);
+      this.hiss(out, t0 + 2.3, 5200, 0.6, [
+        [0.05, 0.16],
+        [1.2, 0.12],
+        [1.6, 0.03],
+        [1.8, 0],
+      ]);
+      return;
+    }
+    if (kind === 'pour') {
+      this.hiss(out, t0, 1600, 1.4, [
+        [0.05, 0.08],
+        [0.9, 0.06],
+        [1.1, 0],
+      ]);
+      return;
+    }
+    // A plate on the counter: a china clink.
+    [2100, 3300].forEach((f, i) => this.blip(out, t0 + i * 0.03, f, 0.98, 0.18, 0.07, 'triangle'));
   }
 
   // ---- The racing rig (fork, see ui/rig.ts) -----------------------------------------------------
@@ -2100,6 +2220,63 @@ export class OfficeSound {
           const len = i === 3 ? 0.8 : 0.18;
           this.blip(out, when, f, 1, len, 0.1, 'triangle');
           this.blip(out, when, f * 2, 1, len * 0.7, 0.03);
+        });
+        break;
+    }
+  }
+
+  // ---- flrnoh fork: padel in the hall (hall/padel.ts) --------------------------------------------
+
+  /** A padel ball off a racket, the floor, the glass or the fence, the net, and the umpire's chimes: quiet from far away. */
+  padel(kind: 'hit' | 'smash' | 'serve' | 'bounce' | 'glass' | 'fence' | 'net' | 'point' | 'fault' | 'game' | 'win', at: Pos) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.count(`padel-${kind}`);
+    const out = this.panner(at, 2, 1.6);
+    out.connect(this.ambience);
+    const t0 = ctx.currentTime + 0.005;
+    switch (kind) {
+      case 'hit':
+      case 'serve':
+        // The hollow pock of a padel racket.
+        this.blip(out, t0, rand(620, 760), 0.55, 0.06, kind === 'serve' ? 0.12 : 0.18, 'triangle');
+        this.play(pick(this.buf.steps), { gain: 0.22, rate: 2.5, dest: out });
+        break;
+      case 'smash':
+        this.blip(out, t0, rand(420, 500), 0.5, 0.08, 0.24, 'triangle');
+        this.play(pick(this.buf.steps), { gain: 0.4, rate: 1.9, dest: out });
+        break;
+      case 'bounce':
+        this.blip(out, t0, rand(260, 320), 0.6, 0.05, 0.1, 'triangle');
+        break;
+      case 'glass':
+        // A knock on the glass: low thump and a short ring.
+        this.blip(out, t0, rand(140, 170), 0.7, 0.12, 0.2, 'sine');
+        this.clink(out, t0, rand(1900, 2300), 0.035);
+        break;
+      case 'fence':
+        // The wire rattles.
+        for (let i = 0; i < 5; i++) this.clink(out, t0 + i * 0.03 + rand(0, 0.015), rand(2600, 3600), 0.03 * (1 - i / 6));
+        this.play(pick(this.buf.steps), { gain: 0.12, rate: 3, dest: out });
+        break;
+      case 'net':
+        this.play(pick(this.buf.steps), { gain: 0.16, rate: 1.6, dest: out });
+        break;
+      case 'point':
+        [784, 988].forEach((f, i) => this.blip(out, t0 + i * 0.1, f, 1, 0.18, 0.06, 'triangle'));
+        break;
+      case 'fault':
+        [330, 262].forEach((f, i) => this.blip(out, t0 + i * 0.13, f, 1, 0.16, 0.05, 'square'));
+        break;
+      case 'game':
+        [659, 784, 1047].forEach((f, i) => this.blip(out, t0 + i * 0.11, f, 1, i === 2 ? 0.4 : 0.14, 0.07, 'triangle'));
+        break;
+      case 'win':
+        [523, 659, 784, 1047].forEach((f, i) => {
+          const when = t0 + 0.1 + i * 0.12;
+          const len = i === 3 ? 0.8 : 0.18;
+          this.blip(out, when, f, 1, len, 0.08, 'triangle');
+          this.blip(out, when, f * 2, 1, len * 0.7, 0.025);
         });
         break;
     }
