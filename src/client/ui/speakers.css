@@ -1,0 +1,7 @@
+/* flrnoh fork: the speakers' row in the jukebox's window (speakers.ts). */
+.jb-speakers-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.jb-speakers-label { font-weight: 700; font-size: 14px; }
+.jb-speakers.seg { gap: 4px; }
+.jb-speakers .btn { min-width: 44px; padding: 4px 10px; font-size: 13px; letter-spacing: -1px; }
+.jb-speakers.muted .btn { opacity: .45; }
+.jb-speakers-row > .btn { margin-left: auto; padding: 4px 10px; font-size: 13px; }

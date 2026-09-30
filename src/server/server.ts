@@ -2428,6 +2428,14 @@ export async function startServer(cfg: Config) {
         toNeighbors(c, { t: 'cabinet.frame', frame }, true);
         break;
       }
+      case 'jukebox.speakers': {
+        // flrnoh fork: the speakers all over the floor (client/speakers.ts); guests can't (guests.ts).
+        const floor = here();
+        if (!floor || !floor.jukebox.setSpeakers(msg.on === true)) break;
+        jukeboxChanged(floor);
+        toastFloor(floor, msg.on === true ? `🔊 ${who} switched the speakers on` : `🔈 ${who} switched the speakers off`);
+        break;
+      }
       case 'jukebox.stop': {
         const floor = here();
         if (!floor || !floor.jukebox.stop(who)) break;

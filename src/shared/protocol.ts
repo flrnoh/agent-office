@@ -1254,6 +1254,8 @@ export type ClientMsg =
   /** On to the next tune. */
   | { t: 'jukebox.skip' }
   | { t: 'jukebox.stop' }
+  /** flrnoh fork: switch the speakers all over your floor on or off. */
+  | { t: 'jukebox.speakers'; on: boolean }
   /**
    * Step up to the arcade cabinet on your floor to carry on with `game` (one the office started for
    * you), or to start a new game, even while you're at it; the office answers with `cabinet`, naming
