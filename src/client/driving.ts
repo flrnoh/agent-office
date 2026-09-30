@@ -1,4 +1,4 @@
-import { CAR, SEATS, carFits, carPoint, drive, onPavement, type Box, type CarPose, type CarSeat, type Pedals } from '../shared/garage';
+import { CAR, carFits, carPoint, drive, onPavement, seatsOf, tuningOf, type Box, type CarPose, type CarSeat, type Pedals } from '../shared/garage';
 import { LOOP_PAVED, nearLoop } from '../shared/scenic';
 import type { PlayerController } from './player';
 import type { Fleet } from './world/cars';
@@ -94,7 +94,7 @@ export class Driver {
     if (car === null || seat === null) return null;
     const pose = this.fleet.cars[car].pose;
     const y = this.fleet.seatAt(car, seat)!.y;
-    const s = SEATS[seat];
+    const s = seatsOf(car)[seat];
     // Far enough out to clear the car's boxes at any angle (turned, they stick out past its sides).
     const out = CAR.width / 2 + 0.8;
     const side = Math.sign(s.x);
@@ -161,7 +161,7 @@ export class Driver {
       };
       this.gas = pedals.gas;
       const from = this.fleet.cars[car].pose;
-      const pose = this.move(from, pedals, dt, this.fleet.solids(car, { x: from.x, z: from.z, r: CAR.length + Math.abs(from.speed) * dt + 1 }));
+      const pose = this.move(car, from, pedals, dt, this.fleet.solids(car, { x: from.x, z: from.z, r: CAR.length + Math.abs(from.speed) * dt + 1 }));
       this.fleet.place(car, pose);
       this.send(car, pose);
     }
@@ -173,14 +173,14 @@ export class Driver {
    * it, the car slides along it (along the scenic loop's edge, the way the road curves); head on,
    * it bounces back off.
    */
-  private move(from: CarPose, pedals: Pedals, dt: number, solids: Box[]): CarPose {
+  private move(car: number, from: CarPose, pedals: Pedals, dt: number, solids: Box[]): CarPose {
     const n = Math.max(1, Math.ceil((Math.abs(from.speed) * dt) / STEP));
     const h = dt / n;
     // Already in something (someone parked on top of you): drive out of it any way you like.
     const stuck = !carFits(from, solids);
     let pose = from;
     for (let i = 0; i < n; i++) {
-      const next = drive(pose, pedals, h);
+      const next = drive(pose, pedals, h, tuningOf(car));
       if (stuck ? onPavement(next) : carFits(next, solids)) {
         pose = next;
         continue;

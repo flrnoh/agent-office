@@ -10,6 +10,7 @@
  */
 import { CABINET, DESKS, DJ_BOOTH, FLOOR, GONG, JUKEBOX, WINDOWS as OPENINGS, inWing } from '../shared/layout';
 import type { GongWhy } from '../shared/protocol';
+import type { CarKind } from '../shared/garage';
 import { STREAM } from '../shared/jukebox';
 import { TunePlayer } from './music';
 import { DjPlayer } from './dnb';
@@ -906,10 +907,12 @@ export class OfficeSound {
     return { saw, sub, tone, gain, pan, born: now };
   }
 
-  /** A car's horn: two notes a third apart, a Lambo's higher than a Ferrari's. */
-  honk(at: Pos, high: boolean) {
+  /** A car's horn: two notes a third apart, a Lambo's higher than a Ferrari's; the Bulli's is its own. */
+  honk(at: Pos, kind: CarKind) {
     const ctx = this.ctx;
     if (!ctx) return;
+    if (kind === 'bulli') return this.bulliHorn(at); // flrnoh fork
+    const high = kind === 'lambo';
     this.count('honk');
     const out = this.panner(at, 4, 0.9);
     out.connect(this.ambience);
@@ -930,6 +933,52 @@ export class OfficeSound {
       o.start(t0);
       o.stop(t0 + 0.55);
     }
+  }
+
+  // ---- flrnoh fork: Flogge's Bulli ------------------------------------------------------------------
+
+  /**
+   * The Bulli's horn: an old electric one, a single buzzy, slightly sour note (a reed rattling on a
+   * coil, not a chord), twice, "möp möp", with a wobble in it as the contact chatters.
+   */
+  private bulliHorn(at: Pos) {
+    const ctx = this.ctx!;
+    this.count('honk');
+    const out = this.panner(at, 4, 0.9);
+    out.connect(this.ambience);
+    const t0 = ctx.currentTime + 0.005;
+    const tone = biquad(ctx, 'bandpass', 900, 1.4);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t0);
+    for (const [start, len] of [
+      [0, 0.17],
+      [0.24, 0.3],
+    ]) {
+      g.gain.setValueAtTime(0, t0 + start);
+      g.gain.linearRampToValueAtTime(0.16, t0 + start + 0.015);
+      g.gain.setValueAtTime(0.14, t0 + start + len - 0.03);
+      g.gain.linearRampToValueAtTime(0, t0 + start + len);
+    }
+    tone.connect(g).connect(out);
+    const wobble = ctx.createOscillator();
+    wobble.frequency.value = 23;
+    const depth = ctx.createGain();
+    depth.gain.value = 6;
+    wobble.connect(depth);
+    for (const [f, type] of [
+      [311, 'sawtooth'],
+      [318, 'square'],
+    ] as const) {
+      const o = ctx.createOscillator();
+      o.type = type;
+      o.frequency.value = f;
+      depth.connect(o.frequency);
+      o.connect(tone);
+      o.start(t0);
+      o.stop(t0 + 0.6);
+    }
+    wobble.start(t0);
+    wobble.stop(t0 + 0.6);
   }
 
   /** A car door shutting behind someone getting in or out. */

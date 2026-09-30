@@ -811,6 +811,8 @@ export interface Me {
   admin: boolean;
   /** Only watches: no typing into terminals, no hiring, no GitHub, no settings. */
   guest?: boolean;
+  /** flrnoh fork: holds the keys to Flogge's Bulli, so may drive it (server/carkeys.ts). */
+  bulli?: boolean;
 }
 
 /** What someone signs in to for their own workers: Claude Code, and the GitHub CLI. */
