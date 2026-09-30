@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 import { CASINO_TABLES, MAX_BET, MIN_BET, START_CHIPS, validBet, type CasinoClientMsg, type CasinoKind, type CasinoServerMsg, type CasinoTableDef } from '../../shared/casino.js';
+import { Blackjack } from './blackjack.js';
 import type { CasinoContext, CasinoGame, Seated } from './game.js';
 import { SlotMachine } from './slots.js';
 import { ComingSoon } from './soon.js';
@@ -33,7 +34,7 @@ export const GAMES: Record<CasinoKind, (t: CasinoTableDef) => CasinoGame> = {
 
   roulette: (t) => new ComingSoon(t.id, t.kind, t.seats),
 
-  blackjack: (t) => new ComingSoon(t.id, t.kind, t.seats),
+  blackjack: (t) => new Blackjack(t.id, t.seats),
 
   poker: (t) => new ComingSoon(t.id, t.kind, t.seats),
 };
