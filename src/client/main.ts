@@ -32,6 +32,7 @@ import { GolfBalls, PIN_DISTANCE, TEE_BALL, fly, lieText, pinText, type Flight, 
 import { Golfer } from './golf';
 import { Thrower } from './throwing';
 import { TableGames } from './tablegames/play'; // fork: games on the roof
+import { PadelPlay } from './hall/padel'; // fork: padel in the hall
 import { ROUND, score, targetFrame, type BarGame, type Score, type Toss } from '../shared/bargames';
 import { Hands } from './world/hands';
 import { Basketball, IN_HANDS } from './world/hoop';
@@ -669,6 +670,7 @@ const thrower = new Thrower(player, me, camera, canvas, {
 
 // Fork: the pool table, the kicker, air hockey and table tennis on the roof (see tablegames/).
 const tables = new TableGames({ net, camera, canvas, player, sound, view: () => roof?.tables ?? null });
+const padel = new PadelPlay({ net, camera, canvas, player, sound }); // fork: padel in the hall (hall/padel.ts)
 
 /** Who's at a game's line up here already, if anyone. */
 function lineTaken(game: BarGame): string | null {
@@ -3140,6 +3142,7 @@ function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   else if (target.kind === 'golf') teeOff();
   else if (target.kind === 'darts' || target.kind === 'axe') stepUp(target.kind);
   else if (target.kind === 'table' && target.table) tables.use(target.table); // fork
+  else if (target.kind === 'padel' && target.court) padel.use(target.court); // fork: padel in the hall
   else if (target.kind === 'ball') takeBall();
   else if (target.kind === 'telescope') telescope.enter();
   else if (target.kind === 'car' && target.car !== undefined) getIn(target.car);
@@ -3946,6 +3949,11 @@ function hintFor(it: Interactable): Hint {
       const t = tables.hint(it.table!);
       return { k: `${t.aside}|${t.action}`, parts: [title(t.title), aside(t.aside), key('E', t.action)] };
     }
+    case 'padel': {
+      // Fork: padel in the hall.
+      const t = padel.hint(it.court!);
+      return { k: `${t.aside}|${t.action}`, parts: [title(t.title), aside(t.aside), key('E', t.action)] };
+    }
     case 'golf': {
       const other = teeTaken();
       if (other) return { k: `taken|${other}`, parts: [title('⛳ Golf tee'), aside(`🏌️ ${clip(other, 24)} is teeing off`)] };
@@ -4593,7 +4601,7 @@ document.addEventListener('pointerlockchange', () => {
 const raycaster = new THREE.Raycaster();
 const CROSSHAIR = new THREE.Vector2(0, 0);
 /** How close (meters from your eyes) you must be to use each kind of thing. */
-const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3, rig: 4, table: 4, casino: 4, 'casino-table': 3.5 };
+const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3, rig: 4, table: 4, casino: 4, 'casino-table': 3.5, padel: 5 };
 const eye = new THREE.Vector3();
 
 /** What the ray through `ndc` lands on first, whether it is within reach (plus `slack` meters), and where it hit. */
@@ -4979,6 +4987,7 @@ function frame(ts?: number) {
   rig.update(camera, dt);
   me.wheel = player.seat?.seatId === RIG_SEAT;
   tables.update(dt); // fork: the table games on the roof, and the camera at one
+  padel.update(dt); // fork: padel in the hall, and the camera on a court
   // Pulled away from the tee (sat down, off up the ladder, into the elevator): the club goes back.
   if (golf.active && (trip || hanger.active || climber.active || player.seat || upTop)) golf.stop();
   golf.update(dt);
@@ -4999,7 +5008,7 @@ function frame(ts?: number) {
   // In first person you are the camera; in third, hide yourself when it's zoomed in right behind your head.
   // At the tee the camera's behind the ball, and you're the one holding the club.
   // So is the camera over your shoulder at the dart board or the axe lane.
-  me.root.visible = !tables.zoomed && (golf.active || thrower.active || (!firstPerson && camera.position.distanceTo(headPos.set(player.pos.x, player.pos.y + 1.3, player.pos.z)) > 1.5));
+  me.root.visible = !tables.zoomed && !padel.zoomed && (golf.active || thrower.active || (!firstPerson && camera.position.distanceTo(headPos.set(player.pos.x, player.pos.y + 1.3, player.pos.z)) > 1.5));
   // In a car, your hands are on the wheel, out of sight.
   if (firstPerson && !golf.active && !thrower.active && !driver.active) hands.update(dt, t, { yaw: player.camYaw, pitch: player.lookPitch, walkPhase: player.walkPhase, walking: player.moving && player.grounded, airborne: !player.grounded, jitter: player.jitter, grip });
   // Down a pole: the view widens and the edges streak past.
@@ -5065,6 +5074,7 @@ function frame(ts?: number) {
     if (r.grip === 'pole' && !holding && Math.abs(p.y) < 0.2) sound.poleLanding(6, { x: pos.x, y: 0.5, z: pos.z });
     r.grip = holding;
     r.person.setGrip(holding);
+    r.person.root.visible = !padel.hides(id); // fork: on a padel court, the court draws them
     const walking = !sat && p.moving && !airborne;
     r.person.update(dt, t, walking || (holding === 'ladder' && p.moving), airborne && !holding && Math.abs(pos.y - r.target.y) > 0.01);
     // Their walk cycle takes a step every π/11 seconds.
@@ -5205,7 +5215,7 @@ function frame(ts?: number) {
   tvStreams.frame(tvHere && !tvStream ? { camera, screen: office.tvScreen, boxes: world.colliders } : null);
   pointToWaiting(now);
   // Not while the camera's up at the boss's monitor or the arcade, where they'd cover the screen.
-  if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !tables.zoomed && !golf.active && !thrower.active && !driver.active) {
+  if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !tables.zoomed && !padel.zoomed && !golf.active && !thrower.active && !driver.active) {
     // Hands go on top of everything, so they never clip into a desk you walk up to. They have
     // lights of their own, turned down to match wherever you're standing.
     renderer.clearDepth();
@@ -5287,7 +5297,7 @@ void whoami().then(() => {
 });
 
 // Debug handle for quick checks from the console / headless screenshots.
-(window as any).__office = { world: () => world, court: () => court, sendoffs, jail, plan, applyMap, roof: () => roof, booze, dj: () => djFrame(djAt()), store, player, caffeine, camera, arcade, cabinet, rig, tables, workerViews, departures, arrivals, scene, net, renderer, hands, me, remotes, settings, gallery, hanger, office, ride, switchFloor, climber, driver, getIn, getOut, golf, balls, thrower, elevatorPanelOpen, confetti, dog, sky, holiday, carried: () => carrying, emoteWheel, emote, ball };
+(window as any).__office = { world: () => world, court: () => court, sendoffs, jail, plan, applyMap, roof: () => roof, booze, dj: () => djFrame(djAt()), store, player, caffeine, camera, arcade, cabinet, rig, tables, padel, workerViews, departures, arrivals, scene, net, renderer, hands, me, remotes, settings, gallery, hanger, office, ride, switchFloor, climber, driver, getIn, getOut, golf, balls, thrower, elevatorPanelOpen, confetti, dog, sky, holiday, carried: () => carrying, emoteWheel, emote, ball };
 (window as any).__voice = voice;
 (window as any).__sound = sound;
 (window as any).__tv = tvStreams; // fork: the TV's stream (client/tv.ts)
