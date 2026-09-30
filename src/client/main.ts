@@ -35,7 +35,8 @@ import { ROUND, score, targetFrame, type BarGame, type Score, type Toss } from '
 import { Hands } from './world/hands';
 import { Basketball, IN_HANDS } from './world/hoop';
 import { HOOP, SWEET, idealSpeed, lookAtRim, meter, shotSpeed, throwPitch, tossSpeed, underCeiling } from '../shared/hoop';
-import { CARS, SEAT_HIPS, type CarSeat } from '../shared/garage';
+import { CARS, hipsOf, type CarDef, type CarSeat } from '../shared/garage';
+import { BULLI_REFUSED, mayTake } from '../shared/bulli'; // flrnoh fork: Flogge's Bulli
 import { PLACES, placeAt as loopPlace } from '../shared/scenic';
 import { LapTimer, lapTime } from './laps';
 import { Smoke } from './world/smoke';
@@ -803,20 +804,26 @@ function carAt(i: number): { x: number; y: number; z: number } {
   return { x: p.x, y: player.street + 0.6, z: p.z };
 }
 
-/** E at a car: behind the wheel if nobody's driving it, else beside whoever is. */
+/** flrnoh fork: a car's icon in hints (the Bulli's a van), and whether you may take its wheel. */
+const carIcon = (def: CarDef) => (def.kind === 'bulli' ? '🚐' : '🏎️');
+const mayDrive = (def: CarDef) => mayTake(def, 'driver', !!store.me.bulli);
+
+/** E at a car: behind the wheel if nobody's driving it (and you may), else beside whoever is. */
 function getIn(i: number) {
   const c = store.cars[i];
   const def = CARS[i];
   if (trip || climber.active || driver.active || !c || !def) return;
   if (carrying) return toast('🗂️ Your hands are full: put the card back first (Q)', 'warn');
   if (holdingBall()) return toast('🏀 Put the ball down first (Q)', 'warn');
-  const seat: CarSeat | null = !c.driver ? 'driver' : !c.passenger ? 'passenger' : null;
-  if (!seat) return toast(`🏎️ The ${def.name} is full`, 'warn');
+  const keys = mayDrive(def);
+  const seat: CarSeat | null = !c.driver && keys ? 'driver' : !c.passenger ? 'passenger' : null;
+  if (!seat) return toast(keys || c.driver ? `${carIcon(def)} The ${def.name} is full` : BULLI_REFUSED, 'warn');
+  if (!keys && !c.driver) toast(`${BULLI_REFUSED} (you can wait in the passenger seat)`, 'info');
   if (player.seat) standUp();
   if (hanger.active) hanger.cancel();
   if (walkingTo) stopWalking();
   driver.enter(i, seat);
-  me.sit(SEAT_HIPS);
+  me.sit(hipsOf(i));
   carPending++;
   net.send({ t: 'car.enter', car: i, seat });
   sound.carDoor(carAt(i));
@@ -858,7 +865,7 @@ function honk() {
   const now = performance.now();
   if (i === null || now - honkedAt < 300) return;
   honkedAt = now;
-  sound.honk(carAt(i), CARS[i].kind === 'lambo');
+  sound.honk(carAt(i), CARS[i].kind);
   net.send({ t: 'car.honk' });
 }
 
@@ -899,8 +906,9 @@ function carNews(answer: boolean) {
   if (driver.active) {
     if (mine?.car === driver.car && mine.seat === driver.seat) return;
     const who = store.cars[driver.car!]?.[driver.seat!];
+    const refused = driver.driving && !mayDrive(CARS[driver.car!]); // flrnoh fork: the office said why
     getOut(true);
-    toast(`🏎️ ${(who && store.peers.get(who)?.name) || 'Someone'} got in there first`, 'warn');
+    if (!refused) toast(`🏎️ ${(who && store.peers.get(who)?.name) || 'Someone'} got in there first`, 'warn');
   } else if (mine) {
     // You got out while it was answering something else of yours.
     carPending++;
@@ -950,11 +958,11 @@ function renderDriveHint(el: HTMLElement) {
     const lap = done ? ` · 🏁 ${lapTime(done.time)}${done.best ? ' best!' : ''}` : running !== null ? ` · ⏱ ${lapTime(running)}` : '';
     hint = {
       k: `drive|${kmh}|${other}|${where}|${lap}`,
-      parts: [h('span.title', {}, `🏎️ ${CARS[i].name}`), aside(`${kmh} km/h${where}${lap}${other ? ` · with ${clip(other, 20)}` : ''}`), key('W A S D', 'Drive'), key('Space', 'Brake'), key('H', 'Honk'), key('E', 'Get out')],
+      parts: [h('span.title', {}, `${carIcon(CARS[i])} ${CARS[i].name}`), aside(`${kmh} km/h${where}${lap}${other ? ` · with ${clip(other, 20)}` : ''}`), key('W A S D', 'Drive'), key('Space', 'Brake'), key('H', 'Honk'), key('E', 'Get out')],
     };
   } else {
     const at = name(c?.driver);
-    hint = { k: `ride|${at}|${where}`, parts: [h('span.title', {}, `🏎️ ${CARS[i].name}`), aside(`${at ? `${clip(at, 24)} is driving` : 'nobody at the wheel'}${where}`), key('H', 'Honk'), key('E', 'Get out')] };
+    hint = { k: `ride|${at}|${where}`, parts: [h('span.title', {}, `${carIcon(CARS[i])} ${CARS[i].name}`), aside(`${at ? `${clip(at, 24)} is driving` : 'nobody at the wheel'}${where}`), key('H', 'Honk'), key('E', 'Get out')] };
   }
   const k = `car|${hint.k}`;
   if (k === hintKey) return;
@@ -1196,7 +1204,7 @@ net.onMessage((msg) => {
       carNews(!!msg.answer);
       break;
     case 'car.honk':
-      if (msg.car >= 0 && msg.car < CARS.length) sound.honk(carAt(msg.car), CARS[msg.car].kind === 'lambo');
+      if (msg.car >= 0 && msg.car < CARS.length) sound.honk(carAt(msg.car), CARS[msg.car].kind);
       break;
     case 'floors':
       noticeWaiting();
@@ -1905,7 +1913,7 @@ function syncPeers() {
     r.person.holdDrink(peer.drink ? (DRINK_BY_ID.get(peer.drink) ?? null) : null);
     r.person.carry(peer.carrying);
     r.person.read(!!peer.reading);
-    r.person.sit(store.carOf(id) ? SEAT_HIPS : peer.seat ? (seatOn(plan(), peer.seat)?.hips ?? null) : null);
+    r.person.sit(store.carOf(id) ? hipsOf(store.carOf(id)!.car) : peer.seat ? (seatOn(plan(), peer.seat)?.hips ?? null) : null);
     r.person.setDoing(whereabouts(peer, store.carOf(id), plan()));
   }
   for (const [id, r] of remotes) {
@@ -3896,10 +3904,13 @@ function hintFor(it: Interactable): Hint {
       if (!c || !def) return { k: '', parts: [] };
       const name = (id?: string) => (id ? clip(store.peers.get(id)?.name ?? 'Someone', 20) : '');
       const [at, beside] = [name(c.driver), name(c.passenger)];
-      const k = `${it.car}|${at}|${beside}`;
-      if (!at) return { k, parts: [title(`🏎️ ${def.name}`), aside(beside ? `${beside} is waiting in it` : 'keys in the ignition'), key('E', 'Drive it')] };
-      if (!beside) return { k, parts: [title(`🏎️ ${def.name}`), aside(`${at} is driving`), key('E', 'Hop in')] };
-      return { k, parts: [title(`🏎️ ${def.name}`), aside(`${at} and ${beside} · full`)] };
+      const keys = mayDrive(def);
+      const k = `${it.car}|${at}|${beside}|${keys}`;
+      const icon = carIcon(def);
+      if (!at && !keys) return { k, parts: [title(`${icon} ${def.name}`), aside(beside ? `${beside} is waiting in it` : 'ask Flogge for a ride'), ...(beside ? [] : [key('E', 'Sit in the passenger seat')])] };
+      if (!at) return { k, parts: [title(`${icon} ${def.name}`), aside(beside ? `${beside} is waiting in it` : 'keys in the ignition'), key('E', 'Drive it')] };
+      if (!beside) return { k, parts: [title(`${icon} ${def.name}`), aside(`${at} is driving`), key('E', 'Hop in')] };
+      return { k, parts: [title(`${icon} ${def.name}`), aside(`${at} and ${beside} · full`)] };
     }
     case 'expand': {
       const level = store.floorPlan.wing;

@@ -54,6 +54,9 @@ import { PROMPTS, PROMPT_MAX, isPromptId } from '../shared/prompts.js';
 import { ROOF } from '../shared/rooftop.js';
 import { heldDrink, keepsHeld } from './held.js';
 import { DjBooth, djMessage } from './djset.js';
+import { CarKeys } from './carkeys.js'; // flrnoh fork: the Bulli's keys
+import { BULLI_REFUSED, mayTake } from '../shared/bulli.js';
+import { CARS } from '../shared/garage.js';
 import { isBarGame, tossOk, type BarGame } from '../shared/bargames.js';
 
 const MIME: Record<string, string> = {
@@ -86,6 +89,8 @@ interface Client {
   admin: boolean;
   /** Whether this person was last told they're a guest, who only watches (see GUEST_MSGS). */
   guest: boolean;
+  /** flrnoh fork: whether they were last told they hold the Bulli's keys (see Me.bulli). */
+  bulli: boolean;
   /** When a guest was last told they can only watch, so a held key doesn't flood them. */
   lastGuestNoteAt: number;
   /** Signed out while connected; whatever it still sends is dropped until the socket closes. */
@@ -524,6 +529,7 @@ export async function startServer(cfg: Config) {
   // What the building looks like inside: the office, the castle, or a map of your own (⚙️ Settings).
   const maps = new Maps(cfg.dataDir);
   const djBooth = new DjBooth(cfg.dataDir); // flrnoh fork: DJ sets on the roof
+  const carKeys = new CarKeys(cfg.dataDir); // flrnoh fork: who drives the Bulli
   /**
    * Tells everyone about the maps, after a pick or a read of the folder. When the map everyone's on
    * changed (`was` before), everyone's off their seats (each browser forgets them too, see the
@@ -1138,11 +1144,13 @@ export async function startServer(cfg: Config) {
   /** A picture hanging on some floor's wall: the one thing a guest may fetch through the image proxy. */
   const onAWall = (imageUrl: string) => [...floors.values()].some((f) => f.decor.list().some((d) => d.url === imageUrl));
 
+  /** flrnoh fork: whether they hold the Bulli's keys (server/carkeys.ts). */
+  const keysOf = (accountId: string | undefined, admin: boolean) => (carKeys.mayDrive(accountId, admin) ? { bulli: true } : {});
   /** Who a connection is: its account's current name and role, or an admin guest on the shared password. */
   const meOf = (accountId: string | undefined): Me => {
     const a = accounts.get(accountId);
-    if (!a) return { admin: !accountId };
-    return { account: { name: a.name, role: a.role }, admin: a.role === 'admin', ...(a.role === 'guest' ? { guest: true } : {}) };
+    if (!a) return { admin: !accountId, ...keysOf(accountId, !accountId) };
+    return { account: { name: a.name, role: a.role }, admin: a.role === 'admin', ...(a.role === 'guest' ? { guest: true } : {}), ...keysOf(a.id, a.role === 'admin') };
   };
   /** Still signed in: the account wasn't revoked, and the shared password wasn't switched off. */
   const stillIn = (c: Client) => (c.accountId ? !!accounts.get(c.accountId) : accounts.sharedPassword);
@@ -1161,8 +1169,9 @@ export async function startServer(cfg: Config) {
         continue;
       }
       const me = meOf(c.accountId);
-      if (me.admin !== c.admin || !!me.guest !== c.guest) {
+      if (me.admin !== c.admin || !!me.guest !== c.guest || !!me.bulli !== c.bulli) {
         c.admin = me.admin;
+        c.bulli = !!me.bulli;
         if (!!me.guest !== c.guest) {
           c.guest = !!me.guest;
           // Made a guest while at a keyboard: they keep watching, but stop typing.
@@ -1198,6 +1207,7 @@ export async function startServer(cfg: Config) {
       accountId: account?.id,
       admin: me.admin,
       guest: !!me.guest,
+      bulli: !!me.bulli,
       lastGuestNoteAt: 0,
       attached: new Set(),
       stale: new Set(),
@@ -1714,7 +1724,11 @@ export async function startServer(cfg: Config) {
       case 'car.leave': {
         const floor = floorOf(c);
         if (!floor) break;
-        const changed = msg.t === 'car.enter' ? floor.garage.enter(c.id, Math.trunc(num(msg.car)), msg.seat) : floor.garage.leave(c.id);
+        const car = msg.t === 'car.enter' ? Math.trunc(num(msg.car)) : -1;
+        // flrnoh fork: an owned car's wheel only for its keyholders (see server/carkeys.ts).
+        const refused = msg.t === 'car.enter' && !mayTake(CARS[car], msg.seat, carKeys.mayDrive(c.accountId, meOf(c.accountId).admin));
+        if (refused) warn(c, BULLI_REFUSED);
+        const changed = refused ? false : msg.t === 'car.enter' ? floor.garage.enter(c.id, car, msg.seat) : floor.garage.leave(c.id);
         // They hear back either way: someone who didn't get in (someone beat them to the seat) learns who did.
         if (changed) toNeighbors(c, { t: 'cars', cars: floor.garage.state() });
         sendTo(c, { t: 'cars', cars: floor.garage.state(), answer: true });
@@ -2560,7 +2574,7 @@ export async function startServer(cfg: Config) {
       }
       if (!c.out) {
         const me = meOf(c.accountId);
-        if (!stillIn(c) || c.admin !== me.admin || c.guest !== !!me.guest) accountsMoved = true;
+        if (!stillIn(c) || c.admin !== me.admin || c.guest !== !!me.guest || c.bulli !== !!me.bulli) accountsMoved = true;
       }
       c.isAlive = false;
       c.ws.ping();

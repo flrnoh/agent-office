@@ -14,6 +14,10 @@ if (argv[0] === 'accounts') {
   const { accountsCommand } = await import('./accounts.js');
   process.exit(accountsCommand(argv.slice(1)));
 }
+if (argv[0] === 'car') {
+  const { carCommand } = await import('./carkeys.js'); // flrnoh fork: who drives the Bulli
+  process.exit(carCommand(argv.slice(1)));
+}
 if (argv[0] === 'setup') {
   const { setupCommand } = await import('./setup.js');
   process.exit(await setupCommand(argv.slice(1)));

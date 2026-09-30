@@ -52,4 +52,10 @@ agent-office accounts [list | invite [name] [--admin|--guest] | revoke <name> | 
 
   Invite, list and revoke people's own accounts, and switch the shared password
   off or on. Works while the office runs.
+
+agent-office car [keys <name>... | keys --admins] [-d <dir>]
+
+  Who may drive Flogge's Bulli (this fork's own car in the garage): with no
+  names, every admin and the shared password; named, only those accounts.
+  Anyone may ride along. Works while the office runs.
 ```

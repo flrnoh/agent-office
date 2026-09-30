@@ -1,12 +1,13 @@
 import { FLOOR, ROAD, WALL_T } from './layout.js';
 import { STREET_END, onLoop } from './scenic.js';
+import { BULLI_DRIVE, BULLI_HEIGHT, BULLI_HIPS, BULLI_SEATS } from './bulli.js';
 
 // The Lambos and Ferraris in the garage, which anyone can drive: where they're parked, where you can
 // take them (the garage, the lots round it, the street and the scenic loop off either end of it), and
 // the arcade physics a driver's own page runs. Everyone else on the floor sees the car where its
 // driver says it is.
 
-export type CarKind = 'lambo' | 'ferrari';
+export type CarKind = 'lambo' | 'ferrari' | 'bulli';
 
 /** A car's footprint (nose to tail along its length), and how high its body and its roof come up. */
 export const CAR = { length: 4.6, width: 2, body: 0.82, roof: 1.12 } as const;
@@ -48,6 +49,10 @@ export interface CarDef {
   x: number;
   z: number;
   rotY: number;
+  /** flrnoh fork: only its keyholders take the wheel (server/carkeys.ts); anyone may ride along. */
+  owned?: boolean;
+  /** What its number plates say, front and back. */
+  plate?: string;
 }
 
 // Lambos nose-in along the back wall, Ferraris backed in facing the street, and one out front.
@@ -64,6 +69,8 @@ export const CARS: readonly CarDef[] = [
   { kind: 'ferrari', color: '#e5383b', name: 'Scarlet Ferrari', x: 14.4, z: FRONT, rotY: 0 },
   // Left out front, for everyone upstairs to look at.
   { kind: 'lambo', color: '#00b4d8', name: 'Blue Lambo', x: 9, z: 18.2, rotY: Math.PI / 2 },
+  // flrnoh fork: Flogge's own car, backed into the east corner by the back wall (see shared/bulli.ts).
+  { kind: 'bulli', color: '#2a9d8f', name: "Flogge's Bulli", x: 15.2, z: BACK, rotY: 0, owned: true, plate: 'FLOGGE' },
 ];
 
 export type CarSeat = 'driver' | 'passenger';
@@ -75,6 +82,21 @@ export type CarSeat = 'driver' | 'passenger';
  */
 export const SEATS: Record<CarSeat, { x: number; z: number }> = { driver: { x: 0.42, z: -0.5 }, passenger: { x: -0.42, z: -0.5 } };
 export const SEAT_HIPS = 0.45;
+
+/** The seats of car `car` (its place in CARS): the Bulli's are up front, and higher. */
+export function seatsOf(car: number): Record<CarSeat, { x: number; z: number }> {
+  return CARS[car]?.kind === 'bulli' ? BULLI_SEATS : SEATS;
+}
+
+/** How high your hips are, sitting in car `car`. */
+export function hipsOf(car: number): number {
+  return CARS[car]?.kind === 'bulli' ? BULLI_HIPS : SEAT_HIPS;
+}
+
+/** How high car `car` comes up: its body, and its roof (on, with nobody in it). */
+export function heightOf(car: number): { body: number; roof: number } {
+  return CARS[car]?.kind === 'bulli' ? BULLI_HEIGHT : CAR;
+}
 
 /** A car where it is and how it's going: `speed` in m/s along its nose (negative in reverse), `steer` the front wheels' angle (+ is left). */
 export interface CarPose {
@@ -103,7 +125,20 @@ export interface Pedals {
   brake: boolean;
 }
 
-export const DRIVE = {
+/** How a kind of car drives (see drive): DRIVE for the supercars, BULLI_DRIVE for the Bulli. */
+export interface DriveTuning {
+  top: number;
+  reverse: number;
+  accel: number;
+  reverseAccel: number;
+  brake: number;
+  coast: number;
+  wheelbase: number;
+  steer: number;
+  steerRate: number;
+}
+
+export const DRIVE: DriveTuning = {
   /** Flat out, forward and in reverse (m/s). */
   top: 20,
   reverse: 7,
@@ -118,31 +153,36 @@ export const DRIVE = {
   steer: 0.6,
   /** How fast they turn (radians a second). */
   steerRate: 2.8,
-} as const;
+};
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /** How far the front wheels can turn at `speed`. */
-export function steerLimit(speed: number): number {
-  return DRIVE.steer / (1 + Math.abs(speed) / 9);
+export function steerLimit(speed: number, t: DriveTuning = DRIVE): number {
+  return t.steer / (1 + Math.abs(speed) / 9);
+}
+
+/** How car `car` (its place in CARS) drives. */
+export function tuningOf(car: number): DriveTuning {
+  return CARS[car]?.kind === 'bulli' ? BULLI_DRIVE : DRIVE;
 }
 
 /** The car `dt` seconds on, with these pedals: a bicycle model, no sliding. */
-export function drive(p: CarPose, pedals: Pedals, dt: number): CarPose {
-  const want = clamp(pedals.turn, -1, 1) * steerLimit(p.speed);
-  const steer = p.steer + clamp(want - p.steer, -DRIVE.steerRate * dt, DRIVE.steerRate * dt);
+export function drive(p: CarPose, pedals: Pedals, dt: number, t: DriveTuning = DRIVE): CarPose {
+  const want = clamp(pedals.turn, -1, 1) * steerLimit(p.speed, t);
+  const steer = p.steer + clamp(want - p.steer, -t.steerRate * dt, t.steerRate * dt);
   let v = p.speed;
   const toward = (target: number, rate: number) => (v += clamp(target - v, -rate * dt, rate * dt));
   const gas = clamp(pedals.gas, -1, 1);
-  if (pedals.brake) toward(0, DRIVE.brake);
+  if (pedals.brake) toward(0, t.brake);
   else if (gas > 0) {
-    if (v < 0) toward(0, DRIVE.brake);
-    else v = Math.min(DRIVE.top, v + DRIVE.accel * gas * dt);
+    if (v < 0) toward(0, t.brake);
+    else v = Math.min(t.top, v + t.accel * gas * dt);
   } else if (gas < 0) {
-    if (v > 0) toward(0, DRIVE.brake);
-    else v = Math.max(-DRIVE.reverse, v + DRIVE.reverseAccel * gas * dt);
-  } else toward(0, DRIVE.coast);
-  const yaw = (v * Math.tan(steer)) / DRIVE.wheelbase;
+    if (v > 0) toward(0, t.brake);
+    else v = Math.max(-t.reverse, v + t.reverseAccel * gas * dt);
+  } else toward(0, t.coast);
+  const yaw = (v * Math.tan(steer)) / t.wheelbase;
   const mid = p.rotY + (yaw * dt) / 2;
   return {
     x: p.x + Math.sin(mid) * v * dt,

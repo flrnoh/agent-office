@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { CAR, CARS, SEATS, carPoint, type Box, type CarDef, type CarKind, type CarPose, type CarSeat, type CarState } from '../../shared/garage';
+import { CAR, CARS, SEATS, carPoint, heightOf, seatsOf, type Box, type CarDef, type CarKind, type CarPose, type CarSeat, type CarState } from '../../shared/garage';
 import { FLOOR, SLAB, STREET_Y, WALL_T } from '../../shared/layout';
 import type { Collider, Interactable } from './office';
 import { mergeByMaterial, mesh, toon } from './toon';
+import { bulli, bulliBay, wobble, type Sway } from './bulli'; // flrnoh fork: Flogge's Bulli
 
 const WIDTH = 1.9;
 const WHEEL_R = 0.36;
@@ -89,6 +90,8 @@ export interface CarModel {
   open: THREE.Object3D;
   /** The front wheels, which turn to steer. */
   wheels: THREE.Object3D[];
+  /** flrnoh fork: a body that rocks on soft springs (the Bulli's; see world/bulli.ts). */
+  sway?: Sway;
 }
 
 /**
@@ -218,7 +221,8 @@ export class Fleet {
     interactables: Interactable[],
   ) {
     this.cars = CARS.map((def, index) => {
-      const model = supercar(def.kind, def.color);
+      const model = def.kind === 'bulli' ? bulli(def) : supercar(def.kind, def.color);
+      if (def.kind === 'bulli') this.group.add(bulliBay(def));
       const interactable: Interactable = { kind: 'car', x: def.x, z: def.z, y: this.street, radius: 3.2, car: index };
       model.root.userData.interact = interactable;
       this.group.add(model.root);
@@ -278,6 +282,7 @@ export class Fleet {
       p.steer += (c.steer - p.steer) * k;
       this.show(v);
     }
+    for (const v of this.cars) if (v.sway) wobble(v.sway, v.pose, v.occupied, dt, now);
   }
 
   /** Every car straight to where the office says it is, not smoothed: a floor's cars as you arrive on it. */
@@ -302,7 +307,7 @@ export class Fleet {
   seatAt(i: number, seat: CarSeat): { x: number; y: number; z: number; rotY: number } | undefined {
     const v = this.cars[i];
     if (!v) return undefined;
-    const s = SEATS[seat];
+    const s = seatsOf(i)[seat];
     const at = carPoint(v.pose, s.x, s.z);
     return { x: at.x, y: this.street, z: at.z, rotY: v.pose.rotY };
   }
@@ -366,6 +371,7 @@ export class Fleet {
     for (const w of v.wheels) w.rotation.y = p.steer;
     const s = Math.abs(Math.sin(p.rotY));
     const c = Math.abs(Math.cos(p.rotY));
+    const tall = heightOf(v.index);
     const hx = CAR.width / 2 - 0.08;
     const len = (CAR.length - 0.16) / SLICES;
     // Along the body a slice at a time, each slice's box round it as turned.
@@ -373,13 +379,15 @@ export class Fleet {
       const mid = carPoint(p, 0, -CAR.length / 2 + 0.08 + len * (i + 0.5));
       const ex = c * hx + (s * len) / 2;
       const ez = s * hx + (c * len) / 2;
-      Object.assign(v.colliders[i], { minX: mid.x - ex, maxX: mid.x + ex, minZ: mid.z - ez, maxZ: mid.z + ez, bottom: this.street, top: this.street + CAR.body });
+      Object.assign(v.colliders[i], { minX: mid.x - ex, maxX: mid.x + ex, minZ: mid.z - ez, maxZ: mid.z + ez, bottom: this.street, top: this.street + tall.body });
     }
-    // The roof, over the cabin; with it off, only the body's there to stand on.
-    const roof = carPoint(p, 0, -0.6);
-    const rx = c * 0.6 + s * 0.7;
-    const rz = s * 0.6 + c * 0.7;
-    Object.assign(v.colliders[SLICES], { minX: roof.x - rx, maxX: roof.x + rx, minZ: roof.z - rz, maxZ: roof.z + rz, bottom: this.street, top: this.street + (v.occupied ? CAR.body : CAR.roof) });
+    // The roof, over the cabin (the Bulli's is all along it); with it off, only the body's there to stand on.
+    const van = v.def.kind === 'bulli';
+    const roof = carPoint(p, 0, van ? 0 : -0.6);
+    const [rw, rl] = van ? [0.8, 2.05] : [0.6, 0.7];
+    const rx = c * rw + s * rl;
+    const rz = s * rw + c * rl;
+    Object.assign(v.colliders[SLICES], { minX: roof.x - rx, maxX: roof.x + rx, minZ: roof.z - rz, maxZ: roof.z + rz, bottom: this.street, top: this.street + (v.occupied ? tall.body : tall.roof) });
     Object.assign(v.interactable, { x: p.x, z: p.z, y: this.street });
   }
 }

@@ -151,6 +151,27 @@ They're one PA, not a source per speaker (no piling up, no phasing): the tune go
   - `src/shared/protocol.ts`: the `jukebox.speakers` message. `src/server/server.ts`: its case (toast to the floor). `src/server/guests.ts`: `jukebox.speakers` is `TEAM_ONLY`.
   - `docs/features.md`: the speakers line.
 
+### Flogge's own car
+
+Florian's own car stands in the garage: **Flogge's Bulli**, a split-window camper van (teal below, cream above with the V down its nose, round headlights, whitewalls, a surfboard on the roof rack, FLOGGE on the plates front and back), backed into the east corner of the back wall under a sign of its own, with lines round its spot. Only its keyholders take the wheel; everyone else hears "That's Flogge's Bulli — ask him for a ride" and may sit in the passenger seat. The server enforces it at `car.enter`, whatever a page sends. It's slower and softer than the supercars (about 45 km/h flat out, gentle brakes, a slow big wheel), rocks on its springs, and its horn is an old buzzy "möp möp".
+
+Who holds the keys is set, not written in: `.agent-office/car-keys.json` lists account ids, set with `agent-office car keys <name>...` (`agent-office car` shows them, `agent-office car keys --admins` goes back to the default), picked up while the office runs. With nobody named, every admin (and the shared office password) holds them. Each page learns whether it may drive from `Me.bulli`.
+
+Driving somewhere comes next: `src/shared/destinations.ts` is where named places to drive to (the supermarket, first) go, with the steps for adding one: its own lot in `PAVEMENT` (or off the scenic loop), listed there, drawn, and named in the drive hint.
+
+- Own files: `src/shared/bulli.ts` (its driving, seats, heights, who may take which seat), `src/server/carkeys.ts` (the keys and the `agent-office car` command), `src/client/world/bulli.ts` (the van, its plates, its springs, its corner), `src/shared/destinations.ts`; `tests/bulli.test.ts`.
+- Hooks in upstream files:
+  - `src/shared/garage.ts`: `CarKind` has `'bulli'`, `CarDef.owned`/`plate`, the Bulli in `CARS` (last, so no other car's index moves), `DriveTuning`, `drive(..., t)`, `steerLimit(..., t)`, `tuningOf`, `seatsOf`, `hipsOf`, `heightOf`.
+  - `src/server/garage.ts`: `drive` clamps to the car's own `tuningOf`.
+  - `src/shared/protocol.ts`: `Me.bulli`.
+  - `src/server/server.ts`: `carKeys`, `keysOf` in `meOf`, `Client.bulli` (passed on like `admin`/`guest` in `accountsChanged` and the heartbeat), and the refusal in the `car.enter` case.
+  - `src/server/cli.ts`: the `car` command; `src/server/config.ts`: its line in the help.
+  - `src/client/world/cars.ts`: the Bulli's model and corner in `Fleet`, `CarModel.sway` and `wobble` in `update`, per-car seats and heights in `seatAt` and `show`.
+  - `src/client/driving.ts`: `tuningOf` and `seatsOf` for the car you're in.
+  - `src/client/main.ts`: `carIcon`, `mayDrive`, passenger seat for non-keyholders in `getIn`, `hipsOf`, the car hints, no "got in first" toast when refused; `sound.honk` takes the car's kind.
+  - `src/client/sound.ts`: `honk(at, kind)` and `bulliHorn`, in a section of their own.
+  - `src/client/ui/whereabouts.ts`, `src/client/ui/hud.ts`, `docs/features.md`, `docs/configuration.md`: words.
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.
