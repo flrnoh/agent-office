@@ -1723,6 +1723,22 @@ export class OfficeSound {
     n.stop(t0 + 0.02);
   }
 
+  // ---- The doorbell (fork, see client/doorbell.ts) ----------------------------------------------
+
+  /** Ding-dong: two soft bell tones a major third apart, each with a little shimmer on top. On the effects volume. */
+  doorbell() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.count('doorbell');
+    const out = this.alerts;
+    const t0 = ctx.currentTime + 0.01;
+    for (const [f, dt] of [[659.25, 0], [523.25, 0.55]] as const) {
+      this.blip(out, t0 + dt, f, 1, 1.4, 0.22);
+      this.blip(out, t0 + dt, f * 2.01, 1, 0.7, 0.05);
+      this.blip(out, t0 + dt, f * 3.02, 1, 0.35, 0.02);
+    }
+  }
+
   // ---- The casino (fork, see client/casino.ts) -------------------------------------------------------
 
   /** The slot machines and the tables: reels whirring, each one clunking to a stop, a win's jingle, chips. */

@@ -56,6 +56,7 @@ import { Hanger } from './hanging';
 import { disposeSprite, textSprite } from './world/toon';
 import { Voice } from './voice';
 import { OfficeSound } from './sound';
+import { Doorbell } from './doorbell';
 import { DesktopNotifier, askNotifyPermission, notifyPermission, waitingOnSomeone } from './notify';
 import { NextUp, waitingInOrder, waitingLabel } from './nextup';
 import { $, h, clip, closeAllModals, doingNow, modalOpen, onDoingChange, onModalChange, openModal, readingNow, toast, STATUS_LABEL } from './ui/dom';
@@ -453,6 +454,8 @@ me.onSmoke = (kind, at, dir) => {
   smoke.exhale(camera.localToWorld(camLocal.set(0, -0.14, -0.3)), camera.getWorldDirection(camLocal).setY(0.1).normalize());
 };
 const sound = new OfficeSound();
+// fork: a ding-dong when a person comes into the office (doorbell.ts)
+const doorbell = new Doorbell(() => sound.doorbell(), (text) => toast(text));
 sound.setVolume(settings.volume, settings.muted);
 // The floor's dog. It goes quiet once someone has the terminal of the worker it's barking at open.
 const dog = new Dog(sound, (id) => (store.workers.get(id)?.viewers.length ?? 0) > 0);
@@ -1166,6 +1169,7 @@ net.onMessage((msg) => {
   casino.onMessage(msg); // fork
   switch (msg.t) {
     case 'welcome': {
+      doorbell.know(msg.peers); // fork: whoever's already here doesn't ring
       // A few pings, to line this page's clock up with the office's for the jukebox.
       for (let i = 0; i < 5; i++) setTimeout(() => net.send({ t: 'ping', at: performance.now() }), 200 + i * 500);
       const mine = store.peers.get(store.you);
@@ -1233,6 +1237,7 @@ net.onMessage((msg) => {
       if (!store.me.guest) openSignIns(net, msg.why);
       break;
     case 'floor.enter':
+      doorbell.know(msg.peers); // fork: the people on this floor are already here
       // Not a trip of yours: the floor you were on was taken off the building, and the elevator took you away.
       if (!trip) takenAway();
       // The card belongs to the board downstairs (or up): the office already put it back there.
@@ -1269,6 +1274,8 @@ net.onMessage((msg) => {
     case 'peer.join':
     case 'peer.leave':
       voice.syncPeers();
+      if (msg.t === 'peer.join') doorbell.joined(msg.peer, store.you);
+      else doorbell.left(msg.id); // fork: the doorbell
       break;
     case 'rtc':
       void voice.handleSignal(msg.from, msg.data as never);
