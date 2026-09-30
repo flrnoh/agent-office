@@ -19,6 +19,7 @@ import { Team } from './team.js';
 import { Upgrader } from './upgrade.js';
 import { Services } from './services.js';
 import { ImageProxy } from './decor.js';
+import { RadioProxy, isPlaylistUrl, radioTarget, resolvePlaylist } from './radio.js';
 import { Ledger } from './usage.js';
 import { PlanLimitsReader } from './limits.js';
 import { Webhook } from './webhook.js';
@@ -773,6 +774,7 @@ export async function startServer(cfg: Config) {
   const arrivalFloor = (wanted: string | null): Floor | undefined => (wanted && floors.get(wanted)) || floors.values().next().value;
 
   const images = new ImageProxy();
+  const radio = new RadioProxy(); // flrnoh fork: radio stations on the jukebox (radio.ts)
 
   const upgrader = new Upgrader(
     (state) => broadcast({ t: 'upgrade', state }),
@@ -955,6 +957,12 @@ export async function startServer(cfg: Config) {
         } catch {
           return send(res, 502, { error: 'Could not load Grok models' });
         }
+      }
+      if (p === '/api/radio' && req.method === 'GET') {
+        // flrnoh fork: a jukebox stream through the office, for https pages and http streams (radio.ts).
+        const target = radioTarget(url.searchParams, (id) => floors.get(id)?.jukebox.state().url);
+        if ('error' in target) return send(res, target.status, { error: target.error });
+        return radio.pipe(req, res, target.url);
       }
       if (p === '/api/image' && req.method === 'GET') {
         // A picture on the wall, fetched by the office so the 3D view can draw it (see decor.ts).
@@ -2346,11 +2354,16 @@ export async function startServer(cfg: Config) {
       case 'jukebox.play': {
         const floor = here();
         if (!floor) break;
-        const r = floor.jukebox.play({ track: msg.track, url: msg.url }, who);
-        if ('error' in r) return warn(c, r.error);
-        if (!r.changed) break;
-        jukeboxChanged(floor);
-        toastFloor(floor, floor.jukebox.state().track === STREAM ? `📻 ${who} tuned the jukebox to ${floor.jukebox.title()}` : `🎵 ${who} put on “${floor.jukebox.title()}”`);
+        const put = (url: unknown) => {
+          const r = floor.jukebox.play({ track: msg.track, url, station: msg.station }, who);
+          if ('error' in r) return warn(c, r.error);
+          if (!r.changed) return;
+          jukeboxChanged(floor);
+          toastFloor(floor, floor.jukebox.state().track === STREAM ? `📻 ${who} tuned the jukebox to ${floor.jukebox.title()}` : `🎵 ${who} put on “${floor.jukebox.title()}”`);
+        };
+        // flrnoh fork: a .pls/.m3u playlist plays the stream it lists (radio.ts).
+        if (!msg.station && isPlaylistUrl(msg.url)) void resolvePlaylist(msg.url).then((r) => ('error' in r ? warn(c, r.error) : put(r.url)));
+        else put(msg.url);
         break;
       }
       case 'jukebox.skip': {

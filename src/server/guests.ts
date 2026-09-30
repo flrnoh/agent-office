@@ -1,4 +1,5 @@
 import type { ClientMsg } from '../shared/protocol.js';
+import { radioRequestShape } from './radio.js';
 
 /*
  * The guest role (flrnoh fork, see FORK.md): guests walk around, chat, talk, play and watch the
@@ -52,8 +53,8 @@ export const GUEST_QUIET: ReadonlySet<string> = new Set<string>(QUIET);
 export const TEAM_ONLY_MSGS: ReadonlySet<string> = new Set<string>(TEAM_ONLY);
 
 /**
- * What a guest's page may load besides the page itself: the whiteboard's pictures, and pictures
- * already hanging on a wall (the image proxy fetches any address, so not just any). Not a worker's
+ * What a guest's page may load besides the page itself: the whiteboard's pictures, the jukebox's
+ * radio, and pictures already hanging on a wall (the image proxy fetches any address, so not just any). Not a worker's
  * changes, the project's docs, GitHub details, search or dropping files into a terminal; any route
  * upstream adds is refused to guests until it's listed here.
  */
@@ -61,5 +62,7 @@ export function guestMayFetch(p: string, url: URL, onAWall: (imageUrl: string) =
   if (!p.startsWith('/api/')) return true;
   if (p === '/api/whiteboard/file') return true;
   if (p === '/api/image') return onAWall(url.searchParams.get('url') ?? '');
+  // The jukebox's radio: a built-in station, or the stream on a floor's jukebox (the handler checks it's that one).
+  if (p === '/api/radio') return radioRequestShape(url.searchParams);
   return false;
 }

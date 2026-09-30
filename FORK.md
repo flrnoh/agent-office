@@ -47,6 +47,24 @@ Issues someone is on (assigned, labelled in progress, or a queued task running f
 - `src/client/inprogress.ts`: the rule, shared by both boards; `tests/inprogress.test.ts`.
 - Hooks in upstream files: `src/client/world/boards.ts` (the wall board's filter), `src/client/ui/boards.ts` (the 🚧 column uses the same rule), `src/client/main.ts` (redraw the wall when a queued task starts or stops on an issue).
 
+### Radio stations on the jukebox
+
+The jukebox is also a DAB-style radio: a list of stations (Radio BOB!, BAYERN 3, Antenne Bayern, Bayern 1, FluxFM, radioeins, Deutschlandfunk, DLF Nova, 1LIVE, SWR3, egoFM, Jazz Radio, I Love Chillhop, BR-KLASSIK) to click, for everyone on the floor, and the toast names the station. The box for your own stream stays; a `.pls`/`.m3u` link plays the first stream it lists.
+
+An `http://` stream can't play on the https office (mixed content), so it goes through `/api/radio`, which passes the audio on as it comes. That is no open proxy: it streams only a built-in station (`?station=`) or the stream on that floor's jukebox right now (`?floor=&u=`), never an address on this machine or its network (checked after DNS, on every connection and redirect), at most 24 at once, and drops the station when the listener goes. https streams play straight from the station, with the office as fallback. When the browser won't start the radio before a click, a toast says to click.
+
+- `src/shared/radio.ts`: the stations (each checked with curl for HTTP 200 and `audio/mpeg`) and where the page loads a stream from (`radioSources`).
+- `src/server/radio.ts`: the proxy, what it may fetch (`radioTarget`), the address check, playlists; `tests/radio.test.ts`.
+- Hooks in upstream files:
+  - `src/shared/jukebox.ts`: `JukeboxState.station`; `trackTitle` names the station.
+  - `src/shared/protocol.ts`: `station` on `jukebox.play`.
+  - `src/server/jukebox.ts`: `play({ station })`, the station saved and loaded.
+  - `src/server/server.ts`: the `/api/radio` route; `jukebox.play` passes `station` and resolves playlists.
+  - `src/server/guests.ts`: guests may fetch `/api/radio` for a station or a floor's stream (`tests/guests.test.ts` lists the route).
+  - `src/client/ui/jukebox.ts`: the station list. `src/client/style.css`: `.jb-radio`.
+  - `src/client/main.ts`: `radioSources` in `playJukebox`, the click-to-hear toast. `src/client/sound.ts`: `fallback` and `onMusicBlocked`.
+  - `docs/features.md`: the jukebox line.
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.

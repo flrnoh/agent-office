@@ -1,5 +1,6 @@
 // The lounge jukebox: the tunes it has and what it's playing, shared by the server (which keeps one
 // per floor) and the browser (which synthesizes the tunes, see client/music.ts).
+import { stationById } from './radio.js';
 
 export interface JukeboxTune {
   id: string;
@@ -24,6 +25,8 @@ export interface JukeboxState {
   track: string;
   /** Internet radio or an audio file someone pasted. */
   url?: string;
+  /** The built-in radio station `url` is (see radio.ts), if it's one. */
+  station?: string;
   /** Who last put something on, or turned it off. */
   by?: string;
   /** When the track started, on the office's clock (see the 'pong' message), so everyone hears the same bar. */
@@ -35,8 +38,10 @@ export interface JukeboxState {
 export const tuneById = (id: string): JukeboxTune | undefined => JUKEBOX_TUNES.find((t) => t.id === id);
 
 /** What's on, for the hint bar and the jukebox's own display: a tune's title, or where the stream comes from. */
-export function trackTitle(s: Pick<JukeboxState, 'track' | 'url'>): string {
+export function trackTitle(s: Pick<JukeboxState, 'track' | 'url' | 'station'>): string {
   if (s.track !== STREAM) return tuneById(s.track)?.title ?? 'A tune';
+  const station = stationById(s.station);
+  if (station) return station.name;
   try {
     const u = new URL(s.url ?? '');
     const file = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() ?? '');

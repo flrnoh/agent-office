@@ -677,6 +677,10 @@ body.telescope-active #hud { visibility: hidden; }
 @keyframes jb-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .jb-disc.spin { animation: none; } }
 .jb-icon { flex: none; font-size: 18px; }
+/* flrnoh fork: the radio stations on the jukebox, like the presets of a DAB radio */
+.svc-list.jb-radio { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.jb-radio li { gap: 8px; padding: 8px 10px; }
+.jb-radio .jb-icon { font-size: 22px; }
 
 /* Signs over the desks, and the back office */
 .modal.desklabel { width: min(520px, 100%); }
