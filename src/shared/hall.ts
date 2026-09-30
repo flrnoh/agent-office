@@ -37,3 +37,18 @@ export const GALLERY = { minX: HALL_ROOM.minX, maxX: HALL_ROOM.maxX, minZ: HALL_
 
 /** Nothing of the building (stand, stairs, café, pillars) may stand inside this band round each court: players run out there. */
 export const COURT_MARGIN = 1.2;
+
+// ---- The building on the street (the building's half, see src/client/world/hall/) --------------
+
+/**
+ * The building's footprint on the street (walls included): across the road to the east, the
+ * casino's counterpart, where a neighbour stood. Its front (north, z = minZ) faces the street.
+ */
+export const HALL_BOX = { minX: 22, maxX: 54, minZ: 36, maxZ: 72 } as const;
+/** How tall its walls stand above the street (the curved roof rises HALL_ROOF_RISE more in the middle). */
+export const HALL_HEIGHT = 9;
+export const HALL_ROOF_RISE = 3;
+/** The front doors, in the middle of its north face (toward the street): center along x, and how wide and tall. */
+export const HALL_DOOR = { x: (HALL_BOX.minX + HALL_BOX.maxX) / 2, width: 2.6, height: 2.8 } as const;
+/** Where you land on the sidewalk coming out, facing the street (-z). */
+export const HALL_STREET_SPOT = { x: HALL_DOOR.x, z: HALL_BOX.minZ - 1.8, rotY: Math.PI } as const;
