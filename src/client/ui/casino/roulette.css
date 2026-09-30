@@ -1,0 +1,73 @@
+/* The roulette table's window (flrnoh fork, see ui/casino/roulette.ts). */
+
+.modal.casino-modal.roulette-modal { width: min(760px, 100%); }
+.roulette-modal .body { padding: 14px; }
+
+.roulette-top { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.roulette-wheel-wrap { position: relative; width: 132px; height: 132px; flex: none; }
+.roulette-wheel { width: 100%; height: 100%; display: block; }
+.roulette-number { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); min-width: 40px; padding: 2px 8px; border-radius: 12px; border: 2px solid #d4a24c; font-size: 22px; font-weight: 900; text-align: center; color: #fff; font-variant-numeric: tabular-nums; animation: roulette-pop .35s ease-out; }
+.roulette-number:empty { display: none; }
+.roulette-number.red { background: #b3122e; }
+.roulette-number.black { background: #141414; }
+.roulette-number.green { background: #157a3c; }
+@keyframes roulette-pop { from { transform: translate(-50%, -50%) scale(.3); opacity: 0; } }
+
+.roulette-side { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 8px; }
+.roulette-phase { font-weight: 900; font-size: 17px; min-height: 1.3em; font-variant-numeric: tabular-nums; }
+.roulette-phase.spinning { color: #6d1a33; }
+.roulette-phase.note { color: var(--bad, #b3122e); font-size: 15px; }
+.roulette-bar { height: 8px; border-radius: 999px; border: 2px solid var(--ink); background: var(--paper-2); overflow: hidden; }
+.roulette-bar-fill { height: 100%; width: 0; background: #d4a24c; }
+.roulette-bar.betting .roulette-bar-fill { background: #2f9e57; }
+.roulette-bar.spinning .roulette-bar-fill { background: #b3122e; }
+.roulette-bar.idle { opacity: .4; }
+
+.roulette-history { display: flex; gap: 4px; flex-wrap: wrap; min-height: 26px; align-items: center; }
+.roulette-ball { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: 11px; font-weight: 900; color: #fff; border: 2px solid rgba(0,0,0,.35); font-variant-numeric: tabular-nums; }
+.roulette-ball.red { background: #b3122e; }
+.roulette-ball.black { background: #141414; }
+.roulette-ball.green { background: #157a3c; }
+.roulette-ball.latest { width: 28px; height: 28px; font-size: 13px; border-color: #d4a24c; }
+.roulette-empty { font-size: 13px; color: var(--muted); font-weight: 700; }
+
+.roulette-players { display: flex; gap: 6px; flex-wrap: wrap; }
+.roulette-player { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; padding: 2px 8px 2px 3px; border-radius: 999px; background: var(--paper-2); border: 2px solid var(--ink); }
+.roulette-player.you { background: #ffe7b0; }
+.roulette-player i { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-style: normal; font-size: 11px; font-weight: 900; color: #1a1a1a; border: 1.5px dashed rgba(255,255,255,.9); }
+.roulette-player b { font-variant-numeric: tabular-nums; }
+.roulette-player b.won { color: #1f7a3f; }
+
+/* The layout scales with the window; below a phone's width it scrolls sideways instead of shrinking past readable. */
+.roulette-board { margin-top: 12px; overflow-x: auto; border-radius: 14px; border: 3px solid var(--ink); background: #0f5a31; box-shadow: inset 0 0 0 3px #d4a24c; padding: 8px; }
+.roulette-layout { display: block; width: 100%; min-width: 470px; height: auto; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-touch-callout: none; }
+.roulette-spot { cursor: pointer; outline: none; }
+.roulette-cell { stroke: rgba(255,235,180,.75); stroke-width: 1.5; transition: filter .12s; }
+.roulette-spot:hover .roulette-cell, .roulette-spot:focus-visible .roulette-cell { filter: brightness(1.35); }
+.roulette-spot:focus-visible .roulette-cell { stroke: #ffd36b; stroke-width: 3; }
+.roulette-cell.won { stroke: #ffd36b; stroke-width: 4; animation: roulette-glow .5s ease-in-out infinite alternate; }
+@keyframes roulette-glow { to { filter: brightness(1.6); } }
+.roulette-cell-label { fill: #fff; font-weight: 900; text-anchor: middle; dominant-baseline: central; pointer-events: none; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.roulette-zone { fill: transparent; cursor: pointer; }
+.roulette-zone:hover { fill: rgba(255,211,107,.55); }
+.roulette-layout.closed .roulette-spot, .roulette-layout.closed .roulette-zone { cursor: not-allowed; }
+.roulette-layout.closed .roulette-zone:hover { fill: transparent; }
+.roulette-chips { pointer-events: none; }
+.roulette-chip circle:first-child { stroke: #1a1a1a; stroke-width: 1.5; filter: drop-shadow(0 1.5px 0 rgba(0,0,0,.5)); }
+.roulette-chip-ring { stroke: rgba(255,255,255,.9); stroke-width: 1.5; stroke-dasharray: 3 2.5; }
+.roulette-chip.mine circle:first-child { stroke: #fff; stroke-width: 2.5; }
+.roulette-chip-amt { font-size: 9px; font-weight: 900; fill: #1a1a1a; text-anchor: middle; dominant-baseline: central; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.roulette-chip-who { font-size: 8px; font-weight: 900; fill: #fff; stroke: #1a1a1a; stroke-width: 2.5px; paint-order: stroke; text-anchor: middle; dominant-baseline: central; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+
+.roulette-controls { margin-top: 12px; }
+.roulette-chip-btn.on { background: #d4a24c; color: var(--ink); }
+.roulette-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.roulette-mine { margin-left: auto; font-weight: 800; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.roulette-modal.won .roulette-board { animation: casino-flash .3s ease-in-out 6 alternate; }
+
+@media (max-width: 520px) {
+  .roulette-wheel-wrap { width: 96px; height: 96px; }
+  .roulette-number { font-size: 17px; }
+  .roulette-side { min-width: 0; }
+  .roulette-mine { margin-left: 0; width: 100%; }
+}

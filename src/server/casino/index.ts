@@ -1,6 +1,9 @@
 import { randomInt } from 'node:crypto';
 import { CASINO_TABLES, MAX_BET, MIN_BET, START_CHIPS, validBet, type CasinoClientMsg, type CasinoKind, type CasinoServerMsg, type CasinoTableDef } from '../../shared/casino.js';
+import { Blackjack } from './blackjack.js';
 import type { CasinoContext, CasinoGame, Seated } from './game.js';
+import { Roulette } from './roulette.js';
+import { PokerTable } from './poker.js';
 import { SlotMachine } from './slots.js';
 import { ComingSoon } from './soon.js';
 import { Wallets } from './wallets.js';
@@ -31,11 +34,11 @@ export interface CasinoPlayer {
 export const GAMES: Record<CasinoKind, (t: CasinoTableDef) => CasinoGame> = {
   slots: (t) => new SlotMachine(t.id),
 
-  roulette: (t) => new ComingSoon(t.id, t.kind, t.seats),
+  roulette: (t) => new Roulette(t.id, t.seats),
 
-  blackjack: (t) => new ComingSoon(t.id, t.kind, t.seats),
+  blackjack: (t) => new Blackjack(t.id, t.seats),
 
-  poker: (t) => new ComingSoon(t.id, t.kind, t.seats),
+  poker: (t) => new PokerTable(t.id, t.seats),
 };
 
 /** How often timed games are ticked (ms). */

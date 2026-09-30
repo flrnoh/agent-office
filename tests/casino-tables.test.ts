@@ -75,7 +75,7 @@ test('seats: one table at a time, a machine for one, placeholders say coming soo
     const machine = s.last('b', (m) => m.t === 'casino.table' && m.table === 'slots-2') as { state: { player?: string } };
     assert.equal(machine.state.player, undefined);
     s.casino.message('a', { t: 'casino.act', table: 'roulette', action: 'bet', data: { on: 'red', amount: 10 } });
-    assert.match(s.said('a'), /Coming soon/);
+    assert.match(s.said('a'), /not a bet on this table/);
     // Not seated there: no playing it.
     s.casino.message('b', { t: 'casino.act', table: 'roulette', action: 'bet' });
     assert.match(s.said('b'), /Take a seat first/);
@@ -136,7 +136,7 @@ test('rate limits: acting and sitting only so fast', () => {
     // A second later, some are back.
     s.t.now += 1000;
     s.casino.message('a', { t: 'casino.act', table: 'poker', action: 'x' });
-    assert.match(s.said('a'), /Coming soon/);
+    assert.match(s.said('a'), /No such move/);
     // Hopping from table to table, too.
     for (let i = 0; i < 10; i++) s.casino.message('a', { t: 'casino.sit', table: i % 2 ? 'roulette' : 'poker' });
     assert.match(s.said('a'), /one table at a time/);

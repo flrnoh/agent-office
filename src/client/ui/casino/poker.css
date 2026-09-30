@@ -1,0 +1,87 @@
+/* The poker table's window (flrnoh fork, see ui/casino/poker.ts). */
+
+.modal.casino-modal.casino-poker { width: min(780px, 100%); }
+.casino-poker .body { display: flex; flex-direction: column; gap: 10px; }
+.casino-poker [hidden] { display: none !important; }
+.casino-poker .body > * { flex-shrink: 0; }
+
+/* The table: an oval of felt, the seats round it. */
+.pk-table { position: relative; width: 100%; aspect-ratio: 16 / 9.5; min-height: 260px; margin-bottom: 18px; }
+.pk-felt { position: absolute; inset: 13% 11%; border-radius: 50%; background: radial-gradient(ellipse at 50% 40%, #2477ad, #1b5f8a 55%, #123f5e); border: 10px solid #3a0d1c; box-shadow: 0 0 0 3px #d4a24c, 0 0 0 6px var(--ink), inset 0 0 30px rgba(0,0,0,.35); display: grid; place-items: center; }
+.pk-center { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0 8%; text-align: center; }
+.pk-pot { font-weight: 900; font-size: 14px; color: #ffe7b0; min-height: 1.2em; font-variant-numeric: tabular-nums; }
+.pk-board { display: flex; gap: 5px; }
+.pk-summary { font-weight: 800; font-size: 13px; color: #fff4d6; min-height: 1.2em; max-width: 34ch; }
+
+/* Cards. */
+.pk-card { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 34px; height: 48px; border-radius: 6px; background: #fffdf6; border: 2px solid var(--ink); color: #1d1f33; font-weight: 900; line-height: 1; box-shadow: 0 2px 0 rgba(0,0,0,.35); }
+.pk-card b { font-size: 16px; }
+.pk-card i { font-style: normal; font-size: 16px; }
+.pk-card.red { color: #c8102e; }
+.pk-card.back { background: repeating-linear-gradient(45deg, #8e1b2f 0 5px, #6d1a33 5px 10px); box-shadow: inset 0 0 0 2px #d4a24c, 0 2px 0 rgba(0,0,0,.35); }
+.pk-card.slot { background: rgba(255,255,255,.08); border: 2px dashed rgba(255,231,176,.35); box-shadow: none; }
+.pk-card.big { width: 52px; height: 72px; border-radius: 8px; }
+.pk-card.big b, .pk-card.big i { font-size: 24px; }
+
+/* Seats. */
+.pk-seats { position: absolute; inset: 0; pointer-events: none; }
+.pk-seat { position: absolute; transform: translate(-50%, -50%); min-width: 96px; max-width: 132px; padding: 5px 8px 6px; border-radius: 12px; background: var(--paper, #fff8ea); border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); text-align: center; font-size: 12px; font-weight: 800; }
+.pk-seat.you { background: #ffe7b0; }
+.pk-seat.turn { border-color: #d4a24c; box-shadow: 0 0 0 3px #ffd36b, 0 3px 0 var(--ink); }
+.pk-seat.dim { opacity: .55; }
+.pk-seat.won { box-shadow: 0 0 0 3px #35e0a0, 0 0 16px 4px #35e0a0; }
+.pk-cards { display: flex; justify-content: center; gap: 3px; margin-top: -26px; margin-bottom: 3px; min-height: 22px; }
+.pk-cards .pk-card { width: 26px; height: 36px; border-radius: 5px; }
+.pk-cards .pk-card b, .pk-cards .pk-card i { font-size: 12px; }
+/* (yours are shown big under the table) */
+.pk-seat.you .pk-cards { display: none; }
+.pk-name { font-weight: 900; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-dealer { display: inline-grid; place-items: center; width: 17px; height: 17px; margin-left: 4px; border-radius: 50%; background: #fff; border: 2px solid var(--ink); font-size: 10px; vertical-align: 1px; }
+.pk-stack { font-variant-numeric: tabular-nums; }
+.pk-status { color: var(--muted); min-height: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-seat.won .pk-status { color: #0f7a4f; }
+.pk-hand { font-size: 11px; color: #6d1a33; }
+.pk-timer { height: 4px; margin-top: 3px; border-radius: 2px; background: rgba(0,0,0,.12); overflow: hidden; }
+.pk-timer-bar { height: 100%; width: 100%; background: #2f9e5a; transition: width .2s linear; }
+.pk-timer-bar.low { background: #d64545; }
+.pk-bet { position: absolute; transform: translate(-50%, -50%); padding: 2px 8px; border-radius: 999px; background: #ffd36b; border: 2px solid var(--ink); font-weight: 900; font-size: 12px; font-variant-numeric: tabular-nums; }
+.pk-bet::before { content: '● '; color: #8e1b2f; }
+
+/* Your cards, and what you hold. */
+.pk-mine { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 0; }
+.pk-mine:empty { display: none; }
+.pk-mycards { display: flex; gap: 6px; }
+.pk-myhand { font-weight: 900; font-size: 15px; }
+.pk-message { text-align: center; font-weight: 900; min-height: 1.3em; }
+.pk-message.good { color: #0f7a4f; }
+
+/* The panels under the table. */
+.pk-panel { border: 3px solid var(--ink); border-radius: 14px; padding: 10px 12px; background: var(--paper-2, #f3ead6); }
+.pk-panel-title { font-weight: 900; margin-bottom: 6px; }
+.pk-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pk-range { flex: 1 1 160px; min-width: 120px; accent-color: #8e1b2f; }
+.pk-num { width: 84px; padding: 6px 8px; border: 2px solid var(--ink); border-radius: 8px; font: inherit; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pk-buttons .btn { flex: 1 1 0; justify-content: center; font-size: 15px; padding: 9px 12px; }
+.pk-fold { background: #f1d3d3; }
+.pk-sizing { margin-top: 8px; }
+.pk-quicks { display: flex; gap: 6px; }
+.pk-quick { padding: 5px 10px; font-size: 13px; }
+.pk-extras { justify-content: flex-end; }
+.pk-extras .btn { font-size: 13px; padding: 5px 10px; }
+
+@media (max-width: 560px) {
+  .pk-table { aspect-ratio: 3 / 4; min-height: 340px; margin-bottom: 30px; }
+  .pk-card.big { width: 44px; height: 62px; }
+  .pk-card.big b, .pk-card.big i { font-size: 20px; }
+  .pk-felt { inset: 16% 14%; border-width: 7px; }
+  .pk-card { width: 26px; height: 38px; }
+  .pk-card b, .pk-card i { font-size: 12px; }
+  .pk-board { gap: 3px; }
+  .pk-seat { min-width: 76px; max-width: 96px; padding: 4px 5px 5px; font-size: 11px; }
+  .pk-name { font-size: 12px; }
+  .pk-cards .pk-card { width: 20px; height: 28px; }
+  .pk-cards .pk-card b, .pk-cards .pk-card i { font-size: 10px; }
+  .pk-summary { font-size: 12px; }
+  .pk-quicks { width: 100%; }
+  .pk-quick { flex: 1; justify-content: center; }
+}
