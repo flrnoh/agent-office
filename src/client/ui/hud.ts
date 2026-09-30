@@ -1,5 +1,6 @@
 import { BUZZ_SECONDS, type Caffeine } from '../caffeine';
 import { ROOF, ROOF_NAME } from '../../shared/rooftop';
+import { CASINO } from '../../shared/casino'; // fork
 import { store } from '../state';
 import type { Voice } from '../voice';
 import type { ChatLine } from '../../shared/protocol';
@@ -38,7 +39,9 @@ export function renderPeople(voice: Voice, onEditProfile: () => void, onWalkTo: 
       !you && !store.onMyFloor(p)
         ? p.floor === ROOF
           ? h('span.where', { title: 'Up on the roof' }, `🍸 ${ROOF_NAME}`)
-          : h('span.where', { title: 'On another floor' }, `🛗 ${store.floors.find((f) => f.id === p.floor)?.name ?? 'lobby'}`)
+          : p.floor === CASINO
+            ? h('span.where', { title: 'In the casino across the street' }, '🎰 Casino') // fork
+            : h('span.where', { title: 'On another floor' }, `🛗 ${store.floors.find((f) => f.id === p.floor)?.name ?? 'lobby'}`)
         : null,
       p.sharing ? h('span', { title: 'Sharing screen' }, '🖥️') : null,
       h('span.mic', {}, mic),

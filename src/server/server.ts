@@ -55,6 +55,8 @@ import { PROMPTS, PROMPT_MAX, isPromptId } from '../shared/prompts.js';
 import { ROOF } from '../shared/rooftop.js';
 import { heldDrink, keepsHeld } from './held.js';
 import { DjBooth, djMessage } from './djset.js';
+import { Casino, type CasinoPlayer } from './casino/index.js'; // flrnoh fork: the casino
+import { CASINO, CASINO_ENTRY, isCasinoMsg } from '../shared/casino.js';
 import { CarKeys } from './carkeys.js'; // flrnoh fork: the Bulli's keys
 import { BULLI_REFUSED, mayTake } from '../shared/bulli.js';
 import { CARS } from '../shared/garage.js';
@@ -536,6 +538,7 @@ export async function startServer(cfg: Config) {
   // What the building looks like inside: the office, the castle, or a map of your own (⚙️ Settings).
   const maps = new Maps(cfg.dataDir);
   const djBooth = new DjBooth(cfg.dataDir); // flrnoh fork: DJ sets on the roof
+  const casino = new Casino(cfg.dataDir); // flrnoh fork: the casino across the street (casino/)
   const carKeys = new CarKeys(cfg.dataDir); // flrnoh fork: who drives the Bulli
   // flrnoh fork: the racing rig in the lounge (server/rig.ts), one driver a floor, one table for the building.
   const rigs = new Rigs(new RigTable(cfg.dataDir));
@@ -804,6 +807,9 @@ export async function startServer(cfg: Config) {
   });
   /** The rooftop bar: nobody works up there, so it has none of a floor's things. */
   const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF, dj: djBooth.state(), tables: roofTables.state() });
+  // flrnoh fork: the casino, a place of its own like the roof, and who's in it by their chips.
+  const casinoView = (): FloorView => ({ ...floorView(undefined), floor: CASINO });
+  const casinoPlayer = (c: Client): CasinoPlayer => ({ id: c.id, owner: c.accountId ? `account:${c.accountId}` : `name:${c.peer.name}`, name: c.peer.name, send: (m) => sendTo(c, m) });
   const screensOf = (c: Client, floor: Floor | undefined) => {
     for (const { workerId, frame } of floor?.workers.fullScreens() ?? []) sendTo(c, { t: 'screen', workerId, ...frame, full: true });
   };
@@ -1233,12 +1239,13 @@ export async function startServer(cfg: Config) {
     // Back on the floor they were on before a reload, a restart or closing the tab, else the first floor.
     const wanted = url.searchParams.get('floor');
     // Their floor's gone since (taken off the building, or its checkout deleted): up to the roof instead.
-    const gone = !!wanted && wanted !== ROOF && !floors.has(wanted);
+    const gone = !!wanted && wanted !== ROOF && wanted !== CASINO && !floors.has(wanted);
     // Up on the roof, as long as there's a building under it.
     const onRoof = (wanted === ROOF || gone || (!wanted && !!me.party)) && floors.size > 0; // fork: party guests arrive at the rooftop bar
-    const floor = onRoof ? undefined : arrivalFloor(wanted);
+    const inCasino = wanted === CASINO && floors.size > 0; // fork: back in the casino
+    const floor = onRoof || inCasino ? undefined : arrivalFloor(wanted);
     // Back where they were standing on it too; anywhere else, they arrive by elevator.
-    const back = !gone && wanted !== null && (onRoof || floor?.id === wanted);
+    const back = !gone && wanted !== null && (onRoof || inCasino || floor?.id === wanted);
     const spot = (back && spotFrom(url.searchParams)) || { ...elevatorSpot(), y: 0, rotY: 0 };
     const account = session.account;
     // An account's name is its own; on the shared password people pick one.
@@ -1286,7 +1293,7 @@ export async function startServer(cfg: Config) {
         sharing: false,
         ...(account ? { account: true } : {}),
         ...(url.searchParams.get('lite') === '1' ? { lite: true } : {}),
-        ...(onRoof ? { floor: ROOF } : floor ? { floor: floor.id } : {}),
+        ...(onRoof ? { floor: ROOF } : inCasino ? { floor: CASINO } : floor ? { floor: floor.id } : {}),
       },
     };
     // Maps of your own may have been added or edited since: everyone already in hears first.
@@ -1318,8 +1325,9 @@ export async function startServer(cfg: Config) {
       map: maps.state(),
       prompts: prompts.state(),
       leaveOnMerge: leaveOnMerge.state(),
-      ...(onRoof ? roofView() : floorView(floor)),
+      ...(onRoof ? roofView() : inCasino ? casinoView() : floorView(floor)),
     });
+    if (inCasino) casino.enter(casinoPlayer(client));
     screensOf(client, floor);
     broadcast({ t: 'peer.join', peer: client.peer }, id);
     if (account) accountsChanged(); // now online
@@ -1347,6 +1355,7 @@ export async function startServer(cfg: Config) {
     });
     ws.on('close', () => {
       clients.delete(id);
+      casino.leave(id); // fork
       leftTable(id); // fork: games on the roof
       if (client.whiteboard) drawingChanged(floorOf(client));
       stopPlaying(client);
@@ -1413,6 +1422,17 @@ export async function startServer(cfg: Config) {
     floorsChanged();
   };
 
+  /** flrnoh fork: into the casino across the street, just inside its door. */
+  const goToCasino = (c: Client) => {
+    if (c.peer.floor === CASINO) return;
+    const left = leave(c, { x: CASINO_ENTRY.x, y: 0, z: CASINO_ENTRY.z, rotY: CASINO_ENTRY.rotY });
+    c.peer.floor = CASINO;
+    sendTo(c, { t: 'floor.enter', peers: [...clients.values()].map((o) => o.peer), ...casinoView() });
+    casino.enter(casinoPlayer(c));
+    arrived(c, left);
+    floorsChanged();
+  };
+
   /** Out to the lobby, where the elevator has nowhere to go: the building's last floor was taken off. */
   const toLobby = (c: Client) => {
     const left = leave(c);
@@ -1449,6 +1469,7 @@ export async function startServer(cfg: Config) {
   /** Off the floor (or the roof) `c` was on, to `at` on the next one, or into its elevator car. */
   const leave = (c: Client, at?: { x: number; y: number; z: number; rotY: number }) => {
     const was = floorOf(c);
+    casino.leave(c.id); // fork: up from the casino's tables
     if (c.peer.floor === ROOF) leftTable(c.id); // fork: off the roof, away from its tables
     if (was) {
       was.workers.detachAll(c.id);
@@ -1576,6 +1597,7 @@ export async function startServer(cfg: Config) {
       const floor = workerFloor(wid);
       return floor ? { wid, floor, info: floor.workers.get(wid)! } : undefined;
     };
+    if (isCasinoMsg(msg.t)) return casino.message(c.id, msg as Parameters<Casino['message']>[1]); // fork: the casino
     switch (msg.t) {
       case 'move': {
         const p = c.peer;
@@ -1703,6 +1725,10 @@ export async function startServer(cfg: Config) {
         break;
       }
       case 'floor.go': {
+        if (msg.floor === CASINO) {
+          if (floors.size) goToCasino(c); // fork: the casino
+          break;
+        }
         if (msg.floor === ROOF) {
           if (floors.size) goToRoof(c);
           else warn(c, 'There is no building to go up on yet');
@@ -2686,6 +2712,7 @@ export async function startServer(cfg: Config) {
     clearInterval(resync);
     clearTimeout(floorsTimer);
     arcade.flush();
+    casino.stop();
     upgrader.stop();
     services.stop();
     tailnet.stop();

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { ELEVATOR, ELEVATOR_FRONT, FLOOR, ROAD, SLAB, STREET_Y, WALL_T } from '../../shared/layout';
 import { LOT, SIDE_LOT } from '../../shared/garage';
 import { STREET_END, shoreX } from '../../shared/scenic';
+import { CASINO_BOX, CASINO_HEIGHT } from '../../shared/casino'; // fork
 import type { Collider } from './office';
 import { mergeByMaterial, mesh, textPlane, toon, toonUnique } from './toon';
 
@@ -291,8 +292,7 @@ export function roadTexture(): THREE.CanvasTexture {
  * (GOLF_HOLE in layout).
  */
 const NEIGHBOURS: [number, number, number, number, number, string][] = [
-  [-38, 45, 12, 10, 9, '#8ecae6'],
-  [-22, 46, 14, 16, 10, '#ffb4a2'],
+  // (fork: the two across the street to the west made way for the casino, world/casino/exterior.ts)
   [12, 47, 16, 19, 12, '#cdb4db'],
   [30, 45, 12, 9, 9, '#ffd6a5'],
   [-20, -42, 18, 14, 10, '#a2d2ff'],
@@ -310,7 +310,7 @@ export function neighbourBoxes(): { minX: number; maxX: number; minZ: number; ma
     // Turned a quarter, its width runs along z.
     const [hx, hz] = Math.abs(Math.sin(facing(x, z))) > 0.5 ? [d / 2, w / 2] : [w / 2, d / 2];
     return { minX: x - hx - 0.2, maxX: x + hx + 0.2, minZ: z - hz - 0.2, maxZ: z + hz + 0.2, top: h + 0.4 };
-  });
+  }).concat({ ...CASINO_BOX, top: CASINO_HEIGHT + 0.5 }); // fork: the casino
 }
 
 /**
@@ -380,7 +380,7 @@ export function buildStreet(group: THREE.Group, colliders: Collider[], night: Ni
   const lamps = new THREE.Group();
   const glass = bulb(night, '#fff3d6');
   for (const x of [-40, -28, -16, -4, 8, 16, 28, 40]) streetLamp(lamps, night, glass, colliders, x, 22.2, 1);
-  for (const x of [-34, -22, -4, 8, 26, 36]) streetLamp(lamps, night, glass, colliders, x, 31.8, -1);
+  for (const x of [-37, -22, -4, 8, 26, 36]) streetLamp(lamps, night, glass, colliders, x, 31.8, -1); // fork: -37 (was -34), clear of the casino's doors
   group.add(mergeByMaterial(lamps));
 
   // The neighbours: across the street, and further out behind and beside the office.
