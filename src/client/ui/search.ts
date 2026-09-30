@@ -3,6 +3,7 @@ import { SEARCH_MAX, SEARCH_MIN, searchKey } from '../../shared/search';
 import { store } from '../state';
 import { h, openModal, timeAgo } from './dom';
 import type { TerminalFind } from './terminal';
+import { partyRefuses } from '../party';
 
 // The 🔎 window: words in the office chat and in every worker's terminal, including what was said
 // and shown before the office last restarted. A terminal line opens that terminal right at it.
@@ -35,6 +36,7 @@ function highlight(text: string, needle: string): (string | HTMLElement)[] {
 }
 
 export function openSearch(openTerminal: (workerId: string, find: TerminalFind) => void) {
+  if (partyRefuses()) return; // fork: party guests see none of the work (party.ts)
   const input = h('input', {
     type: 'text',
     placeholder: 'Search the chat and every terminal…',

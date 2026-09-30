@@ -1,6 +1,7 @@
 import { isDocPath, resolveDocLink, type DocFile, type DocList, type DocText } from '../../shared/docs';
 import { clip, h, openModal, setDoing, timeAgo, toast } from './dom';
 import { markdownFile } from './markdown';
+import { partyRefuses } from '../party';
 
 // The bookshelf: every Markdown file in the floor's project, to read without leaving the office.
 // The filter box over the list picks docs out as you type (the letters in order, not necessarily
@@ -149,6 +150,7 @@ async function getJson<T>(url: string): Promise<T> {
 }
 
 export function openBookshelf(deps: ShelfDeps) {
+  if (partyRefuses()) return; // fork: party guests see none of the work (party.ts)
   const { floor, repoUrl } = deps;
   const q = (params: Record<string, string>) => new URLSearchParams({ floor, ...params }).toString();
 

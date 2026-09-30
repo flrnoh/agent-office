@@ -795,12 +795,15 @@ export interface FloorView {
   dj?: DjSetState;
 }
 
-/** A guest looks around, chats, plays and watches the terminals, but can't type in them or run anything. */
-export type AccountRole = 'admin' | 'member' | 'guest';
+/**
+ * A guest looks around, chats, plays and watches the terminals, but can't type in them or run anything.
+ * A party guest (flrnoh fork, see server/party.ts) only parties: no terminals, boards or anything else of the work.
+ */
+export type AccountRole = 'admin' | 'member' | 'guest' | 'party';
 
 /** A role from the wire or a file, with anything unknown read as a member. */
 export function accountRole(v: unknown): AccountRole {
-  return v === 'admin' || v === 'guest' ? v : 'member';
+  return v === 'admin' || v === 'guest' || v === 'party' ? v : 'member';
 }
 
 /** Who this browser is signed in as. */
@@ -811,6 +814,8 @@ export interface Me {
   admin: boolean;
   /** Only watches: no typing into terminals, no hiring, no GitHub, no settings. */
   guest?: boolean;
+  /** A party guest (flrnoh fork): a guest who doesn't even watch; sees none of the work. Always with `guest`. */
+  party?: boolean;
 }
 
 /** What someone signs in to for their own workers: Claude Code, and the GitHub CLI. */

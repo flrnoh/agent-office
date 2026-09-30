@@ -299,6 +299,7 @@ The same works from a terminal on the office's machine, even while it runs:
 agent-office accounts                      # accounts and open invites
 agent-office accounts invite ada --admin   # prints a single-use /join#… link
 agent-office accounts invite bo --guest    # a guest: watches, can't type in terminals
+agent-office accounts invite cy --party    # a party guest: the rooftop party, sees none of the work
 agent-office accounts role ada member
 agent-office accounts revoke ada           # signed out within seconds
 ```

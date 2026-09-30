@@ -2,6 +2,7 @@ import type { ServiceInfo, ServicesState } from '../../shared/protocol';
 import { store } from '../state';
 import { h, openModal, timeAgo } from './dom';
 import { copy, copyButton, guessOs, openCommand, OS_LABEL, type Os } from './team';
+import { partyRefuses } from '../party';
 
 /** Whether this page came over the office's Tailscale network, where every server has its own link. */
 function onTailnet(s: ServicesState): boolean {
@@ -30,6 +31,7 @@ function describe(svc: ServiceInfo): { who: string; color: string; branch?: stri
 }
 
 export function openServices() {
+  if (partyRefuses()) return; // fork: party guests see none of the work (party.ts)
   let os = guessOs();
   let picked: number | null = null;
   let copied: number | null = null;

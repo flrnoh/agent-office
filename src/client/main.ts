@@ -87,6 +87,7 @@ import { renderLimits } from './ui/limits';
 import { MachineTexture } from './world/machine';
 import { officeFull, pressureNote } from '../shared/machine';
 import { mountHud } from './ui/menu';
+import { isParty, partyDeskLine, partyMenu, partyRefuses, PARTY_NOPE, PARTY_OFF, PARTY_SCREENSAVER, watchParty } from './party'; // fork: party guests
 import { openJukebox } from './ui/jukebox';
 import { DjSetPlayer } from './djset';
 import { openDjBooth } from './ui/djbooth';
@@ -2101,7 +2102,7 @@ function syncWorkers() {
     // Keys clack while it types, not while it reads, watches its tests or browses.
     if (deskDef) sound.setTyping(w.id, deskDef.x, deskDef.z, w.status === 'working' && (!w.action || w.action === 'edit'));
     const again = w.kind === 'shell' ? 'restart' : 'resume';
-    v.laptop.setPlaceholder(w.lost ? `🌿 ${w.name}'s worktree was deleted — press E to fix it` : w.status === 'offline' ? `💤 ${w.name} is asleep — press R to ${again}` : w.status === 'exited' ? `${w.name} exited` : 'booting…');
+    v.laptop.setPlaceholder(isParty() ? PARTY_SCREENSAVER : w.lost ? `🌿 ${w.name}'s worktree was deleted — press E to fix it` : w.status === 'offline' ? `💤 ${w.name} is asleep — press R to ${again}` : w.status === 'exited' ? `${w.name} exited` : 'booting…');
   }
   for (const [id, v] of workerViews) {
     if (store.workers.has(id)) continue;
@@ -2356,11 +2357,13 @@ function repoChoices(): { id: string; name: string }[] {
 }
 
 function openShell(deskId: string) {
+  if (partyRefuses()) return; // fork: party guests
   if (officeIsFull()) return;
   net.send({ t: 'worker.spawn', deskId, kind: 'shell' });
 }
 
 function promptAtDesk(deskId: string) {
+  if (partyRefuses()) return; // fork: party guests
   const w = store.workerAtDesk(deskId);
   const desk = plan().byId.get(deskId)!;
   if (!w) {
@@ -2397,6 +2400,7 @@ function promptAtDesk(deskId: string) {
 
 /** Direct hire from an empty desk, with an optional first prompt and provider choice. */
 function hireAtDesk(deskId: string) {
+  if (partyRefuses()) return; // fork: party guests
   const desk = plan().byId.get(deskId)!;
   if (officeIsFull()) return;
   openPrompt({
@@ -2618,7 +2622,7 @@ let nextToast: HTMLElement | null = null;
 
 /** N: to the worker that has waited longest on someone, and on each press after, the next. */
 function goToNextWaiting() {
-  if (trip) return;
+  if (trip || partyRefuses()) return; // fork: party guests
   const w = nextUp.next(store.workers.values(), waitingBeside());
   const desk = w && plan().byId.get(w.deskId);
   nextToast?.remove();
@@ -2938,6 +2942,8 @@ const GUEST_ONLY_WATCH = new Set<InteractKind>(['issues', 'pulls', 'services', '
 
 function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   if (!target) return;
+  // fork: a party guest uses none of the work's things (party.ts)
+  if (isParty() && ((target.kind === 'desk' && target.deskId) || PARTY_OFF.has(target.kind))) return void (key === 'E' && toast(PARTY_NOPE));
   if (store.me.guest) {
     // A guest watches: E opens a worker's terminal to look at, everything else is for the team.
     const deskId = target.kind === 'desk' || target.kind === 'station' ? target.deskId : undefined;
@@ -3729,6 +3735,12 @@ function renderHint() {
 function hintFor(it: Interactable): Hint {
   const title = (text: string) => h('span.title', {}, text);
   const board = (name: string): Hint => ({ k: '', parts: [title(name), key('E', 'Open')] });
+  // fork: party guests (party.ts): who's at a desk, busy or not; the work's things are the team's
+  if (isParty() && (it.kind === 'desk' || it.kind === 'station') && it.deskId) {
+    const line = partyDeskLine(store.workerAtDesk(it.deskId), plan().byId.get(it.deskId)?.label ?? '');
+    return { k: `party${line}`, parts: [title(line)] };
+  }
+  if (isParty() && PARTY_OFF.has(it.kind)) return { k: 'party', parts: [aside('🎉 the team’s — you’re here for the party')] };
   if (store.me.guest && (GUEST_ONLY_WATCH.has(it.kind) || (it.kind === 'station' && !(it.deskId && store.workerAtDesk(it.deskId))))) {
     return { k: 'guest', parts: [aside('👀 for the team — you’re a guest')] };
   }
@@ -4597,7 +4609,7 @@ $('project').addEventListener('click', () => {
 const waitingNow = () => waitingInOrder(store.workers.values());
 const noMedia = () => (window.isSecureContext ? undefined : 'Voice and screen sharing need HTTPS or localhost — use a TLS proxy, --self-signed, or an SSH tunnel');
 const hud = mountHud(
-  [
+  partyMenu([ // fork: party guests
     { id: 'issues', icon: '📌', label: 'Issues', section: 'Open', count: () => store.issues.items.filter((i) => i.state === 'OPEN').length, run: () => openBoard('issues', net, boardActions()) },
     { id: 'pulls', icon: '🔀', label: 'Pull requests', section: 'Open', count: () => store.pulls.items.filter((p) => p.state === 'OPEN').length, run: () => openBoard('pulls', net, boardActions()) },
     { id: 'queue', icon: '📋', label: 'Task queue', section: 'Open', count: () => store.queue.tasks.filter((t) => t.status !== 'done').length, title: () => 'Issues and tasks waiting for a worker', run: showQueue },
@@ -4671,12 +4683,14 @@ const hud = mountHud(
       title: () => 'Go to the worker that has waited longest on someone (N)',
       run: goToNextWaiting,
     },
-  ],
+  ]),
   settings,
   () => saveSettings(settings),
 );
+watchParty(); // fork: party guests
 /** F: hang a picture on a wall of this floor. There are no walls for them up on the roof. */
 function startHanging() {
+  if (partyRefuses()) return; // fork: party guests
   if (upTop) return toast('No walls to hang pictures on up here — take the elevator down to a floor', 'warn');
   if (!inOffice()) return toast(`${plan().icon} ${plan().name}'s walls are hung already — pictures go up in the office`, 'warn');
   hanger.start();

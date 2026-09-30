@@ -40,6 +40,28 @@ Friends who come over to hang out: they walk around, chat, talk, play (arcade, g
   - `src/client/ui/terminal.ts`: `watchOnly`: no keys, keypad, say box, Esc, models, changes or file drops for guests.
   - `src/client/main.ts`: guests at desks and boards (`GUEST_ONLY_WATCH`, `deskHint`, `hintFor`), no sign-ins window.
   - `src/client/ui/accounts.ts`, `src/client/join.ts`, `src/client/ui/signins.ts`, `src/client/style.css`: picking and showing the role.
+- Stricter still: **party guests** (below) are guests who don't even watch. They go through the guest rules too, minus watching terminals and the whiteboard, so sorting a new message for guests sorts it for them.
+
+### Party guests
+
+Friends Florian invites to a party on the rooftop bar (role `party`, "Party guest"): they arrive up on the roof, can ride the elevator anywhere, drink, eat, play every game (arcade, golf, darts, axe, basketball, cars, jukebox, DJ sets), chat and talk, but neither see nor change anything of the work: no terminals (not even watching), laptops on a screensaver, blank notes on the wall boards, no queue, meetings, changes, docs, search, services, spend, limits, GitHub or whiteboard. Workers still sit at their desks, by name, "busy". The server enforces it both ways, whatever a party guest's browser does.
+
+- `src/server/party.ts`: the rules.
+  - What they may send: `PARTY_MSGS` is guests.ts' `GUEST` minus `PARTY_EXCLUDED` (watching a terminal, the whiteboard), so every message is sorted for them once it's sorted for guests.
+  - What they get: `partyGate` wraps a party guest's socket, so **every** frame the office sends them (sendTo, broadcast, toFloor, toNeighbors, terminal output, anything upstream adds) is passed (`PARTY_SEES`), redacted (`PARTY_REDACT`: the welcome and floor views, workers, peers, floors, boards, gong, plan, meeting, toasts) or dropped (`PARTY_NEVER`). **A server message type upstream (or another feature of this fork) adds is in none of them, and the server doesn't compile until someone sorts it** (the error names it, as missing from `PARTY_REDACT`). Play or people → `PARTY_SEES`; anything of the work → `PARTY_NEVER`. A type the gate doesn't know is dropped at runtime too. Toasts only get through when they're about play (`PARTY_TOASTS`); their own notes go past the gate (`partyNote`).
+  - HTTP: `roleMayFetch` (guests' rules, minus the whiteboard's pictures); `watchesOnly` keeps them out of workers' service tunnels.
+- `src/client/party.ts`: the page: `partyRefuses()` at the top of every window of the work, `PARTY_OFF` things in the office, desk lines, the screensaver, the ☰ menu (`partyMenu`), `body.party`, and a reload when the role changes.
+- `tests/party.test.ts` (role plumbing, what they send, what they get); `tests/party-e2e.mjs`: against a throwaway office on port 4711 (`npm run build && node tests/party-e2e.mjs`; a shell worker, never a Claude one).
+- Hooks in upstream files:
+  - `src/shared/protocol.ts`: `AccountRole` has `'party'`, `accountRole()`, `Me.party` (always with `Me.guest`).
+  - `src/server/server.ts`: `party` on `Client`; `partyGate(ws, …)` in `onConnection`; party guests arrive on the roof (`onRoof`); the party check before the guest check in `handleMessage`; `warn` goes by `partyNote`; `roleMayFetch` in the HTTP handler; `meOf`, `accountsChanged` (`partyChanged`), the heartbeat and the `accounts.role` toast.
+  - `src/server/auth.ts`: `fromAnyCookie`'s `noGuests` uses `watchesOnly`.
+  - `src/server/accounts.ts`: `--party` for `accounts invite`, `party` for `accounts role`.
+  - `src/client/ui/{boards,bookshelf,changes,meeting,pull,queue,search,services,terminal,whiteboard}.ts`: `partyRefuses()` as the first line of each window's `open…`.
+  - `src/client/main.ts`: `interact` and `hintFor` (party lines first), `openShell`/`promptAtDesk`/`hireAtDesk`/`goToNextWaiting`/`startHanging` refuse, the laptop's placeholder, `partyMenu([...])` round the ☰ menu, `watchParty()`.
+  - `src/client/ui/bossdesk.ts`: `bossWorker()` is nobody for a party guest (Minesweeper only).
+  - `src/client/ui/elevator.ts`: no "Add a project" for a party guest.
+  - `src/client/ui/accounts.ts`, `src/client/join.ts` ("invited you to a party on the rooftop bar 🎉"), `src/client/style.css` (`body.party`), `README.md`, `docs/configuration.md`.
 
 ### In-progress issues leave the wall board
 

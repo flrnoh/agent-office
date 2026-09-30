@@ -14,7 +14,8 @@ import { SignIns, type GhAs } from './signins.js';
 import { agentProviders, configuredProvider, OPEN_CODE_MODEL_MAX } from './agents.js';
 import { createGrokModelCatalogue, createOpenCodeModelCatalogue } from './models.js';
 import { Tailnet } from './tailnet.js';
-import { GUEST_MSGS, GUEST_QUIET, guestMayFetch } from './guests.js';
+import { GUEST_MSGS, GUEST_QUIET } from './guests.js';
+import { PARTY_MSGS, PARTY_QUIET, PARTY_REFUSED, partyGate, partyNote, roleMayFetch } from './party.js'; // fork: party guests
 import { Team } from './team.js';
 import { Upgrader } from './upgrade.js';
 import { Services } from './services.js';
@@ -88,6 +89,8 @@ interface Client {
   guest: boolean;
   /** When a guest was last told they can only watch, so a held key doesn't flood them. */
   lastGuestNoteAt: number;
+  /** A party guest (flrnoh fork, party.ts): a guest who sees none of the work; everything sent to them goes through partyGate. */
+  party: boolean;
   /** Signed out while connected; whatever it still sends is dropped until the socket closes. */
   out?: boolean;
   attached: Set<string>;
@@ -297,6 +300,7 @@ export async function startServer(cfg: Config) {
   };
   /** Tells just this person why their request didn't happen; nothing when there's no error. */
   const warn = (c: Client, error: string | undefined) => {
+    if (error && c.party) return partyNote(c.ws, error); // fork: their own notes get past the gate's toast filter
     if (error) sendTo(c, { t: 'toast', text: error, level: 'warn' });
   };
 
@@ -947,7 +951,7 @@ export async function startServer(cfg: Config) {
         return;
       }
       if (p === '/api/whoami') return send(res, 200, { ok: true, me: meOf(session.account?.id) });
-      if (session.account?.role === 'guest' && !guestMayFetch(p, url, onAWall)) return send(res, 403, { error: 'Guests only watch here' });
+      if (!roleMayFetch(session.account?.role, p, url, onAWall)) return send(res, 403, { error: 'Guests only watch here' });
       if (p === '/api/agents/opencode/models' && req.method === 'GET') {
         try {
           return send(res, 200, { models: await openCodeModels.get() });
@@ -1142,7 +1146,7 @@ export async function startServer(cfg: Config) {
   const meOf = (accountId: string | undefined): Me => {
     const a = accounts.get(accountId);
     if (!a) return { admin: !accountId };
-    return { account: { name: a.name, role: a.role }, admin: a.role === 'admin', ...(a.role === 'guest' ? { guest: true } : {}) };
+    return { account: { name: a.name, role: a.role }, admin: a.role === 'admin', ...(a.role === 'guest' ? { guest: true } : a.role === 'party' ? { guest: true, party: true } : {}) };
   };
   /** Still signed in: the account wasn't revoked, and the shared password wasn't switched off. */
   const stillIn = (c: Client) => (c.accountId ? !!accounts.get(c.accountId) : accounts.sharedPassword);
@@ -1151,6 +1155,22 @@ export async function startServer(cfg: Config) {
     c.ws.close(SIGNED_OUT, 'Signed out');
   };
   const onlineAccounts = () => new Set([...clients.values()].map((c) => c.accountId).filter((id): id is string => !!id));
+  /** fork (party.ts): made a party guest, or no longer one. Their page reloads on the `me` that follows; from now on they watch and draw nothing. */
+  const partyChanged = (c: Client, party: boolean) => {
+    c.party = party;
+    if (!party) return;
+    for (const f of floors.values()) {
+      f.workers.detachAll(c.id);
+      f.changes.unwatchAll(c.id);
+    }
+    c.attached.clear();
+    c.stale.clear();
+    c.typingAt.clear();
+    if (c.whiteboard) {
+      c.whiteboard = false;
+      drawingChanged(floorOf(c));
+    }
+  };
   /** Tells each admin what the accounts are now, and everyone whether they're (still) an admin. */
   const accountsChanged = () => {
     let state: ReturnType<Accounts['state']> | undefined;
@@ -1161,8 +1181,9 @@ export async function startServer(cfg: Config) {
         continue;
       }
       const me = meOf(c.accountId);
-      if (me.admin !== c.admin || !!me.guest !== c.guest) {
+      if (me.admin !== c.admin || !!me.guest !== c.guest || !!me.party !== c.party) {
         c.admin = me.admin;
+        if (!!me.party !== c.party) partyChanged(c, !!me.party); // fork: party guests
         if (!!me.guest !== c.guest) {
           c.guest = !!me.guest;
           // Made a guest while at a keyboard: they keep watching, but stop typing.
@@ -1176,12 +1197,13 @@ export async function startServer(cfg: Config) {
 
   const onConnection = (ws: WebSocket, url: URL, session: Session) => {
     const id = randomBytes(5).toString('hex');
+    const me = meOf(session.account?.id);
     // Back on the floor they were on before a reload, a restart or closing the tab, else the first floor.
     const wanted = url.searchParams.get('floor');
     // Their floor's gone since (taken off the building, or its checkout deleted): up to the roof instead.
     const gone = !!wanted && wanted !== ROOF && !floors.has(wanted);
     // Up on the roof, as long as there's a building under it.
-    const onRoof = (wanted === ROOF || gone) && floors.size > 0;
+    const onRoof = (wanted === ROOF || gone || (!wanted && !!me.party)) && floors.size > 0; // fork: party guests arrive at the rooftop bar
     const floor = onRoof ? undefined : arrivalFloor(wanted);
     // Back where they were standing on it too; anywhere else, they arrive by elevator.
     const back = !gone && wanted !== null && (onRoof || floor?.id === wanted);
@@ -1191,7 +1213,6 @@ export async function startServer(cfg: Config) {
     const name = account?.name ?? (str(url.searchParams.get('name'), 24).trim() || `Guest ${id.slice(0, 3)}`);
     const colorParam = url.searchParams.get('color') ?? '';
     const intParam = (k: string) => (url.searchParams.get(k) ? Number(url.searchParams.get(k)) : undefined);
-    const me = meOf(account?.id);
     const client: Client = {
       id,
       ws,
@@ -1199,6 +1220,7 @@ export async function startServer(cfg: Config) {
       admin: me.admin,
       guest: !!me.guest,
       lastGuestNoteAt: 0,
+      party: !!me.party,
       attached: new Set(),
       stale: new Set(),
       lastMoveAt: 0,
@@ -1237,6 +1259,7 @@ export async function startServer(cfg: Config) {
     // Maps of your own may have been added or edited since: everyone already in hears first.
     const mapWas = maps.pick();
     if (maps.reload()) mapNews(mapWas);
+    partyGate(ws, () => client.party); // fork: all a party guest gets goes through party.ts
     clients.set(id, client);
     if (account) accounts.seen(account.id);
     ws.on('pong', () => (client.isAlive = true));
@@ -1492,6 +1515,15 @@ export async function startServer(cfg: Config) {
       if (!f) warn(c, 'Take the elevator to a floor first');
       return f;
     };
+    if (c.party && !PARTY_MSGS.has(msg.t)) {
+      // fork: party guests (party.ts), checked before the guest rules they're stricter than
+      const now = Date.now();
+      if (!PARTY_QUIET.has(msg.t) && now - c.lastGuestNoteAt > 3000) {
+        c.lastGuestNoteAt = now;
+        warn(c, PARTY_REFUSED);
+      }
+      return;
+    }
     if (c.guest && !GUEST_MSGS.has(msg.t)) {
       // Checked here, on the office's side, whatever the page lets them click.
       const now = Date.now();
@@ -2510,7 +2542,7 @@ export async function startServer(cfg: Config) {
         const a = accounts.setRole(id, accountRole(msg.role));
         if (!a || a.role === before) break;
         toastAll(
-          a.role === 'admin' ? `${who} made ${a.name} an admin` : a.role === 'guest' ? `${a.name} is a guest now: watching, not typing` : before === 'admin' ? `${a.name} is no longer an admin` : `${who} made ${a.name} a member`,
+          a.role === 'admin' ? `${who} made ${a.name} an admin` : a.role === 'party' ? `🎉 ${a.name} is a party guest now` : a.role === 'guest' ? `${a.name} is a guest now: watching, not typing` : before === 'admin' ? `${a.name} is no longer an admin` : `${who} made ${a.name} a member`,
         );
         accountsChanged();
         // Only admins may use the office's own sign-ins: a demoted one is back on their own.
@@ -2552,7 +2584,7 @@ export async function startServer(cfg: Config) {
       }
       if (!c.out) {
         const me = meOf(c.accountId);
-        if (!stillIn(c) || c.admin !== me.admin || c.guest !== !!me.guest) accountsMoved = true;
+        if (!stillIn(c) || c.admin !== me.admin || c.guest !== !!me.guest || c.party !== !!me.party) accountsMoved = true;
       }
       c.isAlive = false;
       c.ws.ping();

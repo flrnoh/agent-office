@@ -287,11 +287,12 @@ const HELP = `agent-office accounts — who can sign in to the office
 
 Usage:
   agent-office accounts [list]                 Accounts, open invites, and the shared password
-  agent-office accounts invite [name] [--admin|--guest]
+  agent-office accounts invite [name] [--admin|--guest|--party]
                                                Make a single-use invite link (valid 7 days);
-                                               a guest only watches, and can't type in terminals
+                                               a guest only watches, and can't type in terminals;
+                                               a party guest parties on the roof and sees no work
   agent-office accounts revoke <name>          Delete an account; it's signed out at once
-  agent-office accounts role <name> admin|member|guest
+  agent-office accounts role <name> admin|member|guest|party
   agent-office accounts password on|off        Whether the shared office password still works
 
 Options:
@@ -321,6 +322,7 @@ export function accountsCommand(argv: string[]): number {
       dir = path.resolve(argv[++i]);
     } else if (a === '--admin') role = 'admin';
     else if (a === '--guest') role = 'guest';
+    else if (a === '--party') role = 'party'; // fork: party guests
     else if (a.startsWith('-')) return usage(`unknown option ${a}`);
     else args.push(a);
   }
@@ -366,9 +368,9 @@ export function accountsCommand(argv: string[]): number {
         console.log(`Revoked ${a.name}'s account. They're signed out of the office within seconds.`);
         return 0;
       }
-      if (arg2 !== 'admin' && arg2 !== 'member' && arg2 !== 'guest') return usage('role takes admin, member or guest');
+      if (arg2 !== 'admin' && arg2 !== 'member' && arg2 !== 'guest' && arg2 !== 'party') return usage('role takes admin, member, guest or party');
       accounts.setRole(a.id, arg2);
-      console.log(`${a.name} is ${arg2 === 'admin' ? 'an admin' : arg2 === 'guest' ? 'a guest' : 'a member'} now.`);
+      console.log(`${a.name} is ${arg2 === 'admin' ? 'an admin' : arg2 === 'guest' ? 'a guest' : arg2 === 'party' ? 'a party guest' : 'a member'} now.`);
       return 0;
     }
     case 'password': {
