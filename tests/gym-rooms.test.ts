@@ -277,7 +277,7 @@ test('an Aufguss: everyone inside gets the heat, then the stones need a rest', (
     bo.walk(IN_SAUNA.x + 0.4, IN_SAUNA.z);
     cy.walk(OUTSIDE.x, OUTSIDE.z);
     gym.message('c3', { t: 'gym.act', station: 'sauna', action: 'ladle' });
-    assert.match(cy.results().at(-1) ?? '', /step on first/i, 'not from outside the sauna');
+    assert.match(cy.results().at(-1) ?? '', /step inside first/i, 'not from outside the sauna');
     gym.message('c1', { t: 'gym.act', station: 'sauna', action: 'ladle' });
     assert.match(ada.results().at(-1) ?? '', /aufguss/i);
     assert.match(bo.results().at(-1) ?? '', /Ada poured/);

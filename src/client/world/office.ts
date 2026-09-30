@@ -67,6 +67,8 @@ export interface Interactable {
   casinoTable?: string;
   /** Fork: which of the gym's stations (shared/gym.ts GYM_STATIONS), for a 'gym-station'. */
   gymStation?: string;
+  /** Fork: E there does this at `gymStation` straight away (the sauna's bucket: an Aufguss), no window. */
+  gymAct?: string;
   /** Fork: which of the padel hall's courts (shared/hall.ts COURTS), for 'padel'. */
   court?: CourtId;
 }

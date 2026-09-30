@@ -201,7 +201,7 @@ export class Gym {
         const station = typeof msg.station === 'string' ? this.stations.get(msg.station) : undefined;
         if (!station) return warn('No such station');
         if (typeof msg.action !== 'string' || msg.action.length > 32) return warn('No such move', station.id);
-        if (this.seatOf.get(p.owner) !== station.id) return warn('Step on first', station.id);
+        if (this.seatOf.get(p.owner) !== station.id) return warn(WALK_IN_BY_STATION.has(station.id) ? 'Step inside first' : 'Step on first', station.id);
         if (!this.acts.take([p.id, p.owner])) return warn('Easy there: catch your breath', station.id);
         const err = station.act(this.seated(p), msg.action, msg.data, this.ctx(station));
         if (err) warn(err, station.id);

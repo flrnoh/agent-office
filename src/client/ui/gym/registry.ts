@@ -6,7 +6,7 @@ import type { GymKind, GymStationDef, FitnessProfile } from '../../../shared/gym
  * registers its window here (registerGymUi). Mirrors ui/casino/registry.ts.
  */
 
-export type GymSoundKind = 'rep' | 'clank' | 'run' | 'ding' | 'splash' | 'cheer' | 'sip' | 'whoosh' | 'buzzer';
+export type GymSoundKind = 'rep' | 'clank' | 'run' | 'ding' | 'splash' | 'cheer' | 'sip' | 'whoosh' | 'buzzer' | 'hiss';
 
 /** What a station's window gets to work with. */
 export interface GymUiContext {
