@@ -28,7 +28,7 @@ const TEAM_ONLY = [
   'accounts.cancel', 'accounts.invite', 'accounts.revoke', 'accounts.role', 'accounts.shared',
   'carry', 'changes.commit', 'changes.diff', 'changes.discard', 'changes.pr',
   'decor.add', 'decor.remove', 'decor.update', 'desk.label', 'dog.name',
-  'floor.add', 'floor.expand', 'floor.projectsDir', 'floor.remove', 'floor.shrink',
+  'floor.add', 'floor.expand', 'floor.order', 'floor.projectsDir', 'floor.remove', 'floor.shrink',
   'gh.close', 'gh.comment', 'gh.labels', 'gh.merge', 'leaveOnMerge.set',
   'machine.limit', 'map.set', 'meeting.clear', 'meeting.start', 'meeting.stop',
   'notify.test', 'notify.webhook', 'prompts.agent', 'prompts.set', 'queue.add',

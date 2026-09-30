@@ -1,0 +1,12 @@
+/* Floors in any order (flrnoh fork, see FORK.md): the elevator's grip, ↑ ↓ and drop line. */
+.elevator .floor-row.orderable { grid-template-columns: auto minmax(0, 1fr) auto auto; position: relative; }
+.elevator .floor-grip { display: grid; place-items: center; width: 22px; font-size: 18px; line-height: 1; color: var(--ink); opacity: .45; cursor: grab; user-select: none; touch-action: none; }
+.elevator .floor-row.orderable:hover .floor-grip { opacity: .85; }
+.elevator .floor-row.orderable[draggable="true"] .floor-grip { cursor: grabbing; }
+.elevator .floor-moves { display: grid; grid-template-rows: 1fr 1fr; gap: 4px; }
+.elevator .floor-move { padding: 0 9px; min-height: 0; font-size: 13px; line-height: 1; }
+.elevator .floor-row.dragging { opacity: .4; }
+.elevator .floor-row.drop-above::before,
+.elevator .floor-row.drop-below::after { content: ''; position: absolute; left: 0; right: 0; height: 4px; border-radius: 2px; background: var(--accent); pointer-events: none; }
+.elevator .floor-row.drop-above::before { top: -6px; }
+.elevator .floor-row.drop-below::after { bottom: -6px; }

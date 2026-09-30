@@ -1278,6 +1278,8 @@ export type ClientMsg =
   | { t: 'floor.add'; repo: string }
   /** Take a floor off the building (admins only). Its checkout stays on disk; everyone on it rides to another floor. */
   | { t: 'floor.remove'; floor: string }
+  /** Floors in any order (admins only; flrnoh fork): the built floors' ids, bottom floor first. */
+  | { t: 'floor.order'; ids: string[] }
   /** Dress the building up for a holiday, take the decorations down ('off'), or follow the calendar ('auto'). */
   | { t: 'theme.set'; pick: ThemePick }
   /** Change the building's map (see MapState), or with no map, read the custom maps' folder again. */

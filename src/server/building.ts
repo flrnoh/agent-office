@@ -3,6 +3,7 @@ import { accessSync, constants, existsSync, mkdirSync, readFileSync, readdirSync
 import os from 'node:os';
 import path from 'node:path';
 import { FLOOR_PALETTES, MAX_FLOORS, normalizeRepo, sameRepo } from '../shared/floors.js';
+import { reorderById } from '../shared/floor-order.js';
 import type { ProjectsDirState, RepoChoice } from '../shared/protocol.js';
 import { gh } from './github.js';
 
@@ -160,6 +161,15 @@ export class Building {
     }
     this.save();
     return def;
+  }
+
+  /** Floors in any order (flrnoh fork, see FORK.md): puts the floors `ids` names in that order and saves it. Whether anything moved. */
+  reorder(ids: readonly unknown[]): boolean {
+    const next = reorderById(this.defs, (d) => d.id, ids);
+    if (!next) return false;
+    this.defs = next;
+    this.save();
+    return true;
   }
 
   /**

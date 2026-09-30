@@ -45,6 +45,7 @@ import { SEARCH_MAX, SEARCH_MIN, searchKey } from '../shared/search.js';
 import { WB_MAX_FILE_BYTES } from '../shared/whiteboard.js';
 import { DROP_MAX_BYTES } from '../shared/drops.js';
 import { MAX_FLOORS } from '../shared/floors.js';
+import { reorderMap } from '../shared/floor-order.js';
 import { lookFromSeed, sanitizeLook } from '../shared/avatar.js';
 import { EMOTE_EVERY, EmoteBucket, isEmote } from '../shared/emotes.js';
 import { isThemePick } from '../shared/theme.js';
@@ -1666,6 +1667,16 @@ export async function startServer(cfg: Config) {
         const floor = floors.get(id);
         if (floor) closeFloor(floor, who);
         else floorsChanged();
+        break;
+      }
+      case 'floor.order': {
+        // Floors in any order (flrnoh fork, see FORK.md): the same ids reorder floors.json and the open floors.
+        if (!meOf(c.accountId).admin) return warn(c, 'Only admins can rearrange the floors');
+        const ids = Array.isArray(msg.ids) ? msg.ids.slice(0, 1000) : [];
+        if (!building.reorder(ids)) return sendTo(c, { t: 'floors', floors: floorInfos() });
+        reorderMap(floors, ids);
+        floorsChanged();
+        toastAll(`🛗 ${who} rearranged the floors`);
         break;
       }
       case 'floor.projectsDir': {
