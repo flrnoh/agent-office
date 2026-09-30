@@ -2144,6 +2144,7 @@ export async function startServer(cfg: Config) {
       case 'padel.input':
       case 'padel.sync':
         padelMessage(padelCourts, msg, { id: c.id, who, color: c.peer.color, inHall: c.peer.floor === HALL, toHall, toClient: (id, m) => { const o = clients.get(id); if (o) sendTo(o, m); }, warn: (t) => warn(c, t) });
+        break;
       case 'bungee.jump': // fork: bungee off the roof
         bungeeMessage(bungeeRope, msg, { id: c.id, who, color: c.peer.color, onRoof: c.peer.floor === ROOF, floors: floors.size, toRoof, warn: (t) => warn(c, t) });
         break;
