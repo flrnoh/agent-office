@@ -277,6 +277,14 @@ The first player's page (the table's host) runs the game, the computer included,
   - `src/client/main.ts`: `tables` (made next to the thrower), E at a table, its hint, `tables.update` after the cabinet, `REACH.table`, no hands or own body while the camera's at a table, `__office.tables`.
   - `docs/features.md`, `docs/controls.md`: words.
 
+### TURN for voice from outside
+
+Voice and screen sharing connect browsers directly (WebRTC). With only STUN that fails for people outside the Mac's network behind strict routers, office networks or mobile data: they are "in voice" and their mic lights up, but nothing arrives. With a Cloudflare TURN key the office fetches short-lived TURN credentials (48 h, refreshed every 12 h, retried after 5 min on failure) and hands them to every page in the welcome's `ice`, after the office's own STUN servers. Without a key nothing changes. Port-53 URLs are dropped (browsers block them).
+
+- The key: `<office>/.agent-office/turn.json` = `{"keyId": "...", "apiToken": "..."}` (chmod 600), or the environment's `CF_TURN_KEY_ID` / `CF_TURN_API_TOKEN`. Read at start: restart the office after adding it.
+- `src/server/turn.ts` (+ `tests/turn.test.ts`); hooks in `src/server/server.ts` (make, start, stop, and the welcome's `ice`).
+- Cloudflare: first 1,000 GB a month free (shared with their SFU), then $0.05/GB; voice needs a few MB per person and hour.
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.
