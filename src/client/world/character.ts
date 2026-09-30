@@ -312,6 +312,18 @@ function undress(parts: THREE.Object3D[]) {
 }
 
 /** A chibi cartoon person — used for every human in the office. Forward is +z. */
+/** Fork: the parts of a Person a gym machine poses (world/gym/equipment.ts): forward is +z, the arms hang down -y from their shoulders. */
+export interface Bones {
+  root: THREE.Group;
+  body: THREE.Group;
+  head: THREE.Group;
+  /** The arm and leg on -x and on +x (the character's right and left). */
+  armR: THREE.Object3D;
+  armL: THREE.Object3D;
+  legR: THREE.Object3D;
+  legL: THREE.Object3D;
+}
+
 export class Person {
   readonly root = new THREE.Group();
   private body = new THREE.Group();
@@ -376,6 +388,8 @@ export class Person {
   private seatHips = HIPS;
   /** Fork: in the racing rig's seat, hands up on its wheel (see world/rig.ts). */
   wheel = false;
+  /** Fork: on a gym machine (world/gym/equipment.ts), which poses the whole body after everything else each frame. */
+  private workout: ((b: Bones, dt: number, t: number) => void) | null = null;
   /** 0 standing … 1 sitting, eased between so sitting down and getting up take a moment. */
   private sitK = 0;
   /** Holding on to the ladder or a fire pole (see setGrip). */
@@ -897,6 +911,27 @@ export class Person {
     }
   }
 
+  /** Fork: onto a gym machine, posed by `pose` every frame from now on, or off it again (null). */
+  setWorkout(pose: ((b: Bones, dt: number, t: number) => void) | null) {
+    if (pose === this.workout) return;
+    this.workout = pose;
+    if (pose) return;
+    // Off the machine: every joint it turned, stretched or moved goes back to standing.
+    for (const limb of [this.armL, this.armR, this.legL, this.legR]) {
+      limb.rotation.set(0, 0, 0);
+      limb.scale.set(1, 1, 1);
+    }
+    this.body.position.set(0, 0, 0);
+    this.body.rotation.set(0, 0, 0);
+    this.head.rotation.set(0, 0, 0);
+  }
+
+  /** Fork: the parts a gym machine poses (see Bones). Forward is +z: the arm on -x is their right. */
+  get bones(): Bones {
+    return (this.boneSet ??= { root: this.root, body: this.body, head: this.head, armR: this.armL, armL: this.armR, legR: this.legL, legL: this.legR });
+  }
+  private boneSet: Bones | null = null;
+
   /** Sits down with the hips `hips` above the feet, on a couch or a chair, or gets up (null). */
   sit(hips: number | null) {
     this.hips = hips;
@@ -1241,6 +1276,7 @@ export class Person {
     if (this.emoting) this.emoteStep(dt, moving || airborne ? 0 : 1 - sit);
     if (this.golf && !sit && !airborne) this.golfStep(dt);
     if (this.oche && !sit) this.ocheStep(dt);
+    if (this.workout) this.workout(this.bones, dt, t); // fork: on a gym machine
   }
 }
 

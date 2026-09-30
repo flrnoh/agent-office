@@ -1880,6 +1880,45 @@ export class OfficeSound {
   private spaBed: GainNode | null = null;
   private spaLevel = 0;
 
+  /**
+   * The gym's machines at work, from where they stand (world/gym/equipment.ts): a footfall on a
+   * treadmill belt, a flywheel's whirr, the rower's fan on the drive, a stack's plates clanking down,
+   * a barbell's thud, a glove on the bag. Soft, and gone a few machines away.
+   */
+  gymAt(kind: 'step' | 'whirr' | 'whoosh' | 'clank' | 'thud' | 'punch', at: { x: number; y: number; z: number }) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.count(`gymAt.${kind}`);
+    if (kind === 'step') {
+      this.play(pick(this.buf.steps), { at, gain: rand(0.2, 0.26), rate: rand(0.8, 0.95), ref: 1.2, rolloff: 1.6 });
+      return;
+    }
+    const out = this.panner(at, 1.4, 1.5);
+    out.connect(this.ambience);
+    const t0 = ctx.currentTime + 0.01;
+    if (kind === 'whirr')
+      this.hiss(out, t0, 900, 2.5, [
+        [0.08, 0.025],
+        [0.3, 0.018],
+        [0.45, 0],
+      ]);
+    else if (kind === 'whoosh')
+      this.hiss(out, t0, 520, 1.2, [
+        [0.12, 0.07],
+        [0.45, 0.03],
+        [0.8, 0],
+      ]);
+    else if (kind === 'clank') [1250, 1720].forEach((f, i) => this.blip(out, t0 + i * 0.035, f, 0.8, 0.07, 0.035, 'square'));
+    else if (kind === 'thud') this.blip(out, t0, 110, 0.6, 0.14, 0.12, 'triangle');
+    else {
+      this.blip(out, t0, 160, 0.5, 0.08, 0.14, 'sine');
+      this.hiss(out, t0, 1400, 0.8, [
+        [0.01, 0.05],
+        [0.06, 0],
+      ]);
+    }
+  }
+
   // ---- The padel hall (fork, see client/hall.ts) --------------------------------------------------
 
   /**

@@ -8,6 +8,9 @@ import type { ClientMsg, FloorInfo, ServerMsg } from '../shared/protocol';
 import { streetBelow } from '../shared/layout';
 import type { Collider, Interactable } from './world/office';
 import { buildGymInterior, type GymInterior } from './world/gym/interior';
+import type { MachineSound } from './world/gym/equipment';
+import type { Person } from './world/character';
+import type { PlayerController } from './player';
 import { h, toast } from './ui/dom';
 import { gymUiFor, type GymSoundKind, type GymUi } from './ui/gym/registry';
 import './ui/gym/cardio'; // registers the cardio window
@@ -31,7 +34,7 @@ export interface GymHost {
   floor(): string | null;
   floors(): FloorInfo[];
   inOffice(): boolean;
-  player: { pos: THREE.Vector3; colliders: Collider[]; room: { minX: number; maxX: number; minZ: number; maxZ: number; wall: number; enclosed: boolean } };
+  player: Pick<PlayerController, 'pos' | 'colliders' | 'room' | 'rig' | 'facing' | 'moving' | 'view'>;
   showOffice(on: boolean): void;
   officeColliders(): Collider[];
   officeRoom(): GymHost['player']['room'];
@@ -41,9 +44,16 @@ export interface GymHost {
   sound(kind: GymSoundKind): void;
   noOutline(o: THREE.Object3D): void;
   /** Fork (the spa): the camera, everyone else in the gym, and the spa's quiet ambience (0…1). */
-  camera?: THREE.Camera;
-  people?(): { x: number; z: number }[];
+  spaPeople?(): { x: number; z: number }[];
   ambience?(level: number): void;
+  /** Everyone else in here, by name, as drawn (for posing whoever's on a machine), and you. */
+  people(): { name: string; person: Person }[];
+  you(): { name: string; person: Person } | null;
+  /** The office's clock (ms), which a set's reps are timed by. */
+  now(): number;
+  camera: THREE.PerspectiveCamera;
+  /** A machine at work, heard from where it is. */
+  soundAt(kind: MachineSound, at: { x: number; y: number; z: number }): void;
 }
 
 const FROM_KEY = 'agent-office.gym.from';
@@ -75,6 +85,18 @@ export class GymPlace {
   /** When each walk-in room's last Aufguss was, as the page last heard it (for the hiss). */
   private puffs = new Map<string, number>();
   private camPos = new THREE.Vector3();
+  /** The machine you're on (cardio or strength) and holding you in place there, or null. */
+  private riding: string | null = null;
+  private readonly hold = () => {
+    const at = this.riding ? this.room?.equipment.spot(this.riding) : null;
+    const p = this.host.player;
+    if (at) {
+      p.pos.set(at.x, at.y, at.z);
+      p.facing = at.rotY;
+    }
+    p.moving = false;
+  };
+  private head = new THREE.Vector3();
   private warm = new THREE.Color('#cfe8d6');
   private warmGround = new THREE.Color('#1b2a22');
 
@@ -128,6 +150,7 @@ export class GymPlace {
     const i = this.host.floors().findIndex((f) => f.id === to);
     const at = { x: GYM_STREET_SPOT.x, y: streetBelow(Math.max(0, i)), z: GYM_STREET_SPOT.z, rotY: GYM_STREET_SPOT.rotY };
     this.outside = at;
+    this.letGo(false);
     this.closeUi();
     this.host.trip(to, at);
   }
@@ -150,6 +173,7 @@ export class GymPlace {
       this.showHud(true);
     } else {
       if (this.room) this.room.group.visible = false;
+      this.letGo(false);
       this.closeUi();
       this.host.showOffice(true);
       this.host.player.colliders = this.host.officeColliders();
@@ -361,13 +385,57 @@ export class GymPlace {
       return;
     }
     const me = this.host.player.pos;
-    const people = [{ x: me.x, z: me.z }, ...(this.host.people?.() ?? [])];
+    const people = [{ x: me.x, z: me.z }, ...(this.host.spaPeople?.() ?? [])];
     const cam = this.host.camera ? this.camPos.setFromMatrixPosition(this.host.camera.matrixWorld) : null;
     this.room.update(t, dt, { me: { x: me.x, y: me.y, z: me.z }, cam, people });
     const room = this.room.walkInAt(me.x, me.z) ?? null;
     if (room !== this.walkIn) this.setWalkIn(room);
     // The spa's own quiet: soft water and air in there, a little more in the cabins.
     this.host.ambience?.(room ? 1 : inRect(SPA, me.x, me.z) ? 0.6 : 0);
+    // On a machine: the office has you on the station whose window you have open.
+    const you = this.host.you();
+    const open = this.open?.station;
+    const def = open ? GYM_STATION_BY_ID.get(open) : undefined;
+    const view = open ? (this.stations.get(open) as { player?: string } | undefined) : undefined;
+    const mine = def && (def.kind === 'cardio' || def.kind === 'strength') && you && view?.player === you.name ? def.id : null;
+    if (mine !== this.riding) {
+      this.letGo(true);
+      if (mine) this.getOn(mine);
+    }
+    this.room.equipment.update(t, dt, this.host.now(), { people: this.host.people(), you, mine }, (kind, at) => this.host.soundAt(kind, at));
+    if (this.riding && you) {
+      you.person.bones.head.getWorldPosition(this.head);
+      this.room.equipment.frame(this.riding, this.host.camera, dt, this.host.player.view === 'first', this.head);
+    }
+  }
+
+  /** Onto machine `id`: you stand (sit, lie) where it has you, and stay there until you step off. */
+  private getOn(id: string) {
+    this.riding = id;
+    this.host.player.rig = this.hold;
+    this.hold();
+  }
+
+  /** Off the machine you're on: onto the floor beside it (`place`), or just let go (leaving the gym). */
+  private letGo(place: boolean) {
+    const id = this.riding;
+    if (!id) return;
+    this.riding = null;
+    this.room?.equipment.unframe();
+    const p = this.host.player;
+    if (p.rig === this.hold) p.rig = null;
+    const off = place ? this.room?.equipment.off(id) : null;
+    if (off) this.host.placeAt(off);
+  }
+
+  /** On a machine, the camera's the gym's: framed on you, or out from your eyes on the cardio deck in first person. */
+  get zoomed(): boolean {
+    return !!this.riding;
+  }
+
+  /** Whether your own body should be drawn: on a machine, unless you're looking out from your eyes. */
+  get showsYou(): boolean {
+    return !!this.riding && !(this.host.player.view === 'first' && this.room?.equipment.firstPerson(this.riding));
   }
 
   /** Into or out of the sauna or the steam room (the office works out the same by where it sees you). */

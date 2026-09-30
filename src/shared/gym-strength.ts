@@ -120,6 +120,8 @@ export interface StrengthView {
   /** A set is being worked right now (the lifter animates): when it ends. */
   working: boolean;
   until?: number;
+  /** When it started (office clock, ms): onlookers walking in mid-set pick the lifter up at the right rep. */
+  since?: number;
   /** How their last set went, for the window and the felt to show. */
   last?: { reps: number; target: number; weight: number; volume: number; xp: number; failed: boolean };
   /** Their best single-set volume on this machine. */
