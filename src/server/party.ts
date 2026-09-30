@@ -165,6 +165,16 @@ export function partyFloorView<V extends FloorView>(v: V): V {
 }
 
 /**
+ * Every field of a floor view, sorted: shown as it is (play, people, the building) or blanked above in
+ * `partyFloorView`. A field upstream adds to FloorView is in neither, and then the server doesn't
+ * compile (the error names it) until someone decides: blank it in partyFloorView, or list it here.
+ */
+const VIEW_AS_IS = ['floor', 'decor', 'dog', 'jukebox', 'cabinet', 'ball', 'cars', 'jail', 'dj', 'rig', 'tv'] as const satisfies readonly (keyof FloorView)[];
+const VIEW_BLANKED = ['project', 'workers', 'issues', 'pulls', 'queue', 'plan', 'services', 'whiteboard', 'meeting'] as const satisfies readonly (keyof FloorView)[];
+type UnsortedView = Exclude<keyof FloorView, (typeof VIEW_AS_IS)[number] | (typeof VIEW_BLANKED)[number]>;
+export const partyViewSorted: [UnsortedView] extends [never] ? true : { unsortedFloorViewField: UnsortedView } = true;
+
+/**
  * Toasts go to everyone on a floor, and most are about the work ("Pixel finished issue #12"): a
  * party guest only gets the ones about play. What they did themselves comes back to them by
  * `partyNote`, past the gate.
