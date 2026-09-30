@@ -285,6 +285,13 @@ Voice and screen sharing connect browsers directly (WebRTC). With only STUN that
 - `src/server/turn.ts` (+ `tests/turn.test.ts`); hooks in `src/server/server.ts` (make, start, stop, and the welcome's `ice`).
 - Cloudflare: first 1,000 GB a month free (shared with their SFU), then $0.05/GB; voice needs a few MB per person and hour.
 
+### A doorbell
+
+A ding-dong for everyone in the office when a person comes in, with a toast "🔔 Ada came in". Workers never ring (they aren't people in the office), and neither do you, the people already there when you arrive, a reload or a dropped connection coming back (gone less than 90 s), or a second tab of someone who's here. A crowd arriving at once rings once, but everyone is named. It plays on the effects volume.
+
+- `src/client/doorbell.ts`: who's here and whether an arrival rings; `tests/doorbell.test.ts`.
+- Hooks in upstream files: `src/client/sound.ts` (`doorbell()`, its own section), `src/client/main.ts` (the bell, and one line each in the `welcome`, `floor.enter` and `peer.join`/`peer.leave` cases).
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.
