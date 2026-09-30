@@ -77,3 +77,13 @@
 .gym-hud.bump { animation: gym-bump .35s ease-out; }
 @keyframes gym-bump { 40% { transform: translateX(-50%) scale(1.1); } }
 body:has(.backdrop) .gym-hud, .gym-hud[hidden] { display: none; }
+/* Fork: in the sauna or the steam room (client/gym.ts): which, how hot, and whether an Aufguss is on. */
+.gym-hud .gym-room { background: #3a2412; color: #ffcf8a; border-radius: 999px; padding: 1px 9px; opacity: 1; white-space: nowrap; }
+@media (max-width: 560px) { .gym-hud { flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 32px); } }
+
+/* On a cardio machine or a strength station the window docks along the bottom over a light veil,
+   so you see yourself (and the machine) working out above it (world/gym/equipment.ts frames you). */
+.backdrop:has(> .modal.gym-cardio, > .modal.gym-strength) { place-items: end center; background: rgba(43, 45, 66, .12); padding-bottom: 12px; }
+.modal.gym-cardio, .modal.gym-strength { width: min(560px, 100%); }
+.modal.gym-cardio .gym-panel, .modal.gym-strength .gym-panel { padding: 10px 14px; }
+@media (max-height: 720px) { .modal.gym-cardio .gym-note, .modal.gym-strength .gym-note { display: none; } }

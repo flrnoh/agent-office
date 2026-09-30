@@ -2,11 +2,15 @@ import * as THREE from 'three';
 import { GYM, GYM_ENTRY, GYM_NAME, GYM_ROOM, GYM_STATION_BY_ID, GYM_STREET_SPOT, JUICE_BAR, STAMINA_MAX, rankFor, xpForLevel, type FitnessProfile, type GymServerMsg, type GymStationDef } from '../shared/gym';
 import { CARDIO_MACHINES } from '../shared/gym-cardio';
 import { EXERCISES } from '../shared/gym-strength';
-import { WELLNESS_SPOTS } from '../shared/gym-wellness';
+import { WELLNESS_SPOTS, type WellnessView } from '../shared/gym-wellness';
+import { AUFGUSS_BOOST_MS, SPA, WALK_IN_BY_STATION, inRect } from '../shared/gym-rooms';
 import type { ClientMsg, FloorInfo, ServerMsg } from '../shared/protocol';
 import { streetBelow } from '../shared/layout';
 import type { Collider, Interactable } from './world/office';
 import { buildGymInterior, type GymInterior } from './world/gym/interior';
+import type { MachineSound } from './world/gym/equipment';
+import type { Person } from './world/character';
+import type { PlayerController } from './player';
 import { h, toast } from './ui/dom';
 import { gymUiFor, type GymSoundKind, type GymUi } from './ui/gym/registry';
 import './ui/gym/cardio'; // registers the cardio window
@@ -30,7 +34,7 @@ export interface GymHost {
   floor(): string | null;
   floors(): FloorInfo[];
   inOffice(): boolean;
-  player: { pos: THREE.Vector3; colliders: Collider[]; room: { minX: number; maxX: number; minZ: number; maxZ: number; wall: number; enclosed: boolean } };
+  player: Pick<PlayerController, 'pos' | 'colliders' | 'room' | 'rig' | 'facing' | 'moving' | 'view'>;
   showOffice(on: boolean): void;
   officeColliders(): Collider[];
   officeRoom(): GymHost['player']['room'];
@@ -39,6 +43,17 @@ export interface GymHost {
   placeAt(at: Spot): void;
   sound(kind: GymSoundKind): void;
   noOutline(o: THREE.Object3D): void;
+  /** Fork (the spa): the camera, everyone else in the gym, and the spa's quiet ambience (0…1). */
+  spaPeople?(): { x: number; z: number }[];
+  ambience?(level: number): void;
+  /** Everyone else in here, by name, as drawn (for posing whoever's on a machine), and you. */
+  people(): { name: string; person: Person }[];
+  you(): { name: string; person: Person } | null;
+  /** The office's clock (ms), which a set's reps are timed by. */
+  now(): number;
+  camera: THREE.PerspectiveCamera;
+  /** A machine at work, heard from where it is. */
+  soundAt(kind: MachineSound, at: { x: number; y: number; z: number }): void;
 }
 
 const FROM_KEY = 'agent-office.gym.from';
@@ -65,6 +80,23 @@ export class GymPlace {
   private hud: HTMLElement | null = null;
   private outside: Spot | null = null;
   private arriving = false;
+  /** The walk-in room you're standing in (its station), for the hint line and the ambience. */
+  private walkIn: string | null = null;
+  /** When each walk-in room's last Aufguss was, as the page last heard it (for the hiss). */
+  private puffs = new Map<string, number>();
+  private camPos = new THREE.Vector3();
+  /** The machine you're on (cardio or strength) and holding you in place there, or null. */
+  private riding: string | null = null;
+  private readonly hold = () => {
+    const at = this.riding ? this.room?.equipment.spot(this.riding) : null;
+    const p = this.host.player;
+    if (at) {
+      p.pos.set(at.x, at.y, at.z);
+      p.facing = at.rotY;
+    }
+    p.moving = false;
+  };
+  private head = new THREE.Vector3();
   private warm = new THREE.Color('#cfe8d6');
   private warmGround = new THREE.Color('#1b2a22');
 
@@ -118,6 +150,7 @@ export class GymPlace {
     const i = this.host.floors().findIndex((f) => f.id === to);
     const at = { x: GYM_STREET_SPOT.x, y: streetBelow(Math.max(0, i)), z: GYM_STREET_SPOT.z, rotY: GYM_STREET_SPOT.rotY };
     this.outside = at;
+    this.letGo(false);
     this.closeUi();
     this.host.trip(to, at);
   }
@@ -140,6 +173,7 @@ export class GymPlace {
       this.showHud(true);
     } else {
       if (this.room) this.room.group.visible = false;
+      this.letGo(false);
       this.closeUi();
       this.host.showOffice(true);
       this.host.player.colliders = this.host.officeColliders();
@@ -193,6 +227,11 @@ export class GymPlace {
     }
     if (it.kind !== 'gym-station') return false;
     if (key !== 'E' || !it.gymStation) return true;
+    if (it.gymAct) {
+      // Fork: the sauna's bucket, the steam room's bowl: straight to it, no window (you're in there).
+      this.host.send({ t: 'gym.act', station: it.gymStation, action: it.gymAct });
+      return true;
+    }
     this.sitAt(it.gymStation);
     return true;
   }
@@ -250,6 +289,7 @@ export class GymPlace {
         break;
       }
       case 'gym.station':
+        this.pouredIn(m.station, m.state);
         this.stations.set(m.station, m.state);
         this.room?.setStation(m.station, m.state);
         if (this.open?.station === m.station) this.open.ui.station(m.state);
@@ -269,6 +309,16 @@ export class GymPlace {
     if (it.kind === 'gym') return this.active ? { k: 'gym-out', parts: [title('🚪 Street'), key('E', 'Go out')] } : { k: 'gym-in', parts: [title(`🏋️ ${GYM_NAME}`), aside('work out & unwind'), key('E', 'Go in')] };
     const def = it.gymStation ? this.defOf(it.gymStation) : undefined;
     if (!def) return { k: '', parts: [] };
+    if (it.gymAct) {
+      const room = WALK_IN_BY_STATION.get(def.id);
+      const v = this.stations.get(def.id) as WellnessView | undefined;
+      const sauna = room?.machine === 'sauna';
+      const inside = this.walkIn === def.id;
+      return {
+        k: `${def.id}|act|${inside}`,
+        parts: [title(sauna ? '🪣 Aufguss' : '🌿 Eucalyptus'), aside(inside ? `${v?.occupants?.length ?? 0} in here` : 'step inside first'), key('E', sauna ? 'Pour water on the stones' : 'Release the steam')],
+      };
+    }
     const look = stationLook(def);
     const state = this.stations.get(def.id) as { player?: string; running?: boolean; working?: boolean; occupants?: string[]; seats?: number } | undefined;
     let status = '';
@@ -308,11 +358,16 @@ export class GymPlace {
     const p = this.profile;
     const xpFill = h('i', { style: `width:${Math.min(100, (p.levelXp / p.levelSpan) * 100)}%` });
     const enFill = h('i', { style: `width:${Math.min(100, (p.stamina / STAMINA_MAX) * 100)}%` });
+    const room = this.walkIn ? WALK_IN_BY_STATION.get(this.walkIn) : undefined;
+    const spot = room ? WELLNESS_SPOTS[room.machine] : undefined;
+    const v = room ? (this.stations.get(room.station) as WellnessView | undefined) : undefined;
+    const hot = !!v?.puffAt && Date.now() - v.puffAt < AUFGUSS_BOOST_MS;
     el.replaceChildren(
       h('span.lvl', {}, `Lv ${p.level}`),
       h('div.track', { title: 'Fitness points to next level' }, xpFill),
       h('div.track.energy', { title: 'Energy' }, enFill),
       h('small', {}, `⚡${Math.round(p.stamina)}`),
+      ...(room && spot ? [h('small.gym-room', { title: 'Recovering while you are in here; faster on a bench' }, `${spot.icon} ${room.name} · ${spot.temp}${hot ? ' · 🔥 Aufguss' : ''}`)] : []),
     );
     if (bump) {
       el.classList.remove('bump');
@@ -324,7 +379,82 @@ export class GymPlace {
   // ---- Every frame ------------------------------------------------------------------------------
 
   update(t: number, dt: number) {
-    if (this.active && this.room) this.room.update(t, dt);
+    if (!this.active || !this.room) {
+      if (this.walkIn !== null) this.setWalkIn(null);
+      this.host.ambience?.(0);
+      return;
+    }
+    const me = this.host.player.pos;
+    const people = [{ x: me.x, z: me.z }, ...(this.host.spaPeople?.() ?? [])];
+    const cam = this.host.camera ? this.camPos.setFromMatrixPosition(this.host.camera.matrixWorld) : null;
+    this.room.update(t, dt, { me: { x: me.x, y: me.y, z: me.z }, cam, people });
+    const room = this.room.walkInAt(me.x, me.z) ?? null;
+    if (room !== this.walkIn) this.setWalkIn(room);
+    // The spa's own quiet: soft water and air in there, a little more in the cabins.
+    this.host.ambience?.(room ? 1 : inRect(SPA, me.x, me.z) ? 0.6 : 0);
+    // On a machine: the office has you on the station whose window you have open.
+    const you = this.host.you();
+    const open = this.open?.station;
+    const def = open ? GYM_STATION_BY_ID.get(open) : undefined;
+    const view = open ? (this.stations.get(open) as { player?: string } | undefined) : undefined;
+    const mine = def && (def.kind === 'cardio' || def.kind === 'strength') && you && view?.player === you.name ? def.id : null;
+    if (mine !== this.riding) {
+      this.letGo(true);
+      if (mine) this.getOn(mine);
+    }
+    this.room.equipment.update(t, dt, this.host.now(), { people: this.host.people(), you, mine }, (kind, at) => this.host.soundAt(kind, at));
+    if (this.riding && you) {
+      you.person.bones.head.getWorldPosition(this.head);
+      this.room.equipment.frame(this.riding, this.host.camera, dt, this.host.player.view === 'first', this.head);
+    }
+  }
+
+  /** Onto machine `id`: you stand (sit, lie) where it has you, and stay there until you step off. */
+  private getOn(id: string) {
+    this.riding = id;
+    this.host.player.rig = this.hold;
+    this.hold();
+  }
+
+  /** Off the machine you're on: onto the floor beside it (`place`), or just let go (leaving the gym). */
+  private letGo(place: boolean) {
+    const id = this.riding;
+    if (!id) return;
+    this.riding = null;
+    this.room?.equipment.unframe();
+    const p = this.host.player;
+    if (p.rig === this.hold) p.rig = null;
+    const off = place ? this.room?.equipment.off(id) : null;
+    if (off) this.host.placeAt(off);
+  }
+
+  /** On a machine, the camera's the gym's: framed on you, or out from your eyes on the cardio deck in first person. */
+  get zoomed(): boolean {
+    return !!this.riding;
+  }
+
+  /** Whether your own body should be drawn: on a machine, unless you're looking out from your eyes. */
+  get showsYou(): boolean {
+    return !!this.riding && !(this.host.player.view === 'first' && this.room?.equipment.firstPerson(this.riding));
+  }
+
+  /** Into or out of the sauna or the steam room (the office works out the same by where it sees you). */
+  private setWalkIn(room: string | null) {
+    this.walkIn = room;
+    this.renderHud(false);
+  }
+
+  /** An Aufguss in a walk-in room: the stones hiss for whoever's in there (and a little outside). */
+  private pouredIn(station: string, state: unknown) {
+    const room = WALK_IN_BY_STATION.get(station);
+    const at = (state as WellnessView | null)?.puffAt;
+    if (!room || !at) return;
+    const was = this.puffs.get(station);
+    this.puffs.set(station, at);
+    if (was === undefined || was === at || !this.active) return;
+    const me = this.host.player.pos;
+    if (this.walkIn === station || inRect(SPA, me.x, me.z)) this.host.sound('hiss');
+    if (this.walkIn === station) this.renderHud(false);
   }
 
   /** Inside, the hall lights itself: bright and cool, no sun through the ceiling, no haze across the room. */

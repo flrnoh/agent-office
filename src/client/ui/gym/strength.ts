@@ -1,5 +1,6 @@
 import { EXERCISES, MAX_TARGET, MIN_TARGET, comfyWeight, type SetResult, type StrengthView } from '../../../shared/gym-strength';
 import { STAMINA_MAX } from '../../../shared/gym';
+import { SET_TAIL, REP_PEAK, repPeakAt, repSeconds } from '../../../shared/gym-motion';
 import { h, openModal } from '../dom';
 import { num, registerGymUi, xpText, type GymUi, type GymUiContext } from './registry';
 import './gym.css';
@@ -113,7 +114,9 @@ export function openStrength(ctx: GymUiContext): GymUi {
         spans[i].textContent = ok ? '🟢' : '🔴';
         ctx.sound(ok ? 'rep' : 'buzzer');
         i++;
-        anim = window.setTimeout(tick, 240);
+        // At the lifter's tempo (shared/gym-motion.ts): each dot lands as the rep reaches the top.
+        const rep = repSeconds(ctx.station.machine);
+        anim = window.setTimeout(tick, (i >= res.form.length ? (1 - REP_PEAK) * rep + SET_TAIL : rep) * 1000);
       } else {
         anim = 0;
         message.textContent = text;
@@ -124,7 +127,7 @@ export function openStrength(ctx: GymUiContext): GymUi {
         }
       }
     };
-    tick();
+    anim = window.setTimeout(tick, repPeakAt(ctx.station.machine, 0) * 1000);
   };
 
   const onKey = (e: KeyboardEvent) => {

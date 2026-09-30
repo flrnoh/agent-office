@@ -1,4 +1,5 @@
 import { EXERCISES, MAX_TARGET, MIN_TARGET, comfyWeight, simulateSet, validWeight, type Exercise, type StrengthView } from '../../shared/gym-strength.js';
+import { setDurationMs } from '../../shared/gym-motion.js';
 import type { GymContext, GymGame, Seated } from './game.js';
 
 /*
@@ -14,6 +15,7 @@ export class StrengthStation implements GymGame {
   private weight: number;
   private working = false;
   private until = 0;
+  private since = 0;
   private last: StrengthView['last'];
   private bestVolume = 0;
   private ex: Exercise;
@@ -72,7 +74,10 @@ export class StrengthStation implements GymGame {
     }
     this.last = { reps: res.reps, target: res.target, weight: res.weight, volume: res.volume, xp: res.xp, failed: res.failed };
     this.working = true;
-    this.until = ctx.now() + Math.max(700, Math.min(3500, res.form.length * 340));
+    // As long as the lifter takes to work the set at a natural tempo (shared/gym-motion.ts), so
+    // everyone's lifter in the room finishes it as the office says it's done.
+    this.since = ctx.now();
+    this.until = this.since + setDurationMs(this.machine, res.form.length);
     const hit = res.reps >= res.target;
     const said = res.reps === 0 ? `couldn't lift ${res.weight} ${this.ex.unit}` : `${res.reps}${hit ? '' : `/${res.target}`} ${res.reps === 1 ? 'rep' : 'reps'} at ${res.weight} ${this.ex.unit}${hit ? ' ✅' : res.failed ? ' — form broke' : ''}`;
     ctx.result(p.owner, `${this.ex.icon} ${said}`, res.xp, res);
@@ -93,7 +98,7 @@ export class StrengthStation implements GymGame {
       ...(this.player ? { player: this.player.name } : {}),
       weight: this.weight,
       working: this.working,
-      ...(this.working ? { until: this.until } : {}),
+      ...(this.working ? { until: this.until, since: this.since } : {}),
       ...(this.last ? { last: this.last } : {}),
       ...(this.bestVolume ? { bestVolume: this.bestVolume } : {}),
     };
