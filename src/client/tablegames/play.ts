@@ -53,10 +53,11 @@ interface Pose {
 
 /** From your end (or side, at the kicker), and for watching. Side 1's is side 0's turned round. */
 const POSES: Record<TableId, { play: Pose; watch: Pose }> = {
-  pool: { play: { u: 0, v: -1.25, y: 2.55, lu: 0, lv: -0.05 }, watch: { u: 0, v: -1.9, y: 2.3, lu: 0, lv: 0 } },
-  kicker: { play: { u: 0, v: -0.78, y: 1.75, lu: 0, lv: 0.02 }, watch: { u: 0, v: -1.2, y: 1.75, lu: 0, lv: 0 } },
-  hockey: { play: { u: -1.75, v: 0, y: 2.25, lu: 0.05, lv: 0 }, watch: { u: 0, v: -1.9, y: 2.2, lu: 0, lv: 0 } },
-  pingpong: { play: { u: -2.75, v: 0, y: 1.9, lu: 0.2, lv: 0 }, watch: { u: 0, v: -2.6, y: 2.2, lu: 0, lv: 0 } },
+  // (From the +v side, so the head string is on the left and the rack on the right.)
+  pool: { play: { u: 0, v: 1.05, y: 2.95, lu: 0, lv: 0.05 }, watch: { u: 0, v: 1.7, y: 2.7, lu: 0, lv: 0 } },
+  kicker: { play: { u: 0, v: -0.72, y: 1.95, lu: 0, lv: 0.04 }, watch: { u: 0, v: -1.1, y: 1.95, lu: 0, lv: 0 } },
+  hockey: { play: { u: -1.45, v: 0, y: 2.75, lu: 0.15, lv: 0 }, watch: { u: 0, v: -1.7, y: 2.6, lu: 0, lv: 0 } },
+  pingpong: { play: { u: -2.55, v: 0, y: 2.25, lu: 0.35, lv: 0 }, watch: { u: 0, v: -2.4, y: 2.5, lu: 0, lv: 0 } },
 };
 
 const TIPS: Record<TableId, string> = {
@@ -534,6 +535,8 @@ export class TableGames {
     const view = this.hooks.view();
     const now = performance.now();
     const up = store.floor === ROOF;
+    // The camera first: where the mouse points on the table depends on where it looks from.
+    this.camera(dt);
     if (up) this.handle(now);
     const step = Math.min(dt, 0.05);
     for (const [id, run] of this.hosted) {
@@ -564,7 +567,6 @@ export class TableGames {
       }
     }
     if (view && up) this.draw(view, dt);
-    this.camera(dt);
     this.renderHud(now);
   }
 
@@ -574,8 +576,9 @@ export class TableGames {
       const at = this.at;
       // Your own hand as it is now, not as the host last saw it.
       if (at?.table === id && at.mode === 'play' && at.side !== null && !this.hosted.has(id)) s = this.predict(id, s, at.side);
-      view.views[id].draw(s, dt);
       const v = view.views[id];
+      v.draw(s, dt);
+      v.boardAway(at?.table === id && this.zoom > 0.05);
       if (id === 'pool' && v.guide && v.ghost) {
         const p = s as PoolState;
         const mine = at?.table === 'pool' && at.mode === 'play' && p.turn === at.side && p.phase === POOL_PHASE.aim && p.win === -1;

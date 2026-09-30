@@ -14,7 +14,7 @@ export const HOCKEY = {
   mallet: 0.055,
   /** How fast a mallet follows the mouse (m/s), and the computer's. */
   reach: 5.5,
-  cpuReach: 2.7,
+  cpuReach: 3.2,
   maxPuck: 6.5,
   /** Seconds the puck waits after a goal before it's in play. */
   pause: 1.1,
@@ -176,14 +176,14 @@ export const hockey: TableGame<HockeyState> = {
     if (!s.plan || s.plan.mine !== mine) {
       const bank = rng() < 0.4;
       const corner = (rng() < 0.5 ? -1 : 1) * (bank ? 2 * H.halfW - H.puck : 0.1);
-      s.plan = { aim: corner, guard: (rng() - 0.5) * 0.18, mine };
+      s.plan = { aim: corner, guard: (rng() - 0.5) * 0.12, mine };
     }
     // A quick one coming at the goal is for blocking, not for going after.
     const incoming = vu * dir > 0 && Math.hypot(vu, vv) > 1.6;
     if (!mine || incoming) {
       // Back in front of the goal, in line with the puck, more or less.
       const [hu] = home(side);
-      want = [hu, clamp(pv * 0.4 + s.plan.guard, -0.22, 0.22)];
+      want = [hu, clamp(pv * 0.55 + s.plan.guard, -0.22, 0.22)];
     } else if ((m[0] - pu) * dir < 0.02) {
       // Between the puck and the far end: round behind it first.
       want = [pu + dir * 0.16, pv + (pv > m[1] ? -0.14 : 0.14)];

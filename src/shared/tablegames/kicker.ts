@@ -19,7 +19,7 @@ export const KICKER = {
   strike: 0.12,
   /** How fast the rods slide (m/s), and the computer's. */
   slide: 3.2,
-  cpuSlide: 1.35,
+  cpuSlide: 2,
   pause: 1.1,
   target: T.target,
 } as const;
@@ -221,9 +221,9 @@ export const kicker: TableGame<KickerState> = {
       RODS.forEach((r, k) => {
         if (r.side !== side) return;
         const du = (bu - r.u) * fwd;
-        if (du < -0.02 || du > 0.045) return;
+        if (du < -0.03 || du > 0.06) return;
         for (let m = 0; m < r.men; m++) {
-          if (Math.abs(bv - manV(r, m, s.off[k])) < 0.035 && Math.abs(vu) < 1.8 && rng() < 0.35) {
+          if (Math.abs(bv - manV(r, m, s.off[k])) < 0.05 && Math.abs(vu) < 2.2 && rng() < 0.6) {
             out.push([1]);
             return;
           }

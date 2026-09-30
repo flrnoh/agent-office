@@ -24,6 +24,8 @@ export interface TableView {
   draw(s: GameState, dt: number): void;
   /** The scoreboard over the table: who's playing, and the score (null: nobody's playing). */
   board(text: string | null): void;
+  /** Out of the way while the camera's over the table (it hangs where the camera goes). */
+  boardAway(away: boolean): void;
   /** Only for the one aiming: a guide line from the cue ball (pool), or nothing. */
   guide?(on: boolean, u: number, v: number, angle: number): void;
   /** Where the cue ball in hand would go (pool), while placing it. */
@@ -68,7 +70,7 @@ function legs(g: THREE.Object3D, l: number, w: number, h: number, mat: THREE.Mat
 }
 
 /** The scoreboard sprite over a table: redrawn only when what it says changes. */
-function scoreboard(root: THREE.Object3D, y: number): (text: string | null) => void {
+function scoreboard(root: THREE.Object3D, y: number): { board: (text: string | null) => void; boardAway: (away: boolean) => void } {
   const c = document.createElement('canvas');
   c.width = 512;
   c.height = 96;
@@ -82,10 +84,15 @@ function scoreboard(root: THREE.Object3D, y: number): (text: string | null) => v
   sprite.raycast = () => {};
   root.add(sprite);
   let shown: string | null = null;
-  return (text) => {
+  let away = false;
+  const boardAway = (a: boolean) => {
+    away = a;
+    sprite.visible = !!shown && !away;
+  };
+  const board = (text: string | null) => {
     if (text === shown) return;
     shown = text;
-    sprite.visible = !!text;
+    sprite.visible = !!text && !away;
     if (!text) return;
     const g = c.getContext('2d')!;
     g.clearRect(0, 0, 512, 96);
@@ -102,6 +109,7 @@ function scoreboard(root: THREE.Object3D, y: number): (text: string | null) => v
     g.fillText(text, 256, 50);
     tex.needsUpdate = true;
   };
+  return { board, boardAway };
 }
 
 /** Moves a mesh toward a spot smoothly (snapshots come a couple of dozen times a second). */
@@ -235,11 +243,11 @@ function buildPool(def: TableDef): TableView {
   const ghostBall = mesh(geo, ghostMat, 0, top + P.ball, 0, false);
   ghostBall.visible = false;
   root.add(ghostBall);
-  const board = scoreboard(root, 2.2);
+  const sb = scoreboard(root, 2.2);
   return {
     def,
     root,
-    board,
+    ...sb,
     draw(state, dt) {
       const s = state as PoolState;
       s.balls.forEach((b, n) => {
@@ -272,6 +280,8 @@ function buildPool(def: TableDef): TableView {
     ghost(on, u, v, ok) {
       ghostBall.visible = on;
       if (!on) return;
+      // Putting the cue ball down: no cue yet.
+      cue.visible = false;
       ghostBall.position.set(u, top + P.ball, v);
       ghostMat.color.set(ok ? '#ffffff' : '#ff5d5d');
     },
@@ -354,11 +364,11 @@ function buildKicker(def: TableDef): TableView {
   });
   const ball = mesh(new THREE.SphereGeometry(K.ball, 16, 12), toon('#fffdf5'), 0, top + K.ball, 0, true);
   root.add(ball);
-  const board = scoreboard(root, 1.9);
+  const sb = scoreboard(root, 1.9);
   return {
     def,
     root,
-    board,
+    ...sb,
     draw(state, dt) {
       const s = state as KickerState;
       ease(ball, s.b[0], top + K.ball, s.b[1], dt, 45);
@@ -433,11 +443,11 @@ function buildHockey(def: TableDef): TableView {
     root.add(m);
     return m;
   });
-  const board = scoreboard(root, 2.0);
+  const sb = scoreboard(root, 2.0);
   return {
     def,
     root,
-    board,
+    ...sb,
     draw(state, dt) {
       const s = state as HockeyState;
       puck.visible = s.pause < HOCKEY.pause - 0.4 || s.pause <= 0;
@@ -514,11 +524,11 @@ function buildPingpong(def: TableDef): TableView {
     root.add(g);
     return { g, face };
   });
-  const board = scoreboard(root, 2.1);
+  const sb = scoreboard(root, 2.1);
   return {
     def,
     root,
-    board,
+    ...sb,
     draw(state, dt) {
       const s = state as PongState;
       ease(ball, s.b[0], top + s.b[2], s.b[1], dt, 50);
