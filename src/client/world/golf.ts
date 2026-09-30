@@ -222,12 +222,12 @@ export function buildGreen(ground: THREE.Group, colliders: Collider[], night: Ni
   parts.add(flat(new THREE.CircleGeometry(0.13, 20), toon('#1d1d1d'), px, G + 0.02, pz));
   parts.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, STICK, 8), toon('#fffaf3'), px, G + STICK / 2, pz));
   parts.add(mesh(new THREE.SphereGeometry(0.06, 10, 8), toon('#ffd166'), px, G + STICK + 0.03, pz));
-  // Trees round the back of the green.
+  // Trees round the back of the green (fork: the two east of it, at x 3.5 and 6, moved west, clear of the soccer hall).
   for (const [tx, tz, s] of [
     [px - 9, pz + 7, 1.2],
-    [px + 8.5, pz + 8, 1.05],
+    [px - 4.5, pz + 10.5, 1.05],
     [px - 1, pz + 12, 1.3],
-    [px + 11, pz - 3, 0.95],
+    [px - 12, pz - 3, 0.95],
   ]) {
     const t = tree(s);
     t.position.set(tx, G, tz);

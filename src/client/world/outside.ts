@@ -5,6 +5,7 @@ import { STREET_END, shoreX } from '../../shared/scenic';
 import { CASINO_BOX, CASINO_HEIGHT } from '../../shared/casino'; // fork
 import { GYM_HEIGHT, GYM_STREET_BOX } from '../../shared/gym'; // fork
 import { HALL_BOX, HALL_HEIGHT, HALL_ROOF_RISE } from '../../shared/hall'; // fork
+import { SOCCER_BOX, SOCCER_HEIGHT } from '../../shared/soccer'; // fork
 import type { Collider } from './office';
 import { mergeByMaterial, mesh, textPlane, toon, toonUnique } from './toon';
 
@@ -295,8 +296,8 @@ export function roadTexture(): THREE.CanvasTexture {
  */
 const NEIGHBOURS: [number, number, number, number, number, string][] = [
   // (fork: the two across the street to the west made way for the casino, world/casino/exterior.ts,
-  // and the one to the east at x 30 for the padel hall, world/hall/exterior.ts; the gym stands further east, world/gym/exterior.ts)
-  [12, 47, 16, 19, 12, '#cdb4db'],
+  // the one to the east at x 30 for the padel hall, world/hall/exterior.ts, and the one at x 12 for the
+  // soccer hall, world/soccer/exterior.ts; the gym stands further east, world/gym/exterior.ts)
   [-20, -42, 18, 14, 10, '#a2d2ff'],
   [8, -44, 16, 20, 12, '#f4acb7'],
   [-48, -6, 10, 12, 16, '#ffe5b4'],
@@ -312,7 +313,7 @@ export function neighbourBoxes(): { minX: number; maxX: number; minZ: number; ma
     // Turned a quarter, its width runs along z.
     const [hx, hz] = Math.abs(Math.sin(facing(x, z))) > 0.5 ? [d / 2, w / 2] : [w / 2, d / 2];
     return { minX: x - hx - 0.2, maxX: x + hx + 0.2, minZ: z - hz - 0.2, maxZ: z + hz + 0.2, top: h + 0.4 };
-  }).concat({ ...CASINO_BOX, top: CASINO_HEIGHT + 0.5 }, { ...HALL_BOX, top: HALL_HEIGHT + HALL_ROOF_RISE }, { ...GYM_STREET_BOX, top: GYM_HEIGHT + 0.5 }); // fork: the casino, the padel hall, the gym
+  }).concat({ ...CASINO_BOX, top: CASINO_HEIGHT + 0.5 }, { ...HALL_BOX, top: HALL_HEIGHT + HALL_ROOF_RISE }, { ...SOCCER_BOX, top: SOCCER_HEIGHT + 6 }, { ...GYM_STREET_BOX, top: GYM_HEIGHT + 0.5 }); // fork: the casino, the padel hall, the soccer hall (and the billboard on its roof)
 }
 
 /**
@@ -356,7 +357,7 @@ export function buildStreet(group: THREE.Group, colliders: Collider[], night: Ni
     [34, 22, 0.95],
     [-40, 32.5, 1.1],
     [-12, 32.5, 1],
-    [14, 32.5, 1.15],
+    // (fork: the one at x 14 is gone, it stood in front of the soccer hall's sign and doors)
     [42, 32.5, 1],
     [-27, -8, 1.2],
     [-29, 4, 1],
@@ -382,7 +383,7 @@ export function buildStreet(group: THREE.Group, colliders: Collider[], night: Ni
   const lamps = new THREE.Group();
   const glass = bulb(night, '#fff3d6');
   for (const x of [-40, -28, -16, -4, 8, 16, 28, 40]) streetLamp(lamps, night, glass, colliders, x, 22.2, 1);
-  for (const x of [-37, -22, -4, 8, 26, 46, 62, 82]) streetLamp(lamps, night, glass, colliders, x, 31.8, -1); // fork: -37 (was -34), clear of the casino's doors; 46 (was 36), of the padel hall's; 62 and 82 either side of the gym's
+  for (const x of [-37, -22, -4, 1.5, 26, 46, 62, 82]) streetLamp(lamps, night, glass, colliders, x, 31.8, -1); // fork: -37 (was -34), clear of the casino's doors; 46 (was 36), of the padel hall's; 1.5 (was 8), of the soccer hall's sign; 62 and 82 either side of the gym
   group.add(mergeByMaterial(lamps));
 
   // The neighbours: across the street, and further out behind and beside the office.

@@ -3,6 +3,7 @@ import { ROOF, ROOF_NAME } from '../../shared/rooftop';
 import { CASINO } from '../../shared/casino'; // fork
 import { GYM } from '../../shared/gym'; // fork
 import { HALL } from '../../shared/hall'; // fork
+import { SOCCER } from '../../shared/soccer'; // fork
 import { store } from '../state';
 import type { Voice } from '../voice';
 import type { ChatLine } from '../../shared/protocol';
@@ -46,8 +47,10 @@ export function renderPeople(voice: Voice, onEditProfile: () => void, onWalkTo: 
             : p.floor === GYM
               ? h('span.where', { title: 'In the gym across the street' }, '🏋️ Gym') // fork
             : p.floor === HALL
-              ? h('span.where', { title: 'In the padel hall across the street' }, '🎾 Padel Hall') // fork
-              : h('span.where', { title: 'On another floor' }, `🛗 ${store.floors.find((f) => f.id === p.floor)?.name ?? 'lobby'}`)
+            ? h('span.where', { title: 'In the padel hall across the street' }, '🎾 Padel Hall') // fork
+            : p.floor === SOCCER
+            ? h('span.where', { title: 'In the soccer hall across the street' }, '⚽ Soccer Hall') // fork
+            : h('span.where', { title: 'On another floor' }, `🛗 ${store.floors.find((f) => f.id === p.floor)?.name ?? 'lobby'}`)
         : null,
       p.sharing ? h('span', { title: 'Sharing screen' }, '🖥️') : null,
       h('span.mic', {}, mic),
@@ -147,6 +150,7 @@ export function openHelp() {
     ['☕', 'Press E at the coffee machine in the kitchen for a minute of quicker walking and higher jumps. Three cups in a row gives you the jitters'],
     ['🧊', 'Press E at the fridge next to it for a cold bottle, a can or a snack: Helles, Radler, Spezi, Mate, a Brezn, a Leberkässemmel… It comes along wherever you go'],
     ['🎾', 'Across the street to the east, the padel hall: E at its glass doors goes in, E at the doors inside back out. Up the stairs on the gallery, E at the café counter for a coffee, an Apfelschorle or a slice of Käsekuchen. The coffees give you the kitchen machine’s buzz'], // fork
+    ['⚽', 'Across the street, between the golf hole and the padel hall, the soccer hall: E at its doors goes in. E at the boards on the halfway line puts you in a team (a bib and a ring in its colour); hold the left mouse button or Space to charge a kick and let go, the right button (or Shift while charging) chips it. Run into the ball to dribble. E at the boards again leaves the pitch'], // fork
     ['Mouse', 'Look around in first person (click to capture the mouse, Esc to free it)'],
     ['Click / E', "Use what you look at: hire a worker, open its terminal, read a board, call a meeting in the meeting room, watch the TV or put a YouTube or Twitch stream on it, put a song on the jukebox, tee off from the balcony, sit on a couch, a beanbag, a chair or the balcony bench (walk off to get up)"],
     ['👥', 'Click someone under "In the office" to walk over to them (on another floor, you ride the elevator first). The line under their name says what they have open or where they are'],
