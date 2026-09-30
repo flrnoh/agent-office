@@ -12,6 +12,8 @@ import { CABINET, DESKS, DJ_BOOTH, FLOOR, GONG, JUKEBOX, WINDOWS as OPENINGS, in
 import type { GongWhy } from '../shared/protocol';
 import { STREAM } from '../shared/jukebox';
 import { TunePlayer } from './music';
+import { RIG } from '../shared/rig'; // flrnoh fork: the racing rig
+import type { RaceEvent } from '../shared/racing';
 import { DjPlayer } from './dnb';
 
 type Pos = { x: number; y: number; z: number };
@@ -1645,6 +1647,34 @@ export class OfficeSound {
     n.connect(biquad(ctx, 'bandpass', 1800, 1)).connect(ng).connect(this.ambience);
     n.start(t0 - 0.015);
     n.stop(t0 + 0.02);
+  }
+
+  // ---- The racing rig (fork, see ui/rig.ts) -----------------------------------------------------
+
+  /**
+   * The rig's TV: the countdown's beeps and the green, a lap (a quicker one gets a third note), the
+   * chequered flag's fanfare, and a knock into a rival or the wall. From the TV, and soft: the lounge
+   * only hears it from close by.
+   */
+  rig(kind: RaceEvent) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.count(`rig.${kind}`);
+    const at = { x: RIG.x, y: RIG.screen.y, z: RIG.screen.z };
+    const out = this.panner(at, 1, 1.8);
+    out.connect(this.ambience);
+    const t0 = ctx.currentTime + 0.01;
+    if (kind === 'count') this.blip(out, t0, 440, 1, 0.16, 0.08, 'square');
+    else if (kind === 'go') this.blip(out, t0, 880, 1, 0.45, 0.09, 'square');
+    else if (kind === 'lap' || kind === 'best') (kind === 'best' ? [660, 880, 1175] : [660, 880]).forEach((f, i) => this.blip(out, t0 + i * 0.09, f, 1, 0.1, 0.07, 'square'));
+    else if (kind === 'finish') [523, 659, 784, 1047, 784, 1047].forEach((f, i) => this.blip(out, t0 + i * 0.12, f, 1, i === 5 ? 0.4 : 0.11, 0.08, 'square'));
+    else {
+      this.blip(out, t0, kind === 'wall' ? 70 : 110, 0.5, 0.18, 0.12);
+      this.hiss(out, t0, kind === 'wall' ? 700 : 1400, 0.9, [
+        [0.01, 0.06],
+        [0.2, 0],
+      ]);
+    }
   }
 
   // ---- The kitchen fridge (fork, see ui/fridge.ts) -----------------------------------------------

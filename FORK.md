@@ -135,6 +135,23 @@ Anyone on the roof, guests too, can paste a YouTube, SoundCloud or Mixcloud link
   - `src/client/main.ts`: `djSets`/`houseDj()` (by `sound.onMusicError`), the `dj` message and `msg.dj` on arrival, `setPlace` (`djSets.setUp`, `houseDj()`), E at the booth opens `showDjBooth()`, H at the booth in `officeKey`, the booth's hint.
   - `src/client/ui/hud.ts`, `docs/features.md`, `docs/controls.md`, `docs/how-it-works.md`: words.
 
+### Racing rig
+
+A racing rig in the lounge, next to the arcade cabinet: out between the lounge and the meeting room's glass (x 14.2–15.6, z 5.9–8.0), a bucket seat on an aluminium frame, a wheel, pedals and a TV on a stand, facing the glass so the lounge sees its screen. **E** there sits you down (hands on the wheel, for everyone to see), the camera glides up to the TV, and you race OFFICE GP: a pseudo-3D arcade racer, three laps against five CPU cars (CLAUDE, CODEX, GROK, GEMINI, OPENCODE) after a 3-2-1 countdown, lap timer, best lap, off-road slowdown, bumps, a boost meter. Arrows or WASD, Space boost, R restart, a gamepad or wheel through the Gamepad API. One driver a floor; everyone else sees the race on the rig's TV (the driver's page sends a compact frame ten times a second, the office passes it on, each page draws it) and can press **E** to watch up close. Esc or ✕ gets you out of the seat; leaving the floor or the office frees it. The building's fastest races and laps are kept in the office's `.agent-office/rig.json` and shown on the TV when nobody's racing. The office only takes a result whose laps could have been driven (none quicker than a lap flat out on the boost) and no quicker than its own clock saw since the green.
+
+- Own files: `src/shared/racing.ts` (the track, the race, the CPU cars, the autopilot), `src/shared/rig.ts` (where the rig stands, its seat, frames, results and tables), `src/server/rig.ts` (one driver a floor, relaying, checking results, the tables), `src/client/world/rig.ts` (the model), `src/client/ui/rig.ts` (sitting, driving, watching, the TV), `src/client/ui/rigscreen.ts` (drawing the race); `tests/rig.test.ts`.
+- Hooks in upstream files:
+  - `src/shared/protocol.ts`: `rig.play`, `rig.leave`, `rig.frame`, `rig.finish` (ClientMsg), `rig`, `rig.frame` (ServerMsg), `FloorView.rig`.
+  - `src/server/guests.ts`: the four `rig.*` messages in `GUEST`.
+  - `src/server/server.ts`: `rigs`/`rigChanged`/`rigLeft`, `floorView` carries `rig`, the `rig.*` cases, and `rigLeft` when someone leaves a floor or the office.
+  - `src/shared/layout.ts`: the rig's seat (`RIG_SEAT`) in `SEATING`. `src/shared/nav.ts`: the rig in the office's obstacles.
+  - `src/client/world/office.ts`: `InteractKind` has `'rig'`, `OfficeWorld.rig`, built next to the cabinet with its collider and interactable.
+  - `src/client/world/character.ts`: `wheel`, hands on the wheel while sitting.
+  - `src/client/state.ts`: `store.rig`/`store.rigFrame`, from the floor view and the `rig`/`rig.frame` messages.
+  - `src/client/sound.ts`: `rig()`, the TV's beeps, fanfare and knocks, in a section of its own (the engine goes through `setEngines`).
+  - `src/client/main.ts`: `rig` next to `cabinet` (made, stopped, updated), `sitInRig`, E at the rig, its hint, its `REACH`, the engine in `setEngines`, `wheel` for you and everyone else, no first-person hands while zoomed.
+  - `src/client/ui/hud.ts`, `docs/features.md`: words.
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.

@@ -94,6 +94,9 @@ import { openBookshelf } from './ui/bookshelf';
 import { Arcade } from './ui/arcade';
 import { BossDesk } from './ui/bossdesk';
 import { Cabinet } from './ui/cabinet';
+import { RacingRig } from './ui/rig'; // flrnoh fork: the racing rig
+import { RIG_SEAT, onRig } from '../shared/rig';
+import { LAPS, lapText, ordinal } from '../shared/racing';
 import { trackTitle } from '../shared/jukebox';
 import { radioSources } from '../shared/radio';
 import { GAME, scoreText } from '../shared/cabinet';
@@ -470,6 +473,15 @@ function playJukebox() {
 store.on('jukebox', playJukebox);
 // The arcade cabinet next to it: BLOCKFALL up close, and on its screen for everyone else on the floor.
 const cabinet = new Cabinet(office.cabinet.screen, net, { openTerminal: (id) => openWorkerTerminal(id), sound: (kind, lines) => sound.arcade(kind, lines) });
+// Fork: the racing rig next to it (ui/rig.ts): OFFICE GP up close, sitting in its seat, and on its TV for everyone else.
+const rig = new RacingRig(office.rig, net, {
+  sit: () => sitInRig(),
+  stand: () => {
+    if (player.seat?.seatId === RIG_SEAT) standUp();
+  },
+  seated: () => player.seat?.seatId === RIG_SEAT,
+  sound: (e) => sound.rig(e),
+});
 const notifier = new DesktopNotifier(() => settings.notify, (id) => openWorkerTerminal(id));
 
 // ---- Golf off the balcony --------------------------------------------------------------------------
@@ -1758,6 +1770,7 @@ function applyMap() {
   arcade.stop();
   bossDesk.stop();
   cabinet.stop();
+  rig.stop();
   world.group.visible = false;
   world = next.world;
   court = next.court;
@@ -1900,6 +1913,7 @@ function syncPeers() {
     r.person.carry(peer.carrying);
     r.person.read(!!peer.reading);
     r.person.sit(store.carOf(id) ? SEAT_HIPS : peer.seat ? (seatOn(plan(), peer.seat)?.hips ?? null) : null);
+    r.person.wheel = onRig(peer.seat);
     r.person.setDoing(whereabouts(peer, store.carOf(id), plan()));
   }
   for (const [id, r] of remotes) {
@@ -3002,6 +3016,7 @@ function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   } else if (target.kind === 'gong') hitGong();
   else if (target.kind === 'whiteboard') openWhiteboard(net);
   else if (target.kind === 'cabinet') cabinet.play();
+  else if (target.kind === 'rig') rig.play();
   else if (target.kind === 'ladder') grabLadder();
   else if (target.kind === 'pole' && target.pole !== undefined) usePole(target.pole);
   else if (target.kind === 'meeting') showMeeting();
@@ -3548,6 +3563,22 @@ function useSeat(seatId: string) {
   if (seat.tv && tvShowing()) watchShare();
 }
 
+/** Fork: into the racing rig's seat (ui/rig.ts), if nobody else is in it. Says whether you're in. */
+function sitInRig(): boolean {
+  const seat = plan().seatingById.get(RIG_SEAT);
+  if (!seat) return false;
+  if (player.seat?.seatId === RIG_SEAT) return true;
+  const place = freePlace(seat);
+  if (!place) {
+    toast('Someone is sitting in the rig right now', 'warn');
+    return false;
+  }
+  player.sit(place);
+  me.sit(place.hips);
+  net.send({ t: 'sit', seat: place.key });
+  return true;
+}
+
 function standUp() {
   player.stand();
   gotUp();
@@ -3808,6 +3839,19 @@ function hintFor(it: Interactable): Hint {
       const best = c.scores[0];
       const about = left !== null ? `your game's paused at ${scoreText(left)}` : best ? `🏆 ${clip(best.name, 24)} · ${scoreText(best.score)}` : 'no high score yet';
       return { k: `${left}|${best?.name}|${best?.score}`, parts: [title(`🕹️ ${GAME}`), aside(about), key('E', left !== null ? 'Carry on' : 'Play')] };
+    }
+    // Fork: the racing rig.
+    case 'rig': {
+      const r = store.rig;
+      const d = r.driver;
+      if (d && d.id !== store.you) {
+        const f = store.rigFrame;
+        const how = f ? (f.phase === 'done' ? ` · ${ordinal(f.place)} 🏁` : f.phase === 'race' ? ` · lap ${Math.min(LAPS, f.laps.length + 1)}/${LAPS} · ${ordinal(f.place)}` : ' · on the grid') : '';
+        return { k: `${d.name}|${how}`, parts: [title('🏎️ Racing rig'), aside(`▶ ${clip(d.name, 24)} is racing${how}`), key('E', 'Watch')] };
+      }
+      const best = r.scores.races[0];
+      const about = best ? `🏆 ${clip(best.name, 24)} · ${lapText(best.ms)}` : 'no times yet';
+      return { k: about, parts: [title('🏎️ Racing rig'), aside(about), key('E', 'Race')] };
     }
     case 'bookshelf': {
       const names = [...store.peers.values()].filter((p) => p.reading && p.id !== store.you && store.onMyFloor(p)).map((p) => p.name).join(', ');
@@ -4416,7 +4460,7 @@ document.addEventListener('pointerlockchange', () => {
 const raycaster = new THREE.Raycaster();
 const CROSSHAIR = new THREE.Vector2(0, 0);
 /** How close (meters from your eyes) you must be to use each kind of thing. */
-const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3 };
+const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3, rig: 4 };
 const eye = new THREE.Vector3();
 
 /** What the ray through `ndc` lands on first, whether it is within reach (plus `slack` meters), and where it hit. */
@@ -4797,6 +4841,8 @@ function frame(ts?: number) {
   arcade.update(camera, dt);
   bossDesk.update();
   cabinet.update(camera, dt);
+  rig.update(camera, dt);
+  me.wheel = player.seat?.seatId === RIG_SEAT;
   // Pulled away from the tee (sat down, off up the ladder, into the elevator): the club goes back.
   if (golf.active && (trip || hanger.active || climber.active || player.seat || upTop)) golf.stop();
   golf.update(dt);
@@ -4911,6 +4957,9 @@ function frame(ts?: number) {
       engines.push({ car: i, at: { x: pose.x, y: player.street + 0.5, z: pose.z }, speed: pose.speed, gas: mine ? driver.gas : Math.min(1, Math.abs(pose.speed) / 10) });
     }
   }
+  // Fork: the racing rig's engine, whoever's at the wheel.
+  const rigEngine = !upTop && inOffice() ? rig.engine() : null;
+  if (rigEngine) engines.push({ car: -1, ...rigEngine });
   sound.setEngines(engines);
 
   const camPos = camera.position;
@@ -5012,7 +5061,7 @@ function frame(ts?: number) {
   effect.render(scene, camera);
   pointToWaiting(now);
   // Not while the camera's up at the boss's monitor or the arcade, where they'd cover the screen.
-  if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !golf.active && !thrower.active && !driver.active) {
+  if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !golf.active && !thrower.active && !driver.active) {
     // Hands go on top of everything, so they never clip into a desk you walk up to. They have
     // lights of their own, turned down to match wherever you're standing.
     renderer.clearDepth();
@@ -5094,7 +5143,7 @@ void whoami().then(() => {
 });
 
 // Debug handle for quick checks from the console / headless screenshots.
-(window as any).__office = { world: () => world, court: () => court, sendoffs, jail, plan, applyMap, roof: () => roof, booze, dj: () => djFrame(djAt()), store, player, caffeine, camera, arcade, cabinet, workerViews, departures, arrivals, scene, net, renderer, hands, me, remotes, settings, gallery, hanger, office, ride, switchFloor, climber, driver, getIn, getOut, golf, balls, thrower, elevatorPanelOpen, confetti, dog, sky, holiday, carried: () => carrying, emoteWheel, emote, ball };
+(window as any).__office = { world: () => world, court: () => court, sendoffs, jail, plan, applyMap, roof: () => roof, booze, dj: () => djFrame(djAt()), store, player, caffeine, camera, arcade, cabinet, rig, workerViews, departures, arrivals, scene, net, renderer, hands, me, remotes, settings, gallery, hanger, office, ride, switchFloor, climber, driver, getIn, getOut, golf, balls, thrower, elevatorPanelOpen, confetti, dog, sky, holiday, carried: () => carrying, emoteWheel, emote, ball };
 (window as any).__voice = voice;
 (window as any).__sound = sound;
 (window as any).__notify = notifier;

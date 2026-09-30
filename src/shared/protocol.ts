@@ -10,6 +10,7 @@ import type { EmoteId } from './emotes.js';
 import type { CarSeat, CarState } from './garage.js';
 import type { BallState } from './hoop.js';
 import type { JukeboxState } from './jukebox.js';
+import type { RigFrame, RigResult, RigState, RigView } from './rig.js'; // flrnoh fork: the racing rig
 import type { DjSetState } from './djset.js';
 import type { CustomMap } from './maps/index.js';
 import type { PromptId } from './prompts.js';
@@ -793,6 +794,8 @@ export interface FloorView {
   jail: JailState;
   /** Up on the roof: the DJ set someone put on, if any (flrnoh fork, see shared/djset.ts). */
   dj?: DjSetState;
+  /** Fork: the racing rig in the lounge: who's at the wheel, their race, and the building's tables. */
+  rig?: RigView;
 }
 
 /** A guest looks around, chats, plays and watches the terminals, but can't type in them or run anything. */
@@ -1266,6 +1269,11 @@ export type ClientMsg =
    * how your score gets on the high-score table: the office follows the game frame by frame.
    */
   | { t: 'cabinet.frame'; frame: CabinetFrame }
+  /** Fork: get in the racing rig on your floor (the office answers with `rig`), out of it, your race as it looks now, and your laps at the flag. */
+  | { t: 'rig.play' }
+  | { t: 'rig.leave' }
+  | { t: 'rig.frame'; frame: RigFrame }
+  | { t: 'rig.finish'; result: RigResult }
   /** You opened the whiteboard (or closed it): everyone on the floor sees who's drawing. */
   | { t: 'wb.open' }
   | { t: 'wb.close' }
@@ -1419,6 +1427,9 @@ export type ServerMsg =
   | { t: 'cabinet'; state: CabinetState }
   /** The game on your floor's cabinet, as its player sees it (sent to everyone else on the floor). */
   | { t: 'cabinet.frame'; frame: CabinetFrame }
+  /** Fork: who's at the racing rig on your floor now and the building's tables, and their race (to everyone else on the floor). */
+  | { t: 'rig'; state: RigState }
+  | { t: 'rig.frame'; frame: RigFrame }
   /** Someone changed these elements on the floor's whiteboard (sent to everyone else on the floor). */
   | { t: 'wb.update'; elements: WbElement[] }
   /** Who has the floor's whiteboard open now. */

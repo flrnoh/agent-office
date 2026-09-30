@@ -54,6 +54,7 @@ import { PROMPTS, PROMPT_MAX, isPromptId } from '../shared/prompts.js';
 import { ROOF } from '../shared/rooftop.js';
 import { heldDrink, keepsHeld } from './held.js';
 import { DjBooth, djMessage } from './djset.js';
+import { RigTable, Rigs, rigMessage } from './rig.js'; // flrnoh fork: the racing rig
 import { isBarGame, tossOk, type BarGame } from '../shared/bargames.js';
 
 const MIME: Record<string, string> = {
@@ -524,6 +525,13 @@ export async function startServer(cfg: Config) {
   // What the building looks like inside: the office, the castle, or a map of your own (⚙️ Settings).
   const maps = new Maps(cfg.dataDir);
   const djBooth = new DjBooth(cfg.dataDir); // flrnoh fork: DJ sets on the roof
+  // flrnoh fork: the racing rig in the lounge (server/rig.ts), one driver a floor, one table for the building.
+  const rigs = new Rigs(new RigTable(cfg.dataDir));
+  const rigChanged = (floorId: string) => {
+    const f = floors.get(floorId);
+    if (f) toFloor(f, { t: 'rig', state: rigs.state(floorId) });
+  };
+  const rigLeft = (c: Client) => rigs.leave(c.id).forEach(rigChanged);
   /**
    * Tells everyone about the maps, after a pick or a read of the folder. When the map everyone's on
    * changed (`was` before), everyone's off their seats (each browser forgets them too, see the
@@ -768,6 +776,7 @@ export async function startServer(cfg: Config) {
     whiteboard: { elements: floor?.whiteboard.scene() ?? [], people: floor ? drawing(floor) : [] },
     meeting: floor?.meetings.state() ?? { current: null, past: [] },
     cabinet: { ...cabinetState(floor), frame: (floor && cabinetPlayer(floor)?.frame) ?? null },
+    rig: rigs.view(floor?.id), // flrnoh fork
   });
   /** The rooftop bar: nobody works up there, so it has none of a floor's things. */
   const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF, dj: djBooth.state() });
@@ -1293,6 +1302,7 @@ export async function startServer(cfg: Config) {
       clients.delete(id);
       if (client.whiteboard) drawingChanged(floorOf(client));
       stopPlaying(client);
+      rigLeft(client); // fork: the racing rig
       for (const f of floors.values()) {
         f.workers.detachAll(id);
         f.changes.unwatchAll(id);
@@ -1407,6 +1417,7 @@ export async function startServer(cfg: Config) {
     const wasDrawing = c.whiteboard;
     c.whiteboard = false;
     stopPlaying(c, was);
+    rigLeft(c); // fork: the racing rig
     const spot = at ?? { ...elevatorSpot(), y: 0, rotY: 0 };
     Object.assign(c.peer, { x: spot.x, y: spot.y, z: spot.z, rotY: spot.rotY, moving: false });
     delete c.peer.seat;
@@ -2415,6 +2426,26 @@ export async function startServer(cfg: Config) {
       case 'cabinet.leave':
         stopPlaying(c);
         break;
+      // flrnoh fork: the racing rig (server/rig.ts).
+      case 'rig.play':
+      case 'rig.leave':
+      case 'rig.frame':
+      case 'rig.finish': {
+        const floor = floorOf(c);
+        rigMessage(rigs, msg, {
+          id: c.id,
+          who,
+          color: c.peer.color,
+          floor: floor?.id,
+          send: (m) => sendTo(c, m),
+          toNeighbors: (m, droppable) => toNeighbors(c, m, droppable),
+          changed: () => floor && rigChanged(floor.id),
+          tablesChanged: () => [...floors.keys()].forEach(rigChanged),
+          toastFloor: (t) => toastFloor(floor, t),
+          warn: (t) => warn(c, t),
+        });
+        break;
+      }
       case 'cabinet.frame': {
         const floor = floorOf(c);
         const frame = checkFrame(msg.frame);
