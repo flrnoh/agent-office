@@ -13,6 +13,7 @@ import type { JukeboxState } from './jukebox.js';
 import type { RigFrame, RigResult, RigState, RigView } from './rig.js'; // flrnoh fork: the racing rig
 import type { DjSetState } from './djset.js';
 import type { CasinoClientMsg, CasinoServerMsg } from './casino.js'; // flrnoh fork: the casino
+import type { GymClientMsg, GymServerMsg } from './gym.js'; // flrnoh fork: the gym
 import type { TvState } from './tv.js';
 import type { CustomMap } from './maps/index.js';
 import type { PromptId } from './prompts.js';
@@ -1127,6 +1128,7 @@ export type GongWhy = 'hit' | 'merged' | 'queue';
 
 export type ClientMsg =
   | CasinoClientMsg // flrnoh fork: the casino (shared/casino.ts)
+  | GymClientMsg // flrnoh fork: the gym (shared/gym.ts)
   | { t: 'move'; x: number; y: number; z: number; rotY: number; moving: boolean }
   /**
    * You reached out to use something; everyone else sees your character's arm do it. With `smoke`,
@@ -1353,6 +1355,7 @@ export type ClientMsg =
 
 export type ServerMsg =
   | CasinoServerMsg // flrnoh fork: the casino (shared/casino.ts)
+  | GymServerMsg // flrnoh fork: the gym (shared/gym.ts)
   | ({
       t: 'welcome';
       you: string;

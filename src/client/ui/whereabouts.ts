@@ -2,6 +2,7 @@ import { BALCONY, DANCE_FLOOR, FIRE_PIT, FLOOR, LOFT, MEETING_ROOM, ROOF_BAR, RO
 import type { PeerInfo } from '../../shared/protocol';
 import { ROOF } from '../../shared/rooftop';
 import { CASINO } from '../../shared/casino'; // fork
+import { GYM } from '../../shared/gym'; // fork
 import { CARS, type CarSeat } from '../../shared/garage';
 import { seatOn, type MapPlan } from '../../shared/maps';
 import { store } from '../state';
@@ -34,6 +35,7 @@ export function whereabouts(p: PeerInfo, car?: { car: number; seat: CarSeat }, p
   // The roof is the office's size, but none of its rooms are up there.
   if (p.floor === ROOF) return onTheRoof(p);
   if (p.floor === CASINO) return '🎰 in the casino'; // fork (client/casino.ts)
+  if (p.floor === GYM) return '🏋️ in the gym'; // fork (client/gym.ts)
   // On a map of its own, the office's rooms aren't where they'd be.
   if (!office) return undefined;
   // Through the north wall in the back office: nobody gets there unless the floor's built out.

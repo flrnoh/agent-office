@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FLOOR, SLAB, STREET_Y, WALL_T, roofDrop } from '../../shared/layout';
 import { cityCasino, onCasinoLot } from './casino/exterior'; // fork
+import { cityGym, onGymLot } from './gym/exterior'; // fork
 import type { NightParts } from './outside';
 import { mergeByMaterial, mesh, toon } from './toon';
 import { buildTower } from './tower';
@@ -370,6 +371,7 @@ export function buildCity(night: NightParts): City {
           lot.top = { kind: 'plant', w: pw, d: pd, x: lx + (r() - 0.5) * tw * 0.4, z: lz + (r() - 0.5) * td * 0.4 };
         }
         if (onCasinoLot(lx, lz, w, d)) continue; // fork: the casino stands there
+        if (onGymLot(lx, lz, w, d)) continue; // fork: the gym stands there
         lots.push(lot);
       }
     }
@@ -406,6 +408,7 @@ export function buildCity(night: NightParts): City {
   }
   street.add(mergeByMaterial(parks));
   street.add(cityCasino()); // fork: the casino across the street (world/casino/exterior.ts)
+  street.add(cityGym()); // fork: the gym across the street (world/gym/exterior.ts)
 
   // The buildings' walls (a material for each paint), their roofs, and what's on them.
   const gradient = (toon('#fff') as THREE.MeshToonMaterial).gradientMap;

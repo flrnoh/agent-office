@@ -65,6 +65,7 @@ const PARTY_SEES = [
   'horn', 'dj', 'rtc', 'chat', 'decor', 'dog', 'ball', 'cars', 'car.move', 'car.honk',
   'jukebox', 'cabinet', 'cabinet.frame', 'rig', 'rig.frame', 'tv', 'tables', 'table.sync', 'table.input', 'sky', 'theme', 'map', 'sit.refused', 'me', 'pong',
   'casino.wallet', 'casino.table', 'casino.result', // fork: the casino is open to party guests
+  'gym.profile', 'gym.station', 'gym.result', // fork: the gym is open to party guests
 ] as const satisfies readonly T[];
 
 /** The work, the machine and the office's settings: never sent to a party guest. */

@@ -1759,6 +1759,27 @@ export class OfficeSound {
     }
   }
 
+  // ---- The gym (fork, see client/gym.ts) --------------------------------------------------------
+
+  /** The gym: a rep's thud, plates clanking, a treadmill's patter, a set landing, water and a smoothie. */
+  gym(kind: 'rep' | 'clank' | 'run' | 'ding' | 'splash' | 'cheer' | 'sip' | 'whoosh' | 'buzzer') {
+    this.unlock();
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.count(`gym.${kind}`);
+    const out = this.alerts;
+    const t0 = ctx.currentTime + 0.01;
+    if (kind === 'rep') this.blip(out, t0, 150, 0.7, 0.1, 0.16, 'triangle');
+    else if (kind === 'clank') [1600, 2100].forEach((f, i) => this.blip(out, t0 + i * 0.04, f, 0.7, 0.05, 0.05, 'square'));
+    else if (kind === 'run') for (let i = 0; i < 4; i++) this.blip(out, t0 + i * 0.06, 240, 0.5, 0.04, 0.06, 'triangle');
+    else if (kind === 'ding') this.blip(out, t0, 1320, 0.9, 0.18, 0.1);
+    else if (kind === 'splash') [520, 360, 240].forEach((f, i) => this.blip(out, t0 + i * 0.05, f, 0.8, 0.07, 0.07, 'sine'));
+    else if (kind === 'sip') [1900, 2500].forEach((f, i) => this.blip(out, t0 + i * 0.05, f, 0.8, 0.05, 0.05));
+    else if (kind === 'whoosh') [700, 500, 340].forEach((f, i) => this.blip(out, t0 + i * 0.05, f, 0.6, 0.08, 0.05, 'sine'));
+    else if (kind === 'buzzer') [180, 150].forEach((f, i) => this.blip(out, t0 + i * 0.12, f, 0.95, 0.13, 0.09, 'sawtooth'));
+    else [523, 659, 784, 1047].forEach((f, i) => this.blip(out, t0 + i * 0.08, f, 1.0, 0.15, 0.11, 'square')); // cheer
+  }
+
   // ---- The racing rig (fork, see ui/rig.ts) -----------------------------------------------------
 
   /**

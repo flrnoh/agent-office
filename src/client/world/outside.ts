@@ -3,6 +3,7 @@ import { ELEVATOR, ELEVATOR_FRONT, FLOOR, ROAD, SLAB, STREET_Y, WALL_T } from '.
 import { LOT, SIDE_LOT } from '../../shared/garage';
 import { STREET_END, shoreX } from '../../shared/scenic';
 import { CASINO_BOX, CASINO_HEIGHT } from '../../shared/casino'; // fork
+import { GYM_BOX, GYM_HEIGHT } from '../../shared/gym'; // fork
 import type { Collider } from './office';
 import { mergeByMaterial, mesh, textPlane, toon, toonUnique } from './toon';
 
@@ -292,9 +293,8 @@ export function roadTexture(): THREE.CanvasTexture {
  * (GOLF_HOLE in layout).
  */
 const NEIGHBOURS: [number, number, number, number, number, string][] = [
-  // (fork: the two across the street to the west made way for the casino, world/casino/exterior.ts)
-  [12, 47, 16, 19, 12, '#cdb4db'],
-  [30, 45, 12, 9, 9, '#ffd6a5'],
+  // (fork: the two across the street to the west made way for the casino, world/casino/exterior.ts,
+  //  and the two to the east for the gym, world/gym/exterior.ts)
   [-20, -42, 18, 14, 10, '#a2d2ff'],
   [8, -44, 16, 20, 12, '#f4acb7'],
   [-48, -6, 10, 12, 16, '#ffe5b4'],
@@ -310,7 +310,9 @@ export function neighbourBoxes(): { minX: number; maxX: number; minZ: number; ma
     // Turned a quarter, its width runs along z.
     const [hx, hz] = Math.abs(Math.sin(facing(x, z))) > 0.5 ? [d / 2, w / 2] : [w / 2, d / 2];
     return { minX: x - hx - 0.2, maxX: x + hx + 0.2, minZ: z - hz - 0.2, maxZ: z + hz + 0.2, top: h + 0.4 };
-  }).concat({ ...CASINO_BOX, top: CASINO_HEIGHT + 0.5 }); // fork: the casino
+  })
+    .concat({ ...CASINO_BOX, top: CASINO_HEIGHT + 0.5 }) // fork: the casino
+    .concat({ ...GYM_BOX, top: GYM_HEIGHT + 0.5 }); // fork: the gym
 }
 
 /**
