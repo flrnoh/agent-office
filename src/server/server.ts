@@ -67,6 +67,7 @@ import { RigTable, Rigs, rigMessage } from './rig.js'; // flrnoh fork: the racin
 import { tvMessage } from './tv.js'; // flrnoh fork: streams on the office TV
 import { RoofTables, tableMessage } from './tablegames.js'; // fork: games on the roof
 import { PadelCourts, padelMessage } from './padel.js'; // flrnoh fork: padel in the hall
+import { BungeeRope, bungeeMessage } from './bungee.js'; // fork: bungee off the roof
 import { isBarGame, tossOk, type BarGame } from '../shared/bargames.js';
 
 const MIME: Record<string, string> = {
@@ -574,6 +575,8 @@ export async function startServer(cfg: Config) {
     }
   };
   const leftCourt = (id: string) => padelCourts.leave(id) && toHall({ t: 'padel', courts: padelCourts.state() }, id);
+  const bungeeRope = new BungeeRope(); // fork: bungee off the roof (bungee.ts)
+  const offRope = (id: string) => bungeeRope.leave(id) && toRoof({ t: 'bungee', state: bungeeRope.state() }, id);
   /**
    * Tells everyone about the maps, after a pick or a read of the folder. When the map everyone's on
    * changed (`was` before), everyone's off their seats (each browser forgets them too, see the
@@ -822,7 +825,7 @@ export async function startServer(cfg: Config) {
     ...(floor ? { tv: floor.tv.state() } : {}), // flrnoh fork: the TV's stream (tv.ts)
   });
   /** The rooftop bar: nobody works up there, so it has none of a floor's things. */
-  const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF, dj: djBooth.state(), tables: roofTables.state() });
+  const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF, dj: djBooth.state(), tables: roofTables.state(), bungee: bungeeRope.state() });
   // flrnoh fork: the casino, a place of its own like the roof, and who's in it by their chips.
   const casinoView = (): FloorView => ({ ...floorView(undefined), floor: CASINO });
   const casinoPlayer = (c: Client): CasinoPlayer => ({ id: c.id, owner: c.accountId ? `account:${c.accountId}` : `name:${c.peer.name}`, name: c.peer.name, send: (m) => sendTo(c, m) });
@@ -1375,6 +1378,7 @@ export async function startServer(cfg: Config) {
       casino.leave(id); // fork
       leftTable(id); // fork: games on the roof
       leftCourt(id); // fork: padel in the hall
+      offRope(id); // fork: bungee
       if (client.whiteboard) drawingChanged(floorOf(client));
       stopPlaying(client);
       rigLeft(client); // fork: the racing rig
@@ -1500,6 +1504,7 @@ export async function startServer(cfg: Config) {
     casino.leave(c.id); // fork: up from the casino's tables
     if (c.peer.floor === ROOF) leftTable(c.id); // fork: off the roof, away from its tables
     if (c.peer.floor === HALL) leftCourt(c.id); // fork: out of the padel hall, off its courts
+    if (c.peer.floor === ROOF) offRope(c.id); // fork: and off the bungee rope
     if (was) {
       was.workers.detachAll(c.id);
       was.changes.unwatchAll(c.id);
@@ -2139,6 +2144,8 @@ export async function startServer(cfg: Config) {
       case 'padel.input':
       case 'padel.sync':
         padelMessage(padelCourts, msg, { id: c.id, who, color: c.peer.color, inHall: c.peer.floor === HALL, toHall, toClient: (id, m) => { const o = clients.get(id); if (o) sendTo(o, m); }, warn: (t) => warn(c, t) });
+      case 'bungee.jump': // fork: bungee off the roof
+        bungeeMessage(bungeeRope, msg, { id: c.id, who, color: c.peer.color, onRoof: c.peer.floor === ROOF, floors: floors.size, toRoof, warn: (t) => warn(c, t) });
         break;
       case 'gh.close': {
         const floor = here();

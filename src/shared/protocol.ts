@@ -19,6 +19,7 @@ import type { CustomMap } from './maps/index.js';
 import type { PromptId } from './prompts.js';
 import type { DrinkId } from './rooftop.js';
 import type { Side, TableId, TableSeat, TableSnap } from './tablegames/tables.js'; // fork: games on the roof
+import type { BungeeState } from './bungee.js'; // fork: bungee off the roof
 import type { WbElement, WbPointer, WhiteboardView } from './whiteboard.js';
 
 export type WorkerStatus =
@@ -804,6 +805,8 @@ export interface FloorView {
   tv?: TvState;
   /** Up on the roof: who's at the table games (flrnoh fork, see shared/tablegames). */
   tables?: TableSeat[];
+  /** Up on the roof: who's on the bungee rope, and the day's jumps (flrnoh fork, see shared/bungee.ts). */
+  bungee?: BungeeState;
 }
 
 /**
@@ -1202,6 +1205,8 @@ export type ClientMsg =
   | { t: 'table.leave' }
   | { t: 'table.input'; table: TableId; input: number[] }
   | { t: 'table.sync'; table: TableId; snap: TableSnap }
+  /** Fork: jump off the bungee jetty on the roof (see shared/bungee.ts). */
+  | { t: 'bungee.jump' }
   /** Close an issue, or a pull request without merging it; the answer comes back as gh.closed. */
   | { t: 'gh.close'; kind: 'issue' | 'pull'; number: number; comment?: string; reason?: GhCloseReason; deleteBranch?: boolean }
   /** Put labels on an issue or PR and take others off, as the server's gh account; answered with gh.labeled. */
@@ -1435,6 +1440,8 @@ export type ServerMsg =
   | { t: 'tables'; tables: TableSeat[] }
   | { t: 'table.sync'; table: TableId; snap: TableSnap }
   | { t: 'table.input'; table: TableId; side: Side; input: number[] }
+  /** Fork: someone jumped off the bungee jetty (to everyone on the roof). */
+  | { t: 'bungee'; state: BungeeState }
   /** Sent to whoever asked to close it. */
   | { t: 'gh.closed'; kind: 'issue' | 'pull'; number: number; error?: string }
   /** Sent to whoever changed them: the labels it has now, or why they didn't change. */

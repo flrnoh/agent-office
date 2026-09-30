@@ -1725,6 +1725,60 @@ export class OfficeSound {
     n.stop(t0 + 0.02);
   }
 
+  // ---- Bungee off the roof (fork, see client/bungee.ts) ------------------------------------------
+
+  private bungeeAir: { src: AudioBufferSourceNode; band: BiquadFilterNode; gain: GainNode } | null = null;
+
+  /**
+   * The countdown's beeps and the go (in your own ears), and the rope's twang as it pulls taut: from
+   * `at` when someone else is on it, in your own ears when it's you. On the effects volume.
+   */
+  bungee(kind: 'count' | 'go' | 'twang', at?: Pos) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.count(`bungee.${kind}`);
+    const out: AudioNode = at ? this.panner(at, 4, 1) : this.alerts;
+    if (at) out.connect(this.alerts);
+    const t0 = ctx.currentTime + 0.01;
+    if (kind === 'count') this.blip(out, t0, 660, 1, 0.14, 0.08, 'square');
+    else if (kind === 'go') this.blip(out, t0, 990, 1, 0.4, 0.09, 'square');
+    else {
+      // A low, stretched thrum sliding down, and the creak of the harness.
+      this.blip(out, t0, 95, 0.55, 0.9, 0.22, 'sawtooth');
+      this.blip(out, t0, 142, 0.6, 0.6, 0.1, 'triangle');
+      this.hiss(out, t0, 380, 2, [
+        [0.01, 0.12],
+        [0.35, 0],
+      ]);
+    }
+  }
+
+  /** The wind past your ears on the rope: 0 (still) to 1 (flat out), rising in pitch and loudness. */
+  bungeeWind(level: number) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    level = Math.max(0, Math.min(1, level));
+    if (!this.bungeeAir) {
+      if (level <= 0.01) return;
+      this.count('bungee.wind');
+      const src = this.noise(this.buf.white, true);
+      const band = biquad(ctx, 'bandpass', 400, 0.7);
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      src.connect(band).connect(gain).connect(this.alerts);
+      src.start();
+      this.bungeeAir = { src, band, gain };
+    }
+    const a = this.bungeeAir;
+    const now = ctx.currentTime;
+    a.gain.gain.setTargetAtTime(0.35 * level * level, now, 0.08);
+    a.band.frequency.setTargetAtTime(300 + 1500 * level, now, 0.1);
+    if (level <= 0.01) {
+      a.src.stop(now + 0.4);
+      this.bungeeAir = null;
+    }
+  }
+
   // ---- The doorbell (fork, see client/doorbell.ts) ----------------------------------------------
 
   /** Ding-dong: two soft bell tones a major third apart, each with a little shimmer on top. On the effects volume. */
