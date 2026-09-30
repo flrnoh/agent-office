@@ -38,6 +38,7 @@ import { PLACES, placeAt as loopPlace } from '../shared/scenic';
 import { LapTimer, lapTime } from './laps';
 import { Smoke } from './world/smoke';
 import { HAZE_MAX, Sky, describeSky } from './world/sky';
+import { setFogRooms } from './world/fogbox';
 import { Laptop } from './world/laptop';
 import { BoardTexture, QueueBoardTexture, ServicesBoardTexture } from './world/boards';
 import { Gallery } from './world/gallery';
@@ -4892,6 +4893,7 @@ function frame(ts?: number) {
   if (away > 40) sun.target.position.set(Math.round(player.pos.x / 4) * 4, player.pos.y, Math.round(player.pos.z / 4) * 4);
   else sun.target.position.set(0, 0, 0);
   sun.target.updateMatrixWorld();
+  setFogRooms(!upTop && inOffice(), officeWing()); // fork: fog stays outside (fogbox.ts)
   sky.update(dt, t, camera);
   if (!upTop && inOffice()) office.scenic.cull(camera.position, office.night.street, (scene.fog as THREE.Fog).far);
   // A map of its own lights itself its own way (the castle's torchlit hall), after the sky's had its say.
