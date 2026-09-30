@@ -16,6 +16,7 @@ This repository is a fork of [AgentSystemLabs/agent-office](https://github.com/A
   ~/cloude_code/agent-office/bin/update-office.sh
   ```
 - **Never push to or open pull requests on upstream.** The `upstream` remote's push URL is disabled on purpose; nothing from this fork goes back.
+- **No other ties to upstream.** The only link is reading its public repository for the sync. Upstream's `Release` workflow is switched off in this repository's Actions settings (it would publish releases here on every merge); its file stays, so syncs don't conflict over it. The office itself doesn't call upstream at runtime: the built-in updater is off (no `AGENT_OFFICE_SELF_UPDATE`) and would only follow this fork, and the image proxy names this fork in its user agent. Upstream's install scripts and hosting docs (`install.sh`, `deploy/`, `docs/*`) still point at upstream: they're not used here, and are left alone so syncs stay conflict-free.
 
 ## Keeping conflicts rare
 
@@ -104,3 +105,4 @@ At the boss's PC up in the loft you can work, not only play: sitting in the boss
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.
+- `src/server/decor.ts`: the image proxy's user agent names this fork.
