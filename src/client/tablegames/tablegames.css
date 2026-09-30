@@ -1,0 +1,27 @@
+/* The table games on the roof (tablegames/play.ts): the whole view is the game, with a bar across the top. */
+.tg { position: fixed; inset: 0; cursor: crosshair; touch-action: none; user-select: none; }
+.tg-bar {
+  position: absolute; top: 12px; left: 50%; translate: -50% 0; max-width: calc(100vw - 32px);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
+  padding: 6px 6px 6px 14px; background: var(--paper); border: 3px solid var(--ink); border-radius: 14px;
+  box-shadow: 0 4px 0 var(--ink); font-weight: 800; font-size: 14px; cursor: default;
+}
+.tg-title { white-space: nowrap; }
+.tg-score { font-weight: 900; font-size: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tg-tip { color: var(--muted); font-size: 12px; }
+.tg-bar > .close { position: static; }
+.tg-banner {
+  position: absolute; top: 22%; left: 50%; translate: -50% 0; max-width: calc(100vw - 32px); text-align: center;
+  padding: 10px 22px; background: var(--paper); border: 3px solid var(--ink); border-radius: 18px; box-shadow: 0 5px 0 var(--ink);
+  font-weight: 900; font-size: 26px; pointer-events: none; animation: pop .18s ease-out;
+}
+.tg-meter {
+  position: absolute; bottom: 36px; left: 50%; translate: -50% 0; width: min(320px, calc(100vw - 32px)); height: 18px;
+  background: var(--paper); border: 3px solid var(--ink); border-radius: 10px; overflow: hidden; pointer-events: none;
+}
+.tg-fill { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #06d6a0, #ffd166 60%, #ef476f); }
+@media (max-width: 600px) {
+  .tg-bar { gap: 6px; font-size: 12px; }
+  .tg-tip { flex-basis: 100%; text-align: center; }
+  .tg-banner { font-size: 20px; }
+}

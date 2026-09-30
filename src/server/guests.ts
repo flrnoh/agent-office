@@ -16,6 +16,7 @@ const GUEST = [
   'car.drive', 'car.honk', 'worker.attach', 'worker.detach', 'wb.open', 'wb.close',
   'wb.update', 'wb.pointer', 'jukebox.play', 'jukebox.skip', 'jukebox.stop', 'cabinet.play',
   'cabinet.leave', 'cabinet.frame', 'ping',
+  'table.join', 'table.leave', 'table.input', 'table.sync', // fork: games on the roof
 ] as const satisfies readonly ClientMsg['t'][];
 
 /** What a guest's page sends on its own (resizing a terminal it watches, polling boards): dropped without a word. */

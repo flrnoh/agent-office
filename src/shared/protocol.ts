@@ -14,6 +14,7 @@ import type { DjSetState } from './djset.js';
 import type { CustomMap } from './maps/index.js';
 import type { PromptId } from './prompts.js';
 import type { DrinkId } from './rooftop.js';
+import type { Side, TableId, TableSeat, TableSnap } from './tablegames/tables.js'; // fork: games on the roof
 import type { WbElement, WbPointer, WhiteboardView } from './whiteboard.js';
 
 export type WorkerStatus =
@@ -793,6 +794,8 @@ export interface FloorView {
   jail: JailState;
   /** Up on the roof: the DJ set someone put on, if any (flrnoh fork, see shared/djset.ts). */
   dj?: DjSetState;
+  /** Up on the roof: who's at the table games (flrnoh fork, see shared/tablegames). */
+  tables?: TableSeat[];
 }
 
 /** A guest looks around, chats, plays and watches the terminals, but can't type in them or run anything. */
@@ -1173,6 +1176,11 @@ export type ClientMsg =
   | { t: 'dj.play'; url: string }
   /** Back to the house DJ. */
   | { t: 'dj.stop' }
+  /** Fork: step up to a table game on the roof (see shared/tablegames), step back, a move to the host, a snapshot from it. */
+  | { t: 'table.join'; table: TableId; side?: Side }
+  | { t: 'table.leave' }
+  | { t: 'table.input'; table: TableId; input: number[] }
+  | { t: 'table.sync'; table: TableId; snap: TableSnap }
   /** Close an issue, or a pull request without merging it; the answer comes back as gh.closed. */
   | { t: 'gh.close'; kind: 'issue' | 'pull'; number: number; comment?: string; reason?: GhCloseReason; deleteBranch?: boolean }
   /** Put labels on an issue or PR and take others off, as the server's gh account; answered with gh.labeled. */
@@ -1391,6 +1399,10 @@ export type ServerMsg =
   | { t: 'horn'; by: string }
   /** The DJ set on the roof changed (sent to everyone up there). */
   | { t: 'dj'; state: DjSetState }
+  /** Fork: who's at the roof's tables (to everyone up there), a table's snapshot, and a move for its host. */
+  | { t: 'tables'; tables: TableSeat[] }
+  | { t: 'table.sync'; table: TableId; snap: TableSnap }
+  | { t: 'table.input'; table: TableId; side: Side; input: number[] }
   /** Sent to whoever asked to close it. */
   | { t: 'gh.closed'; kind: 'issue' | 'pull'; number: number; error?: string }
   /** Sent to whoever changed them: the labels it has now, or why they didn't change. */
