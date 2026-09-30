@@ -1633,6 +1633,80 @@ export class OfficeSound {
     n.stop(t0 + 0.02);
   }
 
+  // ---- The kitchen fridge (fork, see ui/fridge.ts) -----------------------------------------------
+
+  /** The fridge door: the seal letting go and the bottles in the door clinking, or a soft thump shut. */
+  fridgeDoor(open: boolean) {
+    const ctx = this.ctx;
+    if (!ctx || this.hall) return;
+    this.count(open ? 'fridgeOpen' : 'fridgeClose');
+    const out = this.panner(FRIDGE, 1, 1.4);
+    out.connect(this.indoors);
+    const t0 = ctx.currentTime + 0.02;
+    if (open) {
+      this.hiss(out, t0, 900, 0.8, [
+        [0.02, 0.12],
+        [0.18, 0.03],
+        [0.3, 0],
+      ]);
+      this.clink(out, t0 + 0.15, rand(2600, 3200), 0.03);
+      this.clink(out, t0 + 0.23, rand(2900, 3600), 0.02);
+    } else {
+      this.play(pick(this.buf.steps), { gain: 0.5, rate: 0.5, dest: out });
+      this.blip(out, t0, 110, 0.7, 0.08, 0.1);
+      this.clink(out, t0 + 0.04, rand(2600, 3200), 0.02);
+    }
+  }
+
+  /** Opening what you grabbed: a crown cap popped off with a fizz, a can's ring pull cracked, or a bite. */
+  opener(kind: 'bottle' | 'can' | 'bite') {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.count(kind === 'bite' ? 'bite' : 'opener');
+    const t0 = ctx.currentTime + 0.02;
+    if (kind === 'bite') {
+      // A few crunches.
+      for (let i = 0; i < 3; i++) {
+        const t = t0 + i * rand(0.08, 0.13);
+        this.hiss(this.ambience, t, rand(1600, 2600), 1.4, [
+          [0.005, 0.1],
+          [0.05, 0],
+        ]);
+      }
+      return;
+    }
+    if (kind === 'bottle') {
+      this.hiss(this.ambience, t0, 2400, 1, [
+        [0.004, 0.16],
+        [0.04, 0],
+      ]);
+      this.blip(this.ambience, t0, 620, 0.55, 0.09, 0.08);
+      this.clink(this.ambience, t0 + 0.12, 4200, 0.02);
+    } else {
+      this.hiss(this.ambience, t0, 3200, 2, [
+        [0.003, 0.18],
+        [0.03, 0],
+      ]);
+    }
+    // The fizz.
+    this.hiss(this.ambience, t0 + 0.03, 6500, 0.7, [
+      [0.03, 0.06],
+      [0.5, 0.02],
+      [0.9, 0],
+    ]);
+  }
+
+  /** A burst of filtered noise shaped by `points` (as envelope). */
+  private hiss(out: AudioNode, t0: number, freq: number, q: number, points: [number, number][]) {
+    const ctx = this.ctx!;
+    const n = this.noise(this.buf.white);
+    const g = ctx.createGain();
+    envelope(g.gain, t0, points);
+    n.connect(biquad(ctx, 'bandpass', freq, q)).connect(g).connect(out);
+    n.start(t0);
+    n.stop(t0 + points[points.length - 1][0] + 0.05);
+  }
+
   // ---- The jukebox ------------------------------------------------------------------------------
 
   /** What the jukebox on your floor plays, or null for nothing. It starts once the browser allows audio. */

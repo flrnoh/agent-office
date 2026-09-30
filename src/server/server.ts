@@ -50,7 +50,8 @@ import { lookFromSeed, sanitizeLook } from '../shared/avatar.js';
 import { EMOTE_EVERY, EmoteBucket, isEmote } from '../shared/emotes.js';
 import { isThemePick } from '../shared/theme.js';
 import { PROMPTS, PROMPT_MAX, isPromptId } from '../shared/prompts.js';
-import { ROOF, isDrink } from '../shared/rooftop.js';
+import { ROOF } from '../shared/rooftop.js';
+import { heldDrink, keepsHeld } from './held.js';
 import { isBarGame, tossOk, type BarGame } from '../shared/bargames.js';
 
 const MIME: Record<string, string> = {
@@ -1403,7 +1404,7 @@ export async function startServer(cfg: Config) {
     delete c.peer.throwing;
     // An issue card belongs to the board it came off, which is on the floor they left; a drink stays at the bar.
     delete c.peer.carrying;
-    delete c.peer.drink;
+    if (!keepsHeld(c.peer.drink)) delete c.peer.drink; // fork: a bottle from the fridge comes along
     return { was, wasDrawing, ballLeft, carLeft };
   };
 
@@ -1509,8 +1510,8 @@ export async function startServer(cfg: Config) {
       }
       case 'act': {
         if (msg.drink !== undefined) {
-          // A drink from the rooftop bar, which stays up there.
-          const drink = isDrink(msg.drink) && c.peer.floor === ROOF ? msg.drink : undefined;
+          // A drink from the rooftop bar, which stays up there, or (fork) anything from the kitchen fridge.
+          const drink = heldDrink(msg.drink, c.peer.floor);
           if (drink === c.peer.drink) break;
           if (drink) c.peer.drink = drink;
           else delete c.peer.drink;

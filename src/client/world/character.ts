@@ -4,6 +4,7 @@ import { EMOTE_BY_ID, type Emote, type EmoteId } from '../../shared/emotes';
 import type { CarriedIssue, Theme, WorkerAction, WorkerStatus, WorkerTask } from '../../shared/protocol';
 import type { BarGame } from '../../shared/bargames';
 import type { Drink } from '../../shared/rooftop';
+import { fridgeItem } from './fridgeitems';
 import { isAsleep, type WorkerPr } from '../../shared/status';
 import { HIPS } from '../player';
 import { axeModel, dartModel } from './bargames';
@@ -178,6 +179,9 @@ export function drinkGlass(d: Drink, scale = 1): THREE.Group {
       // A wedge of lime balanced on the rim.
       g.add(mesh(new THREE.CylinderGeometry(0.016 * S, 0.016 * S, 0.008 * S, 10, 1, false, 0, Math.PI), toon('#9bc53d'), 0.022 * S, 0.065 * S, 0, false));
       break;
+    default:
+      // Fork: a bottle, a can or a snack from the kitchen fridge.
+      g.add(fridgeItem(d, S));
   }
   return g;
 }

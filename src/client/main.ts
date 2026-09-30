@@ -24,6 +24,8 @@ import { DrunkVision } from './world/drunk';
 import { Booze, type Stage as Feeling } from './booze';
 import { djFrame, djTime } from './dnb';
 import { openBar } from './ui/bar';
+import { openFridge } from './ui/fridge';
+import { isSnack, sipEvery, type FridgeItem } from '../shared/fridge';
 import { DRINK_BY_ID, ROOF, ROOF_NAME, type Drink, type DrinkId } from '../shared/rooftop';
 import { BACKSWING_TIME, IMPACT, Person, Worker, type Stage } from './world/character';
 import { GolfBalls, PIN_DISTANCE, TEE_BALL, fly, lieText, pinText, type Flight, type Hit, type Shot } from './world/golf';
@@ -2966,6 +2968,7 @@ function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   else if (target.kind === 'seat' && target.seatId) useSeat(target.seatId);
   else if (target.kind === 'dog') net.send({ t: 'dog.pet' });
   else if (target.kind === 'coffee') drinkCoffee();
+  else if (target.kind === 'fridge') showFridge();
   else if (target.kind === 'smoke') {
     if (smokeBreakUntil) {
       setSmoking(false);
@@ -3086,7 +3089,8 @@ function drinking(now: number) {
   }
   if (glass && player.view === 'first' && now > nextSip) {
     if (nextSip) hands.sip();
-    nextSip = now + 9000 + Math.random() * 9000;
+    if (nextSip && isSnack(glass)) sound.opener('bite');
+    nextSip = now + sipEvery(glass);
   }
   const stage = booze.stage(secs);
   if (stage !== feeling) {
@@ -3111,6 +3115,24 @@ function drinkCoffee() {
   if (jittery) toast('☕ One cup too many… you’ve got the jitters!', 'warn');
   else if (caffeine.cups > 1) toast('☕ Another cup: back to a full minute of buzz');
   else toast('☕ Fresh coffee! A minute of quicker feet and higher jumps');
+}
+
+// ---- The kitchen fridge (fork, see ui/fridge.ts) -----------------------------------------------------
+/** E at the fridge: the door opens on drinks and snacks. */
+function showFridge() {
+  sound.fridgeDoor(true);
+  openFridge({ cutOff: booze.cutOff(performance.now() / 1000), grab: grabFromFridge, onClose: () => sound.fridgeDoor(false) });
+}
+
+/** Out of the fridge and into your hand: opened (or bitten into), a beer to your head, a cola's little buzz. */
+function grabFromFridge(d: FridgeItem) {
+  const now = performance.now() / 1000;
+  booze.drink(d, now);
+  caffeine.top(now, d.caffeine);
+  reach();
+  sound.opener(d.glass === 'bottle' || d.glass === 'can' ? d.glass : 'bite');
+  if (player.view === 'first') hands.sip();
+  toast(`${d.emoji} ${d.name}. ${d.says}`);
 }
 
 // ---- Smoke breaks ------------------------------------------------------------------------------------
@@ -3706,6 +3728,10 @@ function hintFor(it: Interactable): Hint {
     case 'tv': {
       const any = currentShares().length > 0;
       return { k: String(any), parts: [title('📺 Office TV'), key('E', any ? 'Watch full screen' : 'Share your screen')] };
+    }
+    case 'fridge': {
+      const cut = booze.cutOff(performance.now() / 1000);
+      return { k: String(cut), parts: [title('🧊 Fridge'), aside(cut ? "you've had enough beer" : 'drinks and snacks'), key('E', 'Grab something')] };
     }
     case 'coffee': {
       const buzzed = caffeine.buzzed(performance.now() / 1000);
@@ -4357,7 +4383,7 @@ document.addEventListener('pointerlockchange', () => {
 const raycaster = new THREE.Raycaster();
 const CROSSHAIR = new THREE.Vector2(0, 0);
 /** How close (meters from your eyes) you must be to use each kind of thing. */
-const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5 };
+const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3 };
 const eye = new THREE.Vector3();
 
 /** What the ray through `ndc` lands on first, whether it is within reach (plus `slack` meters), and where it hit. */
