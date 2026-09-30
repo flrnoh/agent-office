@@ -67,6 +67,7 @@ const PARTY_SEES = [
   'casino.wallet', 'casino.table', 'casino.result', // fork: the casino is open to party guests
   'padel', 'padel.sync', 'padel.input', // fork: padel in the hall
   'bungee', // fork: bungee off the roof
+  'soccer', 'soccer.ball', // fork: the soccer hall
 ] as const satisfies readonly T[];
 
 /** The work, the machine and the office's settings: never sent to a party guest. */

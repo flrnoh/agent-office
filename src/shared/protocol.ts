@@ -14,6 +14,7 @@ import type { RigFrame, RigResult, RigState, RigView } from './rig.js'; // flrno
 import type { DjSetState } from './djset.js';
 import type { CasinoClientMsg, CasinoServerMsg } from './casino.js'; // flrnoh fork: the casino
 import type { PadelClientMsg, PadelServerMsg } from './padel/court.js'; // flrnoh fork: padel in the hall
+import type { SoccerClientMsg, SoccerServerMsg } from './soccer.js'; // flrnoh fork: the soccer hall
 import type { TvState } from './tv.js';
 import type { CustomMap } from './maps/index.js';
 import type { PromptId } from './prompts.js';
@@ -1132,6 +1133,7 @@ export type GongWhy = 'hit' | 'merged' | 'queue';
 export type ClientMsg =
   | CasinoClientMsg // flrnoh fork: the casino (shared/casino.ts)
   | PadelClientMsg // flrnoh fork: padel in the hall (shared/padel/court.ts)
+  | SoccerClientMsg // flrnoh fork: the soccer hall (shared/soccer.ts)
   | { t: 'move'; x: number; y: number; z: number; rotY: number; moving: boolean }
   /**
    * You reached out to use something; everyone else sees your character's arm do it. With `smoke`,
@@ -1361,6 +1363,7 @@ export type ClientMsg =
 export type ServerMsg =
   | CasinoServerMsg // flrnoh fork: the casino (shared/casino.ts)
   | PadelServerMsg // flrnoh fork: padel in the hall (shared/padel/court.ts)
+  | SoccerServerMsg // flrnoh fork: the soccer hall (shared/soccer.ts)
   | ({
       t: 'welcome';
       you: string;

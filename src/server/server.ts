@@ -60,6 +60,9 @@ import { Turn, readTurnKey } from './turn.js'; // flrnoh fork: TURN for voice
 import { CASINO, CASINO_ENTRY, isCasinoMsg } from '../shared/casino.js';
 import { HALL } from '../shared/hall.js'; // flrnoh fork: the padel hall
 import { HALL_ARRIVAL, backInHall, hallView } from './hall.js';
+import { SOCCER, isSoccerMsg, type SoccerClientMsg } from '../shared/soccer.js'; // flrnoh fork: the soccer hall
+import { Soccer } from './soccer/index.js';
+import { SOCCER_ARRIVAL, backInSoccer, soccerView } from './soccer/place.js';
 import { CarKeys } from './carkeys.js'; // flrnoh fork: the Bulli's keys
 import { BULLI_REFUSED, mayTake } from '../shared/bulli.js';
 import { CARS } from '../shared/garage.js';
@@ -577,6 +580,13 @@ export async function startServer(cfg: Config) {
   const leftCourt = (id: string) => padelCourts.leave(id) && toHall({ t: 'padel', courts: padelCourts.state() }, id);
   const bungeeRope = new BungeeRope(); // fork: bungee off the roof (bungee.ts)
   const offRope = (id: string) => bungeeRope.leave(id) && toRoof({ t: 'bungee', state: bungeeRope.state() }, id);
+  // fork: the soccer hall's ball and match (soccer/), players where their moves say they are.
+  const soccer = new Soccer({
+    where: (id) => {
+      const c = clients.get(id);
+      return c && c.peer.floor === SOCCER ? c.peer : null;
+    },
+  });
   /**
    * Tells everyone about the maps, after a pick or a read of the folder. When the map everyone's on
    * changed (`was` before), everyone's off their seats (each browser forgets them too, see the
@@ -1258,14 +1268,15 @@ export async function startServer(cfg: Config) {
     // Back on the floor they were on before a reload, a restart or closing the tab, else the first floor.
     const wanted = url.searchParams.get('floor');
     // Their floor's gone since (taken off the building, or its checkout deleted): up to the roof instead.
-    const gone = !!wanted && wanted !== ROOF && wanted !== CASINO && wanted !== HALL && !floors.has(wanted);
+    const gone = !!wanted && wanted !== ROOF && wanted !== CASINO && wanted !== HALL && wanted !== SOCCER && !floors.has(wanted);
     // Up on the roof, as long as there's a building under it.
     const onRoof = (wanted === ROOF || gone || (!wanted && !!me.party)) && floors.size > 0; // fork: party guests arrive at the rooftop bar
     const inCasino = wanted === CASINO && floors.size > 0; // fork: back in the casino
     const inHall = backInHall(wanted, floors.size); // fork: back in the padel hall
-    const floor = onRoof || inCasino || inHall ? undefined : arrivalFloor(wanted);
+    const inSoccer = backInSoccer(wanted, floors.size); // fork: back in the soccer hall
+    const floor = onRoof || inCasino || inHall || inSoccer ? undefined : arrivalFloor(wanted);
     // Back where they were standing on it too; anywhere else, they arrive by elevator.
-    const back = !gone && wanted !== null && (onRoof || inCasino || inHall || floor?.id === wanted);
+    const back = !gone && wanted !== null && (onRoof || inCasino || inHall || inSoccer || floor?.id === wanted);
     const spot = (back && spotFrom(url.searchParams)) || { ...elevatorSpot(), y: 0, rotY: 0 };
     const account = session.account;
     // An account's name is its own; on the shared password people pick one.
@@ -1313,7 +1324,7 @@ export async function startServer(cfg: Config) {
         sharing: false,
         ...(account ? { account: true } : {}),
         ...(url.searchParams.get('lite') === '1' ? { lite: true } : {}),
-        ...(onRoof ? { floor: ROOF } : inCasino ? { floor: CASINO } : inHall ? { floor: HALL } : floor ? { floor: floor.id } : {}),
+        ...(onRoof ? { floor: ROOF } : inCasino ? { floor: CASINO } : inHall ? { floor: HALL } : inSoccer ? { floor: SOCCER } : floor ? { floor: floor.id } : {}),
       },
     };
     // Maps of your own may have been added or edited since: everyone already in hears first.
@@ -1345,9 +1356,10 @@ export async function startServer(cfg: Config) {
       map: maps.state(),
       prompts: prompts.state(),
       leaveOnMerge: leaveOnMerge.state(),
-      ...(onRoof ? roofView() : inCasino ? casinoView() : inHall ? hallView(floorView(undefined)) : floorView(floor)),
+      ...(onRoof ? roofView() : inCasino ? casinoView() : inHall ? hallView(floorView(undefined)) : inSoccer ? soccerView(floorView(undefined)) : floorView(floor)),
     });
     if (inCasino) casino.enter(casinoPlayer(client));
+    if (inSoccer) soccer.enter({ id, name: client.peer.name, send: (m) => sendTo(client, m) }); // fork
     screensOf(client, floor);
     broadcast({ t: 'peer.join', peer: client.peer }, id);
     if (account) accountsChanged(); // now online
@@ -1378,6 +1390,7 @@ export async function startServer(cfg: Config) {
       casino.leave(id); // fork
       leftTable(id); // fork: games on the roof
       leftCourt(id); // fork: padel in the hall
+      soccer.leave(id); // fork: off the soccer pitch
       offRope(id); // fork: bungee
       if (client.whiteboard) drawingChanged(floorOf(client));
       stopPlaying(client);
@@ -1465,6 +1478,17 @@ export async function startServer(cfg: Config) {
     floorsChanged();
   };
 
+  /** flrnoh fork: into the soccer hall across the street, just inside its doors (soccer/). */
+  const goToSoccer = (c: Client) => {
+    if (c.peer.floor === SOCCER) return;
+    const left = leave(c, SOCCER_ARRIVAL);
+    c.peer.floor = SOCCER;
+    sendTo(c, { t: 'floor.enter', peers: [...clients.values()].map((o) => o.peer), ...soccerView(floorView(undefined)) });
+    soccer.enter({ id: c.id, name: c.peer.name, send: (m) => sendTo(c, m) });
+    arrived(c, left);
+    floorsChanged();
+  };
+
   /** Out to the lobby, where the elevator has nowhere to go: the building's last floor was taken off. */
   const toLobby = (c: Client) => {
     const left = leave(c);
@@ -1485,7 +1509,7 @@ export async function startServer(cfg: Config) {
     floorsSent = JSON.stringify(list);
     broadcast({ t: 'floors', floors: list });
     for (const c of clients.values()) {
-      if (c.peer.floor === floor.id || (!next && (c.peer.floor === ROOF || c.peer.floor === HALL))) { // fork: nor a padel hall
+      if (c.peer.floor === floor.id || (!next && (c.peer.floor === ROOF || c.peer.floor === HALL || c.peer.floor === SOCCER))) { // fork: nor a padel (or soccer) hall
         if (next) goToFloor(c, next);
         else toLobby(c);
         sendTo(c, { t: 'toast', text: next ? `🛗 ${who} took ${name} off the building, so you rode the elevator to ${next.def.name}` : `🛗 ${who} took ${name}, the last floor, off the building`, level: 'warn' });
@@ -1504,6 +1528,7 @@ export async function startServer(cfg: Config) {
     casino.leave(c.id); // fork: up from the casino's tables
     if (c.peer.floor === ROOF) leftTable(c.id); // fork: off the roof, away from its tables
     if (c.peer.floor === HALL) leftCourt(c.id); // fork: out of the padel hall, off its courts
+    soccer.leave(c.id); // fork: out of the soccer hall, off its pitch
     if (c.peer.floor === ROOF) offRope(c.id); // fork: and off the bungee rope
     if (was) {
       was.workers.detachAll(c.id);
@@ -1632,6 +1657,7 @@ export async function startServer(cfg: Config) {
       return floor ? { wid, floor, info: floor.workers.get(wid)! } : undefined;
     };
     if (isCasinoMsg(msg.t)) return casino.message(c.id, msg as Parameters<Casino['message']>[1]); // fork: the casino
+    if (isSoccerMsg(msg.t)) return soccer.message(c.id, msg as SoccerClientMsg); // fork: the soccer hall
     switch (msg.t) {
       case 'move': {
         const p = c.peer;
@@ -1765,6 +1791,10 @@ export async function startServer(cfg: Config) {
         }
         if (msg.floor === HALL) {
           if (floors.size) goToHall(c); // fork: the padel hall
+          break;
+        }
+        if (msg.floor === SOCCER) {
+          if (floors.size) goToSoccer(c); // fork: the soccer hall
           break;
         }
         if (msg.floor === ROOF) {
@@ -2762,6 +2792,7 @@ export async function startServer(cfg: Config) {
     clearTimeout(floorsTimer);
     arcade.flush();
     casino.stop();
+    soccer.stop(); // fork
     turn.stop(); // fork
     upgrader.stop();
     services.stop();

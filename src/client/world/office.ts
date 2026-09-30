@@ -6,6 +6,7 @@ import { FLOOR_PALETTES, type FloorPalette } from '../../shared/floors';
 import { buildGarage, buildStreet, bulb, type NightParts } from './outside';
 import { buildCasinoExterior } from './casino/exterior'; // fork: the casino
 import { buildHallExterior } from './hall/exterior'; // fork: the padel hall
+import { buildSoccerExterior } from './soccer/exterior'; // fork: the soccer hall
 import { Fleet } from './cars';
 import { buildScenic, type Scenic } from './scenic';
 import { mergeByMaterial, mesh, roundedBox, textPlane, toon, toonUnique } from './toon';
@@ -39,7 +40,7 @@ export interface Collider {
   fence?: boolean;
 }
 
-export type InteractKind = 'desk' | 'station' | 'issues' | 'pulls' | 'services' | 'queue' | 'tv' | 'coffee' | 'decor' | 'smoke' | 'elevator' | 'gong' | 'dog' | 'jukebox' | 'seat' | 'whiteboard' | 'cabinet' | 'ladder' | 'pole' | 'meeting' | 'bar' | 'dj' | 'golf' | 'ball' | 'bookshelf' | 'darts' | 'axe' | 'telescope' | 'car' | 'expand' | 'herald' | 'fridge' | 'rig' | 'table' | 'casino' | 'casino-table' | 'hall' | 'cafe' | 'padel' | 'bungee';
+export type InteractKind = 'desk' | 'station' | 'issues' | 'pulls' | 'services' | 'queue' | 'tv' | 'coffee' | 'decor' | 'smoke' | 'elevator' | 'gong' | 'dog' | 'jukebox' | 'seat' | 'whiteboard' | 'cabinet' | 'ladder' | 'pole' | 'meeting' | 'bar' | 'dj' | 'golf' | 'ball' | 'bookshelf' | 'darts' | 'axe' | 'telescope' | 'car' | 'expand' | 'herald' | 'fridge' | 'rig' | 'table' | 'casino' | 'casino-table' | 'hall' | 'cafe' | 'padel' | 'bungee' | 'soccer' | 'soccer-pitch';
 
 /** Something you can use. Its scene object carries it as `userData.interact`, for clicking. */
 export interface Interactable {
@@ -1396,6 +1397,8 @@ export function buildOffice(): Office {
   doors.push(casinoOut.door);
   const hallOut = buildHallExterior(ground, groundColliders, interactables, night); // fork: the padel hall (world/hall/)
   doors.push(hallOut.door);
+  const soccerOut = buildSoccerExterior(ground, groundColliders, interactables, night); // fork: the soccer hall (world/soccer/)
+  doors.push(soccerOut.door);
   const green = buildGreen(ground, groundColliders, night);
   // Off either end of the street, the scenic loop: the farm, the pines, the mountains and the beach.
   const scenic = buildScenic(ground, groundColliders, night);
@@ -1716,6 +1719,7 @@ export function buildOffice(): Office {
     cars.setStreet(streetBelow(index));
     casinoOut.setStreet(streetBelow(index)); // fork
     hallOut.setStreet(streetBelow(index)); // fork
+    soccerOut.setStreet(streetBelow(index)); // fork
     plug.group.visible = index > 0;
     const i = colliders.indexOf(plug.collider);
     if (index > 0 && i < 0) colliders.push(plug.collider);

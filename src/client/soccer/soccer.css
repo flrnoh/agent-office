@@ -1,0 +1,15 @@
+/* The soccer hall (flrnoh fork, see client/soccer/place.ts): the score bar at the top, the kick's meter. */
+.soccer-hud { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 5; pointer-events: none; display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: #1d3b2c; color: #f4fff7; border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); font-weight: 900; font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.soccer-hud b { display: inline-grid; place-items: center; min-width: 26px; height: 26px; border-radius: 8px; color: #fff; }
+.soccer-hud b.red { background: #e63946; }
+.soccer-hud b.blue { background: #277df0; }
+.soccer-hud .clock { margin-left: 4px; padding: 1px 8px; border-radius: 6px; background: #0e1a13; color: #ffd166; font-family: ui-monospace, Menlo, monospace; }
+.soccer-hud small { font-weight: 700; opacity: .85; font-size: 12px; }
+.soccer-hud small.mine { padding: 1px 7px; border-radius: 999px; opacity: 1; }
+.soccer-hud small.mine.red { background: #e63946; }
+.soccer-hud small.mine.blue { background: #277df0; }
+.soccer-meter { position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%); z-index: 5; pointer-events: none; width: 120px; height: 10px; border-radius: 999px; border: 2px solid var(--ink); background: rgba(255, 255, 255, .7); overflow: hidden; }
+.soccer-meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8ecae6, #ffd166 60%, #e63946); }
+.soccer-meter.chip i { background: linear-gradient(90deg, #b8f2c9, #2f8f47); }
+body:has(.backdrop) .soccer-hud, .soccer-hud[hidden], .soccer-meter[hidden] { display: none; }
+@media (max-width: 480px) { .soccer-hud { top: 58px; font-size: 14px; gap: 6px; padding: 5px 10px; } .soccer-hud small:not(.mine) { display: none; } }

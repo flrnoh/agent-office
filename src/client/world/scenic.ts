@@ -25,6 +25,7 @@ import type { Collider } from './office';
 import { bulb, neighbourBoxes, roadTexture, type NightParts } from './outside';
 import { hazeReach } from './sky';
 import { mergeByColor, mesh, textPlane, toon } from './toon';
+import { SOCCER_BOX, SOCCER_CENTER, SOCCER_HEIGHT } from '../../shared/soccer'; // fork: the billboard stands on the soccer hall's roof
 
 // The scenic loop (see shared/scenic.ts), down on the street: the country road itself, and what you
 // drive past on it. A farm on the way out of town to the east, then the pines, with a creek under a
@@ -466,24 +467,28 @@ export function buildScenic(group: THREE.Group, colliders: Collider[], night: Ni
   for (let i = 0; i < LOOP.length; i += 3) taken.push({ x: LOOP[i].x, z: LOOP[i].z, r: LOOP_PAVED + 2.2 });
 
   // ---- The town's ends: signs to the loop ------------------------------------------------------------
-  // A billboard across the street from the garage, and a sign at each end of the street.
+  // A billboard across the street from the garage (fork: up on the soccer hall's roof, over its front),
+  // and a sign at each end of the street.
   {
+    const bx = SOCCER_CENTER.x;
+    const bz = SOCCER_BOX.minZ + 2;
+    const by = G + SOCCER_HEIGHT - 2;
     const g = new THREE.Group();
     const wood = toon('#5c4033');
     for (const sx of [-1, 1]) g.add(mesh(box(0.3, 5.6, 0.3), wood, sx * 3.2, 2.8, 0));
     g.add(mesh(box(8.4, 3.2, 0.25), toon('#264653'), 0, 4.1, 0));
-    g.position.set(24, G, 37);
+    g.position.set(bx, by, bz);
     g.rotation.y = Math.PI;
     parts.meadow.add(g);
-    colliders.push({ minX: 20.6, maxX: 27.4, minZ: 36.8, maxZ: 37.2, bottom: G, top: G + 5.6 });
+    colliders.push({ minX: bx - 3.4, maxX: bx + 3.4, minZ: bz - 0.2, maxZ: bz + 0.2, bottom: by, top: by + 5.6 });
     const title = textPlane('🏎️ SCENIC LOOP', { color: '#ffd166', size: 72 });
     title.scale.setScalar(1.35);
-    title.position.set(24, G + 4.75, 36.85);
+    title.position.set(bx, by + 4.75, bz - 0.15);
     title.rotation.y = Math.PI;
     const sub = textPlane('🌾 farm · 🌲 pines · 🏔️ mountains · 🏖️ beach — 1.4 km, either way ⟷', { color: '#f1faee', size: 44 });
     const w = (sub.geometry.parameters as { width: number }).width;
     sub.scale.setScalar(7.8 / w);
-    sub.position.set(24, G + 3.55, 36.85);
+    sub.position.set(bx, by + 3.55, bz - 0.15);
     sub.rotation.y = Math.PI;
     labels.add(title, sub);
   }
