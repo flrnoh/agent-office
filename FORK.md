@@ -28,7 +28,7 @@ This repository is a fork of [AgentSystemLabs/agent-office](https://github.com/A
 
 ### Guest role (#1, #2)
 
-Friends who come over to hang out: they walk around, chat, talk, play (arcade, golf, darts, basketball, cars, jukebox, whiteboard, the table games on the roof) and watch the workers' terminals, but can't type in them, hire, send home, touch GitHub, the queue, meetings, settings or accounts, or reach the workers' dev servers. The server enforces it, whatever a guest's browser sends.
+Friends who come over to hang out: they walk around, chat, talk, play (arcade, golf, darts, basketball, cars, jukebox, whiteboard, the table games on the roof, padel in the hall) and watch the workers' terminals, but can't type in them, hire, send home, touch GitHub, the queue, meetings, settings or accounts, or reach the workers' dev servers. The server enforces it, whatever a guest's browser sends.
 
 - `src/server/guests.ts`: the rules. Every message a page can send is sorted into `GUEST`, `QUIET` or `TEAM_ONLY`. **A message type upstream adds is in none of them, and the server doesn't compile until someone sorts it** (the error names it). Play or looking → `GUEST`; anything that acts on the machine, a worker, GitHub or the office's settings → `TEAM_ONLY`.
 - `tests/guests.test.ts`: fails when upstream adds an `/api` route nobody has looked at. New routes are refused to guests anyway; look whether a guest's page needs one to draw the office.
@@ -275,6 +275,32 @@ The first player's page (the table's host) runs the game, the computer included,
   - `src/client/world/rooftop.ts`: `buildRoofTables()` added to the roof (its group, colliders, interactables), `Rooftop.tables`.
   - `src/client/sound.ts`: `tableGame()`, in a section of its own.
   - `src/client/main.ts`: `tables` (made next to the thrower), E at a table, its hint, `tables.update` after the cabinet, `REACH.table`, no hands or own body while the camera's at a table, `__office.tables`.
+  - `docs/features.md`, `docs/controls.md`: words.
+
+### Padel
+
+Two padel courts in the padel hall (the building, the way in, the stand, the gallery and its café are the hall's own, see `src/shared/hall.ts`): blue courts with white lines, the net on its posts, glass back walls (3 m) with the wire fence on top to 4 m, side glass 2 m out from each back wall and fence between, an opening in each side on either side of the net, lights overhead, and a scoreboard hanging over each court's north end for the gallery (both faces). **E** at an opening opens a chooser (✕ top right): a place (south or north end, right or left; 1–4) or 👀 Watch. It's always two against two: the computer plays every place nobody has, so one person plays with a computer partner against two computer players, and two can play each other (a computer partner each) or together. Guests and party guests play too.
+
+Playing, the camera glides in behind your player; they run for the ball by themselves (the chooser's "run for the ball" box; **WASD** steers while held), the mouse aims (a ring on the court), click or **Space** swings (the racket meets the ball as it comes past, and how well the swing's timed decides how hard and true it goes: early or late floats, strays, and now and then finds the net or their glass on the full), **Shift** lobs, a high ball near the net is smashed. ✕ or **Esc** steps off through the nearest opening, back to mouse-look.
+
+Rules, simplified but recognisable: the serve is underhand after a bounce, diagonally into the box across (from the right when the game's points add up even), two tries; the ball must bounce once in the other half before it touches that half's walls; after the bounce it may come off the glass (any number of times) and be played, volleys are fine except on the return of serve; a second bounce, the wire fence, or out through an opening or over the top ends the point (for the hitter after the bounce, against them before it); into the net and down on your own side is the other side's. 15, 30, 40, game, a **golden point** at 40–40, first to **four games** (no sets or tie-break: four computer players take 5–8 minutes, `tests/padel.test.ts` checks it). The teams serve a game each in turn, the players within a team by turns. A new match starts by itself 8 s after one ends.
+
+It runs like the table games on the roof: the first person on a court hosts it (their page runs the game and the computer players and sends a snapshot about 25 times a second through the office to everyone in the hall); the others on the court send their moves (how they move, a swing with its aim) to the host. The office checks who may send what (only inside the hall, only the court's host snapshots, only its other players move, a rate limit each, plain numbers of a bounded size), relays, and keeps who's on which place, the games and the last snapshot for whoever comes in later. When the host leaves (steps off, leaves the hall, closes the page) the next person on the court takes over from the last snapshot; someone joining mid-match takes a computer player's place and the match goes on; the last one off frees the court.
+
+- Own files:
+  - `src/shared/padel/`: `court.ts` (the court's frame, glass/fence/openings, slots and teams, the wire types and checks, `PadelClientMsg`/`PadelServerMsg`), `rules.ts` (scoring, the golden point, who serves and receives), `game.ts` (ball physics, the rules in play, the players' legs, swings and shots, the computer, encode/decode; pure).
+  - `src/server/padel.ts`: the places (`PadelCourts`: join, leave, host handover, snapshot and move checks) and `padelMessage`.
+  - `src/client/hall/courts.ts` (the courts in 3D, figures with rackets, the ball, scoreboards; **the hook for the hall**: `buildCourts(parent)` returns `{ group, colliders, interactables, views, update }`, and the hall adds the colliders and interactables to its own; `currentCourts()` hands them to the game), `src/client/hall/padel.ts` (`PadelPlay`: the chooser, hosting and drawing the courts, the camera, input, the bar at the top, sounds), `padel.css`.
+  - `src/client/lab/padel.html` + `padel.ts`: a lab page for the courts and a computer rally (`view=play|watch|gallery|top`, `t=`), for headless screenshots with `lab/shot.mjs`.
+  - `tests/padel.test.ts` (scoring, serving, the court's edges, the rules in play, physics, snapshots, four computer players play a match), `tests/padel-server.test.ts` (sessions, handover, checks, relaying).
+- Hooks in upstream files:
+  - `src/shared/protocol.ts`: `PadelClientMsg`/`PadelServerMsg` in `ClientMsg`/`ServerMsg`.
+  - `src/server/server.ts`: `padelCourts`, `toHall`, `leftCourt` (out of the hall in `leave`, and on disconnect), the five `padel.*` cases.
+  - `src/server/guests.ts`: the five `padel.*` messages in `GUEST`. `src/server/party.ts`: `padel`, `padel.sync`, `padel.input` in `PARTY_SEES`.
+  - `src/server/tablegames.ts`: `Bucket` exported (padel's rate limits).
+  - `src/client/world/office.ts`: `InteractKind` has `'padel'`, `Interactable.court`.
+  - `src/client/sound.ts`: `padel()`, a section of its own (racket, bounce, glass knock, fence rattle, net, chimes; quiet from far away).
+  - `src/client/main.ts`: `padel` (a `PadelPlay`), E at a court, its hint, `REACH.padel`, `padel.update` after the tables, your own body and hands hidden while the camera's on a court, the people on a court hidden in the hall (the court draws them), `__office.padel`.
   - `docs/features.md`, `docs/controls.md`: words.
 
 ### TURN for voice from outside

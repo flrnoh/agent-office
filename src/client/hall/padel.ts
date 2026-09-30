@@ -633,7 +633,7 @@ export class PadelPlay {
     if (s) {
       score = `${this.teamName(seat, 0)}  ${s.games[0]} : ${s.games[1]}  ${this.teamName(seat, 1)} · ${s.win !== -1 ? 'match over' : pointsLine(s)}`;
       if (at.mode === 'play' && at.slot !== null && s.win === -1) {
-        if (s.phase === PHASE.serve && s.server === at.slot && s.toss < 0) tip = `Your ${s.second ? 'second ' : ''}serve: aim into the lit box, click or Space`;
+        if (s.phase === PHASE.serve && s.server === at.slot && s.toss < 0) tip = `Your ${s.second ? 'second ' : ''}serve: aim into the box across (the ring), click or Space`;
         else if (s.phase === PHASE.serve) tip = `${s.server === at.slot ? 'Serving…' : `${seat?.players[s.server]?.name ?? CPU} to serve`}`;
       }
       if (s.win !== -1) tip = 'A new match in a moment · ✕ to step off';
