@@ -136,7 +136,7 @@ test('rate limits: acting and sitting only so fast', () => {
     // A second later, some are back.
     s.t.now += 1000;
     s.casino.message('a', { t: 'casino.act', table: 'poker', action: 'x' });
-    assert.match(s.said('a'), /Coming soon/);
+    assert.match(s.said('a'), /No such move/);
     // Hopping from table to table, too.
     for (let i = 0; i < 10; i++) s.casino.message('a', { t: 'casino.sit', table: i % 2 ? 'roulette' : 'poker' });
     assert.match(s.said('a'), /one table at a time/);

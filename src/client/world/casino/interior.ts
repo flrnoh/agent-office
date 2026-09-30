@@ -8,6 +8,7 @@ import { Reels, drawReels } from '../../ui/casino/reels';
 import { WheelClock } from '../../ui/casino/roulette-wheel';
 import type { RouletteView } from '../../../shared/casino-roulette';
 import { box, canvasTexture, carpetTexture, chaser, glow, neonSign, FONT } from './parts';
+import { pokerFelt } from './poker-felt';
 
 /*
  * Inside the casino (flrnoh fork, see FORK.md): a place of its own, like the roof, built the first
@@ -353,6 +354,7 @@ export function buildCasinoInterior(): CasinoInterior {
   let ball: THREE.Mesh | null = null;
   const hub = { x: 0, y: 0, z: 0, r: 0.5 };
   const rouletteClock = new WheelClock();
+  const poker = pokerFelt();
   for (const def of CASINO_TABLES) {
     if (def.kind === 'roulette') {
       const w = 3.6;
@@ -389,8 +391,10 @@ export function buildCasinoInterior(): CasinoInterior {
       const rim = mesh(rimGeo, black, def.x, 0.93, def.z);
       group.add(rim);
       parts.add(mesh(new THREE.CylinderGeometry(0.4, 0.55, 0.88, 16), wood, def.x, 0.44, def.z));
-      const label = mesh(new THREE.PlaneGeometry(1.6, 0.8), new THREE.MeshToonMaterial({ map: feltTexture('poker', '#1b5f8a', 512, 256), transparent: false }), def.x, 0.955, def.z, false);
-      label.rotation.x = -Math.PI / 2;
+      // (the board and the pot while a hand's on: see poker-felt.ts)
+      const label = mesh(new THREE.PlaneGeometry(1.8, 0.9), new THREE.MeshToonMaterial({ map: poker.texture, transparent: false }), def.x, 0.955, def.z, false);
+      // Read from the side you come to it from (the doors are to the north).
+      label.rotation.set(-Math.PI / 2, 0, Math.PI);
       group.add(label);
       tableMesh(def, felt, rim, { w: w - 0.2, d: d - 0.2 });
       for (let i = 0; i < 6; i++) {
@@ -549,6 +553,7 @@ export function buildCasinoInterior(): CasinoInterior {
   group.add(mergeByMaterial(parts));
 
   const setTable = (id: string, state: unknown) => {
+    if (CASINO_TABLES.some((t) => t.id === id && t.kind === 'poker')) return poker.set(state);
     const bj = bjTables.get(id);
     if (bj) {
       if (state && typeof state === 'object' && (state as BlackjackView).kind === 'blackjack') drawBlackjack(bj, state as BlackjackView);

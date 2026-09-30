@@ -3,6 +3,7 @@ import { CASINO_TABLES, MAX_BET, MIN_BET, START_CHIPS, validBet, type CasinoClie
 import { Blackjack } from './blackjack.js';
 import type { CasinoContext, CasinoGame, Seated } from './game.js';
 import { Roulette } from './roulette.js';
+import { PokerTable } from './poker.js';
 import { SlotMachine } from './slots.js';
 import { ComingSoon } from './soon.js';
 import { Wallets } from './wallets.js';
@@ -37,7 +38,7 @@ export const GAMES: Record<CasinoKind, (t: CasinoTableDef) => CasinoGame> = {
 
   blackjack: (t) => new Blackjack(t.id, t.seats),
 
-  poker: (t) => new ComingSoon(t.id, t.kind, t.seats),
+  poker: (t) => new PokerTable(t.id, t.seats),
 };
 
 /** How often timed games are ticked (ms). */
