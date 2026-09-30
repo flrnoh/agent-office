@@ -34,12 +34,19 @@ export interface Config {
   markClaimed(): void;
   agentCmd: string;
   agentArgs: string[];
+  /** The DSH profile a DeepSeek Harness worker boots (`--dsh-profile`, default "acp"). */
+  dshProfile: string;
   tls?: { cert: string; key: string };
   trustProxy: boolean;
   iceServers: RTCIceServerLike[];
+  /** How to run the script that deployed the office, e.g. "deploy/azure.sh --name team2" (set by deploy/provision.sh), for the commands it suggests. */
+  deployScript?: string;
   /** Address teammates SSH-tunnel to (set by deploy/provision.sh); enables invites from the office. */
   publicHost?: string;
-  /** Daily tracked Claude Code spend budget, USD. OpenCode/Codex spend is excluded. */
+  /** The office's name on a Tailscale network, e.g. agent-office.tail1234.ts.net (set by deploy/provision.sh --tailscale). */
+  tailnet?: string;
+  /** Daily tracked Claude Code spend budget, USD. OpenCode/Codex/Grok/Muse spend is excluded. */
+
   budget?: number;
   /** Refuse new hires for the rest of the day once the budget is spent. */
   budgetPause: boolean;
@@ -59,7 +66,7 @@ export interface RTCIceServerLike {
   credential?: string;
 }
 
-const HELP = `agent-office — a 3D office for your team and its Claude Code / OpenCode / Codex workers
+const HELP = `agent-office — a 3D office for your team and its Claude Code / OpenCode / Codex / Grok / Muse / DeepSeek Harness workers
 
 Usage:
   agent-office [options]
@@ -112,7 +119,10 @@ Options:
                           (env AGENT_OFFICE_NO_OPEN=1)
       --agent <cmd>       Default agent command (default "claude", env AGENT_OFFICE_AGENT)
       --agent-args <str>  Extra args for the configured agent, e.g. "--model opus"
-                          Workers can also select Claude Code, OpenCode or Codex in the UI
+                          Workers can also select Claude Code, OpenCode, Codex, Grok,
+                          Muse or DeepSeek Harness in the UI
+      --dsh-profile <n>   DeepSeek Harness profile for its workers, over the ACP
+                          server (default "acp", env AGENT_OFFICE_DSH_PROFILE)
       --tls-cert <file>   Serve HTTPS with this certificate (PEM)
       --tls-key <file>    ...and this private key (PEM)
       --self-signed       Serve HTTPS with a generated self-signed certificate
@@ -121,7 +131,7 @@ Options:
                           turn:user:pass@turn.example.com:3478
       --budget <usd>      Daily budget for tracked Claude Code spend (env
                           AGENT_OFFICE_BUDGET). Everyone is warned when the
-                          day's spend passes it. OpenCode/Codex spend is excluded
+                          day's spend passes it. OpenCode/Codex/Grok/Muse spend is excluded
       --budget-pause      ...and no new workers can be hired until the next
                           day (env AGENT_OFFICE_BUDGET_PAUSE=1)
       --max-workers <n>   Run at most this many workers at once, across every
@@ -132,10 +142,11 @@ Options:
                           needs input or finishes (env AGENT_OFFICE_WEBHOOK).
                           Also settable from ⚙️ Settings in the office; "" turns it off
       --city <name>       Put the office in a real city, e.g. "Berlin" or
-                          "Portland, Oregon" (env AGENT_OFFICE_CITY): day, night
-                          and the weather outside follow its live forecast from
-                          open-meteo.com. Without it the sun follows this
-                          machine's clock and the weather is made up
+                          "Portland, Oregon" (env AGENT_OFFICE_CITY): the sun
+                          keeps its hours of daylight and the weather outside
+                          follows its live forecast from open-meteo.com.
+                          Without it the weather is made up. Either way a
+                          whole day and night go by every hour
       --weather <kind>    Pin the weather: clear, cloudy, rain, storm, snow or
                           fog (env AGENT_OFFICE_WEATHER)
   -h, --help              Show this help
@@ -204,6 +215,7 @@ export function loadConfig(argv: string[]): Config {
   let password = process.env.AGENT_OFFICE_PASSWORD || '';
   let agentCmd = process.env.AGENT_OFFICE_AGENT || 'claude';
   let agentArgs: string[] = splitArgs(process.env.AGENT_OFFICE_AGENT_ARGS || '');
+  let dshProfile = process.env.AGENT_OFFICE_DSH_PROFILE || 'acp';
   let tlsCert = '';
   let tlsKey = '';
   let selfSigned = false;
@@ -243,6 +255,9 @@ export function loadConfig(argv: string[]): Config {
         // Its value is flags itself ("--model opus"), so a leading -- doesn't mean the value is missing.
         if (argv[i + 1] === undefined) takeValue(argv, i, a);
         agentArgs = splitArgs(argv[++i]);
+        break;
+      case '--dsh-profile':
+        dshProfile = takeValue(argv, i++, a);
         break;
       case '--tls-cert':
         tlsCert = takeValue(argv, i++, a);
@@ -416,10 +431,13 @@ export function loadConfig(argv: string[]): Config {
     },
     agentCmd,
     agentArgs,
+    dshProfile: dshProfile.trim() || 'acp',
     tls,
     trustProxy,
     iceServers,
+    deployScript: process.env.AGENT_OFFICE_DEPLOY_SCRIPT || undefined,
     publicHost: process.env.AGENT_OFFICE_PUBLIC_HOST || undefined,
+    tailnet: process.env.AGENT_OFFICE_TAILSCALE_HOST?.toLowerCase().replace(/\.$/, '') || undefined,
     budget: budgetUsd,
     budgetPause,
     maxWorkers: workerLimit,

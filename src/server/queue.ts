@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { isAgentEffort, isAgentProvider, isClaudeModel, type AgentChoice, type AgentEffort, type AgentProvider, type GhPull, type QueueState, type QueueTask, type WorkerInfo, type WorkerStatus } from '../shared/protocol.js';
 import { DESK_BY_ID, SEATS, nextFreeSeat } from '../shared/layout.js';
-import { isValidOpenCodeModel, validateWorkerEffort, validateWorkerModel } from './agents.js';
+import { isValidDshModel, isValidGrokModel, isValidMuseModel, isValidOpenCodeModel, validateWorkerEffort, validateWorkerModel } from './agents.js';
 import { PROMPTS } from '../shared/prompts.js';
 
 /** What the queue needs from the worker manager. Narrow on purpose, so a smoke test can fake it. */
@@ -13,9 +13,13 @@ export interface QueueWorkers {
   readonly officeDefault?: AgentChoice;
   list(): WorkerInfo[];
   deskOccupied(deskId: string): boolean;
+  /** How many rows the floor's back office is built out, for its desks (see WING). */
+  wing?(): number;
   spawn(deskId: string, by: string, prompt: string, worktree: boolean, kind: 'agent', provider: AgentProvider, model?: string, effort?: AgentEffort, meeting?: undefined, owner?: string): WorkerInfo | string;
   /** Resolves with a line about what became of the worker's worktree. */
   kill(id: string): Promise<{ note?: string; error?: string }>;
+  /** Fetches what a new worktree starts from; undefined when there's nothing to wait for (see Worktrees.fetch). */
+  fetchBase?(): Promise<void> | undefined;
 }
 
 export interface QueueEvents {
@@ -95,8 +99,8 @@ export class TaskQueue {
     const task: QueueTask = {
       id: randomBytes(6).toString('hex'),
       provider,
-      model: provider === 'opencode' || provider === 'claude' ? model : undefined,
-      effort: provider === 'claude' ? effort : undefined,
+      model: provider === 'opencode' || provider === 'claude' || provider === 'grok' || provider === 'muse' || provider === 'dsh' ? model : undefined,
+      effort: provider === 'claude' || provider === 'grok' || provider === 'muse' || provider === 'dsh' ? effort : undefined,
       issue,
       title: (title?.trim() || firstLine(clean)).slice(0, 120),
       prompt: clean,
@@ -174,6 +178,11 @@ export class TaskQueue {
 
   /** A worker changed. Cheap unless its status moved, which can free a slot or finish a task. */
   onWorker(info: WorkerInfo) {
+    // It switched to a branch of its own (see Workers.syncBranch): its task's pull request comes from there.
+    const branch = info.worktree?.branch;
+    const moved = branch ? this.tasks.filter((t) => t.workerId === info.id && t.branch && t.branch !== branch) : [];
+    for (const t of moved) t.branch = branch;
+    if (moved.length) this.changed();
     if (this.lastStatus.get(info.id) === info.status) return;
     this.lastStatus.set(info.id, info.status);
     this.pump();
@@ -269,9 +278,9 @@ export class TaskQueue {
     return this.tasks.filter((t) => t.status === 'running').length;
   }
 
-  /** A free desk, else a free bean bag. */
+  /** A free desk (in the back office too, as far as it's built), else a free bean bag. */
   private freeDesk(): string | undefined {
-    return nextFreeSeat((id) => this.workers.deskOccupied(id))?.id;
+    return nextFreeSeat((id) => this.workers.deskOccupied(id), this.workers.wing?.() ?? 0)?.id;
   }
 
   /**
@@ -280,13 +289,7 @@ export class TaskQueue {
    * is delivered.
    */
   private recycleDesk(): string | undefined {
-    const byId = new Map(this.workers.list().map((w) => [w.id, w]));
-    const candidates = this.tasks
-      .filter((t) => t.status === 'done' && t.workerId && byId.has(t.workerId))
-      .map((t) => ({ t, w: byId.get(t.workerId!)! }))
-      .filter(({ w }) => FINISHED.has(w.status) && w.viewers.length === 0)
-      .sort((a, b) => Number(!!b.t.pr) - Number(!!a.t.pr) || (a.t.finishedAt ?? 0) - (b.t.finishedAt ?? 0));
-    const pick = candidates[0];
+    const pick = this.recyclable();
     if (!pick) return undefined;
     const done = this.workers.kill(pick.w.id);
     this.events.toast(`📋 ${pick.w.name} went home after ${label(pick.t)} to make room for the next task`, 'info');
@@ -295,6 +298,16 @@ export class TaskQueue {
       if (error) this.events.toast(error, 'warn');
     });
     return pick.w.deskId;
+  }
+
+  /** The finished worker recycleDesk would send home, if there is one. */
+  private recyclable(): { t: QueueTask; w: WorkerInfo } | undefined {
+    const byId = new Map(this.workers.list().map((w) => [w.id, w]));
+    return this.tasks
+      .filter((t) => t.status === 'done' && t.workerId && byId.has(t.workerId))
+      .map((t) => ({ t, w: byId.get(t.workerId!)! }))
+      .filter(({ w }) => FINISHED.has(w.status) && w.viewers.length === 0)
+      .sort((a, b) => Number(!!b.t.pr) - Number(!!a.t.pr) || (a.t.finishedAt ?? 0) - (b.t.finishedAt ?? 0))[0];
   }
 
   private seat() {
@@ -308,7 +321,16 @@ export class TaskQueue {
       // workers going home makes room. Over the limit (it was just lowered), it waits for people to send some home.
       const room = this.events.room?.() ?? Infinity;
       if (room < 0) break;
-      const desk = (room > 0 ? this.freeDesk() : undefined) ?? this.recycleDesk();
+      const free = room > 0 ? this.freeDesk() : undefined;
+      if (!free && !this.recyclable()) break;
+      // Its worktree starts from what's on GitHub now, PRs merged since included: fetch that first,
+      // and come back to seat it once it's in.
+      const fetching = this.useWorktree ? this.workers.fetchBase?.() : undefined;
+      if (fetching) {
+        void fetching.then(() => this.pump());
+        break;
+      }
+      const desk = free ?? this.recycleDesk();
       if (!desk) break;
       const note = this.useWorktree ? this.events.worktreeNote?.() ?? PROMPTS['queue.worktree'].text : '';
       const r = this.workers.spawn(desk, `${t.addedBy} (queue)`, note ? `${t.prompt}\n\n${note}` : t.prompt, this.useWorktree, 'agent', t.provider ?? this.workers.defaultProvider, t.model, t.effort, undefined, t.owner);
@@ -363,8 +385,8 @@ export class TaskQueue {
         const t: QueueTask = {
           id: s.id,
           provider,
-          model: provider === 'opencode' && isValidOpenCodeModel(s.model) ? s.model : provider === 'claude' && isClaudeModel(s.model) ? s.model : undefined,
-          effort: provider === 'claude' && isAgentEffort(s.effort) ? s.effort : undefined,
+          model: provider === 'opencode' && isValidOpenCodeModel(s.model) ? s.model : provider === 'claude' && isClaudeModel(s.model) ? s.model : provider === 'grok' && isValidGrokModel(s.model) ? s.model : provider === 'muse' && isValidMuseModel(s.model) ? s.model : provider === 'dsh' && isValidDshModel(s.model) ? s.model : undefined,
+          effort: (provider === 'claude' || provider === 'grok' || provider === 'muse' || provider === 'dsh') && isAgentEffort(s.effort) ? s.effort : undefined,
           issue: typeof s.issue === 'number' ? s.issue : undefined,
           title: s.title,
           prompt: s.prompt,
