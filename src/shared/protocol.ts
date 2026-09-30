@@ -13,6 +13,7 @@ import type { JukeboxState } from './jukebox.js';
 import type { RigFrame, RigResult, RigState, RigView } from './rig.js'; // flrnoh fork: the racing rig
 import type { DjSetState } from './djset.js';
 import type { CasinoClientMsg, CasinoServerMsg } from './casino.js'; // flrnoh fork: the casino
+import type { GymClientMsg, GymServerMsg } from './gym.js'; // flrnoh fork: the gym
 import type { PadelClientMsg, PadelServerMsg } from './padel/court.js'; // flrnoh fork: padel in the hall
 import type { TvState } from './tv.js';
 import type { CustomMap } from './maps/index.js';
@@ -1131,6 +1132,7 @@ export type GongWhy = 'hit' | 'merged' | 'queue';
 
 export type ClientMsg =
   | CasinoClientMsg // flrnoh fork: the casino (shared/casino.ts)
+  | GymClientMsg // flrnoh fork: the gym (shared/gym.ts)
   | PadelClientMsg // flrnoh fork: padel in the hall (shared/padel/court.ts)
   | { t: 'move'; x: number; y: number; z: number; rotY: number; moving: boolean }
   /**
@@ -1360,6 +1362,7 @@ export type ClientMsg =
 
 export type ServerMsg =
   | CasinoServerMsg // flrnoh fork: the casino (shared/casino.ts)
+  | GymServerMsg // flrnoh fork: the gym (shared/gym.ts)
   | PadelServerMsg // flrnoh fork: padel in the hall (shared/padel/court.ts)
   | ({
       t: 'welcome';

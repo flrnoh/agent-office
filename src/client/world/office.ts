@@ -5,6 +5,7 @@ import { deskPoint } from '../../shared/nav';
 import { FLOOR_PALETTES, type FloorPalette } from '../../shared/floors';
 import { buildGarage, buildStreet, bulb, type NightParts } from './outside';
 import { buildCasinoExterior } from './casino/exterior'; // fork: the casino
+import { buildGymExterior } from './gym/exterior'; // fork: the gym
 import { buildHallExterior } from './hall/exterior'; // fork: the padel hall
 import { Fleet } from './cars';
 import { buildScenic, type Scenic } from './scenic';
@@ -39,7 +40,7 @@ export interface Collider {
   fence?: boolean;
 }
 
-export type InteractKind = 'desk' | 'station' | 'issues' | 'pulls' | 'services' | 'queue' | 'tv' | 'coffee' | 'decor' | 'smoke' | 'elevator' | 'gong' | 'dog' | 'jukebox' | 'seat' | 'whiteboard' | 'cabinet' | 'ladder' | 'pole' | 'meeting' | 'bar' | 'dj' | 'golf' | 'ball' | 'bookshelf' | 'darts' | 'axe' | 'telescope' | 'car' | 'expand' | 'herald' | 'fridge' | 'rig' | 'table' | 'casino' | 'casino-table' | 'hall' | 'cafe' | 'padel' | 'bungee';
+export type InteractKind = 'desk' | 'station' | 'issues' | 'pulls' | 'services' | 'queue' | 'tv' | 'coffee' | 'decor' | 'smoke' | 'elevator' | 'gong' | 'dog' | 'jukebox' | 'seat' | 'whiteboard' | 'cabinet' | 'ladder' | 'pole' | 'meeting' | 'bar' | 'dj' | 'golf' | 'ball' | 'bookshelf' | 'darts' | 'axe' | 'telescope' | 'car' | 'expand' | 'herald' | 'fridge' | 'rig' | 'table' | 'casino' | 'casino-table' | 'gym' | 'gym-station' | 'hall' | 'cafe' | 'padel' | 'bungee';
 
 /** Something you can use. Its scene object carries it as `userData.interact`, for clicking. */
 export interface Interactable {
@@ -64,6 +65,8 @@ export interface Interactable {
   label?: string;
   /** Fork: which of the casino's tables (shared/casino.ts CASINO_TABLES), for a 'casino-table'. */
   casinoTable?: string;
+  /** Fork: which of the gym's stations (shared/gym.ts GYM_STATIONS), for a 'gym-station'. */
+  gymStation?: string;
   /** Fork: which of the padel hall's courts (shared/hall.ts COURTS), for 'padel'. */
   court?: CourtId;
 }
@@ -1394,6 +1397,8 @@ export function buildOffice(): Office {
   buildStreet(ground, groundColliders, night, group);
   const casinoOut = buildCasinoExterior(ground, groundColliders, interactables, night); // fork: the casino (world/casino/)
   doors.push(casinoOut.door);
+  const gymOut = buildGymExterior(ground, groundColliders, interactables, night); // fork: the gym (world/gym/)
+  doors.push(gymOut.door);
   const hallOut = buildHallExterior(ground, groundColliders, interactables, night); // fork: the padel hall (world/hall/)
   doors.push(hallOut.door);
   const green = buildGreen(ground, groundColliders, night);
@@ -1715,6 +1720,7 @@ export function buildOffice(): Office {
     garageLift.setFloor(streetBelow(index));
     cars.setStreet(streetBelow(index));
     casinoOut.setStreet(streetBelow(index)); // fork
+    gymOut.setStreet(streetBelow(index)); // fork
     hallOut.setStreet(streetBelow(index)); // fork
     plug.group.visible = index > 0;
     const i = colliders.indexOf(plug.collider);
@@ -1746,6 +1752,7 @@ export function buildOffice(): Office {
     scenic.update(t);
     hoop.update(dt);
     casinoOut.update(t); // fork
+    gymOut.update(t); // fork
     hallOut.update(t); // fork
   };
 

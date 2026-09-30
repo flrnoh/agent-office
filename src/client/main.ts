@@ -99,6 +99,8 @@ import { buildSpeakers } from './world/speakers'; // flrnoh fork: speakers all o
 import { DjSetPlayer } from './djset';
 import { CasinoPlace } from './casino'; // fork: the casino across the street
 import { CASINO } from '../shared/casino';
+import { GymPlace } from './gym'; // fork: the gym across the street
+import { GYM } from '../shared/gym';
 import { HallPlace } from './hall'; // fork: the padel hall across the street
 import { HALL } from '../shared/hall';
 import type { CafeItem } from '../shared/cafe';
@@ -513,6 +515,26 @@ const casino = new CasinoPlace({
   trip: (floor, at) => casinoTrip(floor, at),
   placeAt: (at) => placeAt(at),
   sound: (k) => sound.casino(k),
+  noOutline: (o) => noOutline(o),
+});
+// flrnoh fork: the gym across the street, a place of its own like the casino (gym.ts).
+const gym = new GymPlace({
+  scene,
+  send: (m) => net.send(m),
+  floor: () => store.floor,
+  floors: () => builtFloors(),
+  inOffice: () => inOffice(),
+  player,
+  showOffice: (on) => {
+    world.group.visible = on && !upTop;
+    holiday.group.visible = on && !upTop && inOffice();
+  },
+  officeColliders: () => world.colliders,
+  officeRoom: () => ({ ...plan().bounds, ...world.room }),
+  setIndoors: (on) => sky.setIndoors(on || world.room.enclosed),
+  trip: (floor, at) => casinoTrip(floor, at),
+  placeAt: (at) => placeAt(at),
+  sound: (k) => sound.gym(k),
   noOutline: (o) => noOutline(o),
 });
 // flrnoh fork: the padel hall across the street, a place of its own like the casino (hall.ts).
@@ -1204,6 +1226,7 @@ net.onMessage((msg) => {
   routeElevatorMessage(msg);
   routeWhiteboardMessage(msg, net);
   casino.onMessage(msg); // fork
+  gym.onMessage(msg); // fork
   hall.onMessage(msg); // fork
   bungee.onMessage(msg); // fork: bungee off the roof
   switch (msg.t) {
@@ -1241,6 +1264,7 @@ net.onMessage((msg) => {
       } else if (!store.floor) arrive();
       offTheRoof();
       casino.arrived(); // fork
+      gym.arrived(); // fork
       hall.arrived(); // fork
       if (voice.inVoice || voice.sharing) net.send({ t: 'voice', voice: voice.inVoice, muted: voice.muted, sharing: voice.sharing });
       if (player.seat) net.send({ t: 'sit', seat: player.seat.key });
@@ -1298,6 +1322,7 @@ net.onMessage((msg) => {
       }
       offTheRoof();
       casino.arrived(); // fork
+      gym.arrived(); // fork
       hall.arrived(); // fork
       break;
     case 'ball':
@@ -1425,6 +1450,13 @@ function renderProject() {
   renderTitle();
   if (store.floor === CASINO || store.floor === HALL) {
     const c = store.floor === HALL ? hall.title() : casino.title(); // fork: in the casino, or the padel hall
+    $('project-meta').classList.remove('lobby');
+    $('project-name').textContent = c.name;
+    $('project-meta').textContent = c.meta;
+    return;
+  }
+  if (store.floor === GYM) {
+    const c = gym.title(); // fork: in the gym
     $('project-meta').classList.remove('lobby');
     $('project-name').textContent = c.name;
     $('project-meta').textContent = c.meta;
@@ -1582,7 +1614,7 @@ function ride(to: string, keepWalking = false): void {
     return switchFloor(to, keepWalking);
   }
   const garage = to === GARAGE;
-  const floorId = garage ? (upTop || !store.floor || casino.active || hall.active ? builtFloors()[0]?.id : store.floor) : to;
+  const floorId = garage ? (upTop || !store.floor || casino.active || gym.active || hall.active ? builtFloors()[0]?.id : store.floor) : to;
   if (trip || !floorId || (floorId === store.floor && garage === downstairs())) return;
   closeAllModals();
   if (hanger.active) hanger.cancel();
@@ -1756,6 +1788,7 @@ store.on('floors', paintFloor);
 function setPlace() {
   telescope.exit();
   casino.setPlace(store.floor === CASINO); // fork: in or out of the casino
+  gym.setPlace(store.floor === GYM); // fork: in or out of the gym
   hall.setPlace(store.floor === HALL); // fork: in or out of the padel hall
   const up = store.floor === ROOF;
   if (up === upTop) return;
@@ -1790,6 +1823,7 @@ function setPlace() {
 /** What you can use where you are, and what's in the way of looking at it. */
 function usable(): Interactable[][] {
   if (casino.active) return [casino.interactables]; // fork
+  if (gym.active) return [gym.interactables]; // fork
   if (hall.active) return [hall.interactables]; // fork
   if (upTop && roof) return [roof.interactables];
   return inOffice() ? [office.interactables, gallery.interactables, dog.interactables, ball.interactables] : [world.interactables, court?.interactables ?? []];
@@ -1946,6 +1980,7 @@ function applyMap() {
   heraldHires.clear();
   offTheRoof();
   casino.refresh(); // fork: still in the casino (or off to a floor, on a map without one)
+  gym.refresh(); // fork: still in the gym (or off to a floor, on a map without one)
   hall.refresh(); // fork: the same for the padel hall
   hintKey = 'stale';
   hud.refresh();
@@ -3109,6 +3144,7 @@ const GUEST_ONLY_WATCH = new Set<InteractKind>(['issues', 'pulls', 'services', '
 function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   if (!target) return;
   if (casino.use(target, key)) return; // fork: the casino (guests play too)
+  if (gym.use(target, key)) return; // fork: the gym (guests work out too)
   if (hall.use(target, key)) return; // fork: the padel hall (guests play too)
   if (bungee.use(target, key)) return; // fork: bungee off the roof
   // fork: a party guest uses none of the work's things (party.ts)
@@ -3938,6 +3974,7 @@ function hintFor(it: Interactable): Hint {
   const title = (text: string) => h('span.title', {}, text);
   const board = (name: string): Hint => ({ k: '', parts: [title(name), key('E', 'Open')] });
   if (it.kind === 'casino' || it.kind === 'casino-table') return casino.hint(it, title, key, aside); // fork
+  if (it.kind === 'gym' || it.kind === 'gym-station') return gym.hint(it, title, key, aside); // fork
   const hallHint = hall.hint(it, title, key, aside); // fork: the padel hall
   if (hallHint) return hallHint;
   if (it.kind === 'bungee') return bungee.hint(title, key, aside); // fork: bungee off the roof
@@ -4665,7 +4702,7 @@ document.addEventListener('pointerlockchange', () => {
 const raycaster = new THREE.Raycaster();
 const CROSSHAIR = new THREE.Vector2(0, 0);
 /** How close (meters from your eyes) you must be to use each kind of thing. */
-const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3, rig: 4, table: 4, casino: 4, 'casino-table': 3.5, hall: 4, padel: 5, cafe: 3.5, bungee: 3.5 };
+const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3, rig: 4, table: 4, casino: 4, 'casino-table': 3.5, gym: 4, 'gym-station': 3.5, hall: 4, padel: 5, cafe: 3.5, bungee: 3.5 };
 const eye = new THREE.Vector3();
 
 /** What the ray through `ndc` lands on first, whether it is within reach (plus `slack` meters), and where it hit. */
@@ -4673,7 +4710,7 @@ function aimedAt(ndc: THREE.Vector2, slack = 0): { it: Interactable; near: boole
   raycaster.setFromCamera(ndc, camera);
   eye.set(player.pos.x, player.pos.y + EYE_HEIGHT, player.pos.z);
   // (Workers standing in line in the castle carry their spot's interactable: see Court.)
-  for (const hit of raycaster.intersectObjects(casino.active ? casino.pickables : hall.active ? hall.pickables : upTop && roof ? roof.pickables : inOffice() ? [office.group, dog.root] : world.pickables, true)) {
+  for (const hit of raycaster.intersectObjects(casino.active ? casino.pickables : gym.active ? gym.pickables : hall.active ? hall.pickables : upTop && roof ? roof.pickables : inOffice() ? [office.group, dog.root] : world.pickables, true)) {
     let it: Interactable | undefined;
     let shown = true;
     for (let o: THREE.Object3D | null = hit.object; o; o = o.parent) {
@@ -5215,6 +5252,7 @@ function frame(ts?: number) {
   smoke.update(dt, camera);
   confetti.update(dt);
   casino.update(t, dt); // fork
+  gym.update(t, dt); // fork
   hall.update(t, dt); // fork
   hanger.update();
   // Out along the scenic loop, the haze thins (there's more out there to see), and the sun's shadows
@@ -5230,6 +5268,7 @@ function frame(ts?: number) {
   // A map of its own lights itself its own way (the castle's torchlit hall), after the sky's had its say.
   if (!upTop) world.mood?.({ sun, hemi, ambient, scene }, sky.daylight, t, camera.position);
   casino.mood({ sun, hemi, ambient, scene }); // fork: the casino lights itself
+  gym.mood({ sun, hemi, ambient, scene }); // fork: the gym lights itself
   hall.mood({ sun, hemi, ambient, scene }); // fork: so does the padel hall
   if (!upTop && inOffice()) holiday.update(t, sky.lampsOn, camera);
   sound.setWeather(sky.rain, 1 - sky.daylight);

@@ -20,6 +20,8 @@ import { buildKitchen } from '../world/kitchen';
 import { preloadModels } from '../world/models';
 import { DESK_BOOKS, FLOOR_PLANTS, buildDesk, coffeeTable, deskBooks, deskMug, loungeCouch, plant, pouf } from '../world/office';
 import { toon } from '../world/toon';
+import { buildGymInterior } from '../world/gym/interior'; // flrnoh fork: the gym
+import { buildGymExterior, cityGym } from '../world/gym/exterior'; // flrnoh fork: the gym building
 import { ready, stage } from './stage';
 
 /** A prop as the lab shows it: what goes in the scene, and what moves it every frame, if anything. */
@@ -78,6 +80,17 @@ const SHOW: Record<string, () => Shown> = {
   },
   lambo: () => ({ object: supercar('lambo', '#ffd166').root }),
   ferrari: () => ({ object: supercar('ferrari', '#ef476f').root }),
+  gym_interior: () => {
+    const g = buildGymInterior(false); // no ceiling, so the lab can look down into it
+    return { object: g.group, update: (dt, t) => g.update(t, dt) };
+  },
+  gym_city: () => ({ object: cityGym() }),
+  gym_exterior: () => {
+    const object = new THREE.Group();
+    const night = { bulbs: [], halos: [], lamps: [], street: 0, windows: [], clouds: toon('#fff'), wetGlass: new THREE.MeshBasicMaterial(), glows: [] };
+    const g = buildGymExterior(object, [], [], night as unknown as Parameters<typeof buildGymExterior>[3]);
+    return { object, update: (_dt: number, t: number) => g.update(t) };
+  },
 };
 
 const q = new URLSearchParams(location.search);

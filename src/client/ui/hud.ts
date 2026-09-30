@@ -1,6 +1,7 @@
 import { BUZZ_SECONDS, type Caffeine } from '../caffeine';
 import { ROOF, ROOF_NAME } from '../../shared/rooftop';
 import { CASINO } from '../../shared/casino'; // fork
+import { GYM } from '../../shared/gym'; // fork
 import { HALL } from '../../shared/hall'; // fork
 import { store } from '../state';
 import type { Voice } from '../voice';
@@ -42,9 +43,11 @@ export function renderPeople(voice: Voice, onEditProfile: () => void, onWalkTo: 
           ? h('span.where', { title: 'Up on the roof' }, `🍸 ${ROOF_NAME}`)
           : p.floor === CASINO
             ? h('span.where', { title: 'In the casino across the street' }, '🎰 Casino') // fork
+            : p.floor === GYM
+              ? h('span.where', { title: 'In the gym across the street' }, '🏋️ Gym') // fork
             : p.floor === HALL
-            ? h('span.where', { title: 'In the padel hall across the street' }, '🎾 Padel Hall') // fork
-            : h('span.where', { title: 'On another floor' }, `🛗 ${store.floors.find((f) => f.id === p.floor)?.name ?? 'lobby'}`)
+              ? h('span.where', { title: 'In the padel hall across the street' }, '🎾 Padel Hall') // fork
+              : h('span.where', { title: 'On another floor' }, `🛗 ${store.floors.find((f) => f.id === p.floor)?.name ?? 'lobby'}`)
         : null,
       p.sharing ? h('span', { title: 'Sharing screen' }, '🖥️') : null,
       h('span.mic', {}, mic),
