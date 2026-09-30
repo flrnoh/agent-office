@@ -67,7 +67,7 @@ export function cableCross(): Machine {
   return {
     statics,
     live,
-    shift: [-1.7, 0],
+    shift: [0, 0], // on its station again: the spa wall moved east to x 24.6 (shared/gym-rooms.ts SPA)
     spot: [0, 0, 0.05],
     off: [0, 1.0],
     size: { w: 2 * XT + 0.5, d: 0.5, top: 2.1, cz: TZ },

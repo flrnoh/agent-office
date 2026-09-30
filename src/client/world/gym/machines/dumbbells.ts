@@ -106,7 +106,7 @@ export function dumbbells(): Machine {
   return {
     statics,
     live,
-    shift: [-1.1, 0],
+    shift: [0, 0], // on its station again: the spa wall moved east to x 24.6 (shared/gym-rooms.ts SPA)
     spot: [0, 0, 0.12],
     off: [0, 0.95],
     size: { w: W + 0.1, d: 0.6, top: 0.9, cz: RACK_Z },
