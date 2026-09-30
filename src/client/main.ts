@@ -93,6 +93,7 @@ import { Arcade } from './ui/arcade';
 import { BossDesk } from './ui/bossdesk';
 import { Cabinet } from './ui/cabinet';
 import { trackTitle } from '../shared/jukebox';
+import { radioSources } from '../shared/radio';
 import { GAME, scoreText } from '../shared/cabinet';
 import { EMOTES, EMOTE_BY_ID, EmoteBucket, type EmoteId } from '../shared/emotes';
 import { EmoteWheel } from './ui/emotes';
@@ -447,11 +448,14 @@ store.on('dog', () => {
 });
 sound.setMusicVolume(settings.music, settings.musicMuted);
 sound.onMusicError = (text) => toast(text, 'warn');
+sound.onMusicBlocked = () => toast('🔇 Click anywhere to hear the radio');
 // The jukebox on your floor: everyone there hears it from the same bar, and its lights say what's on.
 // It's the office's: on a map of its own there's none to hear.
 function playJukebox() {
   const j = store.jukebox;
-  sound.setJukebox(j.on && inOffice() ? { track: j.track, url: j.url, startedAt: j.startedAt, since: j.since } : null);
+  // flrnoh fork: http streams go through the office on an https page (shared/radio.ts).
+  const src = radioSources(j, store.floor, location.protocol === 'https:');
+  sound.setJukebox(j.on && inOffice() ? { track: j.track, url: src?.src, fallback: src?.fallback, startedAt: j.startedAt, since: j.since } : null);
   office.jukebox.show(j.on, trackTitle(j));
 }
 store.on('jukebox', playJukebox);

@@ -41,7 +41,7 @@ test('guests fetch only the page, whiteboard pictures and pictures on a wall', (
 const REVIEWED_API = [
   '/api/*', '/api/agents/grok/models', '/api/agents/opencode/models', '/api/changes/file', '/api/claim', '/api/docs', '/api/docs*',
   '/api/docs/file', '/api/docs/picture', '/api/gh/*', '/api/gh/issue', '/api/gh/labels', '/api/gh/pull', '/api/gh/pull/diff',
-  '/api/health', '/api/image', '/api/join', '/api/link', '/api/login', '/api/logout', '/api/search', '/api/term/drop',
+  '/api/health', '/api/image', '/api/join', '/api/radio', '/api/link', '/api/login', '/api/logout', '/api/search', '/api/term/drop',
   '/api/whiteboard/file', '/api/whoami',
 ];
 

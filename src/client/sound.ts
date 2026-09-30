@@ -20,6 +20,8 @@ type Pos = { x: number; y: number; z: number };
 export interface JukeboxPlay {
   track: string;
   url?: string;
+  /** Where else to load a stream from when `url` won't play: through the office (see shared/radio.ts). */
+  fallback?: string;
   /** When it started on the office's clock, which tells one play of a track from the next. */
   startedAt: number;
   since: number;
@@ -146,6 +148,8 @@ export class OfficeSound {
   private djTimer = 0;
   /** A stream that won't play here. */
   onMusicError?: (text: string) => void;
+  /** A stream the browser won't start before you click (autoplay rules). */
+  onMusicBlocked?: () => void;
   /** How many of each sound have played, for quick checks from the console. */
   readonly played: Record<string, number> = {};
   /** The engines of the cars being driven, by car. */
@@ -1766,7 +1770,7 @@ export class OfficeSound {
     clearInterval(this.musicTimer);
     const j = this.jukebox;
     if (!j) return;
-    if (j.track === STREAM && j.url) return this.startStream(j.url);
+    if (j.track === STREAM && j.url) return this.startStream(j.url, j.fallback);
     const tune = (this.tune = new TunePlayer(ctx, this.musicIn, j.track));
     this.count('tune');
     // On a timer rather than every frame, so it carries on in a background tab.
@@ -1775,18 +1779,24 @@ export class OfficeSound {
     this.musicTimer = window.setInterval(tick, 150);
   }
 
-  private startStream(url: string) {
+  private startStream(url: string, fallback?: string) {
     const a = new Audio();
     a.preload = 'auto';
     a.loop = true;
     a.src = url;
     a.addEventListener('loadedmetadata', () => this.seekStream(a));
     a.addEventListener('error', () => {
-      if (this.stream === a) this.onMusicError?.("📻 The jukebox can't play that stream in your browser");
+      if (this.stream !== a) return;
+      // Straight from the station didn't work: try it through the office before giving up.
+      if (fallback) return this.startStream(fallback);
+      this.onMusicError?.("📻 The jukebox can't play that stream in your browser");
     });
     this.stream = a;
     this.hearStream();
-    void a.play().catch(() => {});
+    void a.play().catch((err: unknown) => {
+      // Not allowed yet: it starts with your next click (see unlock). Say so rather than stay silent.
+      if (this.stream === a && (err as Error)?.name === 'NotAllowedError') this.onMusicBlocked?.();
+    });
     this.count('stream');
   }
 
