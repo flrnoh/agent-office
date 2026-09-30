@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CASHIER, CASINO_DOOR, CASINO_ROOM, CASINO_TABLES, type CasinoTableDef } from '../../../shared/casino';
 import { SPIN_MS, type SlotsView } from '../../../shared/casino-slots';
+import { cardLabel, suitOf, type BlackjackView, type Card } from '../../../shared/casino-blackjack';
 import type { Collider, Interactable } from '../office';
 import { mergeByMaterial, mesh, textPlane, toon } from '../toon';
 import { Reels, drawReels } from '../../ui/casino/reels';
@@ -21,7 +22,7 @@ export interface CasinoInterior {
   pickables: THREE.Object3D[];
   /** The way out (E at the doors). */
   exit: Interactable;
-  /** A table's state from the office: a slot machine's reels turn on everyone's screen. */
+  /** A table's state from the office: a slot machine's reels turn on everyone's screen, a blackjack table's cards lie on its felt. */
   setTable(id: string, state: unknown): void;
   update(t: number, dt: number): void;
 }
@@ -113,6 +114,116 @@ interface MachineView {
   /** When it last won, for the topper to flash. */
   wonAt: number;
   dirty: boolean;
+}
+
+/** How many canvas pixels to a metre of blackjack felt. */
+const BJ_PX = 256;
+
+interface BlackjackFelt {
+  canvas: HTMLCanvasElement;
+  tex: THREE.CanvasTexture;
+  mesh: THREE.Mesh;
+  /** The half moon's radius (m). */
+  r: number;
+  /** What was drawn last (the cards and bets), so an unchanged table isn't redrawn. */
+  key: string;
+}
+
+/**
+ * Draws a blackjack table's cards on its felt layer: the dealer's along the straight east edge
+ * (the hole card face down), each seat's hands in front of its stool round the curve, and their
+ * bets as a chip. The canvas's x runs west to east, its y north to south; the cards read from the
+ * players' side (west).
+ */
+function drawBlackjack(f: BlackjackFelt, v: BlackjackView) {
+  const key = JSON.stringify([v.dealer, v.seats.map((s) => s && [s.bet, s.hands.map((h) => [h.cards, h.bet, h.outcome])])]);
+  if (key === f.key) return;
+  f.key = key;
+  const g = f.canvas.getContext('2d')!;
+  const W = f.canvas.width;
+  const H = f.canvas.height;
+  g.clearRect(0, 0, W, H);
+  const r = f.r;
+  // World offsets from the middle of the straight edge (m) → canvas pixels.
+  const px = (dx: number, dz: number): [number, number] => [(dx + r) * BJ_PX, (dz + r) * BJ_PX];
+  const cw = 0.11 * BJ_PX;
+  const ch = 0.155 * BJ_PX;
+  const card = (c: Card | null, x: number, y: number) => {
+    g.save();
+    g.translate(x, y);
+    g.rotate(Math.PI / 2);
+    g.fillStyle = 'rgba(0,0,0,.35)';
+    g.fillRect(-cw / 2 + 2, -ch / 2 + 2, cw, ch);
+    if (!c) {
+      g.fillStyle = '#7a2236';
+      g.fillRect(-cw / 2, -ch / 2, cw, ch);
+      g.strokeStyle = '#d4a24c';
+      g.lineWidth = 2;
+      g.strokeRect(-cw / 2 + 2, -ch / 2 + 2, cw - 4, ch - 4);
+    } else {
+      g.fillStyle = '#fffdf7';
+      g.fillRect(-cw / 2, -ch / 2, cw, ch);
+      g.strokeStyle = '#1d1418';
+      g.lineWidth = 1.5;
+      g.strokeRect(-cw / 2, -ch / 2, cw, ch);
+      const red = suitOf(c) === 'h' || suitOf(c) === 'd';
+      g.fillStyle = red ? '#c8102e' : '#1d1418';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      const label = cardLabel(c);
+      g.font = `900 ${Math.round(cw * 0.42)}px ${FONT}`;
+      g.fillText(label.slice(0, -1), 0, -ch * 0.15);
+      g.font = `900 ${Math.round(cw * 0.5)}px ${FONT}`;
+      g.fillText(label.slice(-1), 0, ch * 0.2);
+    }
+    g.restore();
+  };
+  // The dealer's cards, side by side along the straight edge.
+  v.dealer.forEach((c, i) => {
+    const [x, y] = px(-0.3, (i - (v.dealer.length - 1) / 2) * 0.13);
+    card(c, x, y);
+  });
+  v.seats.forEach((s, i) => {
+    if (!s) return;
+    const a = Math.PI / 2 + ((i + 0.5) / v.seats.length) * Math.PI;
+    const ux = Math.cos(a);
+    const uz = -Math.sin(a);
+    // Along the rim, to the player's right as they sit facing the dealer.
+    const tx = -uz;
+    const tz = ux;
+    s.hands.forEach((hand, k) => {
+      const spread = (k - (s.hands.length - 1) / 2) * 0.24;
+      hand.cards.forEach((c, j) => {
+        const along = spread + j * 0.045 - 0.04;
+        const [x, y] = px(ux * (1.02 - j * 0.02) + tx * along, uz * (1.02 - j * 0.02) + tz * along);
+        card(c, x, y);
+      });
+    });
+    const bet = s.hands.reduce((n, h) => n + h.bet, 0) || s.bet;
+    if (bet) {
+      const [x, y] = px(ux * 1.28, uz * 1.28);
+      g.beginPath();
+      g.arc(x, y, 0.05 * BJ_PX, 0, Math.PI * 2);
+      g.fillStyle = '#d4a24c';
+      g.fill();
+      g.lineWidth = 3;
+      g.strokeStyle = '#fff8e6';
+      g.setLineDash([4, 4]);
+      g.stroke();
+      g.setLineDash([]);
+      g.save();
+      g.translate(x, y);
+      g.rotate(Math.PI / 2);
+      g.fillStyle = '#1d1418';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.font = `900 ${Math.round(0.045 * BJ_PX)}px ${FONT}`;
+      g.fillText(bet >= 1000 ? `${Math.round(bet / 100) / 10}k` : String(bet), 0, 1);
+      g.restore();
+    }
+  });
+  f.mesh.visible = v.dealer.length > 0 || v.seats.some((s) => s && (s.bet || s.hands.length));
+  f.tex.needsUpdate = true;
 }
 
 export function buildCasinoInterior(): CasinoInterior {
@@ -235,6 +346,7 @@ export function buildCasinoInterior(): CasinoInterior {
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) parts.add(mesh(box(0.12, 0.8, 0.12), wood, x + sx * (w / 2 - 0.3), 0.4, z + sz * (d / 2 - 0.3)));
   };
   let wheel: THREE.Mesh | null = null;
+  const bjTables = new Map<string, BlackjackFelt>();
   for (const def of CASINO_TABLES) {
     if (def.kind === 'roulette') {
       const w = 3.6;
@@ -298,6 +410,22 @@ export function buildCasinoInterior(): CasinoInterior {
         stool(def.x + 0.45 + Math.cos(a) * (r + 0.5), def.z - Math.sin(a) * (r + 0.5));
       }
       hangSign('BLACKJACK', '#ffd36b', def.x, def.z, 0);
+      // The cards on the felt, drawn on a see-through layer over it whenever the table's state comes in.
+      const canvas = document.createElement('canvas');
+      canvas.width = BJ_PX * r;
+      canvas.height = BJ_PX * 2 * r;
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 4;
+      const cards = new THREE.Mesh(new THREE.PlaneGeometry(r, 2 * r), glow(tex, '#ffffff', { transparent: true }));
+      (cards.material as THREE.MeshBasicMaterial).depthWrite = false;
+      cards.rotation.x = -Math.PI / 2;
+      cards.position.set(def.x + 0.45 - r / 2, 0.975, def.z);
+      cards.renderOrder = 1;
+      cards.userData.interact = felt.userData.interact;
+      cards.visible = false;
+      group.add(cards);
+      bjTables.set(def.id, { canvas, tex, mesh: cards, r, key: '' });
     }
   }
 
@@ -411,6 +539,11 @@ export function buildCasinoInterior(): CasinoInterior {
   group.add(mergeByMaterial(parts));
 
   const setTable = (id: string, state: unknown) => {
+    const bj = bjTables.get(id);
+    if (bj) {
+      if (state && typeof state === 'object' && (state as BlackjackView).kind === 'blackjack') drawBlackjack(bj, state as BlackjackView);
+      return;
+    }
     const m = machines.get(id);
     if (!m || !state || typeof state !== 'object' || (state as SlotsView).kind !== 'slots') return;
     const s = state as SlotsView;
