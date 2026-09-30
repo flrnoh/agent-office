@@ -1545,6 +1545,16 @@ export class OfficeSound {
     this.djTimer = window.setInterval(tick, 150);
   }
 
+  /**
+   * How loud a DJ set playing in an embedded player (flrnoh fork, see client/djset.ts) is where you
+   * stand, 0–1: your music volume, fading with distance from the booth as the house DJ does.
+   */
+  djSetVolume(): number {
+    const l = this.listener;
+    const d = Math.max(7, Math.hypot(l.x - DJ_BOOTH.x, l.y - 2.2, l.z - DJ_BOOTH.z));
+    return Math.min(1, this.musicGain() * (7 / (7 + 0.8 * (d - 7))));
+  }
+
   /** Someone at the DJ booth blew the air horn. */
   horn() {
     if (!this.dj) return;

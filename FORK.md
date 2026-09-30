@@ -120,6 +120,21 @@ An `http://` stream can't play on the https office (mixed content), so it goes t
   - `src/client/main.ts`: `radioSources` in `playJukebox`, the click-to-hear toast. `src/client/sound.ts`: `fallback` and `onMusicBlocked`.
   - `docs/features.md`: the jukebox line.
 
+### DJ sets on the roof
+
+Anyone on the roof, guests too, can paste a YouTube, SoundCloud or Mixcloud link at the DJ booth (**E** there opens its window; **H** there is now the air horn). It plays for everyone up there, from the same moment, in place of the synthesized house DJ, until someone sends the house DJ back. The office keeps what's on in `dj.json` in its data folder; each browser plays it in the site's own embedded player, off the page, turned up or down for how far it stands from the booth. A browser that can't play it (embedding turned off, blocked) falls back to the house DJ by itself.
+
+- `src/shared/djset.ts`: reading a pasted link (only those three sites, by exact host), `tests/djset.test.ts`.
+- `src/server/djset.ts`: the booth (`DjBooth`: what's on, saved; its title from the site's oEmbed) and `djMessage` (dj.play/dj.stop: only from the roof, not too often).
+- `src/client/djset.ts`: the embedded players and keeping them in step; `src/client/ui/djbooth.ts`: the booth's window.
+- Hooks in upstream files:
+  - `src/shared/protocol.ts`: `dj.play`/`dj.stop` (ClientMsg), `dj` (ServerMsg), `FloorView.dj`.
+  - `src/server/server.ts`: `djBooth`, `roofView` carries `dj`, the `dj.play`/`dj.stop` case.
+  - `src/server/guests.ts`: `dj.play`, `dj.stop` in `GUEST`.
+  - `src/client/sound.ts`: `djSetVolume()`.
+  - `src/client/main.ts`: `djSets`/`houseDj()` (by `sound.onMusicError`), the `dj` message and `msg.dj` on arrival, `setPlace` (`djSets.setUp`, `houseDj()`), E at the booth opens `showDjBooth()`, H at the booth in `officeKey`, the booth's hint.
+  - `src/client/ui/hud.ts`, `docs/features.md`, `docs/controls.md`, `docs/how-it-works.md`: words.
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.

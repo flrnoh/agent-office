@@ -12,7 +12,7 @@ import { radioRequestShape } from './radio.js';
 const GUEST = [
   'move', 'act', 'golf', 'emote', 'sit', 'profile',
   'voice', 'rtc', 'chat', 'floor.go', 'ball.take', 'ball.throw',
-  'toss', 'dog.pet', 'gong', 'horn', 'car.enter', 'car.leave',
+  'toss', 'dog.pet', 'gong', 'horn', 'dj.play', 'dj.stop', 'car.enter', 'car.leave',
   'car.drive', 'car.honk', 'worker.attach', 'worker.detach', 'wb.open', 'wb.close',
   'wb.update', 'wb.pointer', 'jukebox.play', 'jukebox.skip', 'jukebox.stop', 'cabinet.play',
   'cabinet.leave', 'cabinet.frame', 'ping',

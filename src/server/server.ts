@@ -53,6 +53,7 @@ import { isThemePick } from '../shared/theme.js';
 import { PROMPTS, PROMPT_MAX, isPromptId } from '../shared/prompts.js';
 import { ROOF } from '../shared/rooftop.js';
 import { heldDrink, keepsHeld } from './held.js';
+import { DjBooth, djMessage } from './djset.js';
 import { isBarGame, tossOk, type BarGame } from '../shared/bargames.js';
 
 const MIME: Record<string, string> = {
@@ -522,6 +523,7 @@ export async function startServer(cfg: Config) {
   themes.start();
   // What the building looks like inside: the office, the castle, or a map of your own (⚙️ Settings).
   const maps = new Maps(cfg.dataDir);
+  const djBooth = new DjBooth(cfg.dataDir); // flrnoh fork: DJ sets on the roof
   /**
    * Tells everyone about the maps, after a pick or a read of the folder. When the map everyone's on
    * changed (`was` before), everyone's off their seats (each browser forgets them too, see the
@@ -768,7 +770,7 @@ export async function startServer(cfg: Config) {
     cabinet: { ...cabinetState(floor), frame: (floor && cabinetPlayer(floor)?.frame) ?? null },
   });
   /** The rooftop bar: nobody works up there, so it has none of a floor's things. */
-  const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF });
+  const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF, dj: djBooth.state() });
   const screensOf = (c: Client, floor: Floor | undefined) => {
     for (const { workerId, frame } of floor?.workers.fullScreens() ?? []) sendTo(c, { t: 'screen', workerId, ...frame, full: true });
   };
@@ -1983,6 +1985,10 @@ export async function startServer(cfg: Config) {
         for (const o of clients.values()) if (o.peer.floor === ROOF) sendTo(o, { t: 'horn', by: who });
         break;
       }
+      case 'dj.play':
+      case 'dj.stop':
+        djMessage(djBooth, msg, { id: c.id, who, onRoof: c.peer.floor === ROOF, toRoof: (m) => { for (const o of clients.values()) if (o.peer.floor === ROOF) sendTo(o, m); }, warn: (t) => warn(c, t) });
+        break;
       case 'gh.close': {
         const floor = here();
         const n = num(msg.number);
