@@ -1,0 +1,143 @@
+name: Upstream sync
+
+# flrnoh fork (see FORK.md): once a week, look for new commits on AgentSystemLabs/agent-office and
+# offer them as a pull request that merges them into this fork's main. Nothing is merged by itself.
+#
+# - Clean merge, build and tests green: a pull request, ready to merge.
+# - Clean merge, but the build or tests fail (usually a new message type or /api route to sort for
+#   guests, see src/server/guests.ts and tests/guests.test.ts): a pull request marked ⚠️.
+# - Conflicts: an issue listing the files, for a "Büro updaten" by hand.
+#
+# Merge these pull requests with "Create a merge commit", never squash: git then knows upstream's
+# commits are in, and the next sync only brings what's new.
+
+on:
+  schedule:
+    - cron: '0 5 * * 1' # Mondays, 05:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      UPSTREAM: https://github.com/AgentSystemLabs/agent-office.git
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Look upstream
+        id: look
+        run: |
+          git remote add upstream "$UPSTREAM"
+          git fetch --quiet upstream main
+          sha=$(git rev-parse --short=10 upstream/main)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "branch=sync/upstream-$sha" >> "$GITHUB_OUTPUT"
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Up to date with upstream ($sha)."
+            echo "todo=no" >> "$GITHUB_OUTPUT"
+          elif git ls-remote --exit-code --heads origin "sync/upstream-$sha" >/dev/null \
+            || gh issue list --state open --search "upstream $sha in:title" --json number --jq 'length' | grep -qv '^0$'; then
+            echo "Already offered upstream $sha."
+            echo "todo=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "count=$(git rev-list --count HEAD..upstream/main)" >> "$GITHUB_OUTPUT"
+            echo "todo=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Merge
+        id: merge
+        if: steps.look.outputs.todo == 'yes'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "${{ steps.look.outputs.branch }}"
+          if git merge --no-ff --no-edit -m "Merge upstream ${{ steps.look.outputs.sha }} (${{ steps.look.outputs.count }} commits)" upstream/main; then
+            echo "clean=yes" >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo 'files<<EOF'
+              git diff --name-only --diff-filter=U
+              echo EOF
+            } >> "$GITHUB_OUTPUT"
+            git merge --abort
+            echo "clean=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Conflicts → issue
+        if: steps.look.outputs.todo == 'yes' && steps.merge.outputs.clean == 'no'
+        run: |
+          {
+            echo "Upstream has ${{ steps.look.outputs.count }} new commits, but they don't merge cleanly into this fork's main."
+            echo
+            echo "**Conflicts in:**"
+            echo '```'
+            echo "${{ steps.merge.outputs.files }}"
+            echo '```'
+            echo
+            echo "Resolve by hand (\"Büro updaten\"), keeping this fork's own changes listed in FORK.md."
+          } > body.md
+          gh issue create --title "Upstream ${{ steps.look.outputs.sha }}: merge conflicts" --body-file body.md
+
+      - uses: actions/setup-node@v4
+        if: steps.merge.outputs.clean == 'yes'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build and test
+        id: check
+        if: steps.merge.outputs.clean == 'yes'
+        run: |
+          set +e
+          npm ci > build.log 2>&1
+          build=$?
+          test=1
+          if [ $build -eq 0 ]; then npm test > test.log 2>&1; test=$?; fi
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "test=$test" >> "$GITHUB_OUTPUT"
+          tail -n 60 build.log > build-tail.log
+          [ -f test.log ] && grep -E '✖|not ok|unreviewed|new /api routes|^ℹ (tests|pass|fail)' test.log | head -n 60 > test-tail.log || true
+
+      - name: Pull request
+        if: steps.merge.outputs.clean == 'yes'
+        run: |
+          git push --quiet origin "${{ steps.look.outputs.branch }}"
+          ok=$([ "${{ steps.check.outputs.build }}" = 0 ] && [ "${{ steps.check.outputs.test }}" = 0 ] && echo yes || echo no)
+          {
+            if [ "$ok" = yes ]; then
+              echo "✅ Merges cleanly, builds, and all tests pass (including the guest checks)."
+            else
+              echo "⚠️ Merges cleanly, but **the build or tests fail**. Most often upstream added a message type or an /api route that has to be sorted for guests: see \`src/server/guests.ts\` and \`tests/guests.test.ts\`."
+              echo
+              echo '<details><summary>Build / test output</summary>'
+              echo
+              echo '```'
+              cat build-tail.log test-tail.log 2>/dev/null | tail -n 80
+              echo '```'
+              echo '</details>'
+            fi
+            echo
+            echo "**${{ steps.look.outputs.count }} new commits from upstream:**"
+            echo
+            git log --no-merges --format='- %s' HEAD^1..upstream/main | head -n 60
+            echo
+            echo "---"
+            echo "Merge with **Create a merge commit** (not squash). Then on the Mac: \`~/cloude_code/agent-office/bin/update-office.sh\`"
+          } > body.md
+          title="Upstream ${{ steps.look.outputs.sha }} (${{ steps.look.outputs.count }} commits)"
+          [ "$ok" = yes ] || title="⚠️ $title"
+          gh pr create --base main --head "${{ steps.look.outputs.branch }}" --title "$title" --body-file body.md

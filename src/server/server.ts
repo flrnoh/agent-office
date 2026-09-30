@@ -14,6 +14,7 @@ import { SignIns, type GhAs } from './signins.js';
 import { agentProviders, configuredProvider, OPEN_CODE_MODEL_MAX } from './agents.js';
 import { createGrokModelCatalogue, createOpenCodeModelCatalogue } from './models.js';
 import { Tailnet } from './tailnet.js';
+import { GUEST_MSGS, GUEST_QUIET, guestMayFetch } from './guests.js';
 import { Team } from './team.js';
 import { Upgrader } from './upgrade.js';
 import { Services } from './services.js';
@@ -111,23 +112,6 @@ interface Client {
   /** Cleared at each heartbeat ping and set again by the pong; still clear at the next one means gone. */
   isAlive: boolean;
 }
-
-/**
- * All a guest may send: walking about, talking, playing, and opening a worker's terminal to watch.
- * Everything else (typing into terminals, hiring, GitHub, queues, settings, accounts) is refused.
- */
-const GUEST_MSGS = new Set<ClientMsg['t']>([
-  'move', 'act', 'golf', 'emote', 'sit', 'profile', 'voice', 'rtc', 'chat', 'floor.go',
-  'ball.take', 'ball.throw', 'toss', 'dog.pet', 'gong', 'horn',
-  'car.enter', 'car.leave', 'car.drive', 'car.honk',
-  'worker.attach', 'worker.detach',
-  'wb.open', 'wb.close', 'wb.update', 'wb.pointer',
-  'jukebox.play', 'jukebox.skip', 'jukebox.stop',
-  'cabinet.play', 'cabinet.leave', 'cabinet.frame',
-  'ping',
-]);
-/** What a guest's page sends on its own (resizing a terminal it watches, polling boards): dropped without a word. */
-const GUEST_QUIET = new Set<ClientMsg['t']>(['term.resize', 'term.typing', 'gh.refresh', 'limits.refresh', 'floor.repos', 'team.get', 'accounts.get', 'signins.get', 'changes.watch', 'changes.unwatch', 'upgrade.check', 'doing']);
 
 const SLOW_CLIENT_BYTES = 8 * 1024 * 1024;
 /** The least time between two 'term.typing' notes from one person in one terminal. */
@@ -957,7 +941,7 @@ export async function startServer(cfg: Config) {
         return;
       }
       if (p === '/api/whoami') return send(res, 200, { ok: true, me: meOf(session.account?.id) });
-      if (session.account?.role === 'guest' && !guestMayFetch(p, url)) return send(res, 403, { error: 'Guests only watch here' });
+      if (session.account?.role === 'guest' && !guestMayFetch(p, url, onAWall)) return send(res, 403, { error: 'Guests only watch here' });
       if (p === '/api/agents/opencode/models' && req.method === 'GET') {
         try {
           return send(res, 200, { models: await openCodeModels.get() });
@@ -1138,20 +1122,9 @@ export async function startServer(cfg: Config) {
     wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws, url, session));
   });
 
-  /**
-   * What a guest's page may load besides the page itself: the whiteboard's pictures, and pictures
-   * already hanging on a wall (the image proxy fetches any address, so not just any).
-   * Not a worker's changes, the project's docs, GitHub details or search.
-   */
-  const guestMayFetch = (p: string, url: URL): boolean => {
-    if (!p.startsWith('/api/')) return true;
-    if (p === '/api/whiteboard/file') return true;
-    if (p === '/api/image') {
-      const want = url.searchParams.get('url') ?? '';
-      return [...floors.values()].some((f) => f.decor.list().some((d) => d.url === want));
-    }
-    return false;
-  };
+
+  /** A picture hanging on some floor's wall: the one thing a guest may fetch through the image proxy. */
+  const onAWall = (imageUrl: string) => [...floors.values()].some((f) => f.decor.list().some((d) => d.url === imageUrl));
 
   /** Who a connection is: its account's current name and role, or an admin guest on the shared password. */
   const meOf = (accountId: string | undefined): Me => {
