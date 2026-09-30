@@ -3,6 +3,7 @@ import { FLOOR, SLAB, STREET_Y, WALL_HEIGHT, WALL_T, WING, wingMinZ } from '../.
 import type { SkyState, Theme, Weather } from '../../shared/protocol';
 import { guessPlace, skyTime, sunPosition } from '../../shared/sun';
 import type { NightParts } from './outside';
+import { FOGBOX_PARS, fogBoxUniforms } from './fogbox';
 
 /*
  * Day, night and the weather outside the windows. The server says where the office is and what the
@@ -153,22 +154,23 @@ const WORLD = /* glsl */ `
  */
 const HAZE_PARS_VERTEX = /* glsl */ `
 #ifdef USE_FOG
-  varying float vSkyFogY;
+  varying vec3 vSkyFogAt;
 #endif
 `;
 
-/** How high the vertex is: the view matrix undone (its rotation's transpose), from the camera. */
+/** Where the vertex is (fork: the whole point, for FOGBOX_PARS; upstream only kept its height): the view matrix undone (its rotation's transpose), from the camera. */
 const HAZE_VERTEX = /* glsl */ `
 #ifdef USE_FOG
-  vSkyFogY = dot( viewMatrix[ 1 ].xyz, mvPosition.xyz ) + cameraPosition.y;
+  vSkyFogAt = vec3( dot( viewMatrix[ 0 ].xyz, mvPosition.xyz ), dot( viewMatrix[ 1 ].xyz, mvPosition.xyz ), dot( viewMatrix[ 2 ].xyz, mvPosition.xyz ) ) + cameraPosition;
 #endif
 `;
 
 const HAZE_PARS = /* glsl */ `
 #ifdef USE_FOG
-  varying float vSkyFogY;
+  varying vec3 vSkyFogAt;
   uniform float skyStreet;
 #endif
+${FOGBOX_PARS}
 `;
 
 const HAZE = /* glsl */ `
@@ -178,8 +180,10 @@ const HAZE = /* glsl */ `
   #else
     // How many times as far off the haze is as down on the street; and past HAZE_MAX, from 45% of
     // the way there, as the haze on the roof always went.
-    float skyReach = 1.0 + max( max( cameraPosition.y, vSkyFogY ) - skyStreet - ${HAZE_CLEAR.toFixed(1)}, 0.0 ) / ${HAZE_ABOVE.toFixed(1)};
-    float fogFactor = max( smoothstep( fogNear, fogFar, vFogDepth / skyReach ), smoothstep( ${(HAZE_MAX * 0.45).toFixed(1)}, ${HAZE_MAX.toFixed(1)}, vFogDepth ) );
+    float skyReach = 1.0 + max( max( cameraPosition.y, vSkyFogAt.y ) - skyStreet - ${HAZE_CLEAR.toFixed(1)}, 0.0 ) / ${HAZE_ABOVE.toFixed(1)};
+    // Fork (fogbox.ts): only the way outdoors counts, not through the office.
+    float skyFogDepth = vFogDepth * skyFogOutdoors( vSkyFogAt );
+    float fogFactor = max( smoothstep( fogNear, fogFar, skyFogDepth / skyReach ), smoothstep( ${(HAZE_MAX * 0.45).toFixed(1)}, ${HAZE_MAX.toFixed(1)}, skyFogDepth ) );
   #endif
   gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );
 #endif
@@ -191,6 +195,7 @@ const HAZE = /* glsl */ `
 THREE.Material.prototype.onBeforeCompile = function (shader) {
   if (shader.fragmentShader.includes('#include <fog_fragment>')) {
     shader.uniforms.skyStreet = uniforms.skyStreet;
+    Object.assign(shader.uniforms, fogBoxUniforms);
     shader.vertexShader = shader.vertexShader.replace('#include <fog_pars_vertex>', `#include <fog_pars_vertex>\n${HAZE_PARS_VERTEX}`).replace('#include <fog_vertex>', `#include <fog_vertex>\n${HAZE_VERTEX}`);
     shader.fragmentShader = shader.fragmentShader.replace('#include <fog_pars_fragment>', `#include <fog_pars_fragment>\n${HAZE_PARS}`).replace('#include <fog_fragment>', HAZE);
   }
