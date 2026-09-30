@@ -136,14 +136,22 @@ export type SoccerClientMsg =
   | { t: 'soccer.join' }
   /** Off the pitch, back to watching. */
   | { t: 'soccer.leave' }
-  /** A kick: `power` 0..1 (how long it was charged), `dir` the facing angle (sin, cos on x/z), `loft` 0..1 (a chip). */
-  | { t: 'soccer.kick'; power: number; dir: number; loft: number };
+  /**
+   * A kick (a pass or a shot, the page worked out which: shared/soccer-ball.ts passKick, shotKick):
+   * `power` 0..1, `dir` its angle along the floor (sin, cos on x/z), `loft` 0..1 (a lob or a chip),
+   * `lift` how steeply a shot rises (radians, 0..MAX_LIFT: aiming up). The office clamps them all.
+   */
+  | { t: 'soccer.kick'; power: number; dir: number; loft: number; lift?: number };
 
 export type SoccerServerMsg =
   /** The match and who plays for whom (on every change, and now and then to keep the clock true); `event` for a toast or a whistle. */
   | { t: 'soccer'; state: SoccerView; event?: SoccerEvent }
-  /** The ball, ~15 times a second while it moves; `hit` and `hs` (speed) when it just hit something, `by` who kicked it. */
-  | { t: 'soccer.ball'; b: BallWire; hit?: BallHitKind; hs?: number; by?: string };
+  /**
+   * The ball, ~15 times a second while it moves: `k` the office's physics step it's from (SIM_DT each,
+   * so pages can play it back on the office's clock), `c` who's dribbling it; `hit` and `hs` (speed)
+   * when it just hit something, `by` who kicked it.
+   */
+  | { t: 'soccer.ball'; b: BallWire; k: number; c?: string; hit?: BallHitKind; hs?: number; by?: string };
 
 export const isSoccerMsg = (t: string): t is SoccerClientMsg['t'] => t === 'soccer.join' || t === 'soccer.leave' || t === 'soccer.kick';
 

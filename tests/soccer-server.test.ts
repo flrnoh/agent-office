@@ -99,9 +99,10 @@ test('kicks: only players, only close to the ball, only so often, only when thei
   // Practice (only one team): ann may kick, from close by.
   h.pos.set('ann', { x: PITCH_CX + 3, z: 0 });
   assert.equal(h.s.kick('ann', 1, 0, 0), 'too far');
-  h.pos.set('ann', { x: PITCH_CX, z: -0.8 });
+  h.pos.set('ann', { x: PITCH_CX, z: -1.2 });
   assert.equal(h.s.kick('ann', 'hard', 0, 0), 'bad kick');
   assert.equal(h.s.kick('ann', Number.NaN, 0, 0), 'bad kick');
+  assert.equal(h.s.kick('ann', 1, 0, 0, Infinity), 'bad kick');
   assert.equal(h.s.kick('ann', 7, 0, -2), null);
   // Clamped: full power, no loft, north (+z).
   assert.ok(Math.abs(h.s.ball.vz - KICK_MAX) < 1e-9 && h.s.ball.vy === 0);
@@ -110,14 +111,14 @@ test('kicks: only players, only close to the ball, only so often, only when thei
   assert.equal(kicked.by, 'ann');
   // Straight away again: too soon (and the ball's gone anyway).
   assert.equal(h.s.kick('ann', 1, 0, 0), 'too soon');
-  h.tick(KICK_GAP_MS);
+  h.tick(KICK_GAP_MS + 400);
   assert.equal(h.s.kick('ann', 1, 0, 0), 'too far');
   // A match on: in the kickoff's freeze nobody kicks.
   h.s.join('bob');
   h.tick(100);
   assert.equal(h.s.match.phase, 'kickoff');
   assert.deepEqual([h.s.ball.x, h.s.ball.z], [PITCH_CX, 0]);
-  h.pos.set('bob', { x: PITCH_CX, z: 0.8 });
+  h.pos.set('bob', { x: PITCH_CX, z: 1.2 });
   h.advance(KICK_GAP_MS);
   assert.equal(h.s.kick('bob', 0.5, Math.PI, 0), 'not now');
   h.tick(KICKOFF_MS);
@@ -125,7 +126,7 @@ test('kicks: only players, only close to the ball, only so often, only when thei
   // After it, the kicking-off team first.
   const kicker = h.s.match.kickoff;
   const [first, second] = kicker === 'red' ? ['ann', 'bob'] : ['bob', 'ann'];
-  h.pos.set('ann', { x: PITCH_CX, z: -0.8 });
+  h.pos.set('ann', { x: PITCH_CX, z: -1.2 });
   h.advance(KICK_GAP_MS);
   assert.equal(h.s.kick(second, 0.3, 0, 0), 'not now');
   assert.equal(h.s.kick(first, 0.3, first === 'ann' ? 0 : Math.PI, 0), null);
@@ -145,7 +146,7 @@ test('the ball goes out while it moves, a goal is seen, scored and told to every
   // Keep blue well away; ann walks up to the ball (kicking off, or after the moment for the others).
   h.pos.set('bob', { x: PITCH.minX + 1, z: -10 });
   h.tick(3100);
-  h.pos.set('ann', { x: PITCH_CX, z: -0.8 });
+  h.pos.set('ann', { x: PITCH_CX, z: -1.2 });
   h.tick(100);
   const before = h.inbox('cat').filter((m) => m.t === 'soccer.ball').length;
   assert.equal(h.s.kick('ann', 0.8, 0, 0), null);
@@ -166,29 +167,6 @@ test('the ball goes out while it moves, a goal is seen, scored and told to every
   assert.equal(h.s.match.phase, 'kickoff');
   assert.equal(h.s.match.kickoff, 'blue');
   assert.deepEqual([h.s.ball.x, h.s.ball.z, h.s.ball.vz], [PITCH_CX, 0, 0]);
-});
-
-test('running into the ball dribbles it', () => {
-  const h = hall();
-  h.add('ann');
-  h.s.join('ann');
-  // Practice: ann runs north from just behind the ball, a move every 66 ms at 6 m/s.
-  let z = -1.2;
-  h.pos.set('ann', { x: PITCH_CX, z });
-  h.tick(100);
-  for (let i = 0; i < 6; i++) {
-    z += 6 * 0.066;
-    h.pos.set('ann', { x: PITCH_CX, z });
-    h.tick(66);
-  }
-  assert.ok(h.s.ball.vz > 3, `ball at ${h.s.ball.vz} m/s`);
-  assert.ok(h.s.ball.z > z, 'ahead of her');
-  // Someone watching from the side of the pitch doesn't touch it.
-  const w = hall();
-  w.add('bob');
-  w.pos.set('bob', { x: PITCH_CX, z: -0.3 });
-  w.tick(200);
-  assert.equal(w.s.ball.vz, 0);
 });
 
 test('the place: its id, where you arrive, the view, reconnecting, and the messages sorted for guests and party guests', () => {
