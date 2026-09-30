@@ -135,6 +135,25 @@ Anyone on the roof, guests too, can paste a YouTube, SoundCloud or Mixcloud link
   - `src/client/main.ts`: `djSets`/`houseDj()` (by `sound.onMusicError`), the `dj` message and `msg.dj` on arrival, `setPlace` (`djSets.setUp`, `houseDj()`), E at the booth opens `showDjBooth()`, H at the booth in `officeKey`, the booth's hint.
   - `src/client/ui/hud.ts`, `docs/features.md`, `docs/controls.md`, `docs/how-it-works.md`: words.
 
+### Streams on the office TV
+
+The lounge TV plays streams by itself too: **E** at the TV opens its window, where anyone on the floor, guests too, pastes a YouTube link (a video, a live one, shorts, with its `t=`) or a Twitch one (a channel, live; a past broadcast, from its `t=`). Everyone on that floor sees it on the TV, from the same moment (a video is put back in step when it drifts more than 3 s; a live channel just plays live), louder the closer they stand (music and master volume, silent from 30 m or off the floor). **Watch full screen** opens it big, with the player's own controls (pausing it there is yours; closing puts it back in step). **Stop stream** turns it off. Screen sharing is as it was, and goes first: while someone shares, the TV shows their screen and the stream waits, carrying on from where everyone is once they stop. The window also offers **Watch <name>'s screen** and **Share your screen**. Each floor keeps what's on in `.agent-office/tv.json`; the toast says "📺 <who> put on <title>".
+
+How it gets onto the TV: a browser can't draw another site's player into WebGL, so the player is a real iframe laid over the page and bent each frame with a CSS `matrix3d` onto where the TV's screen is (the projective transform of its four corners, `client/tvquad.ts`). It shows while you're in the room in front of the TV, within 26 m, with the screen in view and no wall or other box between (a line against the floor's colliders, a few times a second); `pointer-events: none`, so it never steals mouse-look. Otherwise the TV shows a card with the title and how it's going ("click anywhere to start it", "can't play here: …", "it has ended"). People walking in front of the TV don't hide it (it's on top of the scene). Twitch's player gets `parent=<this page's host>`; YouTube's the `strict-origin-when-cross-origin` referrer. Both start muted and are turned up to your volume.
+
+- `src/shared/embeds.ts`: what the DJ's and the TV's links share (plain web link check, `t=`, YouTube's one video). `src/shared/tv.ts`: reading a TV link (only YouTube and Twitch, by exact host; clips refused), `tests/tv.test.ts`.
+- `src/server/embeds.ts`: `LinkPlayer` (what's on, saved, its title from oEmbed, not too often per person), shared with the DJ booth. `src/server/tv.ts`: `OfficeTv` (tv.json) and `tvMessage` (tv.play/tv.stop: on a floor of the office map, rate limited, told to the floor).
+- `src/client/embeds.ts`: `EmbedPlayer` (keeping a site's player in step on the office clock, its volume, blocked/failed/ended/held) and YouTube's player, shared with the DJ sets. `src/client/tv.ts`: `TvStreams` (Twitch's player, laying the iframe over the TV or the big player, the TV's card), `src/client/tvquad.ts` (the matrix and the line of sight), `src/client/ui/tv.ts` (the TV's window and the big player).
+- The DJ sets now use these shared files (`src/shared/djset.ts`, `src/server/djset.ts`, `src/client/djset.ts` keep only their own parts); they behave as before, except that a set whose title arrived before you went up no longer gets stuck loading.
+- Hooks in upstream files:
+  - `src/shared/protocol.ts`: `tv.play`/`tv.stop` (ClientMsg), `tv` (ServerMsg), `FloorView.tv`.
+  - `src/server/floor.ts`: `Floor.tv` (an `OfficeTv` in the floor's data folder).
+  - `src/server/server.ts`: `floorView` carries `tv`; the `tv.play`/`tv.stop` case.
+  - `src/server/guests.ts`: `tv.play`, `tv.stop` in `GUEST`.
+  - `src/client/sound.ts`: `tvVolume()`.
+  - `src/client/main.ts`: `tvStreams`/`tvPicture()` (the TV's picture: a share, the stream's card, or idle; also from `refreshShares`), the `tv` message and `msg.tv` on arrival, `setOn`/`frame` after the scene's drawn, E at the TV opens `showTv()`, the couch's E (`watchTvBig`), the TV's hint, the idle screen's words, `window.__tv`.
+  - `src/client/ui/hud.ts`, `docs/features.md`, `docs/controls.md`: words.
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.
