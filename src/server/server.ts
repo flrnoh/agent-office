@@ -834,7 +834,7 @@ export async function startServer(cfg: Config) {
   const casinoPlayer = (c: Client): CasinoPlayer => ({ id: c.id, owner: c.accountId ? `account:${c.accountId}` : `name:${c.peer.name}`, name: c.peer.name, send: (m) => sendTo(c, m) });
   // flrnoh fork: the gym, a place of its own like the casino, and who's in it by their fitness.
   const gymView = (): FloorView => ({ ...floorView(undefined), floor: GYM });
-  const gymPlayer = (c: Client): GymPlayer => ({ id: c.id, owner: c.accountId ? `account:${c.accountId}` : `name:${c.peer.name}`, name: c.peer.name, send: (m) => sendTo(c, m) });
+  const gymPlayer = (c: Client): GymPlayer => ({ id: c.id, owner: c.accountId ? `account:${c.accountId}` : `name:${c.peer.name}`, name: c.peer.name, send: (m) => sendTo(c, m), where: () => (c.peer.floor === GYM ? { x: c.peer.x, z: c.peer.z, seat: c.peer.seat } : undefined) });
   const screensOf = (c: Client, floor: Floor | undefined) => {
     for (const { workerId, frame } of floor?.workers.fullScreens() ?? []) sendTo(c, { t: 'screen', workerId, ...frame, full: true });
   };
@@ -1663,6 +1663,7 @@ export async function startServer(cfg: Config) {
         p.rotY = num(msg.rotY);
         p.moving = !!msg.moving;
         toNeighbors(c, { t: 'peer.move', id: c.id, x: p.x, y: p.y, z: p.z, rotY: p.rotY, moving: p.moving }, true);
+        if (p.floor === GYM) gym.moved(c.id); // fork: into and out of the sauna and steam room
         break;
       }
       case 'act': {
@@ -1729,7 +1730,7 @@ export async function startServer(cfg: Config) {
         // Everyone sees them sit down (or get up), and anyone who comes in later finds them sitting.
         // Only on a seat where they are: the roof's up on the roof, the office's on a floor.
         const key = str(msg.seat, 40);
-        const seat = seatHereOn(maps.plan(), key, c.peer.floor === ROOF, c.peer.floor === HALL) ? key : undefined; // fork: the padel hall's seats in there
+        const seat = seatHereOn(maps.plan(), key, c.peer.floor === ROOF, c.peer.floor === HALL, c.peer.floor === GYM) ? key : undefined; // fork: the padel hall's seats in there, the gym's in there
         if (seat === c.peer.seat) break;
         // Somebody on the floor got there first (two people arriving at an empty throne at once).
         // (Not yourself, on a connection that hasn't timed out yet after a reconnect.)
@@ -1742,6 +1743,7 @@ export async function startServer(cfg: Config) {
         if (seat) c.peer.seat = seat;
         else delete c.peer.seat;
         broadcast({ t: 'peer.update', peer: c.peer }, c.id);
+        if (c.peer.floor === GYM) gym.moved(c.id); // fork: a bench in the sauna
         break;
       }
       case 'carry': {

@@ -86,13 +86,13 @@ test('the wellness area gives energy back over time, to several at once', () => 
     const bo = seat('c2', 'account:2', 'Bo');
     gym.fitness.addStamina('account:1', -50);
     gym.fitness.addStamina('account:2', -50);
-    gym.message('c1', { t: 'gym.sit', station: 'sauna' });
-    gym.message('c2', { t: 'gym.sit', station: 'sauna' });
+    gym.message('c1', { t: 'gym.sit', station: 'hottub' });
+    gym.message('c2', { t: 'gym.sit', station: 'hottub' });
     const before = gym.fitness.stamina('account:1');
     clock.t += 10_000;
     gym.tick();
     assert.ok(gym.fitness.stamina('account:1') > before, 'energy came back');
-    const view = ada.station<WellnessView>('sauna');
+    const view = ada.station<WellnessView>('hottub');
     assert.deepEqual(new Set(view?.occupants), new Set(['Ada', 'Bo']));
     // Both got a profile update with more energy.
     assert.ok((bo.last('gym.profile')?.profile.stamina ?? 0) > 0);

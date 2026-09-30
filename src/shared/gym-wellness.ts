@@ -51,4 +51,8 @@ export interface WellnessView {
   seats: number;
   /** When someone last poured water / struck a pose, so a puff of steam animates for everyone. */
   puffAt?: number;
+  /** Fork: who poured it (the walk-in rooms' Aufguss). */
+  puffBy?: string;
+  /** Fork: a walk-in room (shared/gym-rooms.ts): you're in it while you stand inside, not by sitting down. */
+  walkIn?: boolean;
 }
