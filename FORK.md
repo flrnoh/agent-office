@@ -86,6 +86,21 @@ The fridge in the kitchen, next to the coffee machine: **E** opens its door on d
   - `src/client/main.ts`: E at the fridge (`showFridge`, `grabFromFridge`), its hint, its `REACH`, bites in `drinking`.
   - `src/client/ui/hud.ts` (a help line), `docs/features.md`.
 
+### Working at the boss desk
+
+At the boss's PC up in the loft you can work, not only play: sitting in the boss's chair, **E** offers a Claude worker, a shell or Minesweeper. The boss desk (`BOSS_DESK`, id `boss`, flag `boss`) is a real place for a worker, but only hired at by hand: it isn't in `SEATS`, so `nextFreeSeat`, the queue, bean bag counts and the castle's seats never see it, and workers hiring workers (`/office/workers`) can't pick it. Nobody is drawn sitting there (the chair is yours): the desk has no `DeskView`, so `syncWorkers` skips its worker, and its terminal plays on the boss's monitor, with Minesweeper back on it once it's gone home. Guests only play (or watch a terminal that's up there). Office map only: the server refuses it on other maps.
+
+- `src/client/ui/bossdesk.ts`: the chooser, the hint's words, and the monitor showing the boss desk's terminal. `tests/bossdesk.test.ts`.
+- Hooks in upstream files:
+  - `src/shared/layout.ts`: `DeskDef.boss`/`DeskDef.y`, `BOSS_DESK` (after `LOFT`), and in `DESK_BY_ID`.
+  - `src/shared/maps/index.ts`: `BOSS_DESK` in the office plan's `byId`.
+  - `src/server/server.ts`: `worker.spawn` refuses the boss desk off the office map.
+  - `src/server/office-workers.ts`: `readHireRequest` refuses `desk: 'boss'`.
+  - `src/server/dog.ts`: the dog doesn't bark at or nap by the boss desk (it doesn't do stairs).
+  - `src/client/main.ts`: `bossDesk` next to `arcade` (made, stopped, updated), `useSeat` opens it, the seat hint, and `standAt`/`burstOver` go up to the loft (`desk.y`).
+  - `tests/maps.test.ts`: the built-in maps have every office seat but the boss desk.
+  - `docs/features.md`: the boss desk line.
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.
