@@ -56,6 +56,7 @@ import { ROOF } from '../shared/rooftop.js';
 import { heldDrink, keepsHeld } from './held.js';
 import { DjBooth, djMessage } from './djset.js';
 import { Casino, type CasinoPlayer } from './casino/index.js'; // flrnoh fork: the casino
+import { Turn, readTurnKey } from './turn.js'; // flrnoh fork: TURN for voice
 import { CASINO, CASINO_ENTRY, isCasinoMsg } from '../shared/casino.js';
 import { CarKeys } from './carkeys.js'; // flrnoh fork: the Bulli's keys
 import { BULLI_REFUSED, mayTake } from '../shared/bulli.js';
@@ -539,6 +540,7 @@ export async function startServer(cfg: Config) {
   const maps = new Maps(cfg.dataDir);
   const djBooth = new DjBooth(cfg.dataDir); // flrnoh fork: DJ sets on the roof
   const casino = new Casino(cfg.dataDir); // flrnoh fork: the casino across the street (casino/)
+  const turn = new Turn(readTurnKey(cfg.dataDir), cfg.iceServers); // flrnoh fork: TURN so voice gets through from outside (turn.ts)
   const carKeys = new CarKeys(cfg.dataDir); // flrnoh fork: who drives the Bulli
   // flrnoh fork: the racing rig in the lounge (server/rig.ts), one driver a floor, one table for the building.
   const rigs = new Rigs(new RigTable(cfg.dataDir));
@@ -1310,7 +1312,7 @@ export async function startServer(cfg: Config) {
       peers: [...clients.values()].map((c) => c.peer),
       floors: floorInfos(),
       projectsDir: building.projectsDirState(),
-      ice: cfg.iceServers,
+      ice: turn.servers(), // fork: plus Cloudflare TURN when there's a key (turn.ts)
       chat: chat.recent(50),
       invites: team.available || !!cfg.tailnet,
       version: upgrader.version,
@@ -2704,6 +2706,7 @@ export async function startServer(cfg: Config) {
     server.listen(cfg.port, cfg.host, () => resolve());
   });
   services.start();
+  turn.start(); // fork
   tailnet.start(() => services.list().map((s) => s.port));
 
   /** With `keep` (a restart), workers' terminals keep running for the next office to pick up. */
@@ -2713,6 +2716,7 @@ export async function startServer(cfg: Config) {
     clearTimeout(floorsTimer);
     arcade.flush();
     casino.stop();
+    turn.stop(); // fork
     upgrader.stop();
     services.stop();
     tailnet.stop();
