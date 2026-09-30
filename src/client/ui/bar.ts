@@ -43,6 +43,7 @@ export function openBar(opts: BarOptions) {
       li.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
+          e.stopPropagation(); // flrnoh fork: or the office's own Enter, with the menu gone, would open the chat
           pick();
         }
       });
