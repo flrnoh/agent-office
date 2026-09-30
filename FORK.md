@@ -292,6 +292,26 @@ A ding-dong for everyone in the office when a person comes in, with a toast "�
 - `src/client/doorbell.ts`: who's here and whether an arrival rings; `tests/doorbell.test.ts`.
 - Hooks in upstream files: `src/client/sound.ts` (`doorbell()`, its own section), `src/client/main.ts` (the bell, and one line each in the `welcome`, `floor.enter` and `peer.join`/`peer.leave` cases).
 
+### Bungee off the roof
+
+A wooden jetty with railings runs from the rooftop bar's deck out over the street-side (south) edge, east of the sun loungers (x 10.25..11.75, through a gap in the glass railing and the planters), to a steel platform with a yellow-and-black edge 3.4 m past the facade. A yellow gantry over it holds the rope's anchor on an arm out past the edge, with a BUNGEE sign; a board at the jetty's start shows the day's jumps. **E** on the platform: the office puts you on the rope (one jumper at a time; "Someone's on the rope" otherwise, and a few seconds' breather after your own jump), the gate swings open, 3-2-1, and you dive off head first: free fall down past the facade, the rope pulls taut, two or three damped bounces, a moment hanging head down, the winch pulls you back up and you swing over onto the platform, 12–18 s in all. The fall is as deep as the building is tall (`roofDrop`), the rope sized so your head stops 2.2 m over the street, and the drop comes down between the plaza's two trees in front of the building. Your controls are off meanwhile (**F** or **Space** mid-fall does a salto); in first person you see it through your own eyes (straight down at the street, then upside down out at the city), in third the camera follows your body and never goes through the facade. Everyone on the roof sees the jumper fall and bounce on the same curve (worked out from when the office said the jump started) with the rope from the anchor to their ankles, and gets a toast "🪂 Ada jumped!". Wind rises while you fall and the rope twangs as it catches (synth, effects volume). Guests and party guests jump too.
+
+- Own files:
+  - `src/shared/bungee.ts`: where the jetty and the anchor are, `BungeeState`, and the jump: `bungeePlan(drop)` (the rope's length and stiffness fitted so it never goes deeper than the margin, damping included; a fixed-step simulation of the fall and bounces, kept per height) and `bungeePose(drop, t)` (count, fall, hang, winch, climb, done), `bungeeDuration`, `bungeeDay`.
+  - `src/server/bungee.ts`: `BungeeRope` (who's on the rope and since when, one at a time, the per-person cooldown, the day's jumps reset at local midnight; in memory) and `bungeeMessage` (only from the roof; the drop from the building's floors).
+  - `src/client/world/bungee.ts`: the jetty, platform, railings, gantry, gate, signs, colliders and the interactable. `src/client/bungee.ts`: `Bungee` (asks for the rope, holds your player on the platform while you're on it, poses the jumper's body, draws the rope, flies your camera, the countdown, the toast, the sounds, the keys).
+  - `tests/bungee.test.ts`.
+- The protocol: `bungee.jump` (ClientMsg), `bungee {state}` (ServerMsg, to everyone on the roof), `FloorView.bungee` in the roof's view for arrivals.
+- Hooks in upstream files:
+  - `src/shared/protocol.ts`: the two messages and `FloorView.bungee`.
+  - `src/server/server.ts`: `bungeeRope`/`offRope` next to the roof tables, `roofView` carries `bungee`, the `bungee.jump` case, off the rope when leaving the roof and on disconnect.
+  - `src/server/guests.ts`: `bungee.jump` in `GUEST`. `src/server/party.ts`: `bungee` in `PARTY_SEES` and `VIEW_AS_IS`.
+  - `src/client/world/office.ts`: `InteractKind` has `'bungee'`.
+  - `src/client/world/rooftop.ts`: the south edge's railing and the planters there leave a gap for the jetty, `buildBungeeJetty()` added to the roof, `Rooftop.bungee`.
+  - `src/client/sound.ts`: `bungee()` and `bungeeWind()`, a section of their own.
+  - `src/client/main.ts`: `bungee` (made next to the table games), its message, E at the platform (`interact`), its hint, `REACH.bungee`, its keys in the keydown handler, `bungee.update` after everyone's moved in the frame, `__office.bungee`.
+  - `docs/features.md`, `docs/controls.md`: words.
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.

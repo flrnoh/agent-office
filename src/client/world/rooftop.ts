@@ -4,6 +4,8 @@ import { DANCE_FLOOR, DJ_BOOTH, ELEVATOR, ELEVATOR_FRONT, FIRE_PIT, FLOOR, ROOF_
 import type { DjFrame } from '../dnb';
 import { buildBarGames, type BarGamesView } from './bargames';
 import { buildRoofTables, type RoofTablesView } from '../tablegames/models'; // fork: games on the roof
+import { BUNGEE } from '../../shared/bungee'; // fork: bungee off the roof
+import { buildBungeeJetty, type BungeeJetty } from './bungee'; // fork: bungee off the roof
 import { Worker } from './character';
 import { buildCity, type City } from './city';
 import { buildElevator, type Elevator } from './elevator';
@@ -49,6 +51,8 @@ export interface Rooftop {
   games: BarGamesView;
   /** Fork: the pool table, the kicker, air hockey and table tennis (see tablegames/). */
   tables: RoofTablesView;
+  /** Fork: the bungee jetty over the south edge (see world/bungee.ts). */
+  bungee: BungeeJetty;
   /** Someone ordered a drink at the bar, standing (or sitting) at `z` along it: the bartender comes over. */
   serve(z: number): void;
   /**
@@ -280,7 +284,8 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
   const glassMat = new THREE.MeshBasicMaterial({ color: '#d6f1ff', transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
   const edges: [number, number, number, number][] = [
     [B.minX, B.maxX, B.minZ, FLOOR.minZ],
-    [B.minX, B.maxX, FLOOR.maxZ, B.maxZ],
+    [B.minX, BUNGEE.x - BUNGEE.halfWidth, FLOOR.maxZ, B.maxZ], // fork: a gap for the bungee jetty
+    [BUNGEE.x + BUNGEE.halfWidth, B.maxX, FLOOR.maxZ, B.maxZ],
     [B.minX, FLOOR.minX, B.minZ, B.maxZ],
     [FLOOR.maxX, B.maxX, B.minZ, B.maxZ],
   ];
@@ -760,7 +765,8 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
   // Down the west edge from the axe lane's booth, which has the corner.
   planterRow(FLOOR.minX, FLOOR.minX + 0.7, FLOOR.minZ + AXE_LANE.depth + 0.3, 3.2);
   planterRow(FLOOR.minX + 0.4, -6.2, FLOOR.maxZ - 0.7, FLOOR.maxZ);
-  planterRow(5.2, FLOOR.maxX - 0.4, FLOOR.maxZ - 0.7, FLOOR.maxZ);
+  planterRow(5.2, BUNGEE.x - BUNGEE.halfWidth - 0.3, FLOOR.maxZ - 0.7, FLOOR.maxZ); // fork: round the bungee jetty
+  planterRow(BUNGEE.x + BUNGEE.halfWidth + 0.3, FLOOR.maxX - 0.4, FLOOR.maxZ - 0.7, FLOOR.maxZ);
   const screenX = 10.9;
   const screenZ = -8.2;
   const slat = toon('#8d99ae');
@@ -798,6 +804,11 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
   group.add(tables.group);
   colliders.push(...tables.colliders);
   interactables.push(...tables.interactables);
+  // Fork: bungee off the roof, a jetty out over the street-side edge (world/bungee.ts).
+  const bungee = buildBungeeJetty();
+  group.add(bungee.group);
+  colliders.push(...bungee.colliders);
+  interactables.push(...bungee.interactables);
 
   // ---- Moving it all to the music ---------------------------------------------------------------
   const tmp = new THREE.Color();
@@ -864,6 +875,7 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
     pourAt: { x: bx + 0.2, y: ROOF_BAR.height + 0.2, z: bz },
     games,
     tables,
+    bungee,
     serve(z: number) {
       tendZ = THREE.MathUtils.clamp(z, ROOF_BAR.minZ + 0.6, ROOF_BAR.maxZ - 0.6);
       wander = 6;
