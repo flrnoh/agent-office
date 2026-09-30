@@ -21,6 +21,10 @@ export interface DeskDef {
   room?: boolean;
   /** A desk in the back office (see WING): there once the floor is built out this many rows. */
   wing?: number;
+  /** The boss's own desk up in the loft (fork: see BOSS_DESK): hired at by hand, never handed out. */
+  boss?: boolean;
+  /** The floor it's on, when that's not the office floor (the loft's). */
+  y?: number;
 }
 
 const DESK_WIDTH = 2.2;
@@ -162,6 +166,13 @@ export const STATION_AGENT: Record<StationKind, { name: string; color: string }>
 
 /** The upstairs office: a glass-walled loft on posts in the south-east corner, looking down on the desks. */
 export const LOFT = { minX: 9, maxX: FLOOR.maxX, minZ: 8, maxZ: FLOOR.maxZ, y: 3, height: 2.8 } as const;
+/**
+ * Fork: the boss's desk in the loft (buildLoft puts it there), a workstation of your own. A worker or
+ * shell is only ever hired there by hand from the boss's chair (client/ui/bossdesk.ts), never handed
+ * it by nextFreeSeat or the queue, and it's only on the office map. Nobody sits there but you: its
+ * worker isn't drawn, its terminal plays on the boss's monitor.
+ */
+export const BOSS_DESK: DeskDef = { id: 'boss', x: (LOFT.minX + LOFT.maxX) / 2 + 0.5, z: (LOFT.minZ + LOFT.maxZ) / 2 - 0.3, y: LOFT.y, rotY: 0, label: 'Boss desk', boss: true };
 /** Its stairs climb east along the south wall and arrive at the loft's west door. */
 export const STAIRS = { fromX: 3, toX: LOFT.minX, minZ: 11.2, maxZ: FLOOR.maxZ, steps: 15 } as const;
 
@@ -191,7 +202,7 @@ export const MEETING_SEATS: DeskDef[] = (
 export const MEETING_BOARD = { x: MEETING_TABLE.x, y: 1.95, z: FLOOR.maxZ - 0.08, width: 3.6, height: 1.2 } as const;
 
 /** Any place a worker can be by id: the seats (the back office's included), the board agents' kiosks and the meeting room's chairs. */
-export const DESK_BY_ID = new Map([...SEATS, ...STATIONS, ...MEETING_SEATS].map((d) => [d.id, d]));
+export const DESK_BY_ID = new Map([...SEATS, ...STATIONS, ...MEETING_SEATS, BOSS_DESK].map((d) => [d.id, d]));
 
 /**
  * The seat a new worker takes when nobody picks one: the first free desk (in the back office too, as

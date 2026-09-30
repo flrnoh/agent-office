@@ -24,6 +24,8 @@ import { DrunkVision } from './world/drunk';
 import { Booze, type Stage as Feeling } from './booze';
 import { djFrame, djTime } from './dnb';
 import { openBar } from './ui/bar';
+import { openFridge } from './ui/fridge';
+import { isSnack, sipEvery, type FridgeItem } from '../shared/fridge';
 import { DRINK_BY_ID, ROOF, ROOF_NAME, type Drink, type DrinkId } from '../shared/rooftop';
 import { BACKSWING_TIME, IMPACT, Person, Worker, type Stage } from './world/character';
 import { GolfBalls, PIN_DISTANCE, TEE_BALL, fly, lieText, pinText, type Flight, type Hit, type Shot } from './world/golf';
@@ -38,6 +40,7 @@ import { PLACES, placeAt as loopPlace } from '../shared/scenic';
 import { LapTimer, lapTime } from './laps';
 import { Smoke } from './world/smoke';
 import { HAZE_MAX, Sky, describeSky } from './world/sky';
+import { setFogRooms } from './world/fogbox';
 import { Laptop } from './world/laptop';
 import { BoardTexture, QueueBoardTexture, ServicesBoardTexture } from './world/boards';
 import { Gallery } from './world/gallery';
@@ -85,10 +88,14 @@ import { MachineTexture } from './world/machine';
 import { officeFull, pressureNote } from '../shared/machine';
 import { mountHud } from './ui/menu';
 import { openJukebox } from './ui/jukebox';
+import { DjSetPlayer } from './djset';
+import { openDjBooth } from './ui/djbooth';
 import { openBookshelf } from './ui/bookshelf';
 import { Arcade } from './ui/arcade';
+import { BossDesk } from './ui/bossdesk';
 import { Cabinet } from './ui/cabinet';
 import { trackTitle } from '../shared/jukebox';
+import { radioSources } from '../shared/radio';
 import { GAME, scoreText } from '../shared/cabinet';
 import { EMOTES, EMOTE_BY_ID, EmoteBucket, type EmoteId } from '../shared/emotes';
 import { EmoteWheel } from './ui/emotes';
@@ -333,6 +340,8 @@ tvMat.map = tvIdle;
 tvMat.toneMapped = false;
 // The boss's monitor upstairs: Minesweeper, from the boss's chair.
 const arcade = new Arcade(office.bossScreen);
+// Fork: …and the boss desk's own worker or shell, on the same monitor (ui/bossdesk.ts).
+const bossDesk = new BossDesk(office.bossScreen, { hire: (id) => hireAtDesk(id), shell: (id) => openShell(id), terminal: (id) => openWorkerTerminal(id), resume: (w) => resumeWorker(w), sendHome: (id) => killWorker(id), play: () => arcade.play() });
 
 // ---- The rooftop bar ------------------------------------------------------------------------------
 /** Up on the roof: built the first time anyone goes up there. */
@@ -441,11 +450,21 @@ store.on('dog', () => {
 });
 sound.setMusicVolume(settings.music, settings.musicMuted);
 sound.onMusicError = (text) => toast(text, 'warn');
+sound.onMusicBlocked = () => toast('🔇 Click anywhere to hear the radio');
+// flrnoh fork: a DJ set someone put on at the roof's booth, in place of the house DJ (see FORK.md).
+const djWatchers = new Set<() => void>();
+const djSets = new DjSetPlayer({ now: () => store.officeNow(), volume: () => sound.djSetVolume(), toast, changed: () => (houseDj(), djWatchers.forEach((fn) => fn())) });
+/** The house DJ plays on the roof unless a set does. */
+function houseDj() {
+  sound.setDj(upTop && !djSets.silencesHouse() ? djAt : null);
+}
 // The jukebox on your floor: everyone there hears it from the same bar, and its lights say what's on.
 // It's the office's: on a map of its own there's none to hear.
 function playJukebox() {
   const j = store.jukebox;
-  sound.setJukebox(j.on && inOffice() ? { track: j.track, url: j.url, startedAt: j.startedAt, since: j.since } : null);
+  // flrnoh fork: http streams go through the office on an https page (shared/radio.ts).
+  const src = radioSources(j, store.floor, location.protocol === 'https:');
+  sound.setJukebox(j.on && inOffice() ? { track: j.track, url: src?.src, fallback: src?.fallback, startedAt: j.startedAt, since: j.since } : null);
   office.jukebox.show(j.on, trackTitle(j));
 }
 store.on('jukebox', playJukebox);
@@ -954,7 +973,11 @@ function syncStack() {
   const count = index < 0 ? 1 : floors.length;
   const wings = floorWings(floors);
   // A map of its own is a hall on the ground: nothing under its floor to fall to, but its dungeon's.
-  player.street = inOffice() ? streetBelow(index) : streetOf(world);
+  const street = inOffice() ? streetBelow(index) : streetOf(world);
+  // Floors in any order (flrnoh fork): your floor moved in the stack while you're down on the street, so you go with the street.
+  if (store.floor === streetFloor && street !== player.street && player.pos.y < -SLAB - 0.05) player.pos.y += street - player.street;
+  streetFloor = store.floor;
+  player.street = street;
   const s = office.stack.state;
   const same = s.index === Math.max(0, index) && s.count === count && s.up === up && s.down === down;
   if (same && wings.join() === wingsShown) return;
@@ -967,6 +990,8 @@ function floorWings(floors: FloorInfo[]): number[] {
   return floors.map((f) => (f.id === store.floor ? store.floorPlan.wing : (f.wing ?? 0)));
 }
 let wingsShown = '';
+/** The floor the street was last set for (see syncStack). */
+let streetFloor: string | null | undefined;
 store.on('floors', syncStack);
 
 function showMyProfile(p: Profile) {
@@ -1058,6 +1083,7 @@ net.onMessage((msg) => {
   }
   if (msg.t === 'worker.remove') sentHome.add(msg.workerId);
   store.apply(msg);
+  if ((msg.t === 'welcome' || msg.t === 'floor.enter') && msg.dj) djSets.set(msg.dj);
   // A floor's cars where they are before anything asks if there's room to stand beside one (see welcome).
   if (msg.t === 'welcome' || msg.t === 'floor.enter') office.cars.snap(store.cars);
   seatedAlready = false;
@@ -1252,6 +1278,9 @@ net.onMessage((msg) => {
         gotUp();
         toast(`${msg.by} got there first`, 'warn');
       }
+      break;
+    case 'dj':
+      djSets.set(msg.state);
       break;
     case 'horn':
       if (!upTop) break;
@@ -1593,7 +1622,8 @@ function setPlace() {
   player.colliders = up ? r!.colliders : world.colliders;
   sky.setRoof(up, roofDrop(roofFloors()));
   sound.setOutdoors(up);
-  sound.setDj(up ? djAt : null);
+  djSets.setUp(up);
+  houseDj();
   // You can see the whole city from up there (and its clouds); from the top floors, as far as the haze.
   camera.far = up ? 700 : FAR;
   camera.updateProjectionMatrix();
@@ -1726,6 +1756,7 @@ function applyMap() {
   hands.holdBall(false);
   for (const r of remotes.values()) r.person.holdBall(false);
   arcade.stop();
+  bossDesk.stop();
   cabinet.stop();
   world.group.visible = false;
   world = next.world;
@@ -2572,7 +2603,7 @@ function standAt(desk: DeskDef) {
     const [x, z] = world.nav.nearestWalkable([spot.x, spot.z]);
     spot = { x, z };
   }
-  player.pos.set(spot.x, 0, spot.z);
+  player.pos.set(spot.x, desk.y ?? 0, spot.z);
   player.vy = 0;
   player.facing = Math.atan2(desk.x - spot.x, desk.z - spot.z);
   player.camYaw = player.facing - Math.PI;
@@ -2959,6 +2990,7 @@ function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   else if (target.kind === 'seat' && target.seatId) useSeat(target.seatId);
   else if (target.kind === 'dog') net.send({ t: 'dog.pet' });
   else if (target.kind === 'coffee') drinkCoffee();
+  else if (target.kind === 'fridge') showFridge();
   else if (target.kind === 'smoke') {
     if (smokeBreakUntil) {
       setSmoking(false);
@@ -2974,7 +3006,7 @@ function interact(target: Interactable | null, key: DeskKey, note = aimedNote) {
   else if (target.kind === 'pole' && target.pole !== undefined) usePole(target.pole);
   else if (target.kind === 'meeting') showMeeting();
   else if (target.kind === 'bar') showBar();
-  else if (target.kind === 'dj') blowHorn();
+  else if (target.kind === 'dj') showDjBooth();
   else if (target.kind === 'golf') teeOff();
   else if (target.kind === 'darts' || target.kind === 'axe') stepUp(target.kind);
   else if (target.kind === 'ball') takeBall();
@@ -3048,7 +3080,12 @@ function orderDrink(d: Drink) {
 }
 
 let lastHorn = 0;
-/** E at the DJ booth: the air horn, for everyone on the roof. */
+/** E at the DJ booth: what's playing, a set of your own, the air horn. */
+function showDjBooth() {
+  openDjBooth({ net, player: djSets, house: () => djFrame(djAt()).part, horn: blowHorn, openVolume: () => showSettings('sound'), watch: (fn) => (djWatchers.add(fn), () => djWatchers.delete(fn)) });
+}
+
+/** H at the DJ booth (or its button): the air horn, for everyone on the roof. */
 function blowHorn() {
   const now = performance.now();
   if (now - lastHorn < 1500) return;
@@ -3079,7 +3116,8 @@ function drinking(now: number) {
   }
   if (glass && player.view === 'first' && now > nextSip) {
     if (nextSip) hands.sip();
-    nextSip = now + 9000 + Math.random() * 9000;
+    if (nextSip && isSnack(glass)) sound.opener('bite');
+    nextSip = now + sipEvery(glass);
   }
   const stage = booze.stage(secs);
   if (stage !== feeling) {
@@ -3104,6 +3142,24 @@ function drinkCoffee() {
   if (jittery) toast('☕ One cup too many… you’ve got the jitters!', 'warn');
   else if (caffeine.cups > 1) toast('☕ Another cup: back to a full minute of buzz');
   else toast('☕ Fresh coffee! A minute of quicker feet and higher jumps');
+}
+
+// ---- The kitchen fridge (fork, see ui/fridge.ts) -----------------------------------------------------
+/** E at the fridge: the door opens on drinks and snacks. */
+function showFridge() {
+  sound.fridgeDoor(true);
+  openFridge({ cutOff: booze.cutOff(performance.now() / 1000), grab: grabFromFridge, onClose: () => sound.fridgeDoor(false) });
+}
+
+/** Out of the fridge and into your hand: opened (or bitten into), a beer to your head, a cola's little buzz. */
+function grabFromFridge(d: FridgeItem) {
+  const now = performance.now() / 1000;
+  booze.drink(d, now);
+  caffeine.top(now, d.caffeine);
+  reach();
+  sound.opener(d.glass === 'bottle' || d.glass === 'can' ? d.glass : 'bite');
+  if (player.view === 'first') hands.sip();
+  toast(`${d.emoji} ${d.name}. ${d.says}`);
 }
 
 // ---- Smoke breaks ------------------------------------------------------------------------------------
@@ -3475,7 +3531,7 @@ function useSeat(seatId: string) {
   if (!seat) return;
   if (player.seat?.seatId === seatId) {
     if (seat.tv && tvShowing()) watchShare();
-    else if (seat.game) arcade.play();
+    else if (seat.game) bossDesk.open();
     else if (seat.bar) showBar();
     else standUp();
     return;
@@ -3530,7 +3586,7 @@ function burstOver(deskId: string, n: number) {
     return confetti.burst(at.x, at.y + 2.1, at.z, n);
   }
   const d = plan().byId.get(deskId);
-  if (d) confetti.burst(d.x, 2.3, d.z, n);
+  if (d) confetti.burst(d.x, (d.y ?? 0) + 2.3, d.z, n);
 }
 
 /** Where a worker at `desk` climbs up to dance, in the frame of whatever it sits or stands in. */
@@ -3700,6 +3756,10 @@ function hintFor(it: Interactable): Hint {
       const any = currentShares().length > 0;
       return { k: String(any), parts: [title('📺 Office TV'), key('E', any ? 'Watch full screen' : 'Share your screen')] };
     }
+    case 'fridge': {
+      const cut = booze.cutOff(performance.now() / 1000);
+      return { k: String(cut), parts: [title('🧊 Fridge'), aside(cut ? "you've had enough beer" : 'drinks and snacks'), key('E', 'Grab something')] };
+    }
     case 'coffee': {
       const buzzed = caffeine.buzzed(performance.now() / 1000);
       return { k: String(buzzed), parts: [title(it.label ?? '☕ Coffee machine'), key('E', buzzed ? 'Another cup' : 'Grab a cup')] };
@@ -3778,11 +3838,12 @@ function hintFor(it: Interactable): Hint {
       if (!seat) return { k: '', parts: [] };
       if (player.seat?.seatId === seat.id) {
         const tv = !!seat.tv && tvShowing();
-        const use = tv ? 'Watch the TV' : seat.game ? 'Play Minesweeper' : seat.bar ? 'Order a drink' : '';
-        return { k: `${seat.id}|sitting|${tv}`, parts: [title(seat.label), aside('sitting'), ...(use ? [key('E', use), key('W A S D', 'Get up')] : [key('E', 'Get up')])] };
+        const use = tv ? 'Watch the TV' : seat.game ? bossDesk.useLabel() : seat.bar ? 'Order a drink' : '';
+        return { k: `${seat.id}|sitting|${tv}|${use}`, parts: [title(seat.label), aside('sitting'), ...(use ? [key('E', use), key('W A S D', 'Get up')] : [key('E', 'Get up')])] };
       }
       const full = !freePlace(seat);
-      return { k: `${seat.id}|${full}`, parts: [title(seat.label), seat.game ? aside('💣 Minesweeper on the monitor') : '', full ? aside('no room') : key('E', 'Sit down')] };
+      const monitor = seat.game ? bossDesk.aside() : '';
+      return { k: `${seat.id}|${full}|${monitor}`, parts: [title(seat.label), monitor ? aside(monitor) : '', full ? aside('no room') : key('E', 'Sit down')] };
     }
     case 'ladder': {
       const up = floorThere(1)?.name;
@@ -3804,8 +3865,11 @@ function hintFor(it: Interactable): Hint {
     }
     case 'dj': {
       const f = djFrame(djAt());
-      const what = f.part === 'drop' ? '🔥 the drop' : f.part === 'build' ? 'building up…' : f.part === 'breakdown' ? 'the breakdown' : 'mixing in the next track';
-      return { k: what, parts: [title('🎧 DJ Merge Conflict'), aside(`drum & bass · ${what}`), key('E', '📯 Air horn!')] };
+      const set = djSets.silencesHouse() ? djSets.current().set : null;
+      const what = set
+        ? `🎶 ${djSets.titleNow()}${djSets.phase() === 'blocked' ? ' · click to hear it' : ''}`
+        : `drum & bass · ${f.part === 'drop' ? '🔥 the drop' : f.part === 'build' ? 'building up…' : f.part === 'breakdown' ? 'the breakdown' : 'mixing in the next track'}`;
+      return { k: what, parts: [title('🎧 DJ Merge Conflict'), aside(what), key('E', set ? 'Change the set' : 'Put on a set'), key('H', '📯 Air horn!')] };
     }
     case 'ball':
       return { k: String(ball.still), parts: [title('🏀 Basketball'), ball.still ? aside('shoot some hoops') : '', key('E', ball.still ? 'Pick it up' : 'Catch it!')] };
@@ -4216,7 +4280,9 @@ function officeKey(e: KeyboardEvent): boolean {
       voice.toggleMute();
       return true;
     case 'KeyH':
-      openHelp();
+      // At the DJ booth on the roof, H is the air horn (flrnoh fork).
+      if (upTop && target?.kind === 'dj') blowHorn();
+      else openHelp();
       return true;
     case 'KeyF':
       startHanging();
@@ -4350,7 +4416,7 @@ document.addEventListener('pointerlockchange', () => {
 const raycaster = new THREE.Raycaster();
 const CROSSHAIR = new THREE.Vector2(0, 0);
 /** How close (meters from your eyes) you must be to use each kind of thing. */
-const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5 };
+const REACH: Record<InteractKind, number> = { desk: 4.5, station: 4.5, coffee: 3, issues: 9, pulls: 9, services: 9, queue: 9, tv: 10, decor: 9, smoke: 3, elevator: 4.5, gong: 3.5, dog: 3.2, jukebox: 4, seat: 3, whiteboard: 7, cabinet: 4, ladder: 3, pole: 4, meeting: 7, bar: 3.5, dj: 6, golf: 3.5, ball: 3.2, bookshelf: 4, darts: 4, axe: 5.5, telescope: 3.5, car: 4, expand: 8, herald: 5, fridge: 3 };
 const eye = new THREE.Vector3();
 
 /** What the ray through `ndc` lands on first, whether it is within reach (plus `slack` meters), and where it hit. */
@@ -4729,6 +4795,7 @@ function frame(ts?: number) {
   const hole = inOffice() && office.stack.polesGoDown() ? office.stack.poles().find((s) => Math.hypot(player.pos.x - s.x, player.pos.z - s.z) < POLE.hole - 0.15) : undefined;
   if (hole && !climber.active && !trip && !player.seat && player.enabled && player.pos.y > -1.35 && player.pos.y < 0.6) climber.slide(hole);
   arcade.update(camera, dt);
+  bossDesk.update();
   cabinet.update(camera, dt);
   // Pulled away from the tee (sat down, off up the ladder, into the elevator): the club goes back.
   if (golf.active && (trip || hanger.active || climber.active || player.seat || upTop)) golf.stop();
@@ -4892,6 +4959,7 @@ function frame(ts?: number) {
   if (away > 40) sun.target.position.set(Math.round(player.pos.x / 4) * 4, player.pos.y, Math.round(player.pos.z / 4) * 4);
   else sun.target.position.set(0, 0, 0);
   sun.target.updateMatrixWorld();
+  setFogRooms(!upTop && inOffice(), officeWing()); // fork: fog stays outside (fogbox.ts)
   sky.update(dt, t, camera);
   if (!upTop && inOffice()) office.scenic.cull(camera.position, office.night.street, (scene.fog as THREE.Fog).far);
   // A map of its own lights itself its own way (the castle's torchlit hall), after the sky's had its say.

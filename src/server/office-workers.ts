@@ -153,7 +153,8 @@ export function readHireRequest(body: unknown, providers: AgentProvider[]): Hire
   if (b.worktree !== undefined && typeof b.worktree !== 'boolean') return 'worktree is true or false';
   // Board kiosks and the meeting table seat their own: see station.prompt and meetings.ts.
   const seat = typeof b.desk === 'string' ? DESK_BY_ID.get(b.desk) : undefined;
-  if (b.desk !== undefined && (!seat || seat.station || seat.room)) return "desk is a desk or bean bag's id, like desk-3";
+  // Fork: nor does the boss's desk, which only the boss hires at.
+  if (b.desk !== undefined && (!seat || seat.station || seat.room || seat.boss)) return "desk is a desk or bean bag's id, like desk-3";
   if (b.issue !== undefined && !(Number.isSafeInteger(b.issue) && (b.issue as number) > 0)) return 'issue is an issue number';
   return {
     prompt,

@@ -1,4 +1,5 @@
 import type { ClientMsg } from '../shared/protocol.js';
+import { radioRequestShape } from './radio.js';
 
 /*
  * The guest role (flrnoh fork, see FORK.md): guests walk around, chat, talk, play and watch the
@@ -11,7 +12,7 @@ import type { ClientMsg } from '../shared/protocol.js';
 const GUEST = [
   'move', 'act', 'golf', 'emote', 'sit', 'profile',
   'voice', 'rtc', 'chat', 'floor.go', 'ball.take', 'ball.throw',
-  'toss', 'dog.pet', 'gong', 'horn', 'car.enter', 'car.leave',
+  'toss', 'dog.pet', 'gong', 'horn', 'dj.play', 'dj.stop', 'car.enter', 'car.leave',
   'car.drive', 'car.honk', 'worker.attach', 'worker.detach', 'wb.open', 'wb.close',
   'wb.update', 'wb.pointer', 'jukebox.play', 'jukebox.skip', 'jukebox.stop', 'cabinet.play',
   'cabinet.leave', 'cabinet.frame', 'ping',
@@ -28,7 +29,7 @@ const TEAM_ONLY = [
   'accounts.cancel', 'accounts.invite', 'accounts.revoke', 'accounts.role', 'accounts.shared',
   'carry', 'changes.commit', 'changes.diff', 'changes.discard', 'changes.pr',
   'decor.add', 'decor.remove', 'decor.update', 'desk.label', 'dog.name',
-  'floor.add', 'floor.expand', 'floor.projectsDir', 'floor.remove', 'floor.shrink',
+  'floor.add', 'floor.expand', 'floor.order', 'floor.projectsDir', 'floor.remove', 'floor.shrink',
   'gh.close', 'gh.comment', 'gh.labels', 'gh.merge', 'leaveOnMerge.set',
   'machine.limit', 'map.set', 'meeting.clear', 'meeting.start', 'meeting.stop',
   'notify.test', 'notify.webhook', 'prompts.agent', 'prompts.set', 'queue.add',
@@ -52,8 +53,8 @@ export const GUEST_QUIET: ReadonlySet<string> = new Set<string>(QUIET);
 export const TEAM_ONLY_MSGS: ReadonlySet<string> = new Set<string>(TEAM_ONLY);
 
 /**
- * What a guest's page may load besides the page itself: the whiteboard's pictures, and pictures
- * already hanging on a wall (the image proxy fetches any address, so not just any). Not a worker's
+ * What a guest's page may load besides the page itself: the whiteboard's pictures, the jukebox's
+ * radio, and pictures already hanging on a wall (the image proxy fetches any address, so not just any). Not a worker's
  * changes, the project's docs, GitHub details, search or dropping files into a terminal; any route
  * upstream adds is refused to guests until it's listed here.
  */
@@ -61,5 +62,7 @@ export function guestMayFetch(p: string, url: URL, onAWall: (imageUrl: string) =
   if (!p.startsWith('/api/')) return true;
   if (p === '/api/whiteboard/file') return true;
   if (p === '/api/image') return onAWall(url.searchParams.get('url') ?? '');
+  // The jukebox's radio: a built-in station, or the stream on a floor's jukebox (the handler checks it's that one).
+  if (p === '/api/radio') return radioRequestShape(url.searchParams);
   return false;
 }

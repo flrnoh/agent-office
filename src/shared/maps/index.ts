@@ -1,4 +1,4 @@
-import { BEANBAGS, BOARDS, DESKS, ELEVATOR, ELEVATOR_CAR, EXIT_DOOR, FLOOR, MEETING_SEATS, SEATING, STATIONS, STATION_AGENT, WALL_HEIGHT, WING_DESKS, seatHere, seatPlace, type DeskDef, type SeatDef, type SeatPlace, type StationKind } from '../layout.js';
+import { BEANBAGS, BOARDS, BOSS_DESK, DESKS, ELEVATOR, ELEVATOR_CAR, EXIT_DOOR, FLOOR, MEETING_SEATS, SEATING, STATIONS, STATION_AGENT, WALL_HEIGHT, WING_DESKS, seatHere, seatPlace, type DeskDef, type SeatDef, type SeatPlace, type StationKind } from '../layout.js';
 import type { Circle, Rect } from '../nav.js';
 import { CASTLE } from './castle.js';
 import { MapError, isObj, num, str } from './check.js';
@@ -46,7 +46,8 @@ const DEFAULT_BOARD_LABEL: Record<BoardKey, string> = { issues: 'Issues', queue:
 const MAP_DESKS: DeskDef[] = [...DESKS, ...WING_DESKS];
 
 function officePlan(): MapPlan {
-  const byId = new Map([...MAP_DESKS, ...BEANBAGS, ...STATIONS, ...MEETING_SEATS].map((d) => [d.id, d]));
+  // Fork: the boss's desk in the loft too, the office's alone (no other map has a loft).
+  const byId = new Map([...MAP_DESKS, ...BEANBAGS, ...STATIONS, ...MEETING_SEATS, BOSS_DESK].map((d) => [d.id, d]));
   const boards = {} as Record<BoardKey, BoardDef>;
   for (const k of BOARD_KEYS) boards[k] = { ...BOARDS[k] };
   return {

@@ -5,6 +5,7 @@ import type { Net } from '../net';
 import { store } from '../state';
 import { h, openModal, timeAgo, type Modal } from './dom';
 import { confirmDialog } from './prompt';
+import { floorOrder } from './floor-order';
 
 // The elevator's panel: a button for every floor (every project), and "add a project", which clones
 // one of the repositories the office's gh login can see and makes it a new floor. The first time
@@ -58,6 +59,7 @@ export function openElevator(opts: ElevatorOptions): void {
   let built = false;
 
   const floorsEl = h('div.floors');
+  const order = floorOrder(net, floorsEl, () => renderFloors());
   const addEl = h('div.add');
   const input = h('input', { type: 'text', placeholder: 'Search your repositories, or type owner/name', 'aria-label': 'Repository', autocomplete: 'off', spellcheck: 'false' }) as HTMLInputElement;
   const listEl = h('div.repo-list', { role: 'listbox', 'aria-label': 'Repositories' });
@@ -134,7 +136,7 @@ export function openElevator(opts: ElevatorOptions): void {
     if (!store.me.admin || f.cloning) return btn;
     const off = h('button.btn.floor-off', { type: 'button', title: `Take ${f.name} off the building`, 'aria-label': `Remove ${f.name}` }, '🗑');
     off.addEventListener('click', () => confirmRemove(f));
-    return h('div.floor-row', {}, btn, off);
+    return order.row(h('div.floor-row', {}, btn, off), f);
   };
 
   const confirmRemove = (f: FloorInfo) => {
@@ -186,6 +188,7 @@ export function openElevator(opts: ElevatorOptions): void {
   };
 
   const renderFloors = () => {
+    if (order.dragging()) return;
     const floors = store.floors;
     const built = floors.some((f) => !f.cloning);
     // Top floor first, the way an elevator's buttons stack, with the roof over them, floor 1 and then the garage at the bottom.

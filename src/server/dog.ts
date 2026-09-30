@@ -29,7 +29,8 @@ const toward = (from: Pt, to: Pt) => Math.atan2(to[0] - from[0], to[1] - from[1]
 
 /** Needs input and nobody has answered yet. */
 export function callsForDog(w: WorkerInfo): boolean {
-  return w.status === 'needs_input' && !w.acked && DESK_BY_ID.has(w.deskId);
+  // Fork: not up the stairs to the boss's desk (it doesn't do stairs).
+  return w.status === 'needs_input' && !w.acked && DESK_BY_ID.has(w.deskId) && !DESK_BY_ID.get(w.deskId)?.boss;
 }
 
 type Mode = 'lounge' | 'nap' | 'wander' | 'follow' | 'bark' | 'pet';
@@ -237,7 +238,7 @@ export class Dog {
     const call = this.nextCall();
     if (call) return this.barkAt(call);
     // Only at a desk or a bean bag: a board agent's kiosk has nothing to curl up under.
-    const busy = this.env.workers().filter((w) => w.status === 'working' && DESK_BY_ID.has(w.deskId) && !DESK_BY_ID.get(w.deskId)?.station);
+    const busy = this.env.workers().filter((w) => w.status === 'working' && DESK_BY_ID.has(w.deskId) && !DESK_BY_ID.get(w.deskId)?.station && !DESK_BY_ID.get(w.deskId)?.boss);
     const people = this.env.people().filter((p) => p.y < 0.5);
     const was = this.mode;
     const options: [number, () => void][] = [

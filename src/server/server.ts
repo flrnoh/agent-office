@@ -19,6 +19,7 @@ import { Team } from './team.js';
 import { Upgrader } from './upgrade.js';
 import { Services } from './services.js';
 import { ImageProxy } from './decor.js';
+import { RadioProxy, isPlaylistUrl, radioTarget, resolvePlaylist } from './radio.js';
 import { Ledger } from './usage.js';
 import { PlanLimitsReader } from './limits.js';
 import { Webhook } from './webhook.js';
@@ -45,11 +46,14 @@ import { SEARCH_MAX, SEARCH_MIN, searchKey } from '../shared/search.js';
 import { WB_MAX_FILE_BYTES } from '../shared/whiteboard.js';
 import { DROP_MAX_BYTES } from '../shared/drops.js';
 import { MAX_FLOORS } from '../shared/floors.js';
+import { reorderMap } from '../shared/floor-order.js';
 import { lookFromSeed, sanitizeLook } from '../shared/avatar.js';
 import { EMOTE_EVERY, EmoteBucket, isEmote } from '../shared/emotes.js';
 import { isThemePick } from '../shared/theme.js';
 import { PROMPTS, PROMPT_MAX, isPromptId } from '../shared/prompts.js';
-import { ROOF, isDrink } from '../shared/rooftop.js';
+import { ROOF } from '../shared/rooftop.js';
+import { heldDrink, keepsHeld } from './held.js';
+import { DjBooth, djMessage } from './djset.js';
 import { isBarGame, tossOk, type BarGame } from '../shared/bargames.js';
 
 const MIME: Record<string, string> = {
@@ -519,6 +523,7 @@ export async function startServer(cfg: Config) {
   themes.start();
   // What the building looks like inside: the office, the castle, or a map of your own (⚙️ Settings).
   const maps = new Maps(cfg.dataDir);
+  const djBooth = new DjBooth(cfg.dataDir); // flrnoh fork: DJ sets on the roof
   /**
    * Tells everyone about the maps, after a pick or a read of the folder. When the map everyone's on
    * changed (`was` before), everyone's off their seats (each browser forgets them too, see the
@@ -765,7 +770,7 @@ export async function startServer(cfg: Config) {
     cabinet: { ...cabinetState(floor), frame: (floor && cabinetPlayer(floor)?.frame) ?? null },
   });
   /** The rooftop bar: nobody works up there, so it has none of a floor's things. */
-  const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF });
+  const roofView = (): FloorView => ({ ...floorView(undefined), floor: ROOF, dj: djBooth.state() });
   const screensOf = (c: Client, floor: Floor | undefined) => {
     for (const { workerId, frame } of floor?.workers.fullScreens() ?? []) sendTo(c, { t: 'screen', workerId, ...frame, full: true });
   };
@@ -773,6 +778,7 @@ export async function startServer(cfg: Config) {
   const arrivalFloor = (wanted: string | null): Floor | undefined => (wanted && floors.get(wanted)) || floors.values().next().value;
 
   const images = new ImageProxy();
+  const radio = new RadioProxy(); // flrnoh fork: radio stations on the jukebox (radio.ts)
 
   const upgrader = new Upgrader(
     (state) => broadcast({ t: 'upgrade', state }),
@@ -955,6 +961,12 @@ export async function startServer(cfg: Config) {
         } catch {
           return send(res, 502, { error: 'Could not load Grok models' });
         }
+      }
+      if (p === '/api/radio' && req.method === 'GET') {
+        // flrnoh fork: a jukebox stream through the office, for https pages and http streams (radio.ts).
+        const target = radioTarget(url.searchParams, (id) => floors.get(id)?.jukebox.state().url);
+        if ('error' in target) return send(res, target.status, { error: target.error });
+        return radio.pipe(req, res, target.url);
       }
       if (p === '/api/image' && req.method === 'GET') {
         // A picture on the wall, fetched by the office so the 3D view can draw it (see decor.ts).
@@ -1402,7 +1414,7 @@ export async function startServer(cfg: Config) {
     delete c.peer.throwing;
     // An issue card belongs to the board it came off, which is on the floor they left; a drink stays at the bar.
     delete c.peer.carrying;
-    delete c.peer.drink;
+    if (!keepsHeld(c.peer.drink)) delete c.peer.drink; // fork: a bottle from the fridge comes along
     return { was, wasDrawing, ballLeft, carLeft };
   };
 
@@ -1508,8 +1520,8 @@ export async function startServer(cfg: Config) {
       }
       case 'act': {
         if (msg.drink !== undefined) {
-          // A drink from the rooftop bar, which stays up there.
-          const drink = isDrink(msg.drink) && c.peer.floor === ROOF ? msg.drink : undefined;
+          // A drink from the rooftop bar, which stays up there, or (fork) anything from the kitchen fridge.
+          const drink = heldDrink(msg.drink, c.peer.floor);
           if (drink === c.peer.drink) break;
           if (drink) c.peer.drink = drink;
           else delete c.peer.drink;
@@ -1668,6 +1680,16 @@ export async function startServer(cfg: Config) {
         else floorsChanged();
         break;
       }
+      case 'floor.order': {
+        // Floors in any order (flrnoh fork, see FORK.md): the same ids reorder floors.json and the open floors.
+        if (!meOf(c.accountId).admin) return warn(c, 'Only admins can rearrange the floors');
+        const ids = Array.isArray(msg.ids) ? msg.ids.slice(0, 1000) : [];
+        if (!building.reorder(ids)) return sendTo(c, { t: 'floors', floors: floorInfos() });
+        reorderMap(floors, ids);
+        floorsChanged();
+        toastAll(`🛗 ${who} rearranged the floors`);
+        break;
+      }
       case 'floor.projectsDir': {
         // It's a folder on the office's machine that `gh` writes into: admins pick it.
         const err = meOf(c.accountId).admin ? building.setProjectsDir(str(msg.dir, 1024), who) : 'Only admins can move the workspace folder';
@@ -1723,6 +1745,8 @@ export async function startServer(cfg: Config) {
       case 'worker.spawn': {
         const floor = here();
         if (!floor) break;
+        // Fork: the boss's desk is up in the office's loft, on no other map.
+        if (DESK_BY_ID.get(str(msg.deskId, 32))?.boss && maps.pick() !== OFFICE_MAP) return warn(c, 'The boss desk is in the office’s loft: switch the building back to the office');
         const kind = msg.kind === 'shell' ? 'shell' : 'agent';
         if (kind === 'agent' && msg.provider !== undefined && (!isAgentProvider(msg.provider) || !floor.project.agentProviders.includes(msg.provider))) {
           warn(c, 'Unknown agent provider');
@@ -1961,6 +1985,10 @@ export async function startServer(cfg: Config) {
         for (const o of clients.values()) if (o.peer.floor === ROOF) sendTo(o, { t: 'horn', by: who });
         break;
       }
+      case 'dj.play':
+      case 'dj.stop':
+        djMessage(djBooth, msg, { id: c.id, who, onRoof: c.peer.floor === ROOF, toRoof: (m) => { for (const o of clients.values()) if (o.peer.floor === ROOF) sendTo(o, m); }, warn: (t) => warn(c, t) });
+        break;
       case 'gh.close': {
         const floor = here();
         const n = num(msg.number);
@@ -2346,11 +2374,16 @@ export async function startServer(cfg: Config) {
       case 'jukebox.play': {
         const floor = here();
         if (!floor) break;
-        const r = floor.jukebox.play({ track: msg.track, url: msg.url }, who);
-        if ('error' in r) return warn(c, r.error);
-        if (!r.changed) break;
-        jukeboxChanged(floor);
-        toastFloor(floor, floor.jukebox.state().track === STREAM ? `📻 ${who} tuned the jukebox to ${floor.jukebox.title()}` : `🎵 ${who} put on “${floor.jukebox.title()}”`);
+        const put = (url: unknown) => {
+          const r = floor.jukebox.play({ track: msg.track, url, station: msg.station }, who);
+          if ('error' in r) return warn(c, r.error);
+          if (!r.changed) return;
+          jukeboxChanged(floor);
+          toastFloor(floor, floor.jukebox.state().track === STREAM ? `📻 ${who} tuned the jukebox to ${floor.jukebox.title()}` : `🎵 ${who} put on “${floor.jukebox.title()}”`);
+        };
+        // flrnoh fork: a .pls/.m3u playlist plays the stream it lists (radio.ts).
+        if (!msg.station && isPlaylistUrl(msg.url)) void resolvePlaylist(msg.url).then((r) => ('error' in r ? warn(c, r.error) : put(r.url)));
+        else put(msg.url);
         break;
       }
       case 'jukebox.skip': {

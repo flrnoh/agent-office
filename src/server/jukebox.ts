@@ -1,11 +1,14 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { JUKEBOX_TUNES, STREAM, checkStreamUrl, trackTitle, tuneById, type JukeboxState } from '../shared/jukebox.js';
+import { stationById, stationByUrl } from '../shared/radio.js';
 
 interface Saved {
   on: boolean;
   track: string;
   url?: string;
+  /** A built-in radio station's id, when `url` is one (see shared/radio.ts). */
+  station?: string;
   by?: string;
   /** When the track started, on this machine's clock. */
   startedAt: number;
@@ -25,8 +28,8 @@ export class Jukebox {
   }
 
   state(): JukeboxState {
-    const { on, track, url, by, startedAt } = this.s;
-    return { on, track, ...(url && track === STREAM ? { url } : {}), ...(by ? { by } : {}), startedAt, elapsed: Math.max(0, Date.now() - startedAt) };
+    const { on, track, url, station, by, startedAt } = this.s;
+    return { on, track, ...(url && track === STREAM ? { url, ...(station ? { station } : {}) } : {}), ...(by ? { by } : {}), startedAt, elapsed: Math.max(0, Date.now() - startedAt) };
   }
 
   /** What's on, for toasts: “Rainy Window”, or where a stream comes from. */
@@ -34,12 +37,17 @@ export class Jukebox {
     return trackTitle(this.s);
   }
 
-  /** Puts on a tune, a stream, or (with neither) whatever it had. Says whether anything changed, or why it can't. */
-  play(input: { track?: unknown; url?: unknown }, by: string): { changed: boolean } | { error: string } {
-    if (input.url !== undefined && input.url !== '') {
+  /** Puts on a radio station, a tune, a stream, or (with none) whatever it had. Says whether anything changed, or why it can't. */
+  play(input: { track?: unknown; url?: unknown; station?: unknown }, by: string): { changed: boolean } | { error: string } {
+    if (input.station !== undefined && input.station !== '') {
+      const station = stationById(input.station);
+      if (!station) return { error: "The jukebox doesn't know that station" };
+      this.set({ on: true, track: STREAM, url: station.url, station: station.id, by });
+    } else if (input.url !== undefined && input.url !== '') {
       const u = checkStreamUrl(input.url);
       if ('error' in u) return u;
-      this.set({ on: true, track: STREAM, url: u.url, by });
+      const station = stationByUrl(u.url);
+      this.set({ on: true, track: STREAM, url: u.url, ...(station ? { station: station.id } : {}), by });
     } else if (input.track !== undefined) {
       if (typeof input.track !== 'string' || !tuneById(input.track)) return { error: "The jukebox doesn't have that one" };
       this.set({ on: true, track: input.track, by });
@@ -77,7 +85,7 @@ export class Jukebox {
       this.s = {
         on: s.on === true,
         track: s.track!,
-        ...(url && 'url' in url ? { url: url.url } : {}),
+        ...(url && 'url' in url ? { url: url.url, ...(stationByUrl(url.url) ? { station: stationByUrl(url.url)!.id } : {}) } : {}),
         ...(typeof s.by === 'string' ? { by: s.by.slice(0, 24) } : {}),
         startedAt: typeof s.startedAt === 'number' && Number.isFinite(s.startedAt) ? s.startedAt : Date.now(),
       };

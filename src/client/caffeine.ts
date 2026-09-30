@@ -32,6 +32,13 @@ export class Caffeine {
     return true;
   }
 
+  /** Fork (the kitchen fridge): a cola, mate or energy drink tops the buzz up by `seconds`, never past a cup's worth, and no jitters. */
+  top(now: number, seconds: number) {
+    if (seconds <= 0) return;
+    if (!this.buzzed(now)) this.cups = 0;
+    this.until = Math.max(this.until, Math.min(now + BUZZ_SECONDS, Math.max(this.until, now) + seconds));
+  }
+
   buzzed(now: number): boolean {
     return now < this.until;
   }

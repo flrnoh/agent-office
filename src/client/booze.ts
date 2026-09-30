@@ -5,6 +5,7 @@
  * Times are seconds, on whichever clock the caller passes in as `now`.
  */
 import { BOOZE_LIMIT, type Drink } from '../shared/rooftop';
+import { holdSeconds, isFridgeItem } from '../shared/fridge';
 
 /** A drink kicks in over about this long. */
 const KICK_IN = 4;
@@ -32,7 +33,7 @@ export class Booze {
     if (d.strength < 0) this.level = Math.max(0, this.level + d.strength);
     else this.coming += d.strength;
     this.glass = d;
-    this.glassUntil = now + GLASS_SECONDS;
+    this.glassUntil = now + holdSeconds(d, GLASS_SECONDS); // fork: the fridge's snacks go quicker
   }
 
   /** Had enough: the bartender pours you a water instead. Counts what's still on its way. */
@@ -58,8 +59,9 @@ export class Booze {
     return this.glass;
   }
 
-  /** Puts the glass down (leaving the roof: drinks stay at the bar). */
+  /** Puts the glass down (leaving the roof: drinks stay at the bar; fork: a bottle from the fridge comes along). */
   putDown() {
+    if (this.glass && isFridgeItem(this.glass.id)) return;
     this.glass = null;
   }
 
