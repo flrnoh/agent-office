@@ -8,6 +8,7 @@ import { h, openModal, toast } from './ui/dom';
 import { casinoUiFor, chipText, type CasinoSoundKind, type CasinoUi } from './ui/casino/registry';
 import { openComingSoon, TABLE_ICON } from './ui/casino/soon';
 import './ui/casino/slots'; // registers the slot machines' window
+import './ui/casino/poker'; // registers the poker table's window
 import './ui/casino/casino.css';
 
 /*
