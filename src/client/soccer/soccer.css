@@ -1,4 +1,4 @@
-/* The soccer hall (flrnoh fork, see client/soccer/place.ts): the score bar at the top, the kick's meter. */
+/* The soccer hall (flrnoh fork, see client/soccer/place.ts): the score bar at the top, the controls under it, and the aim round the crosshair (a ring, the shot's power, who a pass is for). */
 .soccer-hud { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 5; pointer-events: none; display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: #1d3b2c; color: #f4fff7; border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); font-weight: 900; font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .soccer-hud b { display: inline-grid; place-items: center; min-width: 26px; height: 26px; border-radius: 8px; color: #fff; }
 .soccer-hud b.red { background: #e63946; }
@@ -8,8 +8,19 @@
 .soccer-hud small.mine { padding: 1px 7px; border-radius: 999px; opacity: 1; }
 .soccer-hud small.mine.red { background: #e63946; }
 .soccer-hud small.mine.blue { background: #277df0; }
-.soccer-meter { position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%); z-index: 5; pointer-events: none; width: 120px; height: 10px; border-radius: 999px; border: 2px solid var(--ink); background: rgba(255, 255, 255, .7); overflow: hidden; }
-.soccer-meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8ecae6, #ffd166 60%, #e63946); }
-.soccer-meter.chip i { background: linear-gradient(90deg, #b8f2c9, #2f8f47); }
-body:has(.backdrop) .soccer-hud, .soccer-hud[hidden], .soccer-meter[hidden] { display: none; }
-@media (max-width: 480px) { .soccer-hud { top: 58px; font-size: 14px; gap: 6px; padding: 5px 10px; } .soccer-hud small:not(.mine) { display: none; } }
+.soccer-keys { position: absolute; top: 106px; left: 50%; transform: translateX(-50%); z-index: 5; pointer-events: none; padding: 3px 12px; border-radius: 999px; background: rgba(14, 26, 19, .72); color: #f4fff7; font-weight: 800; font-size: 12px; letter-spacing: .01em; white-space: nowrap; }
+.soccer-aim { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 5; pointer-events: none; }
+.soccer-aim .ring { position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .75); box-shadow: 0 0 0 1px rgba(43, 45, 66, .55), inset 0 0 0 1px rgba(43, 45, 66, .35); transition: transform .12s, border-color .12s; }
+.soccer-aim.charging .ring { transform: scale(.82); border-color: #ffd166; }
+.soccer-aim.charging.lob .ring { border-color: #7ee89a; }
+.soccer-aim.full .ring { border-color: #ff5a4f; }
+.soccer-aim .bar { position: absolute; left: -60px; top: 26px; width: 120px; height: 10px; border-radius: 999px; border: 2px solid var(--ink); background: rgba(255, 255, 255, .7); overflow: hidden; opacity: 0; transition: opacity .1s; }
+.soccer-aim.charging .bar { opacity: 1; }
+.soccer-aim .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8ecae6, #ffd166 60%, #e63946); }
+.soccer-aim.lob .bar i { background: linear-gradient(90deg, #b8f2c9, #2f8f47); }
+.soccer-aim .who { position: absolute; left: 0; top: 42px; transform: translateX(-50%); white-space: nowrap; font-weight: 900; font-size: 13px; color: #fff; text-shadow: 0 1px 0 var(--ink), 0 0 4px rgba(0, 0, 0, .6); }
+.soccer-aim .who:empty { display: none; }
+.soccer-aim.third .ring { display: none; }
+.soccer-aim.third { top: 62%; }
+body:has(.backdrop) :is(.soccer-hud, .soccer-keys, .soccer-aim), .soccer-hud[hidden], .soccer-keys[hidden], .soccer-aim[hidden] { display: none; }
+@media (max-width: 480px) { .soccer-hud { top: 58px; font-size: 14px; gap: 6px; padding: 5px 10px; } .soccer-hud small:not(.mine) { display: none; } .soccer-keys { top: 96px; font-size: 11px; } }
