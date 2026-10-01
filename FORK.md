@@ -26,6 +26,12 @@ This repository is a fork of [AgentSystemLabs/agent-office](https://github.com/A
 
 ## This fork's changes
 
+### No Halloween
+
+The building never dresses up for Halloween: the calendar (`auto`) only puts up Christmas in December, ⚙️ Settings doesn't offer Halloween, and a `theme.json` still saying `halloween` shows nothing. Upstream's Halloween models and costumes stay in the code, unused, so syncs don't conflict.
+
+- Hooks in upstream files: `src/shared/theme.ts` (`THEME_PICKS`, `calendarTheme`, `activeTheme`), `src/client/ui/settings.ts` (the note under the picker).
+
 ### Guest role (#1, #2)
 
 Friends who come over to hang out: they walk around, chat, talk, play (arcade, golf, darts, basketball, cars, jukebox, whiteboard, the table games on the roof, padel in the hall) and watch the workers' terminals, but can't type in them, hire, send home, touch GitHub, the queue, meetings, settings or accounts, or reach the workers' dev servers. The server enforces it, whatever a guest's browser sends.
