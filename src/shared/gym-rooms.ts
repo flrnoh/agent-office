@@ -1,5 +1,6 @@
 import type { SeatDef } from './layout.js';
 import { GYM_DOOR, GYM_ENTRY, GYM_ROOM } from './gym.js';
+import { CHANGING_DOOR, CHANGING_SEATING, changingFixtures } from './gym-changing.js';
 
 /*
  * The gym's rooms, spa and fixtures (flrnoh fork, see FORK.md "Rooms, spa and detail"): where
@@ -153,6 +154,10 @@ export const MASSAGE_TABLES = [
   { id: 'massage-1', x: 31.9, z: 43.05 },
   { id: 'massage-2', x: 31.9, z: 45.35 },
 ] as const;
+/** How high the massage tables' tops stand (low enough for the masseur to work over). */
+export const MASSAGE_TOP = 0.5;
+/** The masseurs: one at the side of each table, in the gap between the two, facing their table. */
+export const MASSEURS = MASSAGE_TABLES.map((t, i) => ({ table: t.id, x: t.x + 0.2, z: t.z + (i === 0 ? 0.6 : -0.6), rotY: i === 0 ? Math.PI : 0 }));
 /** Relaxation loungers along the spa's west wall, looking east. */
 export const LOUNGER_ZS = [43.1, 44.2, 45.3, 46.4] as const;
 export const LOUNGER = { minX: SPA.minX + SPA_WALL + 0.1, length: 1.9, width: 0.7 } as const;
@@ -168,7 +173,7 @@ export const RECEPTION = { minX: 22.0, maxX: 24.3, minZ: R.minZ, maxZ: 38.9, cou
 export const TURNSTILE = { z: 37.9, posts: [18.5, 19.45, 20.55, 21.5] } as const;
 /** The lockers and the changing-room door on the west wall, by the entrance. */
 export const LOCKERS = { minZ: R.minZ, maxZ: 38.9, depth: 0.5 } as const;
-export const CHANGING_DOOR = { z: 39.75, width: 1.05 } as const;
+export { CHANGING_DOOR };
 /** The juice bar's counter along the west wall (shared/gym.ts JUICE_BAR is its station), and its stools. */
 export const JUICE_COUNTER = { backMaxX: R.minX + 0.4, minX: 7.1, maxX: 7.7, minZ: 41.0, maxZ: 47.0, top: 1.1 } as const;
 export const JUICE_STOOL_X = 8.15;
@@ -186,6 +191,8 @@ export const GYM_SEATING: SeatDef[] = [
   { id: 'gym-steam-s', label: '💨 Steam bench', x: 31.6, y: 0, z: 50.25, rotY: Math.PI, places: [-0.7, 0.7], hips: 0.47, depth: 0, out: 0.75, gym: true },
   // Relaxation loungers in the spa, a towel on each.
   ...LOUNGER_ZS.map((z, i) => ({ id: `gym-lounger-${i + 1}`, label: '🛋️ Lounger', x: LOUNGER.minX + 0.95, y: 0, z, rotY: Math.PI / 2, places: [0], hips: 0.42, depth: -0.15, out: 1.5, gym: true })),
+  // The changing room's bench (shared/gym-changing.ts).
+  ...CHANGING_SEATING,
   // The juice bar's stools, facing the counter.
   ...JUICE_STOOL_ZS.map((z, i) => ({ id: `gym-stool-${i + 1}`, label: '🥤 Bar stool', x: JUICE_STOOL_X, y: 0, z, rotY: -Math.PI / 2, places: [0], hips: 0.74, depth: 0, out: -0.7, gym: true })),
   // A bench by the lockers, and one along the spa's wall facing the strength floor.
@@ -227,7 +234,8 @@ export function gymFixtures(): Fixture[] {
   const M = MASSAGE_ROOM;
   f.push({ id: 'curtain-1', minX: M.minX, maxX: M.minX + 0.08, minZ: M.minZ, maxZ: MASSAGE_OPENING.minZ, top: 2.3 });
   f.push({ id: 'curtain-2', minX: M.minX, maxX: M.minX + 0.08, minZ: MASSAGE_OPENING.maxZ, maxZ: M.maxZ, top: 2.3 });
-  for (const t of MASSAGE_TABLES) f.push({ id: `table-${t.id}`, minX: t.x - 1.0, maxX: t.x + 1.0, minZ: t.z - 0.38, maxZ: t.z + 0.38, top: 0.75 });
+  for (const t of MASSAGE_TABLES) f.push({ id: `table-${t.id}`, minX: t.x - 1.0, maxX: t.x + 1.0, minZ: t.z - 0.38, maxZ: t.z + 0.38, top: MASSAGE_TOP });
+  for (const m of MASSEURS) f.push({ id: `masseur-${m.table}`, minX: m.x - 0.22, maxX: m.x + 0.22, minZ: m.z - 0.22, maxZ: m.z + 0.22, top: 1.7 });
   // Inside the sauna: the stove and its rail, and the benches in two tiers.
   f.push({ id: 'sauna-stove', minX: 30.05, maxX: 30.85, minZ: SAUNA.inner.minZ, maxZ: 51.45, top: 0.9 });
   f.push({ id: 'sauna-low-e', minX: 32.05, maxX: 32.85, minZ: SAUNA.inner.minZ, maxZ: 54.05, top: 0.45 });
@@ -273,9 +281,57 @@ export function gymFixtures(): Fixture[] {
   // Plants: by the door, and at the end of the juice bar.
   f.push({ id: 'plant-door', minX: 21.55, maxX: 21.95, minZ: R.minZ + 0.05, maxZ: R.minZ + 0.45, top: 1.3 });
   f.push({ id: 'plant-juice', minX: R.minX + 0.05, maxX: R.minX + 0.5, minZ: 40.35, maxZ: 40.8, top: 1.3 });
+  // The changing room through the west wall, and the wall itself either side of its door.
+  f.push(...changingFixtures());
   return f;
 }
 
 /** Where you stand when you come in (just inside the turnstiles): kept clear. */
 export const ENTRY_SPOT = { x: GYM_ENTRY.x, z: GYM_ENTRY.z } as const;
 export { GYM_DOOR };
+
+// ---- Getting in: the jacuzzi, the plunge, the massage tables ---------------------------------------
+
+/**
+ * The spa's spots you get into rather than stand at (flrnoh fork): E there sits you down in the
+ * jacuzzi's water (one of its four places), crouches you neck-deep in the plunge's ice, or lays you
+ * face down on a massage table, and holds you there until you get out (client/gym.ts). The office
+ * keeps who's in which place (WellnessView.slots), so everyone sees the same.
+ */
+export type SoakPose = 'tub' | 'plunge' | 'massage';
+export interface SoakPlace {
+  x: number;
+  z: number;
+  /** Which way they face (0: +z). */
+  rotY: number;
+  pose: SoakPose;
+}
+/** The water's surface in the jacuzzi and in the plunge. */
+export const JACUZZI_WATER = JACUZZI.rim - 0.08;
+export const PLUNGE_WATER = PLUNGE.rim - 0.14;
+/** How far out from the jacuzzi's middle its places are, round its bench. */
+const TUB_PLACE = 0.72;
+
+/** Whether station `id` is one you get into. */
+export const isSoak = (id: string) => id === 'hottub' || id === 'coldplunge' || MASSAGE_TABLES.some((t) => t.id === id);
+
+/** Where place `slot` of station `id` has you, if it's one you get into. */
+export function soakPlace(id: string, slot = 0): SoakPlace | undefined {
+  if (id === 'hottub') {
+    // Round the tub, each facing its middle.
+    const a = Math.PI / 4 + (Math.max(0, slot) % 4) * (Math.PI / 2);
+    return { x: JACUZZI.x + Math.cos(a) * TUB_PLACE, z: JACUZZI.z + Math.sin(a) * TUB_PLACE, rotY: Math.atan2(-Math.cos(a), -Math.sin(a)), pose: 'tub' };
+  }
+  if (id === 'coldplunge') return { x: PLUNGE.x, z: PLUNGE.z, rotY: -Math.PI / 2, pose: 'plunge' };
+  const t = MASSAGE_TABLES.find((m) => m.id === id);
+  // Face down along the table, the head on the face rest at its east end.
+  return t ? { x: t.x, z: t.z, rotY: Math.PI / 2, pose: 'massage' } : undefined;
+}
+
+/** Where you step out to: down the jacuzzi's steps, beside the plunge, off the foot of the table. */
+export function soakOff(id: string): { x: number; z: number; rotY: number } | undefined {
+  if (id === 'hottub') return { x: JACUZZI.x - JACUZZI.r - 0.5, z: JACUZZI.z, rotY: Math.PI / 2 };
+  if (id === 'coldplunge') return { x: PLUNGE.x - PLUNGE.half - 0.5, z: PLUNGE.z, rotY: Math.PI / 2 };
+  const t = MASSAGE_TABLES.find((m) => m.id === id);
+  return t ? { x: t.x - 1.45, z: t.z, rotY: Math.PI / 2 } : undefined;
+}

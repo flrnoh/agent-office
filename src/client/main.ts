@@ -68,6 +68,7 @@ import { installDjSets } from './features/djset';
 import { installDoorbell } from './features/doorbell';
 import { installFogbox } from './features/fogbox';
 import { installFridge } from './features/fridge';
+import { installFrontDoor } from './features/frontdoor';
 import { installGuests } from './features/guests';
 import { installPlaces } from './features/places';
 import { installRig } from './features/rig';
@@ -197,6 +198,7 @@ parts.bungee = installBungee(ctx, { roof: parts.rooftop.roof, roofFloors: parts.
 parts.places = installPlaces(ctx, core, parts, { served: (d) => parts.fridge.serveFromCafe(d) });
 parts.guests = installGuests(ctx, { openWorkerTerminal: (id) => parts.waiting.openWorkerTerminal(id) });
 installDoorbell(ctx);
+installFrontDoor(ctx, core, parts);
 installSpeakers(ctx, { officeWing: () => parts.worlds.officeWing() });
 installFogbox(ctx, { officeWing: () => parts.worlds.officeWing() });
 

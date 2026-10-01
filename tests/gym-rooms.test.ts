@@ -4,7 +4,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { GYM_ENTRY, GYM_ROOM, GYM_STATIONS, JUICE_BAR, type GymServerMsg } from '../src/shared/gym.js';
-import { AUFGUSS_BOOST, AUFGUSS_BOOST_MS, AUFGUSS_COOLDOWN_MS, BENCH_BONUS, GYM_SEATING, SAUNA, STEAM, WALK_INS, aufgussWait, gymFixtures, inRect, onBenchIn, walkInAt, walkInFactor, type Rect } from '../src/shared/gym-rooms.js';
+import { AUFGUSS_BOOST, AUFGUSS_BOOST_MS, AUFGUSS_COOLDOWN_MS, BENCH_BONUS, GYM_SEATING, JACUZZI, JACUZZI_WATER, MASSAGE_TABLES, MASSEURS, PLUNGE, PLUNGE_WATER, SAUNA, STEAM, WALK_INS, aufgussWait, gymFixtures, inRect, isSoak, onBenchIn, soakOff, soakPlace, walkInAt, walkInFactor, type Rect } from '../src/shared/gym-rooms.js';
+import { CHANGING_DOOR, CHANGING_DOORWAY, CHANGING_ROOM, CHANGING_WALL, SHOWERS, inChanging, showerAt } from '../src/shared/gym-changing.js';
 import { SEATING_BY_ID, seatHere, seatPlace } from '../src/shared/layout.js';
 import { Gym, type GymPlayer } from '../src/server/gym/index.js';
 import type { WellnessView } from '../src/shared/gym-wellness.js';
@@ -23,9 +24,13 @@ const machines: (Rect & { id: string })[] = GYM_STATIONS.filter((s) => s.kind ==
 /** Everything you bump into at standing height (the cabins' roofs and lintels are overhead). */
 const solid = () => [...gymFixtures().filter((f) => (f.bottom ?? 0) < 1.5 && f.top > 0.3), ...machines];
 
+/** Fork: the floor you stand on, the hall and the changing room through its door (its walls are fixtures). */
+const FLOOR_BOX: Rect = { minX: CHANGING_ROOM.minX, maxX: GYM_ROOM.maxX, minZ: GYM_ROOM.minZ, maxZ: GYM_ROOM.maxZ };
+const onFloor = (x: number, z: number) => inRect(GYM_ROOM, x, z, RADIUS) || inRect(CHANGING_ROOM, x, z, RADIUS) || inRect(CHANGING_DOORWAY, x, z);
+
 /** Whether you fit standing at (x, z). */
 function fits(x: number, z: number, obstacles: Rect[] = solid()): boolean {
-  if (!inRect(GYM_ROOM, x, z, RADIUS)) return false;
+  if (!onFloor(x, z)) return false;
   return !obstacles.some((o) => {
     const nx = Math.min(Math.max(x, o.minX), o.maxX);
     const nz = Math.min(Math.max(z, o.minZ), o.maxZ);
@@ -37,9 +42,9 @@ function fits(x: number, z: number, obstacles: Rect[] = solid()): boolean {
 function walkable(): (x: number, z: number) => boolean {
   const step = 0.1;
   const obstacles = solid();
-  const nx = Math.ceil((GYM_ROOM.maxX - GYM_ROOM.minX) / step);
-  const nz = Math.ceil((GYM_ROOM.maxZ - GYM_ROOM.minZ) / step);
-  const cell = (x: number, z: number) => [Math.round((x - GYM_ROOM.minX) / step), Math.round((z - GYM_ROOM.minZ) / step)] as const;
+  const nx = Math.ceil((FLOOR_BOX.maxX - FLOOR_BOX.minX) / step);
+  const nz = Math.ceil((FLOOR_BOX.maxZ - FLOOR_BOX.minZ) / step);
+  const cell = (x: number, z: number) => [Math.round((x - FLOOR_BOX.minX) / step), Math.round((z - FLOOR_BOX.minZ) / step)] as const;
   const seen = new Uint8Array(nx * nz);
   const [sx, sz] = cell(GYM_ENTRY.x, GYM_ENTRY.z);
   const queue = [sx + sz * nx];
@@ -58,7 +63,7 @@ function walkable(): (x: number, z: number) => boolean {
       const jz = iz + dz;
       if (jx < 0 || jz < 0 || jx >= nx || jz >= nz) continue;
       const j = jx + jz * nx;
-      if (seen[j] || !fits(GYM_ROOM.minX + jx * step, GYM_ROOM.minZ + jz * step, obstacles)) continue;
+      if (seen[j] || !fits(FLOOR_BOX.minX + jx * step, FLOOR_BOX.minZ + jz * step, obstacles)) continue;
       seen[j] = 1;
       queue.push(j);
     }
@@ -69,9 +74,13 @@ function walkable(): (x: number, z: number) => boolean {
   };
 }
 
-test('nothing of the rooms stands on a machine, and everything stays in the hall', () => {
+test('nothing of the rooms stands on a machine, and everything stays in the hall (or the changing room and the wall to it)', () => {
+  const W = CHANGING_WALL;
+  const annex = { minX: CHANGING_ROOM.minX - W, maxX: GYM_ROOM.minX, minZ: CHANGING_ROOM.minZ - W, maxZ: CHANGING_ROOM.maxZ + W };
+  const inBox = (f: Rect, b: Rect) => f.minX >= b.minX - 1e-9 && f.maxX <= b.maxX + 1e-9 && f.minZ >= b.minZ - 1e-9 && f.maxZ <= b.maxZ + 1e-9;
   for (const f of gymFixtures()) {
-    assert.ok(f.minX >= GYM_ROOM.minX - 1e-9 && f.maxX <= GYM_ROOM.maxX + 1e-9 && f.minZ >= GYM_ROOM.minZ - 1e-9 && f.maxZ <= GYM_ROOM.maxZ + 1e-9, `${f.id} is inside`);
+    const wall = f.id.startsWith('gym-wall-w');
+    assert.ok(inBox(f, GYM_ROOM) || inBox(f, annex) || wall, `${f.id} is inside`);
     for (const m of machines) assert.ok(!overlaps(f, { minX: m.minX - 0.1, maxX: m.maxX + 0.1, minZ: m.minZ - 0.1, maxZ: m.maxZ + 0.1 }), `${f.id} keeps off ${m.id}`);
   }
   assert.ok(fits(GYM_ENTRY.x, GYM_ENTRY.z), 'where you come in is clear');
@@ -92,6 +101,14 @@ test('from the door you can walk into the sauna, the steam room and everywhere e
     ['the turf lane', 20.5, 54.3],
     ['the heavy bag', 11.0, 53.0],
     ['the lockers', 7.3, 39.0],
+    ['through the changing-room door', GYM_ROOM.minX - 0.15, CHANGING_DOOR.z],
+    ['the changing room', 4.5, 39.75],
+    ['the changing-room bench', 2.45, 39.4],
+    ['the sinks', 4.7, 38.0],
+    ...SHOWERS.map((sh, i): [string, number, number] => [`shower ${i + 1}`, sh.x, sh.z]),
+    ['out of the jacuzzi', soakOff('hottub')!.x, soakOff('hottub')!.z],
+    ['out of the plunge', soakOff('coldplunge')!.x, soakOff('coldplunge')!.z],
+    ...MASSAGE_TABLES.map((t): [string, number, number] => [`off ${t.id}`, soakOff(t.id)!.x, soakOff(t.id)!.z]),
   ];
   for (const [what, x, z] of spots) assert.ok(reach(x, z), `you can walk to ${what}`);
   // Every cardio and strength machine can be walked up to.
@@ -132,7 +149,7 @@ test('the benches: in their room, in the gym only, and you can get up off them',
       assert.ok(seatHere(p.key, false, false, true), `${p.key} is somewhere to sit in the gym`);
       assert.equal(seatHere(p.key, false), undefined, `${p.key} not from an office floor`);
       assert.equal(seatHere(p.key, false, true), undefined, `${p.key} not from the padel hall`);
-      assert.ok(inRect(GYM_ROOM, p.x, p.z), `${p.key} is in the gym`);
+      assert.ok(inRect(GYM_ROOM, p.x, p.z) || inChanging(p.x, p.z), `${p.key} is in the gym`);
       // Getting up (as player.ts standingSpot does): out in front, or turning a little, clear of
       // anything taller than where your feet go.
       const ahead = p.rotY + (p.out < 0 ? Math.PI : 0);
@@ -306,5 +323,68 @@ test('the steam room is walked into too, and leaving the gym takes you out', () 
     gym.leave('c1');
     const bo = peer('c2', 'account:2', 'Bo');
     assert.deepEqual(bo.station('sauna')?.occupants, []);
+  });
+});
+
+// ---- The changing room and getting into the spa (fork) --------------------------------------------
+
+test('the changing room: in through its door only, the showers inside it', () => {
+  const walls = gymFixtures().filter((f) => f.id.startsWith('gym-wall-w'));
+  for (let z = GYM_ROOM.minZ + 0.05; z < GYM_ROOM.maxZ; z += 0.1) {
+    const wall = walls.some((f) => z > f.minZ && z < f.maxZ);
+    if (Math.abs(z - CHANGING_DOOR.z) < CHANGING_DOOR.width / 2 - 0.02) assert.ok(!wall, `the doorway at z ${z.toFixed(2)} is open`);
+    else if (Math.abs(z - CHANGING_DOOR.z) > CHANGING_DOOR.width / 2 + 0.02) assert.ok(wall, `the west wall at z ${z.toFixed(2)} is closed`);
+  }
+  assert.ok(CHANGING_DOOR.width > 2 * RADIUS + 0.1, 'you fit through the door');
+  SHOWERS.forEach((sh, i) => {
+    assert.ok(inChanging(sh.x, sh.z), `shower ${i + 1} is in the changing room`);
+    assert.equal(showerAt(sh.x, sh.z), i);
+  });
+  assert.equal(showerAt(4.5, 39.75), -1, 'not under a shower in the middle of the room');
+});
+
+test('the jacuzzi, the plunge and the tables: you get in, and out again where there is room', () => {
+  assert.ok(isSoak('hottub') && isSoak('coldplunge') && MASSAGE_TABLES.every((t) => isSoak(t.id)));
+  assert.ok(!isSoak('sauna') && !isSoak('yoga'));
+  const tub = new Set<string>();
+  for (let slot = 0; slot < 4; slot++) {
+    const p = soakPlace('hottub', slot)!;
+    assert.equal(p.pose, 'tub');
+    assert.ok(Math.hypot(p.x - JACUZZI.x, p.z - JACUZZI.z) < JACUZZI.r - 0.3, `place ${slot} is in the water`);
+    // Facing the middle.
+    const toMid = Math.atan2(JACUZZI.x - p.x, JACUZZI.z - p.z);
+    assert.ok(Math.abs(Math.atan2(Math.sin(toMid - p.rotY), Math.cos(toMid - p.rotY))) < 1e-9, `place ${slot} faces the middle`);
+    tub.add(`${p.x.toFixed(2)},${p.z.toFixed(2)}`);
+  }
+  assert.equal(tub.size, 4, 'four places, all different');
+  assert.ok(JACUZZI_WATER > 0.3 && JACUZZI_WATER < JACUZZI.rim, 'the water is in the tub');
+  const pl = soakPlace('coldplunge')!;
+  assert.ok(Math.abs(pl.x - PLUNGE.x) < PLUNGE.half && Math.abs(pl.z - PLUNGE.z) < PLUNGE.half, 'in the plunge');
+  assert.ok(PLUNGE_WATER < PLUNGE.rim - 0.05, "the plunge's water is below its rim: open, not covered");
+  for (const t of MASSAGE_TABLES) {
+    const p = soakPlace(t.id)!;
+    assert.equal(p.pose, 'massage');
+    assert.ok(Math.abs(p.x - t.x) < 0.01 && Math.abs(p.z - t.z) < 0.01, `on ${t.id}`);
+    assert.ok(MASSEURS.some((m) => m.table === t.id && Math.abs(m.z - t.z) < 1 && Math.abs(m.x - t.x) < 1), `a masseur by ${t.id}`);
+  }
+  assert.equal(soakPlace('sauna'), undefined);
+  for (const id of ['hottub', 'coldplunge', ...MASSAGE_TABLES.map((t) => t.id)]) assert.ok(fits(soakOff(id)!.x, soakOff(id)!.z), `room to get out of ${id}`);
+});
+
+test('the office keeps who is in which place, so everyone sees them in the same one', () => {
+  withGym((gym, _clock, peer) => {
+    const ada = peer('c1', 'account:1', 'Ada');
+    const bo = peer('c2', 'account:2', 'Bo');
+    const cy = peer('c3', 'account:3', 'Cy');
+    gym.message('c1', { t: 'gym.sit', station: 'hottub' });
+    gym.message('c2', { t: 'gym.sit', station: 'hottub' });
+    assert.deepEqual(cy.station('hottub')?.slots, ['Ada', 'Bo', '', '']);
+    gym.message('c1', { t: 'gym.stand' });
+    assert.deepEqual(cy.station('hottub')?.slots, ['', 'Bo', '', ''], 'Bo stays where he sat when Ada gets out');
+    gym.message('c3', { t: 'gym.sit', station: 'hottub' });
+    assert.deepEqual(ada.station('hottub')?.slots, ['Cy', 'Bo', '', ''], 'the next one takes the free place');
+    gym.message('c1', { t: 'gym.sit', station: 'massage-1' });
+    assert.deepEqual(bo.station('massage-1')?.slots, ['Ada']);
+    assert.equal(bo.station('sauna')?.slots, undefined, 'the sauna is walked into, no places');
   });
 });

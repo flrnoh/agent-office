@@ -7,13 +7,16 @@ import { box, glow } from './parts';
 import { buildGymRooms } from './rooms'; // the hall, lobby, juice bar, turf, stretch area, decor
 import { buildGymSpa, type SpaView } from './spa'; // the spa: walk-in sauna and steam room, jacuzzi, plunge, massage
 import { buildEquipment, type Equipment } from './equipment'; // the cardio and strength machines, alive
+import { buildSoak, type Soak } from './soak'; // getting into the jacuzzi and the plunge, onto a massage table
+import { buildChanging } from './changing'; // the changing room through the west wall
 
 /*
  * Inside the gym (flrnoh fork, see FORK.md): a place of its own like the roof and the casino, built
  * the first time anyone goes in (client/gym.ts). A bright fitness club — a rubber floor, mirrored
  * walls, a cardio deck along the front windows, the strength floor down the middle, a heavy bag and a
  * stretch studio, a juice bar along the west wall, and a walled-off wellness spa (sauna, steam room,
- * jacuzzi, cold plunge, massage loungers) in the south-east corner. Its floor is at y 0. Mirrors
+ * jacuzzi, cold plunge, massage tables) in the south-east corner, and a changing room through the
+ * west wall. Its floor is at y 0. Mirrors
  * world/casino/interior.ts.
  */
 
@@ -31,6 +34,8 @@ export interface GymInterior {
   walkInAt(x: number, z: number): string | undefined;
   /** The cardio and strength machines, alive, and the people on them (equipment.ts). */
   equipment: Equipment;
+  /** Fork: the jacuzzi, the plunge and the massage tables, and whoever's in them (soak.ts). */
+  soak: Soak;
 }
 
 const R = GYM_ROOM;
@@ -47,6 +52,8 @@ export function buildGymInterior(showCeiling = true): GymInterior {
   const kit = { group, still, colliders, interactables };
   const rooms = buildGymRooms(kit, showCeiling);
   const spa = buildGymSpa(kit);
+  const soak = buildSoak(kit);
+  const changing = buildChanging(kit);
   for (const f of gymFixtures()) colliders.push({ minX: f.minX, maxX: f.maxX, minZ: f.minZ, maxZ: f.maxZ, bottom: f.bottom ?? 0, top: f.top });
 
   // ---- Stations -----------------------------------------------------------------------------------
@@ -83,6 +90,7 @@ export function buildGymInterior(showCeiling = true): GymInterior {
     } else if (kind === 'wellness' || kind === 'juicebar') {
       rooms.setStation(id, state);
       spa.setStation(id, state);
+      soak.setStation(id, state);
     }
   };
 
@@ -90,7 +98,8 @@ export function buildGymInterior(showCeiling = true): GymInterior {
     const v: SpaView = view ?? { me: null, cam: null, people: [] };
     rooms.update(t, dt, v.people);
     spa.update(t, dt, v);
+    changing.update(t, dt, v.people);
   };
 
-  return { group, colliders, interactables, pickables: [group], exit, setStation, update, walkInAt: (x, z) => spa.roomAt(x, z)?.station, equipment };
+  return { group, colliders, interactables, pickables: [group], exit, setStation, update, walkInAt: (x, z) => spa.roomAt(x, z)?.station, equipment, soak };
 }

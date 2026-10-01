@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GYM_ROOM, GYM_STATION_BY_ID } from '../../../shared/gym';
 import type { WellnessView } from '../../../shared/gym-wellness';
-import { CABIN_HEIGHT, JACUZZI, LOUNGER, LOUNGER_ZS, MASSAGE_OPENING, MASSAGE_ROOM, MASSAGE_TABLES, PLUNGE, SAUNA, SPA, SPA_DOOR, SPA_WALL, SPA_WALL_HEIGHT, STEAM, cabinWalls, inRect, type WalkInRoom } from '../../../shared/gym-rooms';
+import { CABIN_HEIGHT, JACUZZI, LOUNGER, LOUNGER_ZS, MASSAGE_OPENING, MASSAGE_ROOM, MASSAGE_TABLES, MASSAGE_TOP, PLUNGE, SAUNA, SPA, SPA_DOOR, SPA_WALL, SPA_WALL_HEIGHT, STEAM, cabinWalls, inRect, type WalkInRoom } from '../../../shared/gym-rooms';
 import type { Interactable } from '../types';
 import { mesh, textPlane, toon } from '../toon';
 import { blk, candle, cyl, decal, flameMat, picture, plant, seatable, tex, type GymParts } from './kit';
@@ -15,8 +15,9 @@ import { curtain, planks, tiles, water } from './textures';
  * open as someone comes up: the Finnish sauna (two tiers of cedar benches you can sit on, a stove
  * with glowing stones, the bucket and ladle for an Aufguss, an hourglass, a thermometer, a warm dim
  * light, a heat shimmer, and a burst of steam everyone sees when someone pours) and the tiled steam
- * room (benches, a eucalyptus bowl, thick mist). Then a jacuzzi with bubbling water and steps, a cold
- * plunge full of ice, relaxation loungers with towels, and a massage room behind a curtain. Candles,
+ * room (benches, a eucalyptus bowl, thick mist). Then a jacuzzi with bubbling water and steps,
+ * relaxation loungers with towels, and a massage room behind a curtain (the cold plunge, and getting
+ * into the jacuzzi or onto a table, are soak.ts). Candles,
  * plants and soft light throughout. Colliders come from shared/gym-rooms.ts.
  */
 
@@ -367,10 +368,11 @@ export function buildGymSpa(p: GymParts): GymSpa {
   const shellMat = tex(tiles('#e3ecef', '#b8c6cc', 6, 0.05, 101), '#ffffff');
   (shellMat.map as THREE.Texture).wrapS = (shellMat.map as THREE.Texture).wrapT = THREE.RepeatWrapping;
   (shellMat.map as THREE.Texture).repeat.set(6, 1);
-  p.group.add(mesh(new THREE.CylinderGeometry(J.r, J.r + 0.02, J.rim, 32, 1, true), shellMat, J.x, J.rim / 2, J.z, false));
+  const shell = mesh(new THREE.CylinderGeometry(J.r, J.r + 0.02, J.rim, 32, 1, true), shellMat, J.x, J.rim / 2, J.z, false);
+  p.group.add(shell);
   const rim = mesh(new THREE.RingGeometry(J.r - 0.16, J.r + 0.02, 32), toon('#d6c3a5'), J.x, J.rim + 0.005, J.z, false);
   rim.rotation.x = -Math.PI / 2;
-  p.still.add(rim);
+  p.group.add(rim);
   const waterTex = water('#2d9cc0', 'rgba(220,250,255,0.55)');
   const waterMat = new THREE.MeshBasicMaterial({ map: waterTex, transparent: true, opacity: 0.88, toneMapped: false });
   waterMat.userData.outlineParameters = { visible: false };
@@ -395,37 +397,9 @@ export function buildGymSpa(p: GymParts): GymSpa {
   p.group.add(wisps.points);
   const hottubIt: Interactable = { kind: 'gymstation', gymStation: 'hottub', x: J.x, z: J.z, y: 0, radius: J.r + 1.2 };
   p.interactables.push(hottubIt);
-  tub.userData.interact = hottubIt;
+  for (const o of [tub, shell, rim]) o.userData.interact = hottubIt;
 
-  // ---- The cold plunge: a steel tub of ice water, a ladder, a frosty rim ---------------------------
-  const P = PLUNGE;
-  blk(p, P.half * 2, P.rim, P.half * 2, '#aeb9c0', P.x, P.rim / 2, P.z);
-  blk(p, P.half * 2 + 0.08, 0.05, P.half * 2 + 0.08, '#eef6f8', P.x, P.rim + 0.02, P.z);
-  const iceTex = water('#8fd8ef', 'rgba(255,255,255,0.7)', 111);
-  const iceMat = new THREE.MeshBasicMaterial({ map: iceTex, toneMapped: false });
-  iceMat.userData.outlineParameters = { visible: false };
-  const iceWater = mesh(new THREE.PlaneGeometry(P.half * 2 - 0.1, P.half * 2 - 0.1), iceMat, P.x, P.rim + 0.03, P.z, false);
-  iceWater.rotation.x = -Math.PI / 2;
-  p.group.add(iceWater);
-  const cubes: THREE.Mesh[] = [];
-  const iceCube = toon('#e8fbff', { opacity: 0.85 });
-  for (let i = 0; i < 9; i++) {
-    const c = mesh(new THREE.BoxGeometry(0.12, 0.08, 0.12), iceCube, P.x - 0.45 + (i % 3) * 0.45 + ((i * 37) % 10) / 60, P.rim + 0.05, P.z - 0.45 + Math.floor(i / 3) * 0.45 + ((i * 53) % 10) / 70, false);
-    c.rotation.y = i * 0.7;
-    p.group.add(c);
-    cubes.push(c);
-  }
-  for (const dx of [-0.2, 0.2]) {
-    const pts = [new THREE.Vector3(P.x + dx, 0, P.z - P.half - 0.25), new THREE.Vector3(P.x + dx, 1.05, P.z - P.half - 0.25), new THREE.Vector3(P.x + dx, 1.1, P.z - P.half + 0.05), new THREE.Vector3(P.x + dx, P.rim - 0.3, P.z - P.half + 0.12)];
-    p.still.add(mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.02, 6), steel, 0, 0, 0, false));
-  }
-  const cold = textPlane('🧊 4 °C', { bg: '#12303a', color: '#cdeefd', size: 40 });
-  cold.position.set(P.x, 0.5, P.z + P.half + 0.01);
-  cold.scale.setScalar(0.6);
-  p.group.add(cold);
-  const plungeIt: Interactable = { kind: 'gymstation', gymStation: 'coldplunge', x: P.x, z: P.z, y: 0, radius: P.half + 1.2 };
-  p.interactables.push(plungeIt);
-  iceWater.userData.interact = plungeIt;
+  const P = PLUNGE; // the cold plunge itself is built with the places you get into (soak.ts)
 
   // ---- Relaxation loungers along the west wall, a towel on each -----------------------------------
   const L = LOUNGER;
@@ -470,17 +444,18 @@ export function buildGymSpa(p: GymParts): GymSpa {
   p.still.add(rail);
   for (const t of MASSAGE_TABLES) {
     const g = new THREE.Group();
-    for (const dx of [-0.85, 0.85]) for (const dz of [-0.28, 0.28]) g.add(mesh(new THREE.BoxGeometry(0.06, 0.62, 0.06), toon('#8a6a44'), t.x + dx, 0.31, t.z + dz, false));
-    g.add(mesh(new THREE.BoxGeometry(1.95, 0.12, 0.72), toon('#e8dccb'), t.x, 0.68, t.z, false));
-    g.add(mesh(new THREE.BoxGeometry(1.9, 0.02, 0.6), toon('#f4f4ee'), t.x - 0.02, 0.75, t.z, false));
-    // The face rest at the east end, a rolled towel at the other.
-    const face = mesh(new THREE.TorusGeometry(0.1, 0.045, 6, 14), toon('#e8dccb'), t.x + 1.05, 0.7, t.z, false);
+    const top = MASSAGE_TOP;
+    for (const dx of [-0.85, 0.85]) for (const dz of [-0.28, 0.28]) g.add(mesh(new THREE.BoxGeometry(0.06, top - 0.06, 0.06), toon('#8a6a44'), t.x + dx, (top - 0.06) / 2, t.z + dz, false));
+    g.add(mesh(new THREE.BoxGeometry(1.95, 0.1, 0.72), toon('#e8dccb'), t.x, top - 0.05, t.z, false));
+    g.add(mesh(new THREE.BoxGeometry(1.9, 0.02, 0.6), toon('#f4f4ee'), t.x - 0.02, top + 0.005, t.z, false));
+    // The face rest at the east end, a rolled towel under the ankles at the other.
+    const face = mesh(new THREE.TorusGeometry(0.1, 0.045, 6, 14), toon('#e8dccb'), t.x + 1.05, top - 0.03, t.z, false);
     face.rotation.x = Math.PI / 2;
     g.add(face);
-    const roll = mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5, 10), toon('#a3c9b8'), t.x - 0.75, 0.8, t.z, false);
+    const roll = mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 10), toon('#a3c9b8'), t.x - 0.85, top + 0.06, t.z, false);
     roll.rotation.x = Math.PI / 2;
     g.add(roll);
-    p.still.add(g);
+    p.group.add(g); // not merged: aiming at any of it is aiming at the table
     const def = GYM_STATION_BY_ID.get(t.id);
     if (def) {
       const it: Interactable = { kind: 'gymstation', gymStation: t.id, x: t.x, z: t.z, y: 0, radius: 1.8 };
@@ -522,8 +497,8 @@ export function buildGymSpa(p: GymParts): GymSpa {
   for (const [id, x, y, z] of [
     ['hottub', J.x + J.r + 0.02, 0.4, J.z],
     ['coldplunge', P.x + P.half + 0.02, 0.6, P.z],
-    ['massage-1', MASSAGE_TABLES[0].x - 1.0, 0.72, MASSAGE_TABLES[0].z + 0.37],
-    ['massage-2', MASSAGE_TABLES[1].x - 1.0, 0.72, MASSAGE_TABLES[1].z + 0.37],
+    ['massage-1', MASSAGE_TABLES[0].x - 1.0, MASSAGE_TOP - 0.03, MASSAGE_TABLES[0].z + 0.37],
+    ['massage-2', MASSAGE_TABLES[1].x - 1.0, MASSAGE_TOP - 0.03, MASSAGE_TABLES[1].z + 0.37],
   ] as const) {
     const m = glow(null, IDLE);
     p.group.add(mesh(new THREE.SphereGeometry(0.045, 8, 6), m, x, y, z, false));
@@ -624,11 +599,6 @@ export function buildGymSpa(p: GymParts): GymSpa {
     bubbles.update(dt);
     if (Math.random() < dt * 2) wisps.emit(1, { at: tmp.set(J.x, J.rim + 0.05, J.z), spread: { x: 0.6, y: 0, z: 0.6 }, vel: { x: 0, y: 0.15, z: 0 }, jitter: 0.05, life: 3, size0: 0.3, size1: 0.9, alpha: 0.12 });
     wisps.update(dt);
-    iceTex.offset.set(Math.sin(t * 0.3) * 0.02, t * 0.005);
-    cubes.forEach((c, i) => {
-      c.position.y = P.rim + 0.05 + Math.sin(t * 1.6 + i) * 0.012;
-      c.rotation.y += dt * 0.05 * (i % 2 ? 1 : -1);
-    });
     for (const [id, m] of dots) m.color.set((occupied.get(id) ?? 0) ? ON : IDLE);
   };
 

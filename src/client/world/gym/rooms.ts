@@ -78,13 +78,18 @@ export function buildGymRooms(p: GymParts, showCeiling: boolean): GymRooms {
   const walls: [number, number, number, number][] = [
     [R.minX - T, R.maxX + T, R.minZ - T, R.minZ],
     [R.minX - T, R.maxX + T, R.maxZ, R.maxZ + T],
-    [R.minX - T, R.minX, R.minZ, R.maxZ],
     [R.maxX, R.maxX + T, R.minZ, R.maxZ],
   ];
   for (const [x0, x1, z0, z1] of walls) {
     blk(p, x1 - x0, H, z1 - z0, wallMat, (x0 + x1) / 2, H / 2, (z0 + z1) / 2);
     p.colliders.push({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, bottom: 0, top: H });
   }
+  // The west wall, either side of the changing room's door and over it (its colliders are the shared plan's, gymFixtures).
+  const cd0 = CHANGING_DOOR.z - CHANGING_DOOR.width / 2;
+  const cd1 = CHANGING_DOOR.z + CHANGING_DOOR.width / 2;
+  blk(p, T, H, cd0 - R.minZ, wallMat, R.minX - T / 2, H / 2, (R.minZ + cd0) / 2);
+  blk(p, T, H, R.maxZ - cd1, wallMat, R.minX - T / 2, H / 2, (cd1 + R.maxZ) / 2);
+  blk(p, T, H - 2.25, cd1 - cd0, wallMat, R.minX - T / 2, (H + 2.25) / 2, CHANGING_DOOR.z);
   p.colliders.push({ minX: R.minX - T, maxX: R.maxX + T, minZ: R.minZ - T, maxZ: R.maxZ + T, bottom: H, top: H + 0.3 });
   p.colliders.push({ minX: R.minX - T, maxX: R.maxX + T, minZ: R.minZ - T, maxZ: R.maxZ + T, bottom: -1, top: 0 });
   // Wainscot and lines round the room (the south and west are behind things, but show between them).
@@ -95,7 +100,8 @@ export function buildGymRooms(p: GymParts, showCeiling: boolean): GymRooms {
     blk(p, w + 0.002, 0.08, d + 0.002, lime, (x0 + x1) / 2, 1.14, (z0 + z1) / 2);
     blk(p, w + 0.002, 0.05, d + 0.002, lime, (x0 + x1) / 2, 3.35, (z0 + z1) / 2);
   };
-  band(R.minX, R.minX + 0.03, R.minZ, R.maxZ);
+  band(R.minX, R.minX + 0.03, R.minZ, cd0);
+  band(R.minX, R.minX + 0.03, cd1, R.maxZ);
   band(R.minX, SPA.minX, R.maxZ - 0.03, R.maxZ);
   band(SPA.minX, R.maxX, R.maxZ - 0.03, R.maxZ);
   band(R.maxX - 0.03, R.maxX, R.minZ, R.maxZ);
@@ -261,13 +267,11 @@ export function buildGymRooms(p: GymParts, showCeiling: boolean): GymRooms {
   for (const z of [37.05, 38.15]) bench.add(mesh(new THREE.BoxGeometry(0.3, 0.41, 0.06), steel, 7.7, 0.205, z, false));
   p.still.add(bench);
   seatable(p, bench, 'gym-locker-bench', 1.3);
-  // The changing-room door, with its sign.
+  // The changing room's doorway (its door swings in, world/gym/changing.ts), framed in lime, with its sign.
   const cd = CHANGING_DOOR;
-  blk(p, 0.06, 2.25, cd.width, '#7d8c96', R.minX + 0.03, 1.125, cd.z);
   blk(p, 0.07, 2.35, 0.08, lime, R.minX + 0.04, 1.175, cd.z - cd.width / 2 - 0.04);
   blk(p, 0.07, 2.35, 0.08, lime, R.minX + 0.04, 1.175, cd.z + cd.width / 2 + 0.04);
   blk(p, 0.07, 0.08, cd.width + 0.16, lime, R.minX + 0.04, 2.36, cd.z);
-  blk(p, 0.06, 0.04, 0.22, steel, R.minX + 0.08, 1.05, cd.z + cd.width / 2 - 0.15);
   const cSign = textPlane('🚿 Umkleide · Changing', { bg: '#0f1a12', color: '#f0f4f2', size: 34, border: LIME });
   cSign.position.set(R.minX + 0.07, 2.65, cd.z);
   cSign.rotation.y = Math.PI / 2;

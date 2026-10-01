@@ -4,6 +4,7 @@ import { CARDIO_MACHINES } from '../shared/gym-cardio';
 import { EXERCISES } from '../shared/gym-strength';
 import { WELLNESS_SPOTS, type WellnessView } from '../shared/gym-wellness';
 import { AUFGUSS_BOOST_MS, SPA, WALK_IN_BY_STATION, inRect } from '../shared/gym-rooms';
+import { CHANGING_ROOM, inChanging } from '../shared/gym-changing';
 import type { ClientMsg, FloorInfo, ServerMsg } from '../shared/protocol';
 import { streetBelow } from '../shared/layout';
 import type { Collider, Interactable } from './world/types';
@@ -85,10 +86,11 @@ export class GymPlace {
   /** When each walk-in room's last Aufguss was, as the page last heard it (for the hiss). */
   private puffs = new Map<string, number>();
   private camPos = new THREE.Vector3();
-  /** The machine you're on (cardio or strength) and holding you in place there, or null. */
+  /** The machine you're on (cardio or strength), or the spa's spot you're in (the jacuzzi, the plunge, a massage table), holding you in place there, or null. */
   private riding: string | null = null;
   private readonly hold = () => {
-    const at = this.riding ? this.room?.equipment.spot(this.riding) : null;
+    const id = this.riding;
+    const at = id && this.room ? (this.room.equipment.spot(id) ?? this.room.soak.spot(id, this.host.you()?.name ?? '')) : null;
     const p = this.host.player;
     if (at) {
       p.pos.set(at.x, at.y, at.z);
@@ -97,6 +99,17 @@ export class GymPlace {
     p.moving = false;
   };
   private head = new THREE.Vector3();
+  /** Whether you're in the changing room (the camera keeps to it there). */
+  private changing = false;
+  /** The room the camera keeps to: the hall, or the changing room while you're in it. */
+  private roomBox() {
+    const r = this.changing ? CHANGING_ROOM : GYM_ROOM;
+    return { minX: r.minX, maxX: r.maxX, minZ: r.minZ, maxZ: r.maxZ, wall: this.changing ? 0.15 : 0.3, enclosed: true };
+  }
+  /** Whether (x, z) is somewhere in the gym: the hall or the changing room. */
+  private static within(x: number, z: number) {
+    return (x > GYM_ROOM.minX && x < GYM_ROOM.maxX && z > GYM_ROOM.minZ && z < GYM_ROOM.maxZ) || inChanging(x, z);
+  }
   private warm = new THREE.Color('#cfe8d6');
   private warmGround = new THREE.Color('#1b2a22');
 
@@ -168,7 +181,7 @@ export class GymPlace {
       r.group.visible = true;
       this.host.showOffice(false);
       this.host.player.colliders = r.colliders;
-      this.host.player.room = { minX: GYM_ROOM.minX, maxX: GYM_ROOM.maxX, minZ: GYM_ROOM.minZ, maxZ: GYM_ROOM.maxZ, wall: 0.3, enclosed: true };
+      this.host.player.room = this.roomBox();
       this.host.setIndoors(true);
       this.showHud(true);
     } else {
@@ -192,15 +205,15 @@ export class GymPlace {
     }
     this.host.showOffice(false);
     this.host.player.colliders = this.room.colliders;
-    this.host.player.room = { minX: GYM_ROOM.minX, maxX: GYM_ROOM.maxX, minZ: GYM_ROOM.minZ, maxZ: GYM_ROOM.maxZ, wall: 0.3, enclosed: true };
+    this.host.player.room = this.roomBox();
     const p = this.host.player.pos;
-    if (!(p.x > GYM_ROOM.minX && p.x < GYM_ROOM.maxX && p.z > GYM_ROOM.minZ && p.z < GYM_ROOM.maxZ)) this.host.placeAt({ x: GYM_ENTRY.x, y: 0, z: GYM_ENTRY.z, rotY: GYM_ENTRY.rotY });
+    if (!GymPlace.within(p.x, p.z)) this.host.placeAt({ x: GYM_ENTRY.x, y: 0, z: GYM_ENTRY.z, rotY: GYM_ENTRY.rotY });
   }
 
   arrived() {
     if (this.active) {
       const p = this.host.player.pos;
-      const inside = p.x > GYM_ROOM.minX && p.x < GYM_ROOM.maxX && p.z > GYM_ROOM.minZ && p.z < GYM_ROOM.maxZ && Math.abs(p.y) < 1;
+      const inside = GymPlace.within(p.x, p.z) && Math.abs(p.y) < 1;
       if (this.arriving || !inside) this.host.placeAt({ x: GYM_ENTRY.x, y: 0, z: GYM_ENTRY.z, rotY: GYM_ENTRY.rotY });
       this.arriving = false;
       this.outside = null;
@@ -331,7 +344,7 @@ export class GymPlace {
       verb = 'Step on';
     } else if (def.kind === 'wellness') {
       status = `${state?.occupants?.length ?? 0}/${def.seats} in`;
-      verb = 'Step in';
+      verb = def.machine === 'massage' ? 'Lie down' : def.machine === 'hottub' || def.machine === 'coldplunge' ? 'Get in' : 'Step in';
     } else {
       status = 'your stats & the board';
       verb = 'Sit down';
@@ -397,15 +410,27 @@ export class GymPlace {
     const open = this.open?.station;
     const def = open ? GYM_STATION_BY_ID.get(open) : undefined;
     const view = open ? (this.stations.get(open) as { player?: string } | undefined) : undefined;
-    const mine = def && (def.kind === 'cardio' || def.kind === 'strength') && you && view?.player === you.name ? def.id : null;
+    const onMachine = def && (def.kind === 'cardio' || def.kind === 'strength') && you && view?.player === you.name;
+    // Fork: in the jacuzzi, the plunge, on a massage table, once the office has you in it.
+    const soaking = def && this.room.soak.has(def.id) && you && (this.stations.get(def.id) as WellnessView | undefined)?.occupants?.includes(you.name);
+    const mine = def && (onMachine || soaking) ? def.id : null;
     if (mine !== this.riding) {
       this.letGo(true);
       if (mine) this.getOn(mine);
     }
-    this.room.equipment.update(t, dt, this.host.now(), { people: this.host.people(), you, mine }, (kind, at) => this.host.soundAt(kind, at));
+    const bodies = this.host.people();
+    this.room.equipment.update(t, dt, this.host.now(), { people: bodies, you, mine }, (kind, at) => this.host.soundAt(kind, at));
+    this.room.soak.update(t, dt, { people: bodies, you });
     if (this.riding && you) {
       you.person.bones.head.getWorldPosition(this.head);
-      this.room.equipment.frame(this.riding, this.host.camera, dt, this.host.player.view === 'first', this.head);
+      if (this.room.soak.has(this.riding)) this.room.soak.frame(this.riding, you.name, this.host.camera, dt);
+      else this.room.equipment.frame(this.riding, this.host.camera, dt, this.host.player.view === 'first', this.head);
+    }
+    // In the changing room the camera keeps to it, out in the hall to the hall.
+    const changing = inChanging(me.x, me.z);
+    if (changing !== this.changing) {
+      this.changing = changing;
+      this.host.player.room = this.roomBox();
     }
   }
 
@@ -422,9 +447,10 @@ export class GymPlace {
     if (!id) return;
     this.riding = null;
     this.room?.equipment.unframe();
+    this.room?.soak.unframe();
     const p = this.host.player;
     if (p.rig === this.hold) p.rig = null;
-    const off = place ? this.room?.equipment.off(id) : null;
+    const off = place && this.room ? (this.room.equipment.off(id) ?? this.room.soak.off(id)) : null;
     if (off) this.host.placeAt(off);
   }
 
