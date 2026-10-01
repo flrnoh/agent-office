@@ -25,9 +25,9 @@ export interface WellnessSpot {
 export const WELLNESS_SPOTS: Record<string, WellnessSpot> = {
   sauna: { name: 'Finnish sauna', icon: '🧖', temp: '85 °C', regenPerSec: 1.4, xpPerMin: 8, note: 'Sweat it out on the cedar benches.', action: 'ladle' },
   steam: { name: 'Steam room', icon: '💨', temp: '45 °C', regenPerSec: 1.2, xpPerMin: 7, note: 'Breathe the eucalyptus steam.', action: 'ladle' },
-  hottub: { name: 'Jacuzzi', icon: '🛁', temp: '38 °C', regenPerSec: 1.6, xpPerMin: 6, note: 'Let the jets work your shoulders.' },
-  coldplunge: { name: 'Cold plunge', icon: '🧊', temp: '4 °C', regenPerSec: 0.6, xpPerMin: 10, coldBurst: 35, note: 'Brace — then feel the rush.' },
-  massage: { name: 'Massage lounger', icon: '💆', temp: 'warm', regenPerSec: 2.2, xpPerMin: 9, note: 'Sink into the shiatsu rollers.' },
+  hottub: { name: 'Jacuzzi', icon: '🛁', temp: '38 °C', regenPerSec: 1.6, xpPerMin: 6, note: 'Sink into the bubbles and let the jets work your shoulders.' },
+  coldplunge: { name: 'Cold plunge', icon: '🧊', temp: '4 °C', regenPerSec: 0.6, xpPerMin: 10, coldBurst: 35, note: 'In up to your neck. Brace — then feel the rush.' },
+  massage: { name: 'Massage table', icon: '💆', temp: 'warm', regenPerSec: 2.2, xpPerMin: 9, note: 'Lie back and let the masseur work the knots out.' },
   yoga: { name: 'Stretch studio', icon: '🧘', temp: 'mild', regenPerSec: 0.8, xpPerMin: 6, note: 'Flow through the poses.', action: 'pose' },
 };
 
@@ -55,4 +55,6 @@ export interface WellnessView {
   puffBy?: string;
   /** Fork: a walk-in room (shared/gym-rooms.ts): you're in it while you stand inside, not by sitting down. */
   walkIn?: boolean;
+  /** Fork: a spot you get into (the jacuzzi, the plunge, a massage table, see soakPlace): who's in each of its places ('' empty), so everyone sees them in the same one. */
+  slots?: string[];
 }

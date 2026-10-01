@@ -22,6 +22,7 @@ export function openWellness(ctx: GymUiContext): GymUi {
   const energyVal = h('span.val', {}, '');
   const message = h('div.gym-message', { role: 'status', 'aria-live': 'polite' }, spot.note);
   const occ = h('div.gym-occupants');
+  const guests = h('span.gym-label', {}, '');
   const actBtn = spot.action ? h('button.btn.primary.gym-go', { type: 'button', title: 'Space' }, spot.action === 'pose' ? '🧘 Hold pose' : '💧 Pour water') : null;
 
   const render = () => {
@@ -29,6 +30,7 @@ export function openWellness(ctx: GymUiContext): GymUi {
     energy.style.width = `${(st / STAMINA_MAX) * 100}%`;
     energyVal.textContent = `${Math.round(st)} / ${STAMINA_MAX}`;
     occ.replaceChildren(...(view?.occupants ?? []).map((n) => h('span.gym-chip', {}, n)));
+    guests.textContent = `Guests (${view?.occupants.length ?? 0}/${view?.seats ?? ctx.station.seats})`;
   };
 
   const doAction = () => {
@@ -47,7 +49,7 @@ export function openWellness(ctx: GymUiContext): GymUi {
       {},
       h('div.gym-panel', {}, h('div.gym-readout', {}, h('div', {}, h('div.num', {}, spot.icon), h('div.cap', {}, ctx.station.name))), message),
       h('div.gym-barrow', {}, h('span.cap', {}, 'Energy'), energyBar, energyVal),
-      h('div.gym-controls', {}, h('span.gym-label', {}, `Guests (${view?.occupants.length ?? 0}/${view?.seats ?? ctx.station.seats})`), ...(actBtn ? [actBtn] : [])),
+      h('div.gym-controls', {}, guests, ...(actBtn ? [actBtn] : [])),
       occ,
       h('p.gym-note', {}, 'Relax to recover the energy your workouts spend — and earn a little for looking after yourself.'),
     ),

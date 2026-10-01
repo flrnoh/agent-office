@@ -18,6 +18,6 @@ export const FORK_CEILINGS: Readonly<Record<string, number>> = {
   'src/client/tablegames/play.ts': 696,
   'src/server/casino/poker.ts': 668,
   'src/client/hall/padel.ts': 647,
-  'src/client/world/gym/spa.ts': 636,
+  'src/client/world/gym/spa.ts': 606,
   'src/client/world/casino/interior.ts': 611,
 };

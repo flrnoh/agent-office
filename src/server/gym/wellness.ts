@@ -1,5 +1,5 @@
 import { ACTION_STAMINA, ACTION_XP, WELLNESS_SPOTS, type WellnessView } from '../../shared/gym-wellness.js';
-import { AUFGUSS_BOOST_MS, WALK_IN_BY_STATION, aufgussWait, onBenchIn, walkInFactor, type WalkInRoom } from '../../shared/gym-rooms.js';
+import { AUFGUSS_BOOST_MS, WALK_IN_BY_STATION, aufgussWait, isSoak, onBenchIn, walkInFactor, type WalkInRoom } from '../../shared/gym-rooms.js';
 import type { GymContext, GymGame, Seated } from './game.js';
 
 /*
@@ -24,6 +24,8 @@ export class WellnessSpot implements GymGame {
   private spot: (typeof WELLNESS_SPOTS)[string];
   /** The cabin, for the sauna and the steam room: you walk in instead of sitting down. */
   readonly room: WalkInRoom | undefined;
+  /** Fork: the jacuzzi, the plunge, a massage table: who's in which of its places (soakPlace), '' for empty. */
+  private slots: string[] | null;
 
   constructor(
     readonly id: string,
@@ -32,11 +34,17 @@ export class WellnessSpot implements GymGame {
   ) {
     this.spot = WELLNESS_SPOTS[machine] ?? WELLNESS_SPOTS.sauna;
     this.room = WALK_IN_BY_STATION.get(id);
+    this.slots = isSoak(id) ? Array.from({ length: seats }, () => '') : null;
   }
 
   sit(p: Seated, ctx: GymContext) {
     if (this.occ.has(p.owner)) return;
     this.occ.set(p.owner, { name: p.name, secs: 0, xpAccum: 0 });
+    // Into the first free place (the office checks there is one before it asks).
+    if (this.slots) {
+      const free = this.slots.indexOf('');
+      if (free >= 0) this.slots[free] = p.name;
+    }
     if (this.spot.coldBurst) {
       ctx.addStamina(p.owner, this.spot.coldBurst);
       ctx.result(p.owner, `${this.spot.icon} Brrr! +${this.spot.coldBurst} energy`, undefined);
@@ -49,6 +57,10 @@ export class WellnessSpot implements GymGame {
     const o = this.occ.get(owner);
     if (!o) return;
     this.occ.delete(owner);
+    if (this.slots) {
+      const at = this.slots.indexOf(o.name);
+      if (at >= 0) this.slots[at] = '';
+    }
     const xp = Math.floor(o.xpAccum);
     ctx.award(owner, xp, { relaxSecs: Math.round(o.secs) });
     ctx.changed();
@@ -111,6 +123,7 @@ export class WellnessSpot implements GymGame {
       ...(this.puffAt ? { puffAt: this.puffAt } : {}),
       ...(this.puffBy ? { puffBy: this.puffBy } : {}),
       ...(this.room ? { walkIn: true } : {}),
+      ...(this.slots ? { slots: [...this.slots] } : {}),
     };
   }
 }
