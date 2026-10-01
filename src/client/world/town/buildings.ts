@@ -4,6 +4,7 @@ import type { NightParts } from '../outside';
 import { mergeByMaterial, mesh, toon } from '../toon';
 import type { Collider } from '../types';
 import { G, PAINTS, Walls, bayTexture, litTexture, rise } from './kit';
+import { SHOP_H, hasShops } from './shops';
 
 // flrnoh fork (see FORK.md): the city's buildings (see town/index.ts), a material for each paint, their
 // roofs, and what's on them (masts with blinking beacons, water tanks, plant), put up as tall as the
@@ -61,8 +62,10 @@ export function buildTownBuildings(group: THREE.Group, colliders: Collider[], ni
       const k = rise(lot.ring, drop);
       let bucket = walls.get(lot.paint);
       if (!bucket) walls.set(lot.paint, (bucket = new Walls()));
-      let topY = G + lot.h * k;
-      bucket.box(lot.x, lot.z, lot.w, lot.d, G, topY, lot.ou, lot.ov);
+      // Over a ground floor of shops (town/shops.ts), the walls start a storey up, and go one more at least.
+      const shops = hasShops(lot);
+      let topY = shops ? Math.max(G + lot.h * k, G + SHOP_H + 3.3) : G + lot.h * k;
+      bucket.box(lot.x, lot.z, lot.w, lot.d, shops ? G + SHOP_H : G, topY, lot.ou, lot.ov);
       let tw = lot.w;
       let td = lot.d;
       if (lot.step) {

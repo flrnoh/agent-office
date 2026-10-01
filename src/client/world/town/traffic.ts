@@ -42,6 +42,9 @@ export interface Traffic {
   headMat: THREE.MeshBasicMaterial;
 }
 
+/** A pair of lamps `h` high and `w` wide at the car's front or back (x), one each side. */
+const pair = (h: number, w: number, x: number, y: number) => mergeGeometries([-1, 1].map((sz) => new THREE.BoxGeometry(0.1, h, w).translate(x, y, sz * (CAR_W / 2 - 0.32))));
+
 export function buildTraffic(group: THREE.Group, r: () => number): Traffic {
   const cars: Car[] = [];
   for (const run of RUNS) {
@@ -51,16 +54,27 @@ export function buildTraffic(group: THREE.Group, r: () => number): Traffic {
       cars.push({ run, dir: k % 2 ? 1 : -1, at: run.from + 6 + r() * (run.to - run.from - 12), speed: cruise, cruise, turn: -1 });
     }
   }
-  const body = new THREE.BoxGeometry(CAR_L, 1.05, CAR_W).translate(0, 0.9, 0);
-  const cabin = new THREE.BoxGeometry(2.2, 0.7, 1.7).translate(-0.3, 1.75, 0);
-  const carMesh = new THREE.InstancedMesh(mergeGeometries([body, cabin]), toon('#ffffff'), cars.length);
+  // The body sits on its wheels, with a cabin on top, set back a little; the hood slopes into it.
+  const body = new THREE.BoxGeometry(CAR_L, 0.75, CAR_W).translate(0, 0.72, 0);
+  const cabin = new THREE.BoxGeometry(2.3, 0.62, 1.72).translate(-0.35, 1.4, 0);
+  const hood = new THREE.BoxGeometry(1.0, 0.18, 1.8).rotateZ(-0.38).translate(1.15, 1.16, 0);
+  const carMesh = new THREE.InstancedMesh(mergeGeometries([body, cabin, hood]), toon('#ffffff'), cars.length);
   const colors = ['#ef476f', '#ffd166', '#06d6a0', '#118ab2', '#f4f1de', '#3d405b', '#e07a5f', '#8ecae6'];
   cars.forEach((_, i) => carMesh.setColorAt(i, new THREE.Color(colors[Math.floor(r() * colors.length)])));
   const headMat = new THREE.MeshBasicMaterial({ color: '#fff6d0' });
   const tailMat = new THREE.MeshBasicMaterial({ color: '#ff2d2d' });
-  const heads = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.3, 1.6).translate(CAR_L / 2 + 0.02, 0.95, 0), headMat, cars.length);
-  const tails = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.25, 1.6).translate(-CAR_L / 2 - 0.02, 0.95, 0), tailMat, cars.length);
-  for (const m of [carMesh, heads, tails]) {
+  const heads = new THREE.InstancedMesh(pair(0.18, 0.42, CAR_L / 2 + 0.03, 0.82), headMat, cars.length);
+  const tails = new THREE.InstancedMesh(pair(0.16, 0.36, -CAR_L / 2 - 0.03, 0.86), tailMat, cars.length);
+  // What's dark on every car: the tyres, the windows round the cabin, the bumpers and the grille.
+  const darkParts: THREE.BufferGeometry[] = [];
+  for (const wx of [-1.35, 1.35]) for (const wz of [-1, 1]) darkParts.push(new THREE.CylinderGeometry(0.36, 0.36, 0.26, 12).rotateX(Math.PI / 2).translate(wx, 0.36, wz * (CAR_W / 2 - 0.08)));
+  darkParts.push(new THREE.BoxGeometry(2.1, 0.44, 1.76).translate(-0.35, 1.42, 0)); // side windows
+  darkParts.push(new THREE.BoxGeometry(0.08, 0.46, 1.5).rotateZ(-0.5).translate(0.86, 1.42, 0)); // windscreen
+  darkParts.push(new THREE.BoxGeometry(0.08, 0.42, 1.5).rotateZ(0.35).translate(-1.55, 1.42, 0)); // rear window
+  darkParts.push(new THREE.BoxGeometry(0.16, 0.22, CAR_W + 0.04).translate(CAR_L / 2 + 0.02, 0.48, 0)); // bumpers
+  darkParts.push(new THREE.BoxGeometry(0.16, 0.22, CAR_W + 0.04).translate(-CAR_L / 2 - 0.02, 0.48, 0));
+  const dark = new THREE.InstancedMesh(mergeGeometries(darkParts), toon('#23262e'), cars.length);
+  for (const m of [carMesh, heads, tails, dark]) {
     m.frustumCulled = false;
     m.castShadow = m === carMesh;
     group.add(m);
@@ -134,6 +148,7 @@ export function buildTraffic(group: THREE.Group, r: () => number): Traffic {
       q.setFromAxisAngle(upAxis, p.yaw);
       place.compose(at, q, one);
       carMesh.setMatrixAt(i, place);
+      dark.setMatrixAt(i, place);
       heads.setMatrixAt(i, place);
       tails.setMatrixAt(i, place);
       // Its box, for someone walking or driving into it (square to the street, or round while turning).
@@ -142,7 +157,7 @@ export function buildTraffic(group: THREE.Group, r: () => number): Traffic {
       const ez = turning || !c.run.alongX ? CAR_L / 2 : CAR_W / 2;
       Object.assign(traffic[i], { minX: p.x - ex, maxX: p.x + ex, minZ: p.z - ez, maxZ: p.z + ez, bottom: street, top: street + 1.6 });
     });
-    for (const m of [carMesh, heads, tails]) m.instanceMatrix.needsUpdate = true;
+    for (const m of [carMesh, heads, tails, dark]) m.instanceMatrix.needsUpdate = true;
   };
   moveCars(0, []);
   return { traffic, setStreet: (y) => (street = y), move: moveCars, headMat };

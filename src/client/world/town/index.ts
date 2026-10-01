@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { LOTS } from '../../../shared/city';
 import { roofDrop, streetBelow } from '../../../shared/layout';
 import { mulberry32 } from '../../../shared/rng';
 import type { Fixture, StreetSite } from '../office/fixture';
@@ -6,6 +7,8 @@ import type { NightParts } from '../outside';
 import type { Collider } from '../types';
 import { buildTownBuildings } from './buildings';
 import { buildTownGround } from './ground';
+import { buildFurniture } from './furniture';
+import { buildShops } from './shops';
 import { LAID_OUT, glowTexture } from './kit';
 import { buildTraffic, type Obstacle } from './traffic';
 
@@ -52,6 +55,8 @@ export function buildTown(night: NightParts): Town {
   const glow = glowTexture();
   const lamps = buildTownGround(group, colliders, glow);
   const { raise, beaconMat } = buildTownBuildings(group, colliders, night, glow);
+  buildShops(group, LOTS, night);
+  buildFurniture(group, colliders);
   const cars = buildTraffic(group, r);
   let riseNow = -1;
   const obstacleList: Obstacle[] = [];

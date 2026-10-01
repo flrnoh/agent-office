@@ -41,7 +41,7 @@ export const PAINTS: Paint[] = [
 ];
 /** One bay of one storey: the wall with a window in it. */
 export function bayTexture(p: Paint): THREE.CanvasTexture {
-  const S = 64;
+  const S = 128;
   return tilingCanvasTexture(S, S, (g) => {
     g.fillStyle = p.wall;
     g.fillRect(0, 0, S, S);
@@ -53,9 +53,27 @@ export function bayTexture(p: Paint): THREE.CanvasTexture {
     g.fillRect(x, y, w, h);
     g.fillStyle = 'rgba(255,255,255,0.45)';
     g.fillRect(x + w * 0.12, y, w * 0.1, h);
-    // A sill under it.
-    g.fillStyle = 'rgba(0,0,0,0.12)';
-    g.fillRect(x - 2, y + h, w + 4, 3);
+    // Its frame and a cross of glazing bars (glass towers' panes are bigger, with a bar across).
+    const glassy = p.wide > 0.8;
+    g.strokeStyle = 'rgba(30,34,44,0.55)';
+    g.lineWidth = glassy ? 2 : 3;
+    g.strokeRect(x, y, w, h);
+    g.beginPath();
+    if (!glassy) {
+      g.moveTo(x + w / 2, y);
+      g.lineTo(x + w / 2, y + h);
+    }
+    g.moveTo(x, y + h * 0.38);
+    g.lineTo(x + w, y + h * 0.38);
+    g.stroke();
+    // A lintel over it and a sill under it.
+    g.fillStyle = 'rgba(0,0,0,0.10)';
+    g.fillRect(x - 3, y - 5, w + 6, 4);
+    g.fillStyle = 'rgba(0,0,0,0.18)';
+    g.fillRect(x - 4, y + h, w + 8, 5);
+    // The line where one storey's floor slab meets the next.
+    g.fillStyle = 'rgba(0,0,0,0.06)';
+    g.fillRect(0, S - 3, S, 3);
   });
 }
 

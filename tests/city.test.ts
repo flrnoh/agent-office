@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { BLOCKS, CITY_ROAD, CITY_WALK, CROSSINGS, LOTS, PARK_TREES, PERIOD, RUNS, STREETS, inTown, lineX, lineZ, onCityStreet, stretchRect } from '../src/shared/city.js';
 import { paved } from '../src/shared/garage.js';
 import { FLOOR, ROAD, WALL_T } from '../src/shared/layout.js';
-import { FARM, LOOP_PAVED, STREET_END, STREET_Z, nearLoop } from '../src/shared/scenic.js';
+import { FARM, LOOP_PAVED, STREET_END, STREET_Z, nearLoop, onLoop } from '../src/shared/scenic.js';
 import { CASINO_BOX } from '../src/shared/casino.js';
 import { HALL_BOX } from '../src/shared/hall.js';
 import { SOCCER_BOX } from '../src/shared/soccer.js';
@@ -107,4 +107,37 @@ test("the city's cars drive on its streets", () => {
       }
     }
   }
+});
+
+test('the buildings close by have shops on the sides that face a street, and only there', async () => {
+  const { hasShops, streetSides } = await import('../src/client/world/town/shops.js');
+  const shopLots = LOTS.filter(hasShops);
+  assert.ok(shopLots.length > 20, `${shopLots.length} buildings with shops`);
+  const streetBeyond = (x: number, z: number, dx: number, dz: number) => {
+    // Out from the wall, past the lot's strip and the sidewalk: a street (the city's, the office's, or the loop it runs on into).
+    for (let d = 1; d <= 12; d += 0.5) {
+      const px = x + dx * d;
+      const pz = z + dz * d;
+      if (onCityStreet(px, pz) || onLoop(px, pz) || (pz > ROAD.minZ && pz < ROAD.maxZ && Math.abs(px) < STREET_END)) return true;
+    }
+    return false;
+  };
+  let fronts = 0;
+  for (const l of shopLots) {
+    const s = streetSides(l);
+    const sides: [boolean, number, number, number, number][] = [
+      [s.pz, l.x, l.z + l.d / 2, 0, 1],
+      [s.nz, l.x, l.z - l.d / 2, 0, -1],
+      [s.px, l.x + l.w / 2, l.z, 1, 0],
+      [s.nx, l.x - l.w / 2, l.z, -1, 0],
+    ];
+    for (const [on, x, z, dx, dz] of sides) {
+      if (!on) continue;
+      fronts++;
+      // The next lot on the block is 2 m off at most; a shop front looks out further than that.
+      assert.ok(!LOTS.some((o) => o !== l && Math.abs(x + dx * 2.5 - o.x) < o.w / 2 && Math.abs(z + dz * 2.5 - o.z) < o.d / 2), `a shop front at (${x.toFixed(0)}, ${z.toFixed(0)}) faces the next building`);
+      assert.ok(streetBeyond(x, z, dx, dz), `the shop front at (${x.toFixed(0)}, ${z.toFixed(0)}) looks out on no street`);
+    }
+  }
+  assert.ok(fronts >= shopLots.length, `${fronts} shop fronts for ${shopLots.length} buildings`);
 });
