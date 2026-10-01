@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ANCHOR, BUNGEE } from '../../shared/bungee';
 import { FLOOR, WALL_T } from '../../shared/layout';
-import type { Collider, Interactable } from './office';
+import type { Collider, Interactable } from './types';
 import { mergeByMaterial, mesh, toon } from './toon';
 
 // Bungee off the roof (flrnoh fork, see FORK.md and shared/bungee.ts): a narrow wooden jetty with

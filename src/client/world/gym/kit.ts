@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { SEATING_BY_ID } from '../../../shared/layout';
 import type { Rect } from '../../../shared/gym-rooms';
-import type { Collider, Interactable } from '../office';
+import type { Collider, Interactable } from '../types';
 import { mesh, toon } from '../toon';
 
 /*

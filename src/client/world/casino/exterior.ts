@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { STREET_Y } from '../../../shared/layout';
 import { CASINO_BOX, CASINO_DOOR, CASINO_HEIGHT, CASINO_STREET_SPOT } from '../../../shared/casino';
-import type { Collider, Interactable } from '../office';
+import type { Collider, Interactable } from '../types';
 import type { NightParts } from '../outside';
 import { mergeByMaterial, mesh, toon, toonUnique } from '../toon';
 import { box, canvasTexture, chaser, glow, neonSign } from './parts';

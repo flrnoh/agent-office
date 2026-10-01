@@ -1,7 +1,7 @@
 import type { WorkerInfo } from '../shared/protocol';
 import { store } from './state';
 import { toast } from './ui/dom';
-import type { InteractKind } from './world/office';
+import type { InteractKind } from './world/types';
 
 /*
  * Party guests on the page (flrnoh fork, see FORK.md "Party guests"). The office already sends them

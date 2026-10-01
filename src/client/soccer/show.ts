@@ -252,7 +252,7 @@ export class SoccerShow {
           const side = diveSide(p.team, body.position.x, body.position.z, ball.b);
           if (side) this.moves.dive(p.id, side, body.rotation.y);
         }
-        this.moves.apply(p.id, person.rig(), dt);
+        this.moves.apply(p.id, person.limbs(), dt);
       }
     }
     this.renderSub();
@@ -269,7 +269,7 @@ export class SoccerShow {
       const k = this.kits.get(p.id);
       if (k && k.person === person && k.kit.team === p.team && k.kit.name === p.name && k.kit.number === number) continue;
       if (k) this.unkit(p.id);
-      this.kits.set(p.id, { kit: dress(person.rig(), p.team, p.name, number), person });
+      this.kits.set(p.id, { kit: dress(person.limbs(), p.team, p.name, number), person });
     }
     for (const id of [...this.kits.keys()]) if (!want.has(id)) this.unkit(id);
   }
@@ -322,7 +322,7 @@ export class SoccerShow {
       body.rotation.y = p.rotY;
       body.visible = true;
       const person = this.host.person?.(id);
-      if (person) this.moves.apply(id, person.rig(), step, { replaySpeed: p.speed });
+      if (person) this.moves.apply(id, person.limbs(), step, { replaySpeed: p.speed });
     }
     this.runT = at.t;
     // The ball, rolled by how far it went.

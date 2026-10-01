@@ -3,7 +3,7 @@ import { GALLERY, HALL, HALL_ENTRY, HALL_NAME, HALL_ROOM, HALL_STREET_SPOT } fro
 import type { CafeItem } from '../shared/cafe';
 import type { ClientMsg, FloorInfo, ServerMsg } from '../shared/protocol';
 import { streetBelow } from '../shared/layout';
-import type { Collider, Interactable } from './world/office';
+import type { Collider, Interactable } from './world/types';
 import { buildHallInterior, type HallInterior } from './world/hall/interior';
 import { openCafe } from './ui/cafe';
 import { toast } from './ui/dom';

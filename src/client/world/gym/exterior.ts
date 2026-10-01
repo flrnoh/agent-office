@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { STREET_Y } from '../../../shared/layout';
 import { GYM_HEIGHT, GYM_STREET_BOX, GYM_STREET_DOOR, GYM_STREET_SPOT } from '../../../shared/gym';
-import type { Collider, Interactable } from '../office';
+import type { Collider, Interactable } from '../types';
 import type { NightParts } from '../outside';
 import { mergeByMaterial, mesh, toon, toonUnique } from '../toon';
 import { box, canvasTexture, chaser, glow, neonSign } from './parts';
