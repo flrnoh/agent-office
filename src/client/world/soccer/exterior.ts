@@ -1,18 +1,20 @@
 import * as THREE from 'three';
 import { STREET_Y } from '../../../shared/layout';
-import { SOCCER_BOX, SOCCER_DOOR, SOCCER_HEIGHT, SOCCER_STREET_SPOT } from '../../../shared/soccer';
+import { SOCCER_BOX, SOCCER_DOOR, SOCCER_HEIGHT, SOCCER_STREET_SPOT, TEAM_COLOR, type Team } from '../../../shared/soccer';
 import type { Collider, Interactable } from '../office';
-import type { NightParts } from '../outside';
+import { bulb, type NightParts } from '../outside';
 import { mergeByMaterial, mesh, toon, toonUnique } from '../toon';
 import { box, canvasTexture, glow, FONT } from '../casino/parts';
 
 /*
  * The soccer hall's outside (flrnoh fork, see FORK.md "The soccer hall"), on the street between the
  * golf hole and the padel hall: a long, dark green sports hall with a band of milky polycarbonate
- * glazing under the eaves that glows at night, white SOCCER HALL letters and a ball over a steel
- * canopy, glass doors that slide apart, a little practice goal on the lawn out front. E at the doors
- * takes you inside (client/soccer/place.ts). Built into the street, so it drops with it per floor.
- * (The SCENIC LOOP billboard stands on its roof: world/scenic.ts.)
+ * glazing under the eaves that glows at night, white SOCCER ARENA letters and a ball over a steel
+ * canopy (a light strip along its edge, downlights under it), the club's red and blue banners down the
+ * front, uplights washing the facade at night, a match poster by the glass doors that slide apart, and a
+ * little practice goal on the lawn out front. E at the doors takes you inside (client/soccer/place.ts).
+ * Built into the street, so it drops with it per floor. (The SCENIC LOOP billboard stands on its roof:
+ * world/scenic.ts.)
  */
 
 const G = STREET_Y;
@@ -27,7 +29,7 @@ const DX = SOCCER_DOOR.x;
 const FRONT = B.minZ;
 /** The glazing band's bottom and top above the street. */
 const GLAZE = [5.2, 7.6] as const;
-/** SOCCER HALL on the front: west of the doors and their canopy, under the glazing. */
+/** SOCCER ARENA on the front: west of the doors and their canopy, under the glazing. */
 const SIGN = { x: B.minX + 5.6, y: 4.2, w: 10 } as const;
 
 /** A door that slides open as someone comes up (office.ts's Door). */
@@ -79,7 +81,7 @@ function glazingTexture(): THREE.CanvasTexture {
   return t;
 }
 
-/** SOCCER HALL in white letters with a ball, on a transparent ground (for the front, and the roof from above). */
+/** SOCCER ARENA in white letters with a ball, on a transparent ground (for the front, and the roof from above). */
 export function soccerSign(w = 1024, h = 256, bg: string | null = null): THREE.CanvasTexture {
   return canvasTexture(w, h, (g) => {
     if (bg) {
@@ -121,7 +123,7 @@ export function soccerSign(w = 1024, h = 256, bg: string | null = null): THREE.C
     g.stroke();
     // The words.
     let px = h * 0.5;
-    const text = 'SOCCER HALL';
+    const text = 'SOCCER ARENA';
     g.font = `900 ${px}px ${FONT}`;
     while (g.measureText(text).width > w - h * 1.15 && px > 10) g.font = `900 ${(px -= 4)}px ${FONT}`;
     g.textBaseline = 'middle';
@@ -185,7 +187,7 @@ export function buildSoccerExterior(group: THREE.Group, colliders: Collider[], i
     for (const x of [B.minX - 0.08, B.maxX + 0.08]) parts.add(mesh(box(0.25, H, 0.35), steel, x, G + H / 2, z));
   }
 
-  // The front: SOCCER HALL over the canopy, lit at night.
+  // The front: SOCCER ARENA beside the canopy, lit at night.
   const sign = mesh(new THREE.PlaneGeometry(SIGN.w, SIGN.w / 4), glow(soccerSign(), '#ffffff', { transparent: true }), SIGN.x, G + SIGN.y, FRONT - 0.05, false);
   sign.rotation.y = Math.PI;
   root.add(sign);
@@ -225,7 +227,14 @@ export function buildSoccerExterior(group: THREE.Group, colliders: Collider[], i
   const cw = dw + 3.2;
   const cz0 = FRONT - 2.6;
   parts.add(mesh(box(cw, 0.2, FRONT - cz0), dark, DX, G + dh + 0.6, (FRONT + cz0) / 2));
-  parts.add(mesh(box(cw + 0.1, 0.12, 0.12), toon('#35c46a'), DX, G + dh + 0.55, cz0, false));
+  // A light strip along its edge, downlights under it.
+  const strip = bulb(night, '#35c46a', 0.45);
+  root.add(mesh(box(cw + 0.1, 0.12, 0.12), strip, DX, G + dh + 0.55, cz0, false));
+  const down = bulb(night, '#fff3d6', 0.2);
+  for (const s of [-1, 0, 1]) {
+    const d = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.03, 12), down, DX + s * 1.6, G + dh + 0.49, (FRONT + cz0) / 2, false);
+    root.add(d);
+  }
   for (const s of [-1, 1]) {
     const px = DX + s * (cw / 2 - 0.2);
     parts.add(mesh(new THREE.CylinderGeometry(0.08, 0.08, dh + 0.6, 10), steel, px, G + (dh + 0.6) / 2, cz0 + 0.2));
@@ -250,6 +259,112 @@ export function buildSoccerExterior(group: THREE.Group, colliders: Collider[], i
     root.add(net);
     colliders.push({ minX: gx - 1, maxX: gx + 1, minZ: gz - 0.1, maxZ: gz + 0.55, bottom: G, top: G + 1.25 });
     parts.add(mesh(new THREE.SphereGeometry(0.12, 14, 10), white, gx + 0.4, G + 0.12, gz - 1.3));
+  }
+
+  // The club's banners down the front corners and the long walls by them: red to the west, blue to the east.
+  {
+    const gradientMap = (toon('#fff') as THREE.MeshToonMaterial).gradientMap;
+    const banner = (team: Team) =>
+      new THREE.MeshToonMaterial({
+        gradientMap,
+        map: canvasTexture(96, 384, (g) => {
+          g.fillStyle = TEAM_COLOR[team];
+          g.fillRect(0, 0, 96, 384);
+          g.fillStyle = '#ffffff';
+          g.fillRect(0, 22, 96, 8);
+          g.fillRect(0, 354, 96, 8);
+          g.beginPath();
+          g.arc(48, 80, 26, 0, Math.PI * 2);
+          g.fill();
+          g.fillStyle = TEAM_COLOR[team];
+          g.beginPath();
+          g.arc(48, 80, 10, 0, Math.PI * 2);
+          g.fill();
+          g.save();
+          g.translate(48, 230);
+          g.rotate(Math.PI / 2);
+          g.fillStyle = '#ffffff';
+          g.font = `900 40px ${FONT}`;
+          g.textAlign = 'center';
+          g.textBaseline = 'middle';
+          g.fillText('FLOGGE FC', 0, 0);
+          g.restore();
+        }),
+      });
+    const hang = (mat: THREE.Material, x: number, z: number, rotY: number) => {
+      const b = mesh(new THREE.PlaneGeometry(0.95, 3.8), mat, x, G + 3.1, z, false);
+      b.rotation.y = rotY;
+      root.add(b);
+      parts.add(mesh(box(rotY === Math.PI ? 1.1 : 0.08, 0.08, rotY === Math.PI ? 0.08 : 1.1), dark, x, G + 5.05, z));
+    };
+    const red = banner('red');
+    const blue = banner('blue');
+    // (The sign fills the front west of the doors: red hangs round the corner.)
+    hang(blue, B.maxX - 0.9, FRONT - 0.04, Math.PI);
+    hang(red, B.minX - 0.04, FRONT + 1.2, -Math.PI / 2);
+    hang(red, B.minX - 0.04, FRONT + 3.4, -Math.PI / 2);
+    hang(blue, B.maxX + 0.04, FRONT + 1.2, Math.PI / 2);
+  }
+  // Uplights washing the facade under the sign at night.
+  {
+    const lens = bulb(night, '#fff1cf', 0.05);
+    for (const x of [SIGN.x - 3.6, SIGN.x, SIGN.x + 3.6]) {
+      parts.add(mesh(box(0.34, 0.16, 0.26), dark, x, G + 0.08, FRONT - 0.35));
+      root.add(mesh(box(0.26, 0.02, 0.18), lens, x, G + 0.17, FRONT - 0.35, false));
+      night.halos.push({ at: new THREE.Vector3(x, G + 0.4, FRONT - 0.3), size: 1.2, color: '#fff1cf', ground: true });
+      const wash = new THREE.MeshBasicMaterial({
+        map: canvasTexture(32, 128, (g) => {
+          const grd = g.createLinearGradient(0, 128, 0, 0);
+          grd.addColorStop(0, 'rgba(255,241,207,0.9)');
+          grd.addColorStop(1, 'rgba(255,241,207,0)');
+          g.fillStyle = grd;
+          g.fillRect(0, 0, 32, 128);
+        }),
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      });
+      wash.userData.outlineParameters = { visible: false };
+      night.glows.push({ mat: wash, max: 0.55 });
+      const w = mesh(new THREE.PlaneGeometry(2.4, 4.6), wash, x, G + 2.4, FRONT - 0.03, false);
+      w.rotation.y = Math.PI;
+      root.add(w);
+    }
+  }
+  // A match poster by the doors.
+  {
+    const poster = mesh(new THREE.PlaneGeometry(1.0, 1.4), glow(canvasTexture(200, 280, (g) => {
+      g.fillStyle = '#1d3b2c';
+      g.fillRect(0, 0, 200, 280);
+      g.fillStyle = TEAM_COLOR.red;
+      g.fillRect(0, 0, 100, 12);
+      g.fillStyle = TEAM_COLOR.blue;
+      g.fillRect(100, 0, 100, 12);
+      g.fillStyle = '#ffd166';
+      g.font = `900 30px ${FONT}`;
+      g.textAlign = 'center';
+      g.fillText('HEUTE', 100, 58);
+      g.fillStyle = '#ffffff';
+      g.font = `900 40px ${FONT}`;
+      g.fillText('5 gegen 5', 100, 108);
+      g.font = `800 22px ${FONT}`;
+      g.fillText('ROT  vs  BLAU', 100, 150);
+      g.fillStyle = '#ffffff';
+      g.beginPath();
+      g.arc(100, 205, 30, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#1d1d1d';
+      g.beginPath();
+      g.arc(100, 205, 11, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#b8f2c9';
+      g.font = `800 18px ${FONT}`;
+      g.fillText('FLOGGE FC · ARENA', 100, 262);
+    })), DX - dw / 2 - 1.0, G + 1.5, FRONT - 0.04, false);
+    poster.rotation.y = Math.PI;
+    root.add(poster);
+    parts.add(mesh(box(1.12, 1.52, 0.05), dark, DX - dw / 2 - 1.0, G + 1.5, FRONT - 0.01));
   }
 
   root.add(mergeByMaterial(parts));
