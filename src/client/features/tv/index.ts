@@ -74,8 +74,6 @@ export function installTv(ctx: Ctx, deps: TvDeps) {
 
   // flrnoh fork: a YouTube or Twitch stream on the floor's TV, laid over the TV itself (see client/tv.ts).
   const tvWatchers = new Set<() => void>();
-  // Shares come and go through voice: the TV's window follows those too.
-  ctx.voice.onChange(() => tvWatchers.forEach((fn) => fn()));
   const tvStreams = new TvStreams({ now: () => store.officeNow(), volume: () => (ctx.inOffice() && !ctx.upTop() ? ctx.sound.tvVolume(TV_AT) : 0), toast, changed: () => (tvPicture(), tvWatchers.forEach((fn) => fn())) }, ctx.canvas);
   /** The TV's picture: a shared screen, else the stream's card (under its player), else the idle screen. */
   function tvPicture() {
@@ -117,5 +115,8 @@ export function installTv(ctx: Ctx, deps: TvDeps) {
     }
   }
 
-  return { show, streams: tvStreams, watchBig }; // streams, watchBig: flrnoh fork
+  /** Shares came or went through voice (see features/voice): the TV's window follows those too. */
+  const voiceChanged = () => tvWatchers.forEach((fn) => fn());
+
+  return { show, streams: tvStreams, watchBig, voiceChanged }; // streams, watchBig, voiceChanged: flrnoh fork
 }

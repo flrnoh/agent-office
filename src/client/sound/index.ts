@@ -47,6 +47,7 @@ import { padel, type PadelSound } from './padel';
 import { rig } from './rig';
 import { djSetVolume, tvVolume } from './screens';
 import { soccer, type SoccerSound } from './soccer';
+import { SoccerMurmur, soccerCrowd, type SoccerCrowdSound } from './soccercrowd';
 import { tableGame, type TableGameSound } from './tablegames';
 
 // What the rest of the client imports from here.
@@ -406,5 +407,19 @@ export class OfficeSound {
 
   soccer(kind: SoccerSound, at: Pos, strength = 1) {
     soccer(this.a, kind, at, strength);
+  }
+
+  private readonly soccerMurmur = new SoccerMurmur(this.a);
+  /**
+   * The soccer hall's crowd, every frame while you're in there: `level` 0..1 how full the stands are,
+   * `intensity` 0..1 how exciting it is on the pitch right now. It fades away by itself without a call.
+   */
+  setSoccerCrowd(level: number, intensity: number) {
+    this.soccerMurmur.set(level, intensity);
+  }
+
+  /** The soccer hall's crowd and stadium: the horn, the roar of a goal, the "oooh" of a near miss, applause, a chant. */
+  soccerCrowd(kind: SoccerCrowdSound, strength = 1) {
+    soccerCrowd(this.a, kind, strength);
   }
 }

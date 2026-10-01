@@ -6,7 +6,7 @@ This repository is a fork of [AgentSystemLabs/agent-office](https://github.com/A
 
 - **`main` here is Florian's office.** It runs on his Mac as the launch agent `com.flrnoh.agent-office`, public at https://buero.florian-obermeier.com (Cloudflare tunnel).
 - **Own changes** go in as a branch and a pull request into this fork's `main`, as usual. Squash-merging those is fine. Here the pull requests to merge are Florian's and his workers' (the "only webdevcody's" rule in `CLAUDE.md` is upstream's).
-- **Upstream's changes** come in through a sync pull request (branch `sync/upstream-<sha>`). The `Upstream sync` workflow (`.github/workflows/upstream-sync.yml`) offers one every Monday, or on demand from the Actions tab:
+- **Upstream's changes** come in through a sync pull request (branch `sync/upstream-<sha>`). The `Upstream sync` workflow (`.github/workflows/upstream-sync.yml`) offers one every morning (daily, 05:00 UTC), or on demand from the Actions tab:
   - ✅ merges cleanly, builds, tests pass: ready to merge.
   - ⚠️ merges cleanly, but the build or tests fail: usually something new to sort for guests (below).
   - Conflicts: an issue lists the files, to resolve by hand, keeping both sides.
@@ -24,7 +24,20 @@ This repository is a fork of [AgentSystemLabs/agent-office](https://github.com/A
 - Keep those hook lines short and recognisable, so a conflict shows at a glance what to keep.
 - List every change of this fork below, with the upstream files it touches.
 
+Upstream split its hub files (`server.ts`, `main.ts`, `protocol.ts`, `sound.ts`, `state.ts`) into registries and feature folders; build on those:
+
+- **Client:** a new fork thing is a feature, a folder under `src/client/features/<name>/` with an `install…` function, called once from `src/client/main.ts` (the fork's block there) and listed in `core/parts.ts` when other parts need it. A kind of thing to use is declared (`declare module '…/world/types' { interface InteractKinds … }`) and defined (`ctx.interactions.define`) in the same feature file; kinds are plain lowercase (`[a-z]+`, upstream's registry test), like `casinotable`, `gymstation`, `soccerpitch`. Fixtures on the office floor go in `src/client/world/office/fork.ts`, listed in `world/office/build.ts`.
+- **Server:** messages go in `src/shared/protocol/fork.ts` (`ForkClientMsg`/`ForkServerMsg`) and are handled in `src/server/ws/handlers/fork.ts` (`forkHandlers`; letting go on leaving or closing in `forkHooks`); what they keep lives on the `Fork` context in `src/server/fork/office.ts`; roles in `src/server/fork/roles.ts`; HTTP routes in `src/server/http/routes/fork.ts`.
+- **Sound:** a module per feature in `src/client/sound/` (or the feature's own `sound.ts`), with a facade method in the fork's section of `sound/index.ts`.
+- Upstream files only get hook lines, marked `// flrnoh fork` or `// fork:`. `git diff upstream/main -- <path>` shows exactly the fork's lines in one.
+
 ## This fork's changes
+
+### No Halloween
+
+The building never dresses up for Halloween: the calendar (`auto`) only puts up Christmas in December, ⚙️ Settings doesn't offer Halloween, and a `theme.json` still saying `halloween` shows nothing. Upstream's Halloween models and costumes stay in the code, unused, so syncs don't conflict.
+
+- Hooks in upstream files: `src/shared/theme.ts` (`THEME_PICKS`, `calendarTheme`, `activeTheme`), `src/client/ui/settings.ts` (the note under the picker).
 
 ### Guest role (#1, #2)
 
@@ -34,13 +47,17 @@ Friends who come over to hang out: they walk around, chat, talk, play (arcade, g
 - `tests/guests.test.ts`: fails when upstream adds an `/api` route nobody has looked at. New routes are refused to guests anyway; look whether a guest's page needs one to draw the office.
 - Roulette (phase 2): `src/shared/casino-roulette.ts` (the wheel's order, bet keys and what they cover, payouts, limits, the timings, `RouletteView`), `src/server/casino/roulette.ts` (`Roulette`: the round's clock in `tick`, stakes at placement, refunds while bets are open, pays at the landing), `src/client/ui/casino/roulette.ts` + `roulette.css` (the window: the SVG layout, chips, countdown, history), `src/client/ui/casino/roulette-wheel.ts` (the wheel's and the ball's motion, shared by the window and the 3D wheel in `interior.ts`), `tests/casino-roulette.test.ts`. The drawn number is in the view from the spin's start (bets are closed then) so every wheel lands on it; the window only says it once the ball is in.
 - Hooks in upstream files:
-  - `src/shared/protocol.ts`: `AccountRole` has `'guest'`, `accountRole()`, `Me.guest`.
-  - `src/server/server.ts`: `guest`/`lastGuestNoteAt` on `Client`; the guest check at the top of `handleMessage`; `guestMayFetch` in the HTTP handler; `meOf`, `accountsChanged` and the heartbeat pass role changes on; `accounts.invite`/`accounts.role` take any role.
-  - `src/server/auth.ts`: `fromAnyCookie(req, { noGuests })` keeps guests out of workers' service tunnels.
+- `src/server/fork/roles.ts` (fork file): `roleOf` (what a role adds to `Me`), `roleMoved`/`roleChanged` (passing role changes on), `refusedForRole` (the guest check, with its note).
+- `src/client/features/guests/index.ts` (fork file): guests at desks and boards (`GUEST_ONLY_WATCH`, `refuses`, `hint`).
+- Hooks in upstream files:
+  - `src/shared/protocol/accounts.ts`: `AccountRole` has `'guest'`, `accountRole()`, `Me.guest`.
+  - `src/server/office/client.ts`: `guest`/`lastGuestNoteAt` on `Client`. `src/server/ws/dispatch.ts`: `refusedForRole` before any handler. `src/server/http/router.ts`: `roleMayFetch` (party.ts, by way of `guestMayFetch`). `src/server/office/people.ts` (`meOf` with `roleOf`, `accountsChanged` with `roleMoved`/`roleChanged`) and `src/server/office/timers.ts` (the heartbeat's `roleMoved`) pass role changes on; `src/server/ws/connection.ts`: `newClient` gets the role. `src/server/ws/handlers/accounts.ts`: `accounts.invite`/`accounts.role` take any role (`accountRole`).
+  - `src/server/auth.ts`: `fromAnyCookie(req, { noGuests })` keeps guests out of workers' service tunnels (used in `src/server/http/router.ts` and `src/server/ws/upgrade.ts`).
   - `src/server/accounts.ts`: `--guest` for `accounts invite` and `accounts role`.
   - `src/client/ui/terminal.ts`: `watchOnly`: no keys, keypad, say box, Esc, models, changes or file drops for guests.
-  - `src/client/main.ts`: guests at desks and boards (`GUEST_ONLY_WATCH`, `deskHint`, `hintFor`), no sign-ins window.
-  - `src/client/ui/accounts.ts`, `src/client/join.ts`, `src/client/ui/signins.ts`, `src/client/style.css`: picking and showing the role.
+  - `src/client/input/pointer.ts`: `parts.guests.refuses` before using anything; `src/client/core/hintbar.ts`: `parts.guests.hint` first; `src/client/core/parts.ts`: `guests`.
+  - No sign-ins window: `src/client/features/hud/index.ts` (the ☰ item), `src/client/core/arrival.ts` (`signins.needed`), `src/client/ui/signins.ts` (`needsSigningIn`).
+  - `src/client/ui/accounts.ts`, `src/client/join.ts`, `src/client/ui/accounts.css`: picking and showing the role.
 - Stricter still: **party guests** (below) are guests who don't even watch. They go through the guest rules too, minus watching terminals and the whiteboard, so sorting a new message for guests sorts it for them.
 
 ### Party guests
@@ -55,31 +72,34 @@ Friends Florian invites to a party on the rooftop bar (role `party`, "Party gues
 - `src/client/party.ts`: the page: `partyRefuses()` at the top of every window of the work, `PARTY_OFF` things in the office, desk lines, the screensaver, the ☰ menu (`partyMenu`), `body.party`, and a reload when the role changes.
 - `tests/party.test.ts` (role plumbing, what they send, what they get); `tests/party-e2e.mjs`: against a throwaway office on port 4711 (`npm run build && node tests/party-e2e.mjs`; a shell worker, never a Claude one).
 - Hooks in upstream files:
-  - `src/shared/protocol.ts`: `AccountRole` has `'party'`, `accountRole()`, `Me.party` (always with `Me.guest`).
-  - `src/server/server.ts`: `party` on `Client`; `partyGate(ws, …)` in `onConnection`; party guests arrive on the roof (`onRoof`); the party check before the guest check in `handleMessage`; `warn` goes by `partyNote`; `roleMayFetch` in the HTTP handler; `meOf`, `accountsChanged` (`partyChanged`), the heartbeat and the `accounts.role` toast.
+  - `src/shared/protocol/accounts.ts`: `AccountRole` has `'party'`, `accountRole()`, `Me.party` (always with `Me.guest`).
+  - `src/server/office/client.ts`: `party` on `Client`. `src/server/ws/connection.ts`: `partyGate(ws, …)`, party guests arrive on the roof (`onRoof`). `src/server/ws/dispatch.ts`: `refusedForRole` (`src/server/fork/roles.ts`, the party check before the guest check). `src/server/office/messaging.ts`: `warn` goes by `partyNote`. `src/server/http/router.ts`: `roleMayFetch`. `src/server/office/people.ts` (`meOf`, `accountsChanged`: `roleChanged` → `partyChanged` in `fork/roles.ts`), `src/server/office/timers.ts` (the heartbeat) and the `accounts.role` toast in `src/server/ws/handlers/accounts.ts`.
   - `src/server/auth.ts`: `fromAnyCookie`'s `noGuests` uses `watchesOnly`.
   - `src/server/accounts.ts`: `--party` for `accounts invite`, `party` for `accounts role`.
-  - `src/client/ui/{boards,bookshelf,changes,meeting,pull,queue,search,services,terminal,whiteboard}.ts`: `partyRefuses()` as the first line of each window's `open…`.
-  - `src/client/main.ts`: `interact` and `hintFor` (party lines first), `openShell`/`promptAtDesk`/`hireAtDesk`/`goToNextWaiting`/`startHanging` refuse, the laptop's placeholder, `partyMenu([...])` round the ☰ menu, `watchParty()`.
-  - `src/client/ui/bossdesk.ts`: `bossWorker()` is nobody for a party guest (Minesweeper only).
+  - `partyRefuses()` as the first line of each window's `open…`: `src/client/ui/{boards,changes,meeting,queue,search,services,terminal}.ts`, `src/client/ui/github/{issue-window,pull-window}.ts`, `src/client/features/bookshelf/ui.ts`, `src/client/features/whiteboard/ui.ts`.
+  - Using things and their hints, party lines first: `src/client/features/guests/index.ts` (fork file), hooked in by `src/client/input/pointer.ts` and `src/client/core/hintbar.ts`.
+  - Refusing: `src/client/features/workers/actions.ts` (`openShell`, `promptAtDesk`, `hireAtDesk`), `src/client/features/waiting/index.ts` (`goToNextWaiting`), `src/client/features/hanging/index.ts` (`startHanging`).
+  - `src/client/features/workers/views.ts`: the laptop's placeholder (`PARTY_SCREENSAVER`). `src/client/features/hud/index.ts`: `partyMenu([...])` round the ☰ menu, `watchParty()`.
+  - `src/client/ui/bossdesk.ts` (fork file): `bossWorker()` is nobody for a party guest (Minesweeper only).
   - `src/client/ui/elevator.ts`: no "Add a project" for a party guest.
-  - `src/client/ui/accounts.ts`, `src/client/join.ts` ("invited you to a party on the rooftop bar 🎉"), `src/client/style.css` (`body.party`), `README.md`, `docs/configuration.md`.
+  - `src/client/ui/accounts.ts`, `src/client/join.ts` ("invited you to a party on the rooftop bar 🎉"), `src/client/styles/hud.css` (`body.party`), `README.md`, `docs/configuration.md`.
 
 ### In-progress issues leave the wall board
 
 Issues someone is on (assigned, labelled in progress, or a queued task running for it) disappear from the cork board on the wall, so nobody hands the same issue out twice. The detailed board still lists them under 🚧 In progress.
 
 - `src/client/inprogress.ts`: the rule, shared by both boards; `tests/inprogress.test.ts`.
-- Hooks in upstream files: `src/client/world/boards.ts` (the wall board's filter), `src/client/ui/boards.ts` (the 🚧 column uses the same rule), `src/client/main.ts` (redraw the wall when a queued task starts or stops on an issue).
+- Hooks in upstream files: `src/client/features/boards/world.ts` (the wall board's filter), `src/client/ui/boards.ts` (the 🚧 column uses the same rule), `src/client/features/boards/index.ts` (redraw the wall when a queued task starts or stops on an issue).
 
 ### Fog stays outside
 
 In fog the office itself stays clear: the haze only counts the part of the way from your eye to what you see that runs outdoors, not the stretch through the office on your floor (walls included) or its built-out back office. Inside, the room is clear and the street through the windows foggy; from the balcony, the room through the glass only gets the few meters of fog in front of it. The garage, balcony, fire escape and street stay foggy; the roof and other maps are unchanged.
 
 - `src/client/world/fogbox.ts`: the rooms' boxes, the ray/box math (TypeScript and the same in GLSL), its uniforms and `setFogRooms`; `tests/fogbox.test.ts`.
+- `src/client/features/fogbox/index.ts`: `setFogRooms(...)` each frame (the `world` tick) before the sky's drawn.
 - Hooks in upstream files:
   - `src/client/world/sky.ts`: the haze's varying is the whole world position (`vSkyFogAt`, was `vSkyFogY`), `FOGBOX_PARS` and `fogBoxUniforms` go into every fogged shader, and `HAZE` scales `vFogDepth` by `skyFogOutdoors(...)`.
-  - `src/client/main.ts`: `setFogRooms(...)` each frame before `sky.update`.
+  - `src/client/main.ts`: `installFogbox(...)`.
 
 ### Floors in any order
 
@@ -88,41 +108,43 @@ Admins put the floors in whatever order they like: in the elevator, drag a floor
 - `src/shared/floor-order.ts`: the rule (`reorderById`, `reorderMap`, `moveId`), shared by the server and the page; `tests/floor-order.test.ts`.
 - `src/client/ui/floor-order.ts`, `src/client/ui/floor-order.css`: the grip, ↑ ↓, drag and drop and the drop line.
 - Hooks in upstream files:
-  - `src/shared/protocol.ts`: the `floor.order` message.
+  - `src/shared/protocol/fork.ts` (fork file): the `floor.order` message.
   - `src/server/building.ts`: `Building.reorder()`.
-  - `src/server/server.ts`: the `floor.order` case (admins only; reorders floors.json and the open floors, then `floorsChanged`).
+  - `src/server/ws/handlers/fork.ts` (fork file): the `floor.order` handler (admins only; reorders floors.json and the open floors, then `floorsChanged`).
   - `src/server/guests.ts`: `floor.order` is `TEAM_ONLY`.
   - `src/client/ui/elevator.ts`: `floorOrder(...)`, `order.row(...)` round the admin's floor row, and no re-render mid-drag.
-  - `src/client/main.ts`: `syncStack` moves you with the street when your floor changes place while you're down there (`streetFloor`).
+  - `src/client/core/travel.ts`: `syncStack` moves you with the street when your floor changes place while you're down there (`streetFloor`).
   - `docs/features.md`: one sentence on the elevator.
 
 ### A working fridge
 
 The fridge in the kitchen, next to the coffee machine: **E** opens its door on drinks (Helles, Radler, cola, Spezi, Zitronenlimo, Sprudel, mate, an energy drink) and snacks (Brezn, crisps, a chocolate bar, an apple, a Leberkässemmel). What you grab is held like a drink from the rooftop bar, so everyone sees it, but it comes along to every floor. The beers go through the bar's booze (Radler lighter, and not past its limit), the caffeinated ones top up the coffee's buzz a little, snacks go in a few bites, and a Brezn, a Leberkässemmel or a Sprudel soaks some of it up. The door, the crown cap, the can and the bites have their sounds.
 
-- Own files: `src/shared/fridge.ts` (the items), `src/server/held.ts` (what the server lets you hold where), `src/client/ui/fridge.ts` (the open fridge), `src/client/world/fridgeitems.ts` (the bottles, cans and snacks in your hand); `tests/fridge.test.ts`.
+- Own files: `src/shared/fridge.ts` (the items), `src/server/held.ts` (what the server lets you hold where), `src/client/features/fridge/index.ts` (the `fridge` kind: E at the fridge, `showFridge`, `grab`, its hint and reach; also `serveFromCafe`), `src/client/ui/fridge.ts` (the open fridge), `src/client/world/fridgeitems.ts` (the bottles, cans and snacks in your hand), `src/client/sound/fridge.ts` (`fridgeDoor`, `opener`; `sound/hiss.ts` is the fork's shared hiss); `tests/fridge.test.ts`.
 - Hooks in upstream files:
   - `src/shared/rooftop.ts`: `Glass` and `DrinkId` take the fridge's, and `DRINK_BY_ID` has them too.
-  - `src/server/server.ts`: `act`'s drink goes through `heldDrink`; leaving a floor keeps a fridge item (`keepsHeld`).
-  - `src/client/world/kitchen.ts`: the fridge's interactable (`Kitchen.fridge`); `src/client/world/office.ts`: `InteractKind` has `'fridge'`, and it's pushed with the coffee machine.
-  - `src/client/world/character.ts`: `drinkGlass` hands the fridge's things to `fridgeItem`.
-  - `src/client/booze.ts`: a snack is held for less long; `putDown` keeps a fridge item. `src/client/caffeine.ts`: `top()`.
-  - `src/client/sound.ts`: `fridgeDoor`, `opener` and `hiss`, in a section of their own.
-  - `src/client/main.ts`: E at the fridge (`showFridge`, `grabFromFridge`), its hint, its `REACH`, bites in `drinking`.
-  - `src/client/ui/hud.ts` (a help line), `docs/features.md`.
+  - `src/server/ws/handlers/presence.ts`: `act`'s drink goes through `heldDrink`; `src/server/office/navigation.ts`: leaving a floor keeps a fridge item (`keepsHeld`).
+  - `src/client/world/kitchen.ts`: the fridge's interactable (`Kitchen.fridge`), handed out with the coffee machine's by the `kitchen` fixture.
+  - `src/client/world/character/props.ts`: `drinkGlass` hands the fridge's things to `fridgeItem`.
+  - `src/client/features/bar/booze.ts`: a snack is held for less long (`holdSeconds`); `putDown` keeps a fridge item. `src/client/features/bar/index.ts`: bites of a snack (`isSnack`, `sipEvery`). `src/client/features/coffee/caffeine.ts`: `top()`.
+  - `src/client/sound/index.ts`: `fridgeDoor`, `opener`, in the fork's section.
+  - `src/client/main.ts`: `installFridge(...)`; `src/client/core/parts.ts`: `fridge`.
+  - `src/client/ui/help.ts` (a help line), `docs/features.md`.
 
 ### Working at the boss desk
 
 At the boss's PC up in the loft you can work, not only play: sitting in the boss's chair, **E** offers a Claude worker, a shell or Minesweeper. The boss desk (`BOSS_DESK`, id `boss`, flag `boss`) is a real place for a worker, but only hired at by hand: it isn't in `SEATS`, so `nextFreeSeat`, the queue, bean bag counts and the castle's seats never see it, and workers hiring workers (`/office/workers`) can't pick it. Nobody is drawn sitting there (the chair is yours): the desk has no `DeskView`, so `syncWorkers` skips its worker, and its terminal plays on the boss's monitor, with Minesweeper back on it once it's gone home. Guests only play (or watch a terminal that's up there). Office map only: the server refuses it on other maps.
 
-- `src/client/ui/bossdesk.ts`: the chooser, the hint's words, and the monitor showing the boss desk's terminal. `tests/bossdesk.test.ts`.
+- `src/client/ui/bossdesk.ts`: the chooser, the hint's words, and the monitor showing the boss desk's terminal; `src/client/features/bossdesk/index.ts`: makes it on the boss's monitor and updates it. `tests/bossdesk.test.ts`.
 - Hooks in upstream files:
   - `src/shared/layout.ts`: `DeskDef.boss`/`DeskDef.y`, `BOSS_DESK` (after `LOFT`), and in `DESK_BY_ID`.
   - `src/shared/maps/index.ts`: `BOSS_DESK` in the office plan's `byId`.
-  - `src/server/server.ts`: `worker.spawn` refuses the boss desk off the office map.
+  - `src/server/ws/handlers/workers.ts`: `worker.spawn` refuses the boss desk off the office map.
   - `src/server/office-workers.ts`: `readHireRequest` refuses `desk: 'boss'`.
   - `src/server/dog.ts`: the dog doesn't bark at or nap by the boss desk (it doesn't do stairs).
-  - `src/client/main.ts`: `bossDesk` next to `arcade` (made, stopped, updated), `useSeat` opens it, the seat hint, and `standAt`/`burstOver` go up to the loft (`desk.y`).
+  - `src/client/main.ts`: `installBossDesk(...)`; `src/client/core/parts.ts`: `bossDesk`; `src/client/core/maps.ts`: stopped with the arcade.
+  - `src/client/features/seating/index.ts`: the boss's chair's E opens it (`bossDesk().open()`), the seat hint (`useLabel`, `aside`).
+  - `src/client/features/workers/actions.ts`: `standAt` goes up to the loft (`desk.y`), `openShell`/`killWorker` returned for it; `src/client/features/workers/views.ts`: the confetti burst too.
   - `tests/maps.test.ts`: the built-in maps have every office seat but the boss desk.
   - `docs/features.md`: the boss desk line.
 
@@ -134,14 +156,16 @@ An `http://` stream can't play on the https office (mixed content), so it goes t
 
 - `src/shared/radio.ts`: the stations (each checked with curl for HTTP 200 and `audio/mpeg`) and where the page loads a stream from (`radioSources`).
 - `src/server/radio.ts`: the proxy, what it may fetch (`radioTarget`), the address check, playlists; `tests/radio.test.ts`.
+- `src/server/http/routes/fork.ts`: the `/api/radio` route (`forkRoutes.radio`); `ctx.radio` (a `RadioProxy`) is made in `src/server/fork/office.ts`.
 - Hooks in upstream files:
   - `src/shared/jukebox.ts`: `JukeboxState.station`; `trackTitle` names the station.
-  - `src/shared/protocol.ts`: `station` on `jukebox.play`.
+  - `src/shared/protocol/toys.ts`: `station` on `jukebox.play`.
   - `src/server/jukebox.ts`: `play({ station })`, the station saved and loaded.
-  - `src/server/server.ts`: the `/api/radio` route; `jukebox.play` passes `station` and resolves playlists.
+  - `src/server/http/routes/index.ts`: `forkRoutes.radio` in `routes`. `src/server/ws/handlers/jukebox.ts`: `jukebox.play` passes `station` and resolves playlists.
   - `src/server/guests.ts`: guests may fetch `/api/radio` for a station or a floor's stream (`tests/guests.test.ts` lists the route).
-  - `src/client/ui/jukebox.ts`: the station list. `src/client/style.css`: `.jb-radio`.
-  - `src/client/main.ts`: `radioSources` in `playJukebox`, the click-to-hear toast. `src/client/sound.ts`: `fallback` and `onMusicBlocked`.
+  - `src/client/features/jukebox/ui.ts`: the station list. `src/client/styles/base.css`: `.jb-radio`.
+  - `src/client/features/jukebox/index.ts`: `radioSources` for what the jukebox plays. `src/client/core/you.ts`: the click-to-hear toast (`onMusicBlocked`).
+  - `src/client/features/jukebox/sound.ts`: `fallback` and `onBlocked`; `src/client/sound/index.ts`: `onMusicBlocked`.
   - `docs/features.md`: the jukebox line.
 
 ### DJ sets on the roof
@@ -151,13 +175,17 @@ Anyone on the roof, guests too, can paste a YouTube, SoundCloud or Mixcloud link
 - `src/shared/djset.ts`: reading a pasted link (only those three sites, by exact host), `tests/djset.test.ts`.
 - `src/server/djset.ts`: the booth (`DjBooth`: what's on, saved; its title from the site's oEmbed) and `djMessage` (dj.play/dj.stop: only from the roof, not too often).
 - `src/client/djset.ts`: the embedded players and keeping them in step; `src/client/ui/djbooth.ts`: the booth's window.
+- `src/client/features/djset/index.ts`: `djSets`/`houseDj()`, the `dj` message and `msg.dj` on arrival, `setUp`, `showDjBooth()`, H at the booth (an `activity` key), what the booth's hint says is on (`playing`).
+- Server: `djBooth` on the `Fork` context and `roofExtras` (the roof view carries `dj`) in `src/server/fork/office.ts`; `dj.play`/`dj.stop` in `src/server/ws/handlers/fork.ts`; the messages in `src/shared/protocol/fork.ts`.
 - Hooks in upstream files:
-  - `src/shared/protocol.ts`: `dj.play`/`dj.stop` (ClientMsg), `dj` (ServerMsg), `FloorView.dj`.
-  - `src/server/server.ts`: `djBooth`, `roofView` carries `dj`, the `dj.play`/`dj.stop` case.
+  - `src/shared/protocol/floors.ts`: `FloorView.dj`.
+  - `src/server/office/views.ts`: `roofView` adds `roofExtras`. `src/server/ws/handlers/index.ts`: `dj: noView` in `views` (a floor has none).
   - `src/server/guests.ts`: `dj.play`, `dj.stop` in `GUEST`.
-  - `src/client/sound.ts`: `djSetVolume()`.
-  - `src/client/main.ts`: `djSets`/`houseDj()` (by `sound.onMusicError`), the `dj` message and `msg.dj` on arrival, `setPlace` (`djSets.setUp`, `houseDj()`), E at the booth opens `showDjBooth()`, H at the booth in `officeKey`, the booth's hint.
-  - `src/client/ui/hud.ts`, `docs/features.md`, `docs/controls.md`, `docs/how-it-works.md`: words.
+  - `src/client/sound/index.ts`: `djSetVolume()` (`sound/screens.ts`).
+  - `src/client/core/travel.ts`: `setPlace` calls `parts.djset.setUp(up)` in place of `sound.setDj`.
+  - `src/client/features/bar/index.ts`: E at the booth opens `showDjBooth()`, the booth's hint (E for a set, H for the horn), `blowHorn` returned.
+  - `src/client/main.ts`: `installDjSets(...)`, `djset` for the bar; `src/client/core/parts.ts`: `djset`.
+  - `src/client/ui/help.ts`, `docs/features.md`, `docs/controls.md`, `docs/how-it-works.md`: words.
 
 ### The casino
 
@@ -173,15 +201,17 @@ Diagonally across the street from the office (x -46..-20, z 36..56, where two ne
 - **Phase 2 (roulette, blackjack, poker):** no new messages, no new hooks. Server: a class implementing `CasinoGame` (`src/server/casino/game.ts`) with the table's id, made for its tables in `GAMES` (`src/server/casino/index.ts`: `roulette: (t) => new Roulette(t),` in place of the `ComingSoon`). Chips only move through `ctx.stake` (checks whole chips, limits, the balance) and `ctx.pay`; randomness through `ctx.random`; timed things (a betting window, the dealer's turn) in `tick`; `ctx.changed()` sends the view to everyone inside. Client: a window `(ctx: CasinoUiContext) => CasinoUi` registered with `registerCasinoUi(kind, open)` (`src/client/ui/casino/registry.ts`) in a file imported from `client/casino.ts`, like `ui/casino/slots.ts`; the 3D tables are in `world/casino/interior.ts` (`setTable` gets every table's state, for animating a wheel or dealt cards).
 - **Poker (phase 2):** no-limit Texas Hold'em, a cash game among whoever sits at the `poker` table (2–6). You sit down with nothing and buy in from your wallet (`buyin`, 100–1000, default 200; topping up between hands to at most 1000); getting up, closing the window or leaving puts your stack back in your wallet (mid-hand: you're folded, what you'd already bet stays in the pot, an uncalled bet of yours comes back). Blinds 5/10, the button moves round (heads-up the button posts the small blind and acts first before the flop), a hand starts by itself 5 s after the last once two have chips. Actions `fold`, `check`, `call`, `raise` (data: the total to go to this round), `allin`, plus `sitout`/`back` and `bot`. Minimum bet the big blind, minimum raise the last full raise; an all-in short of a full raise doesn't reopen the betting for those who already acted. 30 s per turn (then a check, or a fold facing a bet; two in a row sit you out). Uncalled bets go back, side pots per all-in level, the odd chip of a split to the first winner left of the button, an all-in with nobody left to bet turns the cards up and runs the board out. Views show your own hole cards and, at a showdown, those of everyone still in; never the deck. Optional house bot ("🤖 House", `bot` toggles it) so one person can play: its 1000-chip stack is the house's (made and lost from nothing, never a wallet), it gives its chair to a sixth person and leaves with the last one.
   - `src/shared/casino-poker.ts` (rules' numbers, cards, the 7-card evaluator, `splitPots`/`shareOut`, `PokerView`), `src/server/casino/poker.ts` (`PokerTable`), `src/client/ui/casino/poker.ts` + `poker.css` (the window: oval table, action bar with slider and ½ pot / pot / all-in, buy-in; F/C/R keys), `src/client/world/casino/poker-felt.ts` (the felt in the room shows the board and the pot), `tests/casino-poker.test.ts`.
+- The places across the street (the casino, the gym, the padel hall, the soccer hall) share their plumbing:
+  - Server, `src/server/fork/office.ts`: each place's state on the `Fork` context (made in `createFork`, stopped in `stopFork`), `casinoPlayer`/`gymPlayer`, `PLACES`/`isPlace`, `placeView`, `goToPlace` (`floor.go` to a place, just inside its door), `backInPlace` (back in after a reload) and `enteredPlace`. Their messages go to `forkHandlers`, leaving and closing to `forkHooks` (`src/server/ws/handlers/fork.ts`).
+  - Client, `src/client/features/places/index.ts`: makes the four places (`CasinoPlace`, `GymPlace`, `HallPlace`, `SoccerPlace`) and `PadelPlay`, declares and defines their kinds (`casino`, `casinotable`, `gym`, `gymstation`, `hall`, `cafe`, `padel`, `soccer`, `soccerpitch`, each with its reach and hint), routes every message to them, `arrived()` after welcome and floor.enter, their `update` and `mood` ticks, and hands the rest of the client `active`, `usable`, `pickables`, `setPlace`, `refresh`, `title`, `hides`, `seesYou`.
+  - Their buildings on the street: `casinoOut`, `gymOut`, `hallOut`, `soccerOut` in `src/client/world/office/fork.ts` (door in `doors`, `setStreet` in `setLevel`, `update`), listed in `src/client/world/office/build.ts`.
+  - Shared hook lines: `src/shared/protocol.ts` (`ForkClientMsg`/`ForkServerMsg`, from `protocol/fork.ts`, in `ClientMsg`/`ServerMsg`); `src/server/server.ts` (`createFork`, `startFork`, `stopFork`); `src/server/office/context.ts` (`Fork` in `Ctx`, `Navigation.goSomewhere`); `src/server/office/navigation.ts` (`goSomewhere`, through `leave`); `src/server/ws/handlers/floors.ts` (`goToPlace` first in `floor.go`); `src/server/ws/connection.ts` (`isPlace`, `backInPlace`, `placeView`, `enteredPlace`); `src/server/ws/handlers/index.ts` (`...forkHandlers`, `forkHooks` in `features`); `src/client/main.ts` (`installPlaces(...)`, `__office.padel`/`soccer`); `src/client/core/parts.ts` (`places`); `src/client/core/travel.ts` (`placeTrip` in and out with the lights dipping, `setPlace`, the garage ride from inside); `src/client/core/maps.ts` (`refresh` in `applyMap`); `src/client/core/arrival.ts` (the project corner's `title()`); `src/client/input/pointer.ts` (`usable`, `pickables`); `src/client/core/loop.ts` (`seesYou`); `src/client/world/types.ts` (the `Interactable` fields).
 - Hooks in upstream files:
-  - `src/shared/protocol.ts`: `CasinoClientMsg`/`CasinoServerMsg` in `ClientMsg`/`ServerMsg`.
-  - `src/server/server.ts`: `casino` (made, stopped), `casinoView`/`casinoPlayer`/`goToCasino`, `floor.go` to `CASINO`, back into the casino after a reload (`inCasino` in `onConnection`), `casino.leave` in `leave` and on close, and casino messages handed to it at the top of `handleMessage`.
   - `src/server/guests.ts`: `casino.sit`, `casino.stand`, `casino.act` in `GUEST`.
-  - `src/client/world/office.ts`: `InteractKind` has `'casino' | 'casino-table'`, `Interactable.table`; the exterior built with the street, its door in `doors`, `setStreet` in `setLevel`, `update` in `update`.
+  - `src/client/world/types.ts`: `Interactable.casinoTable`.
   - `src/client/world/outside.ts`: the two neighbours across the street to the west are gone, `neighbourBoxes()` has the casino (golf balls and the scenic loop's trees keep clear of it), and one far-side street lamp moved from x -34 to -37, out of the doorway.
   - `src/client/world/city.ts`: the roof's city leaves the casino's lot free and draws `cityCasino()` there.
-  - `src/client/main.ts`: `casino` (a `CasinoPlace`) and `casinoTrip`; `setPlace`, `usable`, `aimedAt`, `REACH`, `hintFor`, `interact`, `renderProject`, the message router, `arrived()` after welcome and floor.enter, `update` and `mood` in the frame, and the garage ride from inside.
-  - `src/client/sound.ts`: `casino(kind)`, a section of its own. `src/client/ui/whereabouts.ts`, `src/client/ui/hud.ts`: "🎰 in the casino".
+  - `src/client/sound/casino.ts` (fork file) and `casino(kind)` in `src/client/sound/index.ts`. `src/client/ui/whereabouts.ts` ("🎰 in the casino"), `src/client/ui/people.ts` ("🎰 Casino").
   - `docs/features.md`: the casino line.
 
 ### The gym
@@ -199,16 +229,14 @@ Four kinds of station, all decided on the server, all speaking the one generic s
   - `tests/gym-fitness.test.ts`, `tests/gym-workout.test.ts`, `tests/gym-stations.test.ts`.
 - The protocol: you go in and out with `floor.go` (`GYM`; back with your floor's id and `at` in front of the doors). At a station it's always the same three messages, whatever the machine: `gym.sit {station}`, `gym.stand`, `gym.act {station, action, data}`; the office answers with `gym.profile {profile}`, `gym.station {station, state}` (the game's own view, per viewer) and `gym.result {station, text, xp?, data?}`. All three client messages are `GUEST` (and pass the party gate).
 - A game (`src/server/gym/game.ts`): fitness points and energy only move through the context (`ctx.award`, `ctx.addStamina`, `ctx.countWorkout`, `ctx.setPr`); randomness through `ctx.random`; timed things (a running session, a set finishing, water warming) in `tick`; `ctx.changed()` sends the view to everyone inside; `ctx.leaderboard()` builds the juice bar's board. A client window `(ctx) => GymUi` is registered with `registerGymUi(kind, open)` (`src/client/ui/gym/registry.ts`) in a file imported from `client/gym.ts`; the 3D stations are in `world/gym/interior.ts` (`setStation` gets every station's state, for spinning belts, loading plates and puffing steam).
+- Server and client plumbing: as the casino's (`src/server/fork/office.ts`, `src/server/ws/handlers/fork.ts`, `src/client/features/places/index.ts`, `gymOut` in `src/client/world/office/fork.ts`; see the casino above).
 - Hooks in upstream files:
-  - `src/shared/protocol.ts`: `GymClientMsg`/`GymServerMsg` in `ClientMsg`/`ServerMsg`.
-  - `src/server/server.ts`: `gym` (made, stopped), `gymView`/`gymPlayer`/`goToGym`, `floor.go` to `GYM`, back into the gym after a reload (`inGym` in `onConnection`), `gym.leave` in `leave` and on close, and gym messages handed to it at the top of `handleMessage`.
   - `src/server/guests.ts`: `gym.sit`, `gym.stand`, `gym.act` in `GUEST`.
   - `src/server/party.ts`: `gym.profile`, `gym.station`, `gym.result` in `PARTY_SEES`.
-  - `src/client/world/office.ts`: `InteractKind` has `'gym' | 'gym-station'`, `Interactable.gymStation`; the exterior built with the street, its door in `doors`, `setStreet` in `setLevel`, `update` in `update`.
-  - `src/client/world/outside.ts`: the two neighbours across the street to the east are gone, and `neighbourBoxes()` has the gym.
+  - `src/client/world/types.ts`: `Interactable.gymStation`.
+  - `src/client/world/outside.ts`: the two neighbours across the street to the east are gone, `neighbourBoxes()` has the gym, and two far-side street lamps (x 62, 82) light its front.
   - `src/client/world/city.ts`: the roof's city leaves the gym's lot free and draws `cityGym()` there.
-  - `src/client/main.ts`: `gym` (a `GymPlace`); `setPlace`, `usable`, `aimedAt`, `REACH`, `hintFor`, `interact`, `renderProject`, the message router, `arrived()` after welcome and floor.enter, `update` and `mood` in the frame, and the garage ride from inside (reuses `casinoTrip`).
-  - `src/client/sound.ts`: `gym(kind)`, a section of its own. `src/client/ui/whereabouts.ts`, `src/client/ui/hud.ts`: "🏋️ in the gym".
+  - `src/client/sound/gym.ts` (fork file) and `gym(kind)` in `src/client/sound/index.ts`. `src/client/ui/whereabouts.ts` ("🏋️ in the gym"), `src/client/ui/people.ts` ("🏋️ Gym").
   - `src/client/lab/props.ts`: `gym_interior` (cutaway, no ceiling), `gym_exterior` and `gym_city` for eyeballing the models.
   - `docs/features.md`: the gym line.
 - **Equipment** (the cardio and strength machines, and the people on them): every machine is modelled in detail and moves for everyone in the gym, with whoever's on it posed and animated doing the exercise; nothing new on the wire.
@@ -217,8 +245,8 @@ Four kinds of station, all decided on the server, all speaking the one generic s
   - `src/shared/gym-motion.ts`: the pure maths, shared with the server — the rep tempos (`REP_SECONDS`), `setDurationMs` (the server times a set by it), `setMotion` (lead-in, reps, racking; a broken rep stalls halfway, or is stuck at the bottom on the bench/squat/leg press), `stackPlates`, `barPlates`, `nearestSize`, `cardioHz`, `rowStroke`, `ease`. `tests/gym-motion.test.ts`.
   - The cardio and strength machines left `world/gym/interior.ts` (it calls `buildEquipment` and hands it cardio/strength station states). The cable crossover and dumbbell rack stand `shift`ed 1.7 m / 1.1 m west of their station points, clear of the spa's glass at x 22; `GYM_STATIONS` is unchanged.
   - Timing: `server/gym/strength.ts` holds a set for `setDurationMs` (the lifter's natural tempo, not 340 ms a rep) and sends `since` in `StrengthView`, so onlookers walking in mid-set pick the lifter up at the right rep; the strength window's dots and `rep` sound land at each rep's far point (`repPeakAt`). Cardio uses the view's `speed` as before.
-  - You on a machine (`client/gym.ts`): while your window's open and the office has you on the station, `player.rig` holds you at the machine's spot; the camera is the machine's (`gym.zoomed`, `gym.showsYou` in `main.ts` hide the first-person hands and show your body); closing the window puts you down at its `off` spot. The cardio and strength windows dock along the bottom over a light veil (`ui/gym/gym.css`).
-  - Hooks in upstream files: `src/client/world/character.ts` (`Bones`, `Person.setWorkout`, `Person.bones`, one line at the end of `update`), `src/client/main.ts` (the `GymPlace` host's `people`/`you`/`now`/`camera`/`soundAt`, and `gym.zoomed`/`gym.showsYou` in the frame), `src/client/sound.ts` (`gymAt`: footfalls, flywheel whirr, the rower's whoosh, a stack's clank, a bar's thud, a punch, from where the machine stands).
+  - You on a machine (`client/gym.ts`): while your window's open and the office has you on the station, `player.rig` holds you at the machine's spot; the camera is the machine's (`gym.zoomed`, `gym.showsYou` in `features/places` hide the first-person hands and show your body); closing the window puts you down at its `off` spot. The cardio and strength windows dock along the bottom over a light veil (`ui/gym/gym.css`).
+  - Hooks in upstream files: `src/client/world/character/person.ts` (`Bones`, `Person.setWorkout`, `Person.bones`, one line at the end of `update`; `Bones` exported from `world/character/index.ts`), `src/client/core/loop.ts` (`parts.places.seesYou()`: your body shown or hidden); `src/client/sound/index.ts` (`gymAt`: footfalls, flywheel whirr, the rower's whoosh, a stack's clank, a bar's thud, a punch, from where the machine stands; the recipes in `sound/gym.ts`). The `GymPlace` host's `people`/`you`/`now`/`camera`/`soundAt` and `gym.zoomed` (no hands drawn) are in `src/client/features/places/index.ts`.
 
 #### Rooms, spa and detail
 
@@ -230,12 +258,12 @@ Inside, the gym is a whole club, not just its machines: a rubber floor zoned per
   - `src/shared/gym-rooms.ts`: the plan: the spa, the cabins (`SAUNA`, `STEAM`, `WALK_INS`, `walkInAt`, `cabinWalls`), the Aufguss's numbers and maths (`aufgussWait`, `walkInFactor`, `onBenchIn`), where the jacuzzi, plunge, massage room, loungers, reception, turnstiles, lockers, juice bar, stretch area and turf lane stand, `gymFixtures()` (every solid thing besides the machines and the room's walls: the page's colliders), and `GYM_SEATING` (sauna and steam benches, loungers, bar stools, two benches; `gym: true`).
   - `src/client/world/gym/rooms.ts` (the hall and everything in it but the machines and the spa), `spa.ts` (the spa, the cabins, their doors, clouds and lights), `kit.ts` (shared shorthands: plain pieces go into one group merged by colour at the end, `seatable`, plants, speakers, candles), `textures.ts` (the canvases: floors, planks, tiles, turf, the window view, posters, the timetable, the menu, lockers, water, `WorkoutVideo`), `particles.ts` (`Cloud`: soft particles in one `THREE.Points`, no raycasts).
   - `tests/gym-rooms.test.ts`: nothing stands on a machine, the door and the entrance stay walkable (a grid walk from the door to the sauna, the steam room, the spa, the juice bar, every machine), the cabins are closed but for their doors, every seat is in the gym only and can be got up from, the door's give, the Aufguss's cooldown and boost, and the server's walk-in, bench bonus, Aufguss and leaving.
-- Hooks: `world/gym/interior.ts` calls `buildGymRooms`/`buildGymSpa`, adds `gymFixtures()` as colliders, routes wellness and juice-bar states to them, and `update(t, dt, view)` takes you, your camera and everyone in the gym (the cardio and strength builders are untouched); `client/gym.ts`: `gymAct` in `use` and `hint`, the walk-in line in the HUD, the hiss, the spa's ambience; `ui/gym/registry.ts` and `sound.ts`: `gym('hiss')`, `gymSpa(level)`; `shared/gym.ts`: the wellness stations and the juice bar moved into the new rooms (the cardio and strength stations stay where they were); `server/gym/*`: `GymPlayer.where`, `Gym.moved`, `GymContext.seatKey`, the walk-in wellness; `src/shared/layout.ts` (`SeatDef.gym`, `...GYM_SEATING`, `seatHere(..., inGym)`), `src/shared/maps/index.ts` (`seatHereOn(..., inGym)`), `src/server/server.ts` (`where` in `gymPlayer`, `gym.moved` in `move` and `sit`, `sit` passes `inGym`), `src/client/world/office.ts` (`Interactable.gymAct`), `src/client/main.ts` (the gym host's `camera`, `people`, `ambience`).
+- Hooks: `world/gym/interior.ts` calls `buildGymRooms`/`buildGymSpa`, adds `gymFixtures()` as colliders, routes wellness and juice-bar states to them, and `update(t, dt, view)` takes you, your camera and everyone in the gym (the cardio and strength builders are untouched); `client/gym.ts`: `gymAct` in `use` and `hint`, the walk-in line in the HUD, the hiss, the spa's ambience; `ui/gym/registry.ts`, `sound/gym.ts` (`gym('hiss')`, `GymSpa`) and `sound/index.ts` (`gymSpa(level)`); `shared/gym.ts`: the wellness stations and the juice bar moved into the new rooms (the cardio and strength stations stay where they were); `server/gym/*`: `GymPlayer.where`, `Gym.moved`, `GymContext.seatKey`, the walk-in wellness; `src/server/fork/office.ts` (`where` in `gymPlayer`); `src/shared/layout.ts` (`SeatDef.gym`, `...GYM_SEATING`, `seatHere(..., inGym)`), `src/shared/maps/index.ts` (`seatHereOn(..., inGym)`), `src/server/ws/handlers/presence.ts` (`gym.moved` in `move` and `sit`, `sit` passes `inGym`), `src/client/world/types.ts` (`Interactable.gymAct`), `src/client/features/places/index.ts` (the gym host's `camera`, `people`, `ambience`).
 - Fog: the gym is a place of its own; its `mood` pushes the fog out to 400–500 m and the haze's far term starts at 135 m, so nothing in the 28 × 20 m hall (or its cabins) is ever hazed.
 
 ### The padel hall
 
-Across the street to the east (x 22..54, z 36..72, where the neighbour at x 30 stood), the casino's counterpart: a padel hall with a gallery and a café. A pale grey sports hall under a curved roof, a big glass front with the warm-lit courts showing through, PADEL in lime LED letters with a racket and a ball, a canopy over glass doors that slide apart, bike racks, benches and a flag. **E** at the doors goes in; **E** at the doors inside comes back out onto the street of the floor you came from. Inside is a place of its own like the casino (`HALL = '@hall'` is your `floor` while you're in there), so people from every floor meet, see and hear each other there (guests and party guests too: going in and out is `floor.go`, sitting `sit`, a café item `act`, so there's nothing new to sort in `guests.ts` or `party.ts`). The building's half is below; the padel game's (courts, glass, fence, net, lines, court lights, the game) is its own section. It adds itself to the room with `hall.add({ build })` (`client/hall.ts`), nothing of the building stands on a court or within `COURT_MARGIN` of one.
+Across the street to the east (x 22..54, z 36..72, where the neighbour at x 30 stood), the casino's counterpart: a padel hall with a gallery and a café. A pale grey sports hall under a curved roof, a big glass front with the warm-lit courts showing through, PADEL in lime LED letters with a racket and a ball, a canopy over glass doors that slide apart, bike racks, benches and a flag. **E** at the doors goes in; **E** at the doors inside comes back out onto the street of the floor you came from. Inside is a place of its own like the casino (`HALL = '@hall'` is your `floor` while you're in there), so people from every floor meet, see and hear each other there (guests and party guests too: going in and out is `floor.go`, sitting `sit`, a café item `act`, so there's nothing new to sort in `guests.ts` or `party.ts`). The building's half is below; the padel game's (courts, glass, fence, net, lines, court lights, the game) is its own section. It adds itself to the room with `hall.add({ build })` (`client/hall.ts`, called from `features/places`), nothing of the building stands on a court or within `COURT_MARGIN` of one.
 
 - The shared plan: `src/shared/hall.ts` (`HALL`, the room, the courts, the entry and the inside door, the gallery, `COURT_MARGIN`; plus the building on the street: `HALL_BOX`, `HALL_HEIGHT`, `HALL_ROOF_RISE`, `HALL_DOOR`, `HALL_STREET_SPOT`).
 - Own files (the building and the café):
@@ -246,13 +274,12 @@ Across the street to the east (x 22..54, z 36..72, where the neighbour at x 30 s
   - `tests/hall-building.test.ts` (the lot, the doors, the courts kept clear, the stairs, the café, the seats only in the hall), `tests/cafe.test.ts` (the menu, what the server lets you hold where).
 - Hooks in upstream files:
   - `src/shared/layout.ts`: `SeatDef.hall`, `...HALL_SEATING` in `SEATING`, `seatHere(key, onRoof, inHall)`. `src/shared/maps/index.ts`: `seatHereOn(..., inHall)`.
-  - `src/shared/rooftop.ts`: `Glass`, `DrinkId` and `DRINK_BY_ID` take the café's too. `src/shared/fridge.ts` (fork file): `heldAnywhere`, and `holdSeconds`/`isSnack` know the café's; `src/server/held.ts` and `src/client/booze.ts` use `heldAnywhere` (the café's things may be held anywhere and come along, like the fridge's). `src/client/world/fridgeitems.ts`: hands the café's shapes to `cafeItem`.
-  - `src/server/server.ts`: `goToHall` (through `leave`, like the casino), `floor.go` to `HALL`, back in after a reload (`inHall` in `onConnection`), the hall's view for arrivals, seats in the hall only in there, and taking the last floor off the building sends people in the hall to the lobby.
-  - `src/client/world/office.ts`: `InteractKind` has `'hall' | 'cafe'`; the exterior built with the street, its door in `doors`, `setStreet` in `setLevel`, `update` in `update`.
+  - `src/shared/rooftop.ts`: `Glass`, `DrinkId` and `DRINK_BY_ID` take the café's too. `src/shared/fridge.ts` (fork file): `heldAnywhere`, and `holdSeconds`/`isSnack` know the café's; `src/server/held.ts` and `src/client/features/bar/booze.ts` use `heldAnywhere` (the café's things may be held anywhere and come along, like the fridge's). `src/client/world/fridgeitems.ts`: hands the café's shapes to `cafeItem`.
+  - Server and client plumbing: as the casino's (see above). `src/server/fork/office.ts`: `placeView` (the hall's view for arrivals, `hallView`), `backInPlace` (`backInHall`). `src/server/ws/handlers/presence.ts`: seats in the hall only in there (`seatHereOn(..., inHall)`). `src/server/office/floors.ts`: taking the last floor off the building sends people in the hall to the lobby.
+  - `src/client/features/places/index.ts`: `hall` (a `HallPlace`, going in and out by `placeTrip`), the `hall` and `cafe` kinds; `src/client/features/fridge/index.ts`: `serveFromCafe` (the coffee's buzz, like the kitchen machine's). `hallOut` in `src/client/world/office/fork.ts`.
   - `src/client/world/outside.ts`: the neighbour at x 30 across the street is gone, `neighbourBoxes()` has the hall (golf balls and the scenic loop's trees keep clear of it), and a far-side street lamp moved from x 36 to 46, out of the doorway.
   - `src/client/world/city.ts`: the roof's city leaves the hall's lot free and draws `cityHall()` there.
-  - `src/client/main.ts`: `hall` (a `HallPlace`, going in and out by `casinoTrip`) and `serveFromCafe` (the coffee's buzz, like `drinkCoffee`); `setPlace`, `usable`, `aimedAt`, `REACH`, `hintFor`, `interact`, `renderProject`, the message router, `arrived()` after welcome and floor.enter, `refresh` in `applyMap`, `update` and `mood` in the frame, the garage ride from inside.
-  - `src/client/sound.ts`: `padelHall(kind)`: the doors, the espresso machine (grinder, shot, steam wand) at the counter, a pour, a plate. `src/client/ui/whereabouts.ts` ("🎾 in the padel hall", "☕ at the padel hall café"), `src/client/ui/hud.ts` ("🎾 Padel Hall", a help line).
+  - `src/client/sound/hall.ts` (fork file) and `padelHall(kind)` in `src/client/sound/index.ts`: the doors, the espresso machine (grinder, shot, steam wand) at the counter, a pour, a plate. `src/client/ui/whereabouts.ts` ("🎾 in the padel hall", "☕ at the padel hall café"), `src/client/ui/people.ts` ("🎾 Padel Hall"), `src/client/ui/help.ts` (a help line).
   - `docs/features.md`: the padel hall line.
 
 ### Speakers all over the office
@@ -261,14 +288,14 @@ Small speakers hang from the ceiling round the office and play whatever the juke
 
 They're one PA, not a source per speaker (no piling up, no phasing): the tune goes into the jukebox's panner as before and into a speaker bus (a bit thinner, like small boxes), whose level is the nearest speaker's by distance, lightly panned towards the nearest two. A radio stream stays one audio element, at the louder of the jukebox where you stand and the speakers. **⚙️ → Sound & voice → Speakers** is your own volume (default 40 %, saved with the other settings); muting the jukebox mutes them too. The jukebox's window has quick steps (✕ ▁ ▁▃ ▁▃▅), and for the team a switch that turns them off on the floor for everyone (saved in jukebox.json).
 
-- Own files: `src/client/speakers.ts` (where they hang, the level math, the steps), `src/client/world/speakers.ts` (the boxes), `src/client/ui/speakers.ts` and `src/client/ui/speakers.css` (the row in the jukebox's window); `tests/speakers.test.ts`.
+- Own files: `src/client/speakers.ts` (where they hang, the level math, the steps), `src/client/world/speakers.ts` (the boxes), `src/client/sound/speakers.ts` (`Speakers`: the speaker bus), `src/client/features/speakers/index.ts` (built into the office, `setSpeakerRoom(...)` and updated each frame), `src/client/ui/speakers.ts` and `src/client/ui/speakers.css` (the row in the jukebox's window); `tests/speakers.test.ts`.
 - Hooks in upstream files:
-  - `src/client/sound.ts`: the tune goes into `musicSrc` (which feeds the jukebox's panner and the speakers), a speakers section (`setSpeakerVolume`, `setSpeakerRoom`, `hearSpeakers`), `hearStream` uses `streamVolume`.
-  - `src/client/state.ts`: `Settings.speakers`/`speakersMuted`, loaded and saved. `src/client/ui/settings.ts`: the Speakers row.
-  - `src/client/ui/jukebox.ts`: `openJukebox(..., speakerControl)` puts the speakers' row in.
-  - `src/client/main.ts`: `officeSpeakers` built and updated each frame, `sound.setSpeakerRoom(...)` before `sound.update`, `setSpeakerVolume` next to `setMusicVolume`, `showJukebox` passes the control.
+  - `src/client/features/jukebox/sound.ts`: the tune goes into `musicSrc` (which feeds the jukebox's panner and the speakers), a speakers section (`setSpeakerVolume`, `hearSpeakers`), `hearStream` uses `streamVolume`. `src/client/sound/index.ts`: `setSpeakerVolume`, `setSpeakerRoom`, `speakerLevel` in the fork's section.
+  - `src/client/state/persist.ts`: `Settings.speakers`/`speakersMuted`, loaded and saved (`tests/client-store.test.ts` knows them). `src/client/ui/settings.ts`: the Speakers row.
+  - `src/client/features/jukebox/ui.ts`: `openJukebox(..., speakerControl)` puts the speakers' row in; `src/client/features/jukebox/index.ts` passes the control.
+  - `src/client/core/you.ts` (at start) and `src/client/features/hud/index.ts` (on a settings change): `setSpeakerVolume` next to `setMusicVolume`. `src/client/main.ts`: `installSpeakers(...)`.
   - `src/shared/jukebox.ts`: `JukeboxState.speakersOff`. `src/server/jukebox.ts`: `setSpeakers()`, kept through new tunes, saved and loaded.
-  - `src/shared/protocol.ts`: the `jukebox.speakers` message. `src/server/server.ts`: its case (toast to the floor). `src/server/guests.ts`: `jukebox.speakers` is `TEAM_ONLY`.
+  - `src/shared/protocol/fork.ts` (fork file): the `jukebox.speakers` message; its handler (toast to the floor) in `src/server/ws/handlers/fork.ts`. `src/server/guests.ts`: `jukebox.speakers` is `TEAM_ONLY`.
   - `docs/features.md`: the speakers line.
 
 ### Flogge's own car
@@ -279,35 +306,36 @@ Who holds the keys is set, not written in: `.agent-office/car-keys.json` lists a
 
 Driving somewhere comes next: `src/shared/destinations.ts` is where named places to drive to (the supermarket, first) go, with the steps for adding one: its own lot in `PAVEMENT` (or off the scenic loop), listed there, drawn, and named in the drive hint.
 
-- Own files: `src/shared/bulli.ts` (its driving, seats, heights, who may take which seat), `src/server/carkeys.ts` (the keys and the `agent-office car` command), `src/client/world/bulli.ts` (the van, its plates, its springs, its corner), `src/shared/destinations.ts`; `tests/bulli.test.ts`.
+- Own files: `src/shared/bulli.ts` (its driving, seats, heights, who may take which seat), `src/server/carkeys.ts` (the keys and the `agent-office car` command), `src/client/world/bulli.ts` (the van, its plates, its springs, its corner), `src/client/sound/bulli.ts` (`bulliHorn`), `src/shared/destinations.ts`; `tests/bulli.test.ts`.
 - Hooks in upstream files:
   - `src/shared/garage.ts`: `CarKind` has `'bulli'`, `CarDef.owned`/`plate`, the Bulli in `CARS` (last, so no other car's index moves), `DriveTuning`, `drive(..., t)`, `steerLimit(..., t)`, `tuningOf`, `seatsOf`, `hipsOf`, `heightOf`.
   - `src/server/garage.ts`: `drive` clamps to the car's own `tuningOf`.
-  - `src/shared/protocol.ts`: `Me.bulli`.
-  - `src/server/server.ts`: `carKeys`, `keysOf` in `meOf`, `Client.bulli` (passed on like `admin`/`guest` in `accountsChanged` and the heartbeat), and the refusal in the `car.enter` case.
+  - `src/shared/protocol/accounts.ts`: `Me.bulli`.
+  - `src/server/fork/office.ts`: `carKeys` on the `Fork` context; `src/server/fork/roles.ts`: the keys in `roleOf` (`meOf`, `src/server/office/people.ts`), `Client.bulli` passed on like `admin`/`guest` (`roleMoved`/`roleChanged`, in `office/people.ts` and `office/timers.ts`). `src/server/office/client.ts`: `Client.bulli`; `src/server/ws/connection.ts`: set at connecting. `src/server/ws/handlers/car.ts`: the refusal in `car.enter`.
   - `src/server/cli.ts`: the `car` command; `src/server/config.ts`: its line in the help.
-  - `src/client/world/cars.ts`: the Bulli's model and corner in `Fleet`, `CarModel.sway` and `wobble` in `update`, per-car seats and heights in `seatAt` and `show`.
-  - `src/client/driving.ts`: `tuningOf` and `seatsOf` for the car you're in.
-  - `src/client/main.ts`: `carIcon`, `mayDrive`, passenger seat for non-keyholders in `getIn`, `hipsOf`, the car hints, no "got in first" toast when refused; `sound.honk` takes the car's kind.
-  - `src/client/sound.ts`: `honk(at, kind)` and `bulliHorn`, in a section of their own.
-  - `src/client/ui/whereabouts.ts`, `src/client/ui/hud.ts`, `docs/features.md`, `docs/configuration.md`: words.
+  - `src/client/features/cars/world.ts`: the Bulli's model and corner in `Fleet`, `CarModel.sway` and `wobble` in `update`, per-car seats and heights in `seatAt` and `show`.
+  - `src/client/features/cars/controller.ts`: `tuningOf` and `seatsOf` for the car you're in.
+  - `src/client/features/cars/index.ts`: `carIcon`, `mayDrive`, passenger seat for non-keyholders in `getIn`, `hipsOf`, the car hints, no "got in first" toast when refused; `sound.honk` takes the car's kind. `src/client/features/peers/index.ts`: `hipsOf` for others in a car.
+  - `src/client/sound/index.ts`: `honk(at, kind)` (the Bulli's goes to `bulliHorn`).
+  - `src/client/ui/whereabouts.ts`, `src/client/ui/help.ts`, `docs/features.md`, `docs/configuration.md`: words. `tests/server-dispatch.test.ts`: an admin's `Me` has `bulli`.
 
 ### Racing rig
 
 A racing rig in the lounge, next to the arcade cabinet: out between the lounge and the meeting room's glass (x 14.2–15.6, z 5.9–8.0), a bucket seat on an aluminium frame, a wheel, pedals and a TV on a stand, facing the glass so the lounge sees its screen. **E** there sits you down (hands on the wheel, for everyone to see), the camera glides up to the TV, and you race OFFICE GP: a pseudo-3D arcade racer, three laps against five CPU cars (CLAUDE, CODEX, GROK, GEMINI, OPENCODE) after a 3-2-1 countdown, lap timer, best lap, off-road slowdown, bumps, a boost meter. Arrows or WASD, Space boost, R restart, a gamepad or wheel through the Gamepad API. One driver a floor; everyone else sees the race on the rig's TV (the driver's page sends a compact frame ten times a second, the office passes it on, each page draws it) and can press **E** to watch up close. Esc or ✕ gets you out of the seat; leaving the floor or the office frees it. The building's fastest races and laps are kept in the office's `.agent-office/rig.json` and shown on the TV when nobody's racing. The office only takes a result whose laps could have been driven (none quicker than a lap flat out on the boost) and no quicker than its own clock saw since the green.
 
-- Own files: `src/shared/racing.ts` (the track, the race, the CPU cars, the autopilot), `src/shared/rig.ts` (where the rig stands, its seat, frames, results and tables), `src/server/rig.ts` (one driver a floor, relaying, checking results, the tables), `src/client/world/rig.ts` (the model), `src/client/ui/rig.ts` (sitting, driving, watching, the TV), `src/client/ui/rigscreen.ts` (drawing the race); `tests/rig.test.ts`.
+- Own files: `src/shared/racing.ts` (the track, the race, the CPU cars, the autopilot), `src/shared/rig.ts` (where the rig stands, its seat, frames, results and tables), `src/server/rig.ts` (one driver a floor, relaying, checking results, the tables), `src/client/world/rig.ts` (the model), `src/client/ui/rig.ts` (sitting, driving, watching, the TV), `src/client/ui/rigscreen.ts` (drawing the race), `src/client/features/rig/index.ts` (the `rig` kind: `sitInRig`, E at the rig, its hint and reach, updated each frame, your `wheel`, no first-person hands while zoomed, its `engine`), `src/client/state/slices/rig.ts` (`store.rig`/`store.rigFrame`, from the floor view and the `rig`/`rig.frame` messages), `src/client/sound/rig.ts` (the TV's beeps, fanfare and knocks); `tests/rig.test.ts`.
+- Server: `rigs`/`rigChanged` on the `Fork` context (`src/server/fork/office.ts`); the `rig.*` handlers, `rigLeft` in `forkHooks` (leaving a floor or the office) and `rigView` in `src/server/ws/handlers/fork.ts`; the messages in `src/shared/protocol/fork.ts`.
 - Hooks in upstream files:
-  - `src/shared/protocol.ts`: `rig.play`, `rig.leave`, `rig.frame`, `rig.finish` (ClientMsg), `rig`, `rig.frame` (ServerMsg), `FloorView.rig`.
+  - `src/shared/protocol/floors.ts`: `FloorView.rig`.
   - `src/server/guests.ts`: the four `rig.*` messages in `GUEST`.
-  - `src/server/server.ts`: `rigs`/`rigChanged`/`rigLeft`, `floorView` carries `rig`, the `rig.*` cases, and `rigLeft` when someone leaves a floor or the office.
+  - `src/server/ws/handlers/index.ts`: the floor view carries `rig` (`rig: rigView` in `views`).
   - `src/shared/layout.ts`: the rig's seat (`RIG_SEAT`) in `SEATING`. `src/shared/nav.ts`: the rig in the office's obstacles.
-  - `src/client/world/office.ts`: `InteractKind` has `'rig'`, `OfficeWorld.rig`, built next to the cabinet with its collider and interactable.
-  - `src/client/world/character.ts`: `wheel`, hands on the wheel while sitting.
-  - `src/client/state.ts`: `store.rig`/`store.rigFrame`, from the floor view and the `rig`/`rig.frame` messages.
-  - `src/client/sound.ts`: `rig()`, the TV's beeps, fanfare and knocks, in a section of its own (the engine goes through `setEngines`).
-  - `src/client/main.ts`: `rig` next to `cabinet` (made, stopped, updated), `sitInRig`, E at the rig, its hint, its `REACH`, the engine in `setEngines`, `wheel` for you and everyone else, no first-person hands while zoomed.
-  - `src/client/ui/hud.ts`, `docs/features.md`: words.
+  - `src/client/world/office/fork.ts` (fork file): the `rig` fixture (`OfficeHandles.rig`, its collider and interactable), listed in `src/client/world/office/build.ts` next to the cabinet.
+  - `src/client/world/character/person.ts`: `wheel`, hands on the wheel while sitting; `src/client/features/peers/index.ts`: `wheel` for everyone else (`onRig`).
+  - `src/client/state/slices/index.ts`: the `rig` slice in `SLICES`; `tests/client-store.test.ts`: `rig`/`rigFrame` among the store's keys.
+  - `src/client/sound/index.ts`: `rig()`. `src/client/features/cars/index.ts`: the engine goes through `setEngines` (`rigEngine`).
+  - `src/client/main.ts`: `installRig(...)`, `rigEngine` for the cars, `__office.rig`; `src/client/core/parts.ts`: `rig`; `src/client/core/maps.ts`: stopped with the cabinet.
+  - `src/client/ui/help.ts`, `docs/features.md`: words. `tests/server-dispatch.test.ts`: the welcome ends with `rig`.
 
 ### Streams on the office TV
 
@@ -320,13 +348,15 @@ How it gets onto the TV: a browser can't draw another site's player into WebGL, 
 - `src/client/embeds.ts`: `EmbedPlayer` (keeping a site's player in step on the office clock, its volume, blocked/failed/ended/held) and YouTube's player, shared with the DJ sets. `src/client/tv.ts`: `TvStreams` (Twitch's player, laying the iframe over the TV or the big player, the TV's card), `src/client/tvquad.ts` (the matrix and the line of sight), `src/client/ui/tv.ts` (the TV's window and the big player).
 - The DJ sets now use these shared files (`src/shared/djset.ts`, `src/server/djset.ts`, `src/client/djset.ts` keep only their own parts); they behave as before, except that a set whose title arrived before you went up no longer gets stuck loading.
 - Hooks in upstream files:
-  - `src/shared/protocol.ts`: `tv.play`/`tv.stop` (ClientMsg), `tv` (ServerMsg), `FloorView.tv`.
+  - `src/shared/protocol/fork.ts` (fork file): `tv.play`/`tv.stop` (ClientMsg), `tv` (ServerMsg); `src/shared/protocol/floors.ts`: `FloorView.tv`.
   - `src/server/floor.ts`: `Floor.tv` (an `OfficeTv` in the floor's data folder).
-  - `src/server/server.ts`: `floorView` carries `tv`; the `tv.play`/`tv.stop` case.
+  - `src/server/ws/handlers/index.ts`: the floor view carries `tv` (`tv: tvView`); the `tv.play`/`tv.stop` handlers and `tvView` are in `src/server/ws/handlers/fork.ts`.
   - `src/server/guests.ts`: `tv.play`, `tv.stop` in `GUEST`.
-  - `src/client/sound.ts`: `tvVolume()`.
-  - `src/client/main.ts`: `tvStreams`/`tvPicture()` (the TV's picture: a share, the stream's card, or idle; also from `refreshShares`), the `tv` message and `msg.tv` on arrival, `setOn`/`frame` after the scene's drawn, E at the TV opens `showTv()`, the couch's E (`watchTvBig`), the TV's hint, the idle screen's words, `window.__tv`.
-  - `src/client/ui/hud.ts`, `docs/features.md`, `docs/controls.md`: words.
+  - `src/client/sound/index.ts`: `tvVolume()` (`sound/screens.ts`); `src/client/sound/core.ts`: `masterGain()`.
+  - `src/client/features/tv/index.ts`: `tvStreams`/`tvPicture()` (the TV's picture: a share, the stream's card, or idle), the `tv` message and `msg.tv` on arrival, `setOn`/`frame` after the scene's drawn (the `render` tick), E at the TV opens `showTv()`, `watchBig`, the TV's hint, the idle screen's words, `voiceChanged`.
+  - `src/client/features/voice/index.ts`: `tv.voiceChanged()` when shares come or go. `src/client/features/seating/index.ts`: the couch's E (`watchBig`).
+  - `src/client/main.ts`: `installTv`'s `toggleShare`/`showSettings`, `tv` for the seating, `window.__tv`.
+  - `src/client/ui/help.ts`, `docs/features.md`, `docs/controls.md`: words. `tests/server-dispatch.test.ts`: the welcome ends with `tv`.
 
 ### Games on the roof
 
@@ -338,15 +368,17 @@ The first player's page (the table's host) runs the game, the computer included,
   - `src/shared/tablegames/`: the games, pure and shared: `tables.ts` (where the tables stand, the wire types, the checks), `game.ts` (what a game is), `hockey.ts`, `pingpong.ts`, `kicker.ts`, `pool.ts` (physics, rules, the computer), `index.ts`.
   - `src/server/tablegames.ts`: the seats (`RoofTables`: join, leave, host handover, snapshot and move checks) and `tableMessage`.
   - `src/client/tablegames/models.ts` (the four tables in 3D, and what's on them), `play.ts` (stepping up, running and drawing the games, the computer, the camera, the bar at the top, sounds), `tablegames.css`.
+  - `src/client/features/tablegames/index.ts`: the `table` kind (E at a table, its hint and reach), `tables.update` each frame, no hands while the camera's at a table. `src/client/sound/tablegames.ts`: `tableGame()`.
+  - Server: `roofTables` and `toRoof` on the `Fork` context and in `roofExtras` (`src/server/fork/office.ts`); the four `table.*` handlers and `leftTable` (in `forkHooks`: off the roof, and on disconnect) in `src/server/ws/handlers/fork.ts`; the messages in `src/shared/protocol/fork.ts`.
   - `tests/tablegames.test.ts` (physics and rules), `tests/tablegames-server.test.ts` (sessions and relaying).
 - Hooks in upstream files:
-  - `src/shared/protocol.ts`: `table.join`/`table.leave`/`table.input`/`table.sync` (ClientMsg), `tables`/`table.sync`/`table.input` (ServerMsg), `FloorView.tables`.
-  - `src/server/server.ts`: `roofTables`, `toRoof`, `leftTable` (off the roof in `leave`, and on disconnect), `roofView` carries `tables`, the four `table.*` cases.
+  - `src/shared/protocol/floors.ts`: `FloorView.tables`.
+  - `src/server/office/views.ts`: `roofView` carries `tables` (`roofExtras`). `src/server/ws/handlers/index.ts`: `tables: noView` in `views`.
   - `src/server/guests.ts`: the four `table.*` messages in `GUEST`.
-  - `src/client/world/office.ts`: `InteractKind` has `'table'`, `Interactable.table`.
-  - `src/client/world/rooftop.ts`: `buildRoofTables()` added to the roof (its group, colliders, interactables), `Rooftop.tables`.
-  - `src/client/sound.ts`: `tableGame()`, in a section of its own.
-  - `src/client/main.ts`: `tables` (made next to the thrower), E at a table, its hint, `tables.update` after the cabinet, `REACH.table`, no hands or own body while the camera's at a table, `__office.tables`.
+  - `src/client/world/types.ts`: `Interactable.table`.
+  - `src/client/features/rooftop/world.ts`: `buildRoofTables()` added to the roof (its group, colliders, interactables), `Rooftop.tables`.
+  - `src/client/sound/index.ts`: `tableGame()`.
+  - `src/client/main.ts`: `installTableGames(...)`, `__office.tables`; `src/client/core/parts.ts`: `tables`; `src/client/core/loop.ts`: no own body while the camera's at a table (`parts.tables.zoomed`).
   - `docs/features.md`, `docs/controls.md`: words.
 
 ### Padel
@@ -365,14 +397,14 @@ It runs like the table games on the roof: the first person on a court hosts it (
   - `src/client/hall/courts.ts` (the courts in 3D, figures with rackets, the ball, scoreboards; **the hook for the hall**: `buildCourts(parent)` returns `{ group, colliders, interactables, views, update }`, and the hall adds the colliders and interactables to its own; `currentCourts()` hands them to the game), `src/client/hall/padel.ts` (`PadelPlay`: the chooser, hosting and drawing the courts, the camera, input, the bar at the top, sounds), `padel.css`.
   - `src/client/lab/padel.html` + `padel.ts`: a lab page for the courts and a computer rally (`view=play|watch|gallery|top`, `t=`), for headless screenshots with `lab/shot.mjs`.
   - `tests/padel.test.ts` (scoring, serving, the court's edges, the rules in play, physics, snapshots, four computer players play a match), `tests/padel-server.test.ts` (sessions, handover, checks, relaying).
+- Server: `padelCourts` and `toHall` on the `Fork` context (`src/server/fork/office.ts`); the five `padel.*` handlers and `leftCourt` (in `forkHooks`: out of the hall, and on disconnect) in `src/server/ws/handlers/fork.ts`; `PadelClientMsg`/`PadelServerMsg` in `ForkClientMsg`/`ForkServerMsg` (`src/shared/protocol/fork.ts`).
+- Client: `src/client/features/places/index.ts`: `padel` (a `PadelPlay`), the courts built into the hall, the `padel` kind (E at a court, its hint and reach), `padel.update` each frame, no hands while the camera's on a court, `hides` and `seesYou`. `src/client/sound/padel.ts`: `padel()` (racket, bounce, glass knock, fence rattle, net, chimes; quiet from far away).
 - Hooks in upstream files:
-  - `src/shared/protocol.ts`: `PadelClientMsg`/`PadelServerMsg` in `ClientMsg`/`ServerMsg`.
-  - `src/server/server.ts`: `padelCourts`, `toHall`, `leftCourt` (out of the hall in `leave`, and on disconnect), the five `padel.*` cases.
   - `src/server/guests.ts`: the five `padel.*` messages in `GUEST`. `src/server/party.ts`: `padel`, `padel.sync`, `padel.input` in `PARTY_SEES`.
   - `src/server/tablegames.ts`: `Bucket` exported (padel's rate limits).
-  - `src/client/world/office.ts`: `InteractKind` has `'padel'`, `Interactable.court`.
-  - `src/client/sound.ts`: `padel()`, a section of its own (racket, bounce, glass knock, fence rattle, net, chimes; quiet from far away).
-  - `src/client/main.ts`: `padel` (a `PadelPlay`), E at a court, its hint, `REACH.padel`, `padel.update` after the tables, your own body and hands hidden while the camera's on a court, the people on a court hidden in the hall (the court draws them), `__office.padel`.
+  - `src/client/world/types.ts`: `Interactable.court`.
+  - `src/client/sound/index.ts`: `padel()`.
+  - `src/client/core/loop.ts`: your own body hidden while the camera's on a court (`seesYou`). `src/client/features/peers/index.ts`: the people on a court hidden in the hall (`hides`; the court draws them). `src/client/main.ts`: `__office.padel`.
   - `docs/features.md`, `docs/controls.md`: words.
 
 ### TURN for voice from outside
@@ -380,15 +412,15 @@ It runs like the table games on the roof: the first person on a court hosts it (
 Voice and screen sharing connect browsers directly (WebRTC). With only STUN that fails for people outside the Mac's network behind strict routers, office networks or mobile data: they are "in voice" and their mic lights up, but nothing arrives. With a Cloudflare TURN key the office fetches short-lived TURN credentials (48 h, refreshed every 12 h, retried after 5 min on failure) and hands them to every page in the welcome's `ice`, after the office's own STUN servers. Without a key nothing changes. Port-53 URLs are dropped (browsers block them).
 
 - The key: `<office>/.agent-office/turn.json` = `{"keyId": "...", "apiToken": "..."}` (chmod 600), or the environment's `CF_TURN_KEY_ID` / `CF_TURN_API_TOKEN`. Read at start: restart the office after adding it.
-- `src/server/turn.ts` (+ `tests/turn.test.ts`); hooks in `src/server/server.ts` (make, start, stop, and the welcome's `ice`).
+- `src/server/turn.ts` (+ `tests/turn.test.ts`); made, started and stopped in `src/server/fork/office.ts` (`createFork`, `startFork`, `stopFork`, hooked into `src/server/server.ts`); the welcome's `ice` (`ctx.turn.servers()`) in `src/server/ws/connection.ts`.
 - Cloudflare: first 1,000 GB a month free (shared with their SFU), then $0.05/GB; voice needs a few MB per person and hour.
 
 ### A doorbell
 
 A ding-dong for everyone in the office when a person comes in, with a toast "🔔 Ada came in". Workers never ring (they aren't people in the office), and neither do you, the people already there when you arrive, a reload or a dropped connection coming back (gone less than 90 s), or a second tab of someone who's here. A crowd arriving at once rings once, but everyone is named. It plays on the effects volume.
 
-- `src/client/doorbell.ts`: who's here and whether an arrival rings; `tests/doorbell.test.ts`.
-- Hooks in upstream files: `src/client/sound.ts` (`doorbell()`, its own section), `src/client/main.ts` (the bell, and one line each in the `welcome`, `floor.enter` and `peer.join`/`peer.leave` cases).
+- `src/client/doorbell.ts`: who's here and whether an arrival rings; `src/client/features/doorbell/index.ts`: the bell, on the `welcome`, `floor.enter` and `peer.join`/`peer.leave` messages; `src/client/sound/doorbell.ts`: the ding-dong; `tests/doorbell.test.ts`.
+- Hooks in upstream files: `src/client/sound/index.ts` (`doorbell()`), `src/client/main.ts` (`installDoorbell(ctx)`).
 
 ### Bungee off the roof
 
@@ -398,43 +430,50 @@ A wooden jetty with railings runs from the rooftop bar's deck out over the stree
   - `src/shared/bungee.ts`: where the jetty and the anchor are, `BungeeState`, and the jump: `bungeePlan(drop)` (the rope's length and stiffness fitted so it never goes deeper than the margin, damping included; a fixed-step simulation of the fall and bounces, kept per height) and `bungeePose(drop, t)` (count, fall, hang, winch, climb, done), `bungeeDuration`, `bungeeDay`.
   - `src/server/bungee.ts`: `BungeeRope` (who's on the rope and since when, one at a time, the per-person cooldown, the day's jumps reset at local midnight; in memory) and `bungeeMessage` (only from the roof; the drop from the building's floors).
   - `src/client/world/bungee.ts`: the jetty, platform, railings, gantry, gate, signs, colliders and the interactable. `src/client/bungee.ts`: `Bungee` (asks for the rope, holds your player on the platform while you're on it, poses the jumper's body, draws the rope, flies your camera, the countdown, the toast, the sounds, the keys).
+  - `src/client/features/bungee/index.ts`: the `bungee` kind (E at the platform, its hint and reach), its messages, its keys (an `activity` key), `bungee.update` after everyone's moved (the `others` tick). `src/client/sound/bungee.ts`: `bungee()`, `BungeeWind`.
   - `tests/bungee.test.ts`.
 - The protocol: `bungee.jump` (ClientMsg), `bungee {state}` (ServerMsg, to everyone on the roof), `FloorView.bungee` in the roof's view for arrivals.
+- Server: `bungeeRope` on the `Fork` context and in `roofExtras` (`src/server/fork/office.ts`); the `bungee.jump` handler and `offRope` (in `forkHooks`: leaving the roof, and on disconnect) in `src/server/ws/handlers/fork.ts`; the two messages in `src/shared/protocol/fork.ts`.
 - Hooks in upstream files:
-  - `src/shared/protocol.ts`: the two messages and `FloorView.bungee`.
-  - `src/server/server.ts`: `bungeeRope`/`offRope` next to the roof tables, `roofView` carries `bungee`, the `bungee.jump` case, off the rope when leaving the roof and on disconnect.
+  - `src/shared/protocol/floors.ts`: `FloorView.bungee`.
+  - `src/server/office/views.ts`: `roofView` carries `bungee` (`roofExtras`). `src/server/ws/handlers/index.ts`: `bungee: noView` in `views`.
   - `src/server/guests.ts`: `bungee.jump` in `GUEST`. `src/server/party.ts`: `bungee` in `PARTY_SEES` and `VIEW_AS_IS`.
-  - `src/client/world/office.ts`: `InteractKind` has `'bungee'`.
-  - `src/client/world/rooftop.ts`: the south edge's railing and the planters there leave a gap for the jetty, `buildBungeeJetty()` added to the roof, `Rooftop.bungee`.
-  - `src/client/sound.ts`: `bungee()` and `bungeeWind()`, a section of their own.
-  - `src/client/main.ts`: `bungee` (made next to the table games), its message, E at the platform (`interact`), its hint, `REACH.bungee`, its keys in the keydown handler, `bungee.update` after everyone's moved in the frame, `__office.bungee`.
+  - `src/client/features/rooftop/world.ts`: the south edge's railing and the planters there leave a gap for the jetty, `buildBungeeJetty()` added to the roof, `Rooftop.bungee`.
+  - `src/client/sound/index.ts`: `bungee()` and `bungeeWind()`.
+  - `src/client/main.ts`: `installBungee(...)`, `__office.bungee`; `src/client/core/parts.ts`: `bungee`.
   - `docs/features.md`, `docs/controls.md`: words.
 
 ### The soccer hall
 
-Across the street between the golf hole and the padel hall (x 2.5..21, z 36..72, where the last neighbour across the street stood; ≥ 1 m from the green and its fringe, 1 m from the padel hall), an indoor small-field soccer hall: a long dark green hall with a band of milky polycarbonate glazing under the eaves (lit at night), white SOCCER HALL letters with a ball, glass doors under a steel canopy on the north (street) face, a little practice goal on the lawn, and the SCENIC LOOP billboard, which moved up onto its roof. **E** at the doors goes in; **E** at the doors inside comes back out onto the street of the floor you came from. Inside is a place of its own like the casino and the padel hall (`SOCCER = '@soccer'` is your `floor` in there; interior coordinates, the pitch centred on 0): a 27 × 14 m pitch of artificial turf with white lines (halfway line, centre circle, futsal-style penalty areas and spots), 1 m boards all round with safety nets above (4.5 m behind the goals, 3 m along the sides), two 3 × 2 m goals with nets, team benches (red north, blue south of the halfway line) under coloured shelters along the west wall, a three-row stand behind the south goal, rows of lights under the roof, and a big scoreboard over each end (RED n : m BLUE, the clock, what's going on; it flashes the scoring team's colour for a goal).
+Across the street between the golf hole and the padel hall (x 2.5..21, z 36..72, where the last neighbour across the street stood; ≥ 1 m from the green and its fringe, 1 m from the padel hall), an indoor small-field soccer hall: a long dark green hall with a band of milky polycarbonate glazing under the eaves (lit at night), white SOCCER ARENA letters with a ball, glass doors under a steel canopy (a green light strip along its edge, downlights under it) on the north (street) face, the club's red and blue FLOGGE FC banners, uplights washing the facade at night, a match poster by the doors, a little practice goal on the lawn, and the SCENIC LOOP billboard, which moved up onto its roof. **E** at the doors goes in; **E** at the doors inside comes back out onto the street of the floor you came from. Inside is a place of its own like the casino and the padel hall (`SOCCER = '@soccer'` is your `floor` in there; interior coordinates, the pitch centred on 0): a 27 × 14 m pitch of artificial turf with mown stripes and crisp white lines (halfway line, centre circle, futsal-style penalty areas and spots, corner arcs) and the FLOGGE FC crest in the centre circle, 1 m boards all round (a rubber kick plate, LED panels on both faces, a padded top) with safety nets above (4.5 m behind the goals, 3 m along the sides), two 3 × 2 m goals (round white posts and bar, a frame back to a weighted base, nets that sag and billow out when the ball goes in), dugouts (red north, blue south of the halfway line) with curved acrylic roofs, bucket seats, bottle crates, cones and a ball bag along the west wall, the players' tunnel (SPIELERTUNNEL) between them and a locker room (KABINE) behind glass further north, a three-row stand behind each goal (blue end south, red end north west of the doors) and a gallery over the east walkway, padded walls with ribbed cladding and a band of windows (daylight, or the night outside), steel trusses with red and blue banners and rows of floodlights under the roof, and a big scoreboard over each end (RED n : m BLUE, the clock, what's going on; it flashes the scoring team's colour for a goal).
 
-Playing: **E** at the boards on the halfway line (either side) puts you in the team with fewer players (on a tie the one behind, else red; five a side at most), on the pitch in your half, with a bib and a ring under your feet in the team's colour for everyone to see; **E** there again leaves the pitch (so do leaving the hall and disconnecting; a reconnect joins again). The ball is the office's: `server/soccer/` runs the physics (`shared/soccer-ball.ts`) at 30 Hz: rolling friction and drag on the turf, air drag and gravity in the air, a dead-ish floor bounce, the boards (restitution 0.7; the nets above them hold a high ball in, so it never leaves the pitch), the posts and the bar (0.6), the net nearly dead. A goal is the whole ball over the line between the posts under the bar. Players' positions are their ordinary `move` messages; their speed comes from the last two, and running into the ball pushes it on ahead of you a touch faster than you (dribbling), or it comes off you if you stand. A kick (`soccer.kick {power, dir, loft}`: hold the left mouse button or Space to charge, let go; the right button or Shift while charging chips it) counts only from within 1.3 m of the ball, once per 300 ms, power and loft clamped to 0..1, when your team may touch the ball. The office sends the ball about 15 times a second while it moves (at once after a kick or a hit, with what it hit for the sound) and the match on every change and every 5 s; each page runs the same physics on from the last snapshot and melts any difference away over a few frames instead of jumping (only a big one snaps), and your own kick goes at once on your page before the office confirms it. The match (`server/soccer/match.ts`, on its own clock for the tests): it starts once both teams have a player; a 2 s kick-off freeze with the ball on the centre spot, then the kicking-off team touches it first (for up to 3 s); 5 minutes of playing time (the clock stops for goals and kick-offs) or first to 5 goals; after a goal a 3 s celebration (toast "⚽ GOAL! Red (Ann) · Red 1:0 Blue", confetti in the goal, the cheer and the whistle), then the team that conceded kicks off; the final whistle, the result as a toast, 10 s, a new match. A team left empty pauses it (clock stopped, score kept) and it kicks off again once both have players; nobody left on the pitch resets it. Meanwhile (waiting or paused) the ball's free to kick about, and practice goals just bring it back to the centre. Guests and party guests play too.
+The hall's atmosphere (`world/soccer/look.ts`, the rules in `matchday.ts`): the stands fill with instanced fans (178 seats, red at the north end and the gallery's north half, blue at the south, neutral between; more of them with more people in the hall, always a good crowd during a match, nearly empty when nobody's in). They bob and chat, clap a kick-off and along with the chants, get half up with their hands up for a near miss (off the post or the bar, or hard into the end boards just wide), and jump with arms and scarves up when their team scores (the other end sits it out). The LED boards roll through friendly fake ads (Kultur am Regen, Bus kommt gleich, Bibelstunde Cocktails, Signal & Stille, Casino gegenüber, Padel Hall, …) and strobe GOAL! in the scorers' colour for a goal. The stadium announcer calls out the kick-off (ANPFIFF!), goals (⚽ TOOOR! Ann trifft – Rot 2:1 Blau, own goals too) and the final whistle in a big callout with an air horn. The floodlights flare as a match starts and dim a little between matches; at night the windows go dark and their pools on the pitch show more. Sounds (effects volume, only in the hall): a crowd murmur that swells with the crowd and the play, the roar of a goal, the "oooh", applause, rhythmic clapping now and then in play. All of it costs well under a millisecond a frame (one draw call per body part for the whole crowd, one mesh for every LED panel, the hall's plain parts merged into one).
+
+Playing: **E** at the boards on the halfway line (either side) puts you in the team with fewer players (on a tie the one behind, else red; five a side at most), on the pitch in your half, with a bib and a ring under your feet in the team's colour for everyone to see; **E** there again leaves the pitch (so do leaving the hall and disconnecting; a reconnect joins again). The ball is the office's: `server/soccer/` runs the physics (`shared/soccer-ball.ts`) in fixed 1/60 s steps (`SIM_DT`, 30 ticks a second), tuned like a heavy futsal ball: rolling friction 1.5 m/s² plus drag 0.4/s (a 6 m/s pass dies after ~6 m, 7 m/s ~7.6 m), a low bounce (0.32; dropped from 2 m it comes up ~0.2 m, and the turf takes 15% of its pace on each bounce), air drag, the boards (restitution 0.62; the nets above them hold a high ball in, so it never leaves the pitch), the posts and the bar (0.55), the net nearly dead, and a ball lying dead against the boards or in a corner rolls gently back out. A goal is the whole ball over the line between the posts under the bar. Players' positions are their ordinary `move` messages; their speed comes from the last two, the way they face from `rotY`. Close control (`touchBall`): run onto the ball (its middle within 1 m of yours, low, slower than 15 m/s relative to you) and it's yours; the first touch cushions it (80% of its speed relative to you taken off). While you have it, it's kept on a soft spring 0.75 m ahead of your feet the way you run (a little lag on a turn; at a sprint up to 1.35 m, the knock-on), and standing it's trapped 0.55 m in front of you; you keep it within 1.8 m. An opponent clearly better placed (nearer, running at it) takes it off you; a close call pops it loose sideways, and whoever lost it waits 350 ms. A ball too fast or too high to take comes off players' bodies (they're 1.8 m tall, so a lob goes over). Kicking (`client/soccer/controls.ts`, `passKick`, `shotKick`): a tap of the left mouse button or Space passes (the teammate best in line with where you look, within ±29° and 1.5–22 m, led if they run, paced to arrive at ~3 m/s; with nobody there, ~8 m along your aim); holding it charges a shot (full after 0.9 s, at least 30% power) that goes along the crosshair, rising as far as you look up (up to 0.45 rad; first person); the right button (or C) does the same through the air (a lob that comes down just short of the teammate, or a chip). A kick let go of up to 0.2 s before the ball's in reach (1.5 m) waits for it, and one up to 0.2 s after it was still goes. On the page, the aim shows as a ring round the crosshair with the power meter under it, the receiver's name, and a line on the floor from the ball the way it'll go. The office takes a kick (`soccer.kick {power, dir, loft, lift}`) only from a player whose team may touch the ball, once per 250 ms, when the ball was within 1.5 + 0.35 m of where the office has them at some moment in the last 350 ms (or they're dribbling it), all numbers clamped. The office sends the ball about 15 times a second while it moves (at once after a kick, a hit or a change of who has it), with its physics step `k` and who has it `c`. Your own kick goes at once on your page (the same `kick` and the same steps as the office, so the two agree to the last digit; once the office has had the kick its snapshots, run on by the round trip, nudge it), and so does taking and dribbling the ball (it stays at your feet as you run; the office taking it off you ends that). Everyone else's ball is played back 100 ms behind the office's clock, on a curve between the snapshots either side, run on for up to 250 ms when one's late; switching between the two melts away over a few frames. The match (`server/soccer/match.ts`, on its own clock for the tests): it starts once both teams have a player; a 2 s kick-off freeze with the ball on the centre spot, then the kicking-off team touches it first (for up to 3 s); 5 minutes of playing time (the clock stops for goals and kick-offs) or first to 5 goals; after a goal a 3 s celebration (toast "⚽ GOAL! Red (Ann) · Red 1:0 Blue", confetti in the goal, the cheer and the whistle), then the team that conceded kicks off; the final whistle, the result as a toast, 10 s, a new match. A team left empty pauses it (clock stopped, score kept) and it kicks off again once both have players; nobody left on the pitch resets it. Meanwhile (waiting or paused) the ball's free to kick about, and practice goals just bring it back to the centre. Guests and party guests play too.
+
+Stats, replays and the kit: the match keeps its statistics (`server/soccer/stats.ts`, `MatchStats`, the match's `stats`): every touch in play (a kick, or running into the ball) in order, by who someone is (`account:<id>` or `name:<name>`, like the casino's chips). A goal gets the scorer (the last touch, if it's their team's; else an own goal, the toucher's), the assist (the last touch before the scorer's by someone else, if it's a teammate's and at most `ASSIST_MS` = 6 s before the goal) and the minute; a kick is a shot when it's hard enough, from near enough, and the physics run on (`runOn`) takes it to the other goal's end line near the posts, on target when it'd go in (a goal always counts as one); a pass is completed when a kick's next touch is a teammate's; possession is the playing time each team had the last touch; a save is a shot on target whose next touch is a defender's near their own goal line. At the final whistle the man of the match (`shared/soccer-stats.ts` `pickMvp`: goals ×3, assists ×2, shots on target and saves ×1; ties to more goals, then the winners) and everyone's match go on the all-time leaderboard (`server/soccer/records.ts`, `SoccerRecords`: matches, wins, goals, assists, MVP awards, and the shirt number they keep, 1–99, from their key's hash or the next free one; `<dataDir>/soccer.json`, 0600, written beside it and moved over it). The `soccer` state carries `stats` and `leaders` (the top five) and each player's `number`; no new messages. The scoreboards (`client/soccer/scoreboard.ts`, drawn into the interior's scoreboard canvas) show RED n : m BLUE, the clock, the phase, the scorers under each team ("⚽ Ann 3'"), shots and a possession bar, and at full time the result, the MVP and the two teams side by side; a Hall of Fame board on the north wall west of the scoreboard shows the top five. On the page (`client/soccer/show.ts`, `SoccerShow`, made by `SoccerPlace`): a line under the score bar (the last goal, Tab), the stats panel on **Tab** (the match, the players, the leaderboard; ✕, Tab or Esc closes it), the kit (`client/soccer/kit.ts`: a team-coloured shirt over body and arms with the short name and number on the back and the number on the chest, shorts and socks; the ring under the feet stays `SoccerPlace`'s) and the moves laid over each body after `Person.update` (a kick's leg swing from the ball's `by`, the scorer's celebration, `pickCelebration`: arms up, knee slide, aeroplane or jumping, teammates within 4.5 m put a hand up, and a dive, `diveSide`, for someone in their own penalty area when a fast ball will pass them 0.4–2.2 m to the side). The instant replay (`client/soccer/replay.ts`): each page records what it shows (the ball, and where everyone on the pitch stood and faced, 7 s back, and kicks); `REPLAY.startAfterMs` (1.8 s) after a goal it cuts the 3.2 s before it and 0.2 s after and plays it back on everyone's screen from a TV camera swinging round the ball (letterbox bars, a REPLAY badge, the last 0.8 s at half speed, then SLOW-MO), putting the bodies and the ball where they were; **Space** or **Esc** skips it, and a kickoff ends it. `GOAL_MS` is 6.5 s so the celebration and the replay fit before the kickoff (a test checks).
 
 - Own files:
+  - `src/shared/soccer-stats.ts` (the stats' wire types, `mvpScore`/`pickMvp`, `assignNumber`, `pickCelebration`, `minuteOf`, `REPLAY` and its clock), `src/server/soccer/stats.ts` (`MatchStats`, `runOn`), `src/server/soccer/records.ts` (`SoccerRecords`), `src/client/soccer/show.ts`, `kit.ts`, `replay.ts`, `scoreboard.ts`, `stats.css`, `tests/soccer-stats.test.ts`.
   - `src/shared/soccer.ts`: `SOCCER`, the building (`SOCCER_BOX`, `SOCCER_HEIGHT`, `SOCCER_CENTER`, `SOCCER_DOOR`, `SOCCER_STREET_SPOT`), the room, `PITCH`, `BOARD`, `GOAL`, `MARKS`, the doors inside and the entry, `STAND`, `BENCHES`, `JOIN_SPOTS`, the teams and the match's numbers, `SoccerView`/`SoccerEvent`, `SoccerClientMsg`/`SoccerServerMsg`, `isSoccerMsg`.
-  - `src/shared/soccer-ball.ts`: the ball's physics (`stepBall`, `inGoal`), kicks (`kickVelocity`, `kick`, `canKick`), `dribble`, the wire form.
-  - `src/server/soccer/`: `index.ts` (`Soccer`: who's in the hall, teams, the tick, dribbling, kicks, goals, sending), `match.ts` (`SoccerMatch`), `place.ts` (`soccerView`, `SOCCER_ARRIVAL`, `backInSoccer`).
-  - `src/client/soccer/`: `place.ts` (`SoccerPlace`: in and out, the room, joining, kicking and its meter, bibs, the score bar, hints, sounds, the light inside), `ball.ts` (`BallView`: snapshots and running the ball on between them), `soccer.css`. `src/client/world/soccer/`: `exterior.ts` (also the block the roof's city shows), `interior.ts` (the hall, the pitch, the boards and nets, the goals, benches, stand, scoreboards, the ball).
-  - `tests/soccer-ball.test.ts`, `tests/soccer-match.test.ts`, `tests/soccer-server.test.ts`, `tests/soccer-building.test.ts`.
+  - `src/shared/soccer-ball.ts`: the ball's physics (`SIM_DT`, `stepBall`, `simulate`, `inGoal`, the unsticking), kicks (`kickVelocity`, `kick`, `canKick`), passing (`rollDistance`, `passSpeed`, `lobPower`, `pickReceiver`, `passKick`) and shooting (`shotKick`), close control (`touchBall`, `carry`, `block`), the wire form.
+  - `src/server/soccer/`: `index.ts` (`Soccer`: who's in the hall, teams, the tick in fixed steps, possession and tackles, kicks with the lag allowed for, goals, sending), `match.ts` (`SoccerMatch`), `place.ts` (`soccerView`, `SOCCER_ARRIVAL`, `backInSoccer`).
+  - `src/client/soccer/`: `place.ts` (`SoccerPlace`: in and out, the room, joining, kicking (the pass assist, the shot, the buffer, the jolt) and the aim (crosshair ring, meter, floor line), dribbling on the page, bibs, the score bar and the controls under it, hints, sounds, the light inside), `controls.ts` (`KickButton`: tap, hold, the buffer), `ball.ts` (`BallView`: your ball predicted, everyone else's played back), `soccer.css`. `src/client/world/soccer/`: `exterior.ts` (also the block the roof's city shows), `interior.ts` (the hall, the pitch, the boards and nets, the goals, benches, stand, scoreboards, the ball).
+  - `tests/soccer-ball.test.ts`, `tests/soccer-play.test.ts`, `tests/soccer-match.test.ts`, `tests/soccer-server.test.ts`, `tests/soccer-building.test.ts`, `tests/soccer-look.test.ts`.
+- Server and client plumbing: as the casino's (see above). `src/server/fork/office.ts`: `soccer` (made with `where` and the data folder, stopped), `placeView` (`soccerView`), `backInPlace` (`backInSoccer`), `enteredPlace` (the owner); soccer messages to `forkHandlers` and off the pitch in `forkHooks` (`src/server/ws/handlers/fork.ts`). `src/server/office/floors.ts`: taking the last floor off the building sends people in the hall to the lobby.
+- Client: `src/client/features/places/index.ts`: `soccer` (a `SoccerPlace`, going in and out by `placeTrip`, with `person` and `camera` for the kits and the replay), the `soccer` and `soccerpitch` kinds, `soccerLook` bound to the crowd and lit in the `env` tick, no first-person hands during a replay. `soccerOut` in `src/client/world/office/fork.ts`.
 - Hooks in upstream files:
-  - `src/shared/protocol.ts`: `SoccerClientMsg`/`SoccerServerMsg` in `ClientMsg`/`ServerMsg`.
-  - `src/server/server.ts`: `soccer` (made with `where`, stopped), `goToSoccer` (through `leave`, like the padel hall), `floor.go` to `SOCCER`, back in after a reload (`inSoccer` in `onConnection`), off the pitch in `leave` and on close, soccer messages handed over at the top of `handleMessage`, and taking the last floor off the building sends people in the hall to the lobby.
   - `src/server/guests.ts`: `soccer.join`, `soccer.leave`, `soccer.kick` in `GUEST`. `src/server/party.ts`: `soccer`, `soccer.ball` in `PARTY_SEES`.
-  - `src/client/world/office.ts`: `InteractKind` has `'soccer' | 'soccer-pitch'`; the exterior built with the street, its door in `doors`, `setStreet` in `setLevel`.
   - `src/client/world/outside.ts`: the neighbour at x 12 across the street is gone, `neighbourBoxes()` has the hall (with the billboard's height), the far-side tree at x 14 is gone and the far-side street lamp at x 8 moved to 1.5 (both stood in front of its sign and doors).
-  - `src/client/world/golf.ts`: the two trees east of the green (x 3.5 and 6) moved west of it. `src/client/world/scenic.ts`: the SCENIC LOOP billboard stands on the hall's roof (it stood at x 24, z 37, where the padel hall now is).
+  - `src/client/features/golf/world.ts`: the two trees east of the green (x 3.5 and 6) moved west of it. `src/client/world/scenic/road.ts`: the SCENIC LOOP billboard stands on the hall's roof (it stood at x 24, z 37, where the padel hall now is).
   - `src/client/world/city.ts`: the roof's city leaves the hall's lot free and draws `citySoccer()` there.
-  - `src/client/main.ts`: `soccer` (a `SoccerPlace`, going in and out by `casinoTrip`); `setPlace`, `usable`, `aimedAt`, `REACH`, `hintFor`, `interact`, `renderProject`, the message router, `arrived()` after welcome and floor.enter, `refresh` in `applyMap`, `update` and `mood` in the frame, the garage ride from inside, `__office.soccer`.
-  - `src/client/sound.ts`: `soccer(kind, at, strength)`, a section of its own (kick, board, post, net, whistle, final whistle, cheer, doors).
-  - `src/client/ui/whereabouts.ts` ("⚽ in the soccer hall"), `src/client/ui/hud.ts` ("⚽ Soccer Hall", a help line), `docs/features.md`, `docs/controls.md`: words.
+  - `src/client/main.ts`: `__office.soccer`.
+  - `src/client/sound/soccer.ts` (fork file) and `soccer(kind, at, strength)` in `src/client/sound/index.ts` (kick, board, post, net, whistle, final whistle, cheer, doors). The hall's crowd: `src/client/sound/soccercrowd.ts`, with `setSoccerCrowd(level, intensity)` (the murmur, fading by itself without a frame keeping it up) and `soccerCrowd(kind)` (horn, roar, oooh, applause, chant) in `sound/index.ts`.
+  - `src/client/ui/whereabouts.ts` ("⚽ in the soccer hall"), `src/client/ui/people.ts` ("⚽ Soccer Hall"), `src/client/ui/help.ts` (a help line), `docs/features.md`, `docs/controls.md`: words.
+  - Stats hooks: `src/shared/soccer.ts` (`GOAL_MS`, `SoccerPlayer.number`, `SoccerView.stats`/`leaders`); `src/server/soccer/match.ts` (its `stats`: possession in `update`, the goal in `scored`, a fresh sheet in `start`/`reset`); `src/server/soccer/index.ts` (`SoccerMember.owner`, `SoccerDeps.dataDir`, `records`, shirt numbers in `join`, each touch in `touch`, the view, `fullTime` on the final whistle); `src/server/fork/office.ts` (the owner and the data folder); `src/client/soccer/place.ts` (`SoccerShow` made first, its room, `setActive`, `onMessage`, `update`, `replaying`; the bib is only the ring now); `src/client/world/soccer/interior.ts` (the scoreboard canvas drawn by `scoreboard.ts`, 1280 × 480); `src/client/world/character/person.ts` (`Person.limbs()`, named `rig()` before, which clashed with upstream); `src/client/features/places/index.ts` (`person` and `camera` for the soccer hall, no first-person hands during a replay).
 
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.
 - `src/server/decor.ts`: the image proxy's user agent names this fork.
+- `tests/fork-sizes.ts`: `FORK_CEILINGS` for upstream's size guard (`tests/size.test.ts`, 600 lines a file): how long the upstream files carrying hook lines may be, and the ceilings of the fork's own files that were already over the budget. Hooked into `tests/size.test.ts` with two lines; like upstream's list, it only gets shorter (a file gone or back within the budget has to come off it). Any other file over 600 lines fails the guard: split it.

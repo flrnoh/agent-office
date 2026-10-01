@@ -23,6 +23,7 @@ import { HallPlace } from '../../hall';
 import { buildCourts } from '../../hall/courts';
 import { PadelPlay } from '../../hall/padel';
 import { SoccerPlace } from '../../soccer/place';
+import { soccerLook } from '../../world/soccer/look';
 import { store } from '../../state';
 import type { DeskKey } from '../../interaction';
 import type { Interactable } from '../../world/types';
@@ -91,7 +92,11 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     body: (id) => (id === store.you ? ctx.me.root : parts.peers.remotes.get(id)?.person.root),
     sound: (k, at, s) => ctx.sound.soccer(k, at, s),
     confetti: (x, y, z) => parts.confetti.burst(x, y, z, 160, 0.8),
+    person: (id) => (id === store.you ? ctx.me : parts.peers.remotes.get(id)?.person), // kits and moves (soccer/show.ts)
+    camera, // the goal's replay
   });
+  // The soccer hall's crowd grows with the people in there (you too).
+  soccerLook.bind({ sound: ctx.sound, people: () => 1 + [...store.peers.values()].filter((p) => p.floor === SOCCER && p.id !== store.you).length });
   // The padel courts, built into the hall's interior when it's first built (hall/courts.ts).
   hall.add({
     build: (room) => {
@@ -108,6 +113,7 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
 
   ctx.messages.onAny((msg: ServerMsg) => {
     for (const p of all) p.onMessage(msg);
+    soccerLook.onMessage(msg); // the soccer hall's crowd, boards and announcer
   });
   // Once the office's own arriving is done (see core/arrival.ts): into a place, or back out of one.
   ctx.messages.on('welcome', () => all.forEach((p) => p.arrived()));
@@ -146,9 +152,10 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   ctx.ticks.add('env', () => {
     const { sun, hemi, ambient } = parts.stage;
     for (const p of all) p.mood({ sun, hemi, ambient, scene });
+    soccerLook.mood({ hemi, ambient }, ctx.sky.daylight); // the soccer hall's floodlights, the night in its windows
   });
   // With the camera on a court or at a gym station, the game has the screen: no hands drawn over it.
-  ctx.view.add({ covers: () => padel.zoomed || gym.zoomed });
+  ctx.view.add({ covers: () => padel.zoomed || gym.zoomed || soccer.replaying });
 
   return {
     /** In one of the places. */

@@ -1,7 +1,9 @@
 name: Upstream sync
 
-# flrnoh fork (see FORK.md): once a week, look for new commits on AgentSystemLabs/agent-office and
+# flrnoh fork (see FORK.md): every morning, look for new commits on AgentSystemLabs/agent-office and
 # offer them as a pull request that merges them into this fork's main. Nothing is merged by itself.
+# A newer offer replaces an older one still open (its pull request or issue is closed), so they
+# don't pile up while upstream moves fast.
 #
 # - Clean merge, build and tests green: a pull request, ready to merge.
 # - Clean merge, but the build or tests fail (usually a new message type or /api route to sort for
@@ -13,7 +15,7 @@ name: Upstream sync
 
 on:
   schedule:
-    - cron: '0 5 * * 1' # Mondays, 05:00 UTC
+    - cron: '0 5 * * *' # every day, 05:00 UTC
   workflow_dispatch:
 
 permissions:
@@ -143,3 +145,15 @@ jobs:
           title="Upstream ${{ steps.look.outputs.sha }} (${{ steps.look.outputs.count }} commits)"
           [ "$ok" = yes ] || title="⚠️ $title"
           gh pr create --base main --head "${{ steps.look.outputs.branch }}" --title "$title" --body-file body.md
+
+      - name: Close older offers
+        if: steps.look.outputs.todo == 'yes'
+        run: |
+          # The one just made is for upstream ${{ steps.look.outputs.sha }}: any older one of this workflow's still
+          # open is behind it (a sync made by hand, on a branch of its own, is left alone).
+          new=$(gh pr list --state open --head "${{ steps.look.outputs.branch }}" --json url --jq '.[0].url // empty')
+          [ -n "$new" ] || new=$(gh issue list --state open --search "upstream ${{ steps.look.outputs.sha }} in:title" --json url --jq '.[0].url // empty')
+          gh pr list --state open --author app/github-actions --json number,headRefName --jq '.[] | select(.headRefName | startswith("sync/upstream-")) | select(.headRefName != "${{ steps.look.outputs.branch }}") | .number' |
+            while read -r n; do gh pr close "$n" --delete-branch --comment "Replaced by a newer upstream sync: $new"; done
+          gh issue list --state open --author app/github-actions --search "Upstream in:title merge conflicts in:title" --json number,title --jq '.[] | select(.title | contains("${{ steps.look.outputs.sha }}") | not) | .number' |
+            while read -r n; do gh issue close "$n" --comment "Replaced by a newer upstream sync: $new"; done

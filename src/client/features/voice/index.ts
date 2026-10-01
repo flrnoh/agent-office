@@ -8,7 +8,7 @@ import { $, h, openModal, toast } from '../../ui/dom';
 
 export interface VoiceDeps {
   /** The office TV, which shows a screen someone's sharing (see features/tv). */
-  tv: { show(stream: MediaStream | null): void };
+  tv: { show(stream: MediaStream | null): void; voiceChanged?(): void }; // voiceChanged: flrnoh fork
 }
 
 /** Registers V and M, voice's messages, and listens for V coming up (captured) and the window losing focus. */
@@ -105,6 +105,7 @@ export function installVoice(ctx: Ctx, deps: VoiceDeps) {
   voice.onChange(() => {
     ctx.hud.refresh();
     refreshShares();
+    deps.tv.voiceChanged?.(); // fork: the TV's window (features/tv)
   });
   ctx.messages.on('peer.join', () => voice.syncPeers());
   ctx.messages.on('peer.leave', () => voice.syncPeers());

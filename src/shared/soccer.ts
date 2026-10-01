@@ -8,6 +8,8 @@
 // own scene in its own coordinates (below): x across the hall, z along the pitch, the floor at y 0.
 // Outside, it stands on every floor's street between the golf hole and the padel hall.
 
+import type { SoccerLeader, SoccerStats } from './soccer-stats.js';
+
 /** Where you are while you're in the soccer hall (a peer's `floor`, and `floor.go`'s). Never a project floor's id. */
 export const SOCCER = '@soccer';
 export const SOCCER_NAME = 'Soccer Hall';
@@ -86,8 +88,8 @@ export const MAX_PER_TEAM = 5;
 /** A match: this long on the clock (it only runs in play), or first to GOALS_TO_WIN. */
 export const MATCH_MS = 5 * 60_000;
 export const GOALS_TO_WIN = 5;
-/** After a goal, the celebration before the kickoff; the kickoff's freeze; the pause after the final whistle. */
-export const GOAL_MS = 3000;
+/** After a goal, the celebration (and the instant replay: REPLAY in soccer-stats.ts) before the kickoff; the kickoff's freeze; the pause after the final whistle. */
+export const GOAL_MS = 6500;
 export const KICKOFF_MS = 2000;
 export const OVER_MS = 10_000;
 /** After the kickoff's freeze, only the kicking-off team may touch the ball, for up to this long (or until it does). */
@@ -99,6 +101,8 @@ export interface SoccerPlayer {
   id: string;
   name: string;
   team: Team;
+  /** Their shirt number, 1..99, kept for them from match to match (soccer-stats.ts assignNumber). */
+  number?: number;
 }
 
 /** The match as everyone in the hall sees it (a `soccer` message). Clocks are "ms left" as of when it was sent. */
@@ -115,6 +119,10 @@ export interface SoccerView {
   /** The last match's winner, while it's over. */
   winner?: Team | 'draw';
   players: SoccerPlayer[];
+  /** This match's statistics (the last one's, while it's over). */
+  stats?: SoccerStats;
+  /** The all-time leaderboard's top (the Hall of Fame). */
+  leaders?: SoccerLeader[];
 }
 
 /** Something that happened, for a toast, a whistle or a cheer. */
@@ -136,14 +144,22 @@ export type SoccerClientMsg =
   | { t: 'soccer.join' }
   /** Off the pitch, back to watching. */
   | { t: 'soccer.leave' }
-  /** A kick: `power` 0..1 (how long it was charged), `dir` the facing angle (sin, cos on x/z), `loft` 0..1 (a chip). */
-  | { t: 'soccer.kick'; power: number; dir: number; loft: number };
+  /**
+   * A kick (a pass or a shot, the page worked out which: shared/soccer-ball.ts passKick, shotKick):
+   * `power` 0..1, `dir` its angle along the floor (sin, cos on x/z), `loft` 0..1 (a lob or a chip),
+   * `lift` how steeply a shot rises (radians, 0..MAX_LIFT: aiming up). The office clamps them all.
+   */
+  | { t: 'soccer.kick'; power: number; dir: number; loft: number; lift?: number };
 
 export type SoccerServerMsg =
   /** The match and who plays for whom (on every change, and now and then to keep the clock true); `event` for a toast or a whistle. */
   | { t: 'soccer'; state: SoccerView; event?: SoccerEvent }
-  /** The ball, ~15 times a second while it moves; `hit` and `hs` (speed) when it just hit something, `by` who kicked it. */
-  | { t: 'soccer.ball'; b: BallWire; hit?: BallHitKind; hs?: number; by?: string };
+  /**
+   * The ball, ~15 times a second while it moves: `k` the office's physics step it's from (SIM_DT each,
+   * so pages can play it back on the office's clock), `c` who's dribbling it; `hit` and `hs` (speed)
+   * when it just hit something, `by` who kicked it.
+   */
+  | { t: 'soccer.ball'; b: BallWire; k: number; c?: string; hit?: BallHitKind; hs?: number; by?: string };
 
 export const isSoccerMsg = (t: string): t is SoccerClientMsg['t'] => t === 'soccer.join' || t === 'soccer.leave' || t === 'soccer.kick';
 

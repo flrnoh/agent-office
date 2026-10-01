@@ -12,7 +12,6 @@ import {
   ballWire,
   canKick,
   centreBall,
-  dribble,
   inGoal,
   kick,
   kickVelocity,
@@ -44,8 +43,8 @@ test('a rolling ball slows down on the turf and stops', () => {
   assert.equal(goal, null);
   assert.ok(still(b), `still moving: ${JSON.stringify(b)}`);
   assert.equal(b.vz, 0);
-  // A firm pass from the centre spot rolls a good way, but not the length of the pitch.
-  assert.ok(b.z > 6 && b.z < 13, `rolled to ${b.z}`);
+  // A heavy futsal ball: a 6 m/s pass rolls about 6 m, not the length of the pitch.
+  assert.ok(b.z > 5.5 && b.z < 6.5, `rolled to ${b.z}`);
   // Friction only ever takes speed away.
   const c = ball({ vx: 3 });
   let last = 3;
@@ -163,30 +162,12 @@ test('kicks: power and loft are clamped, and the direction is the facing angle',
   assert.deepEqual(kickVelocity(-3, 0, 0), soft);
   assert.deepEqual(kickVelocity(Number.NaN, 0, 0), soft);
   const east = kickVelocity(1, Math.PI / 2, 0);
-  assert.ok(east.vx > 21 && Math.abs(east.vz) < 1e-9);
+  assert.ok(east.vx > KICK_MAX - 1e-9 && Math.abs(east.vz) < 1e-9);
   // In reach: close and not over your head.
-  assert.ok(canKick(ball({}), PITCH_CX + 1, 0));
-  assert.ok(!canKick(ball({}), PITCH_CX + 1.5, 0));
+  assert.ok(canKick(ball({}), PITCH_CX + 1.4, 0));
+  assert.ok(!canKick(ball({}), PITCH_CX + 1.6, 0));
+  assert.ok(canKick(ball({}), PITCH_CX + 1.6, 0, 0.35));
   assert.ok(!canKick(ball({ y: 1.5 }), PITCH_CX, 0.5));
-});
-
-test('running into the ball carries it along ahead of you; standing still, it comes off you', () => {
-  const b = ball({});
-  // Running north (+z) at 5 m/s into it from just behind.
-  const touched = dribble(b, PITCH_CX, -0.3, 0, 5);
-  assert.ok(touched);
-  assert.ok(b.vz > 5 && b.vz < 8, `ball goes at ${b.vz}`);
-  assert.ok(b.z > -0.3 + 0.4);
-  // Not touching: nothing happens.
-  const far = ball({});
-  assert.ok(!dribble(far, PITCH_CX + 2, 0, 0, 5));
-  assert.equal(far.vz, 0);
-  // A ball rolling into someone standing comes back off them, slower.
-  const r = ball({ z: 0, vz: -6 });
-  dribble(r, PITCH_CX, -0.4, 0, 0);
-  assert.ok(r.vz > 0 && r.vz < 6 * 0.5);
-  // A high ball flies over.
-  assert.ok(!dribble(ball({ y: 1 }), PITCH_CX, -0.3, 0, 5));
 });
 
 test('the ball goes over the wire and back', () => {

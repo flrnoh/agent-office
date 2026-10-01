@@ -17,7 +17,7 @@ import {
   type SoccerView,
   type Team,
 } from '../../shared/soccer';
-import { canKick } from '../../shared/soccer-ball';
+import { BALL_R, KICK_REACH, type Footer, type KickSpec, type Mate, canKick, passKick, shotKick } from '../../shared/soccer-ball';
 import type { ClientMsg, FloorInfo, ServerMsg } from '../../shared/protocol';
 import { streetBelow } from '../../shared/layout';
 import type { Collider, Interactable } from '../world/types';
@@ -25,6 +25,9 @@ import { buildSoccerInterior, type SoccerInterior } from '../world/soccer/interi
 import { h, toast } from '../ui/dom';
 import { isTyping } from '../player';
 import { BallView } from './ball';
+import { KickButton, TAP_MS } from './controls';
+import { SoccerShow } from './show'; // stats, replays, kits and moves
+import type { Person } from '../world/character';
 import './soccer.css';
 
 /*
@@ -33,8 +36,12 @@ import './soccer.css';
  * joining a team, kicking, the ball, the bibs, the scoreboards and the bar at the top, sounds, and the
  * light inside. main.ts hooks it in with a few lines; everything else is here.
  *
- * Kicking: hold the left mouse button (or Space) to charge, let go to kick the way you face; the right
- * mouse button (or Shift while charging) chips it. The office decides whether you reached the ball.
+ * Playing: run into the ball and it's yours (taken at your feet on this page at once, see ball.ts), and
+ * it stays in front of you as you run. A tap of the left mouse button (or Space) passes to the teammate
+ * you look at (shared/soccer-ball.ts passKick); holding it charges a shot (the meter by the crosshair,
+ * a line on the floor from the ball) that goes where you look, up if you look up; the right button
+ * (or C) does the same in the air: a lob to a teammate, or a chip. Pressed a moment before the ball's
+ * in reach, the kick waits for it; a moment after, it still goes. The office decides in the end.
  */
 
 /** Where you stand, to be put somewhere: main.ts's placeAt. */
@@ -57,6 +64,9 @@ export interface SoccerHost {
   player: {
     pos: THREE.Vector3;
     facing: number;
+    /** First person: how far up you look (the kick's lift), and a kick's jolt of the view. */
+    lookPitch: number;
+    camDist: number;
     view: 'first' | 'third';
     enabled: boolean;
     colliders: Collider[];
@@ -75,11 +85,21 @@ export interface SoccerHost {
   placeAt(at: Spot): void;
   sound(kind: SoccerSoundKind, at: { x: number; y: number; z: number }, strength: number): void;
   confetti(x: number, y: number, z: number): void;
+  /** Someone's Person (you too), for their kit and moves (show.ts). */
+  person?(id: string): Person | undefined;
+  /** The view's camera, for the replay (show.ts). */
+  camera?: THREE.Camera;
 }
 
 const FROM_KEY = 'agent-office.soccer.from';
-/** Holding this long charges a kick fully (ms). */
-const CHARGE_MS = 900;
+/** After your kick you don't take the ball straight back (ms; the office's KICK_COOL_MS). */
+const KICK_COOL_MS = 250;
+/** The key that lobs and chips, besides the right mouse button (Shift is sprinting). */
+const LOB_KEY = 'KeyC';
+/** Looking this far down (first person, radians) is a flat shot; every bit higher lifts it. */
+const LIFT_ZERO = 0.05;
+/** A kick's jolt of the view lasts this long (ms). */
+const RECOIL_MS = 170;
 
 export class SoccerPlace {
   private room: SoccerInterior | null = null;
@@ -96,21 +116,36 @@ export class SoccerPlace {
   private team: Team | undefined;
   /** Asked to join and not heard yet: until when not to put you off the pitch. */
   private joining = 0;
-  private charge: { t0: number; chip: boolean } | null = null;
+  /** The kick button: held, or a kick waiting for the ball (controls.ts). */
+  private button = new KickButton();
+  /** When the ball was last in your reach, when you may take it again after your kick (ms), how you run. */
+  private reachAt = -1e9;
+  private coolUntil = 0;
+  private vel = { x: 0, z: 0 };
+  private lastPos = { x: 0, z: 0 };
+  /** Everyone else on the pitch: where their bodies are and how they run. */
+  private tracks = new Map<string, { x: number; z: number; vx: number; vz: number }>();
+  private recoil: { t0: number; a: number; applied: number } | null = null;
+  private passedTo: { id: string; until: number } | null = null;
+  private arrow: THREE.Group | null = null;
+  private aimEl: HTMLElement | null = null;
+  private keysEl: HTMLElement | null = null;
   private bibs = new Map<string, { root: THREE.Object3D; group: THREE.Group; team: Team }>();
   private hud: HTMLElement | null = null;
-  private meter: HTMLElement | null = null;
   private light = new THREE.Color('#fbfff6');
   private floorLight = new THREE.Color('#5f7a66');
+  /** The stats, the replay, the kits and the moves (show.ts). */
+  private show: SoccerShow;
 
   constructor(private host: SoccerHost) {
+    this.show = new SoccerShow(host); // first, so its keys (Tab, skipping a replay) come before kicking's
     // Kicking: captured before the player's own handlers, only while you play in here.
     window.addEventListener('pointerdown', (e) => this.pointerDown(e), true);
     window.addEventListener('pointerup', (e) => this.pointerUp(e), true);
     window.addEventListener('contextmenu', (e) => this.playing() && e.target === this.host.canvas && e.preventDefault(), true);
     window.addEventListener('keydown', (e) => this.key(e, true), true);
     window.addEventListener('keyup', (e) => this.key(e, false), true);
-    window.addEventListener('blur', () => (this.charge = null));
+    window.addEventListener('blur', () => (this.button.press = null));
   }
 
   private theRoom(): SoccerInterior {
@@ -118,6 +153,7 @@ export class SoccerPlace {
       this.room = buildSoccerInterior();
       this.room.group.visible = false;
       this.host.scene.add(this.room.group);
+      this.show.setRoom(this.room);
     }
     return this.room;
   }
@@ -133,6 +169,11 @@ export class SoccerPlace {
   /** Whether you play (on a team, in the hall). */
   playing(): boolean {
     return this.active && !!this.team;
+  }
+
+  /** A goal's replay is on screen (main.ts keeps the first-person hands out of it). */
+  get replaying(): boolean {
+    return this.show.replaying;
   }
 
   // ---- In and out -----------------------------------------------------------------------------------
@@ -210,9 +251,11 @@ export class SoccerPlace {
       this.host.setIndoors(false);
       this.team = undefined;
       this.view = null;
-      this.charge = null;
+      this.button.cancel();
+      this.ball.release();
       this.clearBibs();
     }
+    this.show.setActive(inside);
     this.showHud(inside);
   }
 
@@ -304,49 +347,70 @@ export class SoccerPlace {
     if (!this.kickable(e)) return;
     e.stopPropagation();
     e.preventDefault();
-    this.startCharge(e.button === 2);
+    this.button.down(performance.now(), e.button === 2, `m${e.button}`);
   }
 
   private pointerUp(e: PointerEvent) {
-    if (!this.charge || (e.button !== 0 && e.button !== 2)) return;
+    if (this.button.press?.by !== `m${e.button}`) return;
     e.stopPropagation();
-    this.release();
+    this.release(`m${e.button}`);
   }
 
   private key(e: KeyboardEvent, down: boolean) {
     if (!this.playing() || isTyping(e)) return;
-    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-      if (down && this.charge) this.charge.chip = true;
-      return;
-    }
-    if (e.code !== 'Space') return;
-    // Space kicks in here (no jumping on the pitch).
+    if (e.code !== 'Space' && e.code !== LOB_KEY) return;
+    // Space kicks in here (no jumping on the pitch), C lobs.
     e.preventDefault();
     e.stopPropagation();
-    if (document.querySelector('.backdrop') || !this.host.player.enabled) return;
-    if (down && !e.repeat && !this.charge) this.startCharge(false);
-    else if (!down && this.charge) this.release();
+    if (down && (document.querySelector('.backdrop') || !this.host.player.enabled)) return;
+    if (down && !e.repeat) this.button.down(performance.now(), e.code === LOB_KEY, e.code);
+    else if (!down) this.release(e.code);
   }
 
-  private startCharge(chip: boolean) {
-    this.charge = { t0: performance.now(), chip };
+  /** Let go: a tap passes, a hold shoots (charged by how long); it goes now if the ball's in reach, else as soon as it is (for a moment). */
+  private release(by: string) {
+    const now = performance.now();
+    if (!this.button.up(now, by) || !this.playing()) return;
+    this.tryKick(now);
   }
 
-  private release() {
-    const c = this.charge;
-    this.charge = null;
-    if (!c || !this.playing()) return;
-    const power = Math.min(1, (performance.now() - c.t0) / CHARGE_MS);
-    const dir = this.host.player.facing;
-    const loft = c.chip ? 1 : 0;
-    this.host.send({ t: 'soccer.kick', power, dir, loft });
-    // In reach as far as this page knows: it goes at once (the office confirms or corrects it).
-    const p = this.host.player.pos;
-    const b = this.ball.b;
-    if (canKick(b, p.x, p.z) && this.mayTouch()) {
-      this.ball.kick(power, dir, loft);
-      this.host.sound('kick', { x: b.x, y: b.y, z: b.z }, 0.4 + power * 0.6);
+  /** Where you aim: the way you look (first person: up a little lifts a shot), or the way you face. */
+  private aim(): { dir: number; lift: number } {
+    const pl = this.host.player;
+    return { dir: pl.facing, lift: pl.view === 'first' ? Math.max(0, pl.lookPitch + LIFT_ZERO) : 0 };
+  }
+
+  /** Your teammates on the pitch, where they are and how they run (for a pass). */
+  private mates(): Mate[] {
+    const out: Mate[] = [];
+    for (const pl of this.view?.players ?? []) {
+      if (pl.team !== this.team || pl.id === this.host.you()) continue;
+      const t = this.tracks.get(pl.id);
+      if (t) out.push({ id: pl.id, x: t.x, z: t.z, vx: t.vx, vz: t.vz });
     }
+    return out;
+  }
+
+  /** The kick a tap (or a hold) makes now. */
+  private kickNow(k: { lob: boolean; shot: boolean; charge: number }): KickSpec & { to?: string | null } {
+    const a = this.aim();
+    if (k.shot) return shotKick(a.dir, a.lift, k.charge, k.lob);
+    return passKick(this.ball.b, a.dir, this.mates(), k.lob);
+  }
+
+  private tryKick(now: number) {
+    const p = this.host.player.pos;
+    const k = this.button.fire(now, canKick(this.ball.b, p.x, p.z), this.reachAt, this.mayTouch());
+    if (!k) return;
+    const spec = this.kickNow(k);
+    this.host.send({ t: 'soccer.kick', power: spec.power, dir: spec.dir, loft: spec.loft, lift: spec.lift });
+    // It goes at once on this page (the office confirms or corrects it).
+    this.ball.kick(spec, now);
+    this.coolUntil = now + KICK_COOL_MS;
+    const b = this.ball.shown;
+    this.host.sound('kick', { x: b.x, y: b.y, z: b.z }, 0.35 + spec.power * 0.65);
+    this.recoil = { t0: now, a: 0.012 + 0.03 * spec.power, applied: 0 };
+    if (spec.to) this.passedTo = { id: spec.to, until: now + 900 };
   }
 
   private mayTouch(): boolean {
@@ -356,14 +420,186 @@ export class SoccerPlace {
     return v.phase === 'play' && (!v.kickoff || v.kickoff === this.team);
   }
 
+  /** You as the ball sees you (for dribbling on this page), or null when you may not touch it. */
+  private footer(now: number): Footer | null {
+    if (!this.team || !this.mayTouch() || !this.host.player.enabled) return null;
+    const p = this.host.player.pos;
+    return { id: this.host.you(), team: this.team, x: p.x, z: p.z, vx: this.vel.x, vz: this.vel.z, facing: this.host.player.facing, free: now >= this.coolUntil };
+  }
+
+  /** How everyone on the pitch moves (their bodies, frame to frame), and you. */
+  private trackPlayers(dt: number) {
+    const k = Math.min(1, dt * 12);
+    const me = this.host.player.pos;
+    const vx = dt > 0 ? (me.x - this.lastPos.x) / dt : 0;
+    const vz = dt > 0 ? (me.z - this.lastPos.z) / dt : 0;
+    // Put somewhere (joining, a kickoff): no speed from that.
+    const jump = Math.hypot(vx, vz) > 12;
+    this.vel.x = jump ? 0 : this.vel.x + (vx - this.vel.x) * k;
+    this.vel.z = jump ? 0 : this.vel.z + (vz - this.vel.z) * k;
+    this.lastPos = { x: me.x, z: me.z };
+    const seen = new Set<string>();
+    for (const pl of this.view?.players ?? []) {
+      if (pl.id === this.host.you()) continue;
+      const root = this.host.body(pl.id);
+      if (!root) continue;
+      seen.add(pl.id);
+      const x = root.position.x;
+      const z = root.position.z;
+      const t = this.tracks.get(pl.id);
+      if (!t) {
+        this.tracks.set(pl.id, { x, z, vx: 0, vz: 0 });
+        continue;
+      }
+      const rvx = dt > 0 ? (x - t.x) / dt : 0;
+      const rvz = dt > 0 ? (z - t.z) / dt : 0;
+      const far = Math.hypot(rvx, rvz) > 12;
+      t.vx = far ? 0 : t.vx + (rvx - t.vx) * k;
+      t.vz = far ? 0 : t.vz + (rvz - t.vz) * k;
+      t.x = x;
+      t.z = z;
+    }
+    for (const id of this.tracks.keys()) if (!seen.has(id)) this.tracks.delete(id);
+  }
+
+  /** Whether anybody else on the pitch is nearer the ball than you. */
+  private someoneNearer(): boolean {
+    const b = this.ball.b;
+    const p = this.host.player.pos;
+    const mine = Math.hypot(b.x - p.x, b.z - p.z);
+    for (const t of this.tracks.values()) if (Math.hypot(b.x - t.x, b.z - t.z) < mine) return true;
+    return false;
+  }
+
+  /** The ball on this page, every frame: taking it at your feet at once, dribbling it, a kick waiting for it. */
+  private play(dt: number, now: number) {
+    this.trackPlayers(dt);
+    const me = this.footer(now);
+    const b = this.ball;
+    if (me && !b.poss.id) {
+      const other = b.controller && b.controller !== me.id;
+      if (b.controller === me.id || (!other && b.canTake(me) && !this.someoneNearer())) b.claim(me, now);
+    }
+    const moved = b.update(dt, me, now);
+    const p = this.host.player.pos;
+    if (canKick(b.b, p.x, p.z)) this.reachAt = now;
+    this.tryKick(now);
+    return moved;
+  }
+
+  /** The kick's little jolt of the view: up and back in first person, in and out in third. */
+  private jolt(now: number) {
+    const r = this.recoil;
+    if (!r) return;
+    const t = (now - r.t0) / RECOIL_MS;
+    const want = t >= 1 ? 0 : r.a * Math.sin(Math.PI * t);
+    const d = want - r.applied;
+    r.applied = want;
+    const pl = this.host.player;
+    if (pl.view === 'first') pl.lookPitch += d;
+    else pl.camDist = Math.max(1, pl.camDist - d * 12);
+    if (t >= 1) this.recoil = null;
+  }
+
+  // ---- The aim ------------------------------------------------------------------------------------
+
+  private aimArrow(): THREE.Group {
+    if (this.arrow) return this.arrow;
+    const g = new THREE.Group();
+    const mat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide });
+    mat.toneMapped = false;
+    mat.userData.outlineParameters = { visible: false };
+    const strip = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 1), mat);
+    strip.rotation.x = -Math.PI / 2;
+    strip.name = 'strip';
+    const tri = new THREE.Shape();
+    tri.moveTo(-0.26, 0);
+    tri.lineTo(0.26, 0);
+    tri.lineTo(0, 0.42);
+    tri.closePath();
+    const head = new THREE.Mesh(new THREE.ShapeGeometry(tri), mat);
+    head.rotation.x = Math.PI / 2;
+    head.name = 'head';
+    g.add(strip, head);
+    g.renderOrder = 5;
+    g.visible = false;
+    g.userData.mat = mat;
+    this.theRoom().group.add(g);
+    this.arrow = g;
+    return g;
+  }
+
+  /** The aim on the floor (a line from the ball the way it'll go) and by the crosshair (the power, who a pass is for). */
+  private showAim(now: number) {
+    const on = this.playing() && this.host.player.enabled;
+    if (this.aimEl) this.aimEl.hidden = !on;
+    const arrow = this.aimArrow();
+    if (!on) {
+      arrow.visible = false;
+      return;
+    }
+    const p = this.button.press;
+    const charging = !!p && now - p.t0 >= TAP_MS;
+    const charge = this.button.charge(now);
+    const b = this.ball.shown;
+    const pos = this.host.player.pos;
+    const near = Math.hypot(b.x - pos.x, b.z - pos.z) < KICK_REACH + 0.6 && this.mayTouch();
+    let dir = 0;
+    let len = 0;
+    let color = '#ffffff';
+    let opacity = 0;
+    let label = '';
+    if (charging) {
+      const k = this.kickNow({ lob: p.lob, shot: true, charge });
+      dir = k.dir;
+      len = 2 + 9 * charge;
+      color = p.lob ? '#7ee89a' : charge > 0.85 ? '#ff5a4f' : '#ffd166';
+      opacity = 0.75;
+      label = p.lob ? 'CHIP' : 'SHOT';
+    } else if (near) {
+      const k = passKick(this.ball.b, this.aim().dir, this.mates(), !!p?.lob);
+      dir = k.dir;
+      len = Math.max(1.5, Math.hypot(k.at.x - b.x, k.at.z - b.z));
+      color = k.to ? '#bdf3ff' : '#ffffff';
+      opacity = k.to ? 0.5 : 0.28;
+      const name = k.to ? this.view?.players.find((x) => x.id === k.to)?.name : '';
+      label = name ? `→ ${name}` : '';
+    }
+    arrow.visible = opacity > 0;
+    if (arrow.visible) {
+      arrow.position.set(b.x, 0.03, b.z);
+      arrow.rotation.y = dir;
+      const strip = arrow.getObjectByName('strip')!;
+      strip.scale.set(1, len, 1);
+      strip.position.set(0, 0, len / 2 + BALL_R);
+      arrow.getObjectByName('head')!.position.set(0, 0.001, len + BALL_R);
+      const mat = arrow.userData.mat as THREE.MeshBasicMaterial;
+      mat.color.set(color);
+      mat.opacity = opacity;
+    }
+    const passed = this.passedTo && now < this.passedTo.until ? this.view?.players.find((x) => x.id === this.passedTo!.id)?.name : '';
+    const text = charging ? label : passed ? `→ ${passed}` : label;
+    const el = this.aimEl;
+    if (!el) return;
+    el.classList.toggle('charging', charging);
+    el.classList.toggle('lob', !!p?.lob);
+    el.classList.toggle('full', charging && charge >= 1);
+    el.classList.toggle('third', this.host.player.view === 'third');
+    (el.querySelector('.bar i') as HTMLElement).style.width = `${Math.round((charging ? charge : 0) * 100)}%`;
+    const t = el.querySelector('.who') as HTMLElement;
+    if (t.textContent !== text) t.textContent = text;
+  }
+
   // ---- The office's news --------------------------------------------------------------------------
 
   onMessage(msg: ServerMsg) {
     if (msg.t !== 'soccer' && msg.t !== 'soccer.ball') return;
+    this.show.onMessage(msg as SoccerServerMsg); // stats, replays, moves
     const m = msg as SoccerServerMsg;
     if (m.t === 'soccer.ball') {
-      this.ball.snapshot(m.b);
-      if (m.hit && !(m.hit === 'kick' && m.by === this.host.you())) {
+      const mine = m.hit === 'kick' && m.by === this.host.you();
+      this.ball.snapshot(m.b, m.k, m.c, mine);
+      if (m.hit && !mine) {
         const at = { x: m.b[0], y: m.b[2], z: m.b[1] };
         const s = Math.min(1, (m.hs ?? 5) / 18);
         this.host.sound(m.hit === 'bar' ? 'post' : m.hit, at, s);
@@ -439,17 +675,20 @@ export class SoccerPlace {
   private showHud(on: boolean) {
     if (on && !this.hud) {
       this.hud = h('div.soccer-hud', { 'aria-live': 'polite' });
-      this.meter = h('div.soccer-meter', {}, h('i'));
-      document.body.append(this.hud, this.meter);
+      this.keysEl = h('div.soccer-keys', {}, 'Click pass · Hold shoot · Right-click lob · Shift sprint');
+      this.aimEl = h('div.soccer-aim', {}, h('span.ring'), h('span.bar', {}, h('i')), h('span.who'));
+      document.body.append(this.hud, this.keysEl, this.aimEl);
     }
     if (this.hud) this.hud.hidden = !on;
-    if (this.meter) this.meter.hidden = true;
+    if (this.aimEl) this.aimEl.hidden = true;
+    if (this.arrow) this.arrow.visible = false;
     this.renderHud();
   }
 
   private hudKey = '';
   private renderHud() {
     const el = this.hud;
+    if (this.keysEl) this.keysEl.hidden = !el || el.hidden || !this.team;
     if (!el || el.hidden) return;
     const v = this.view;
     const s = v?.score ?? { red: 0, blue: 0 };
@@ -472,11 +711,7 @@ export class SoccerPlace {
 
   private bibFor(team: Team): THREE.Group {
     const g = new THREE.Group();
-    const cloth = new THREE.MeshToonMaterial({ color: TEAM_COLOR[team] });
-    const bib = new THREE.Mesh(new THREE.CapsuleGeometry(0.278, 0.26, 4, 12), cloth);
-    bib.position.y = 0.72;
-    bib.scale.set(1, 1, 0.97);
-    g.add(bib);
+    // The shirt's the kit's (show.ts, kit.ts): here just the ring under their feet.
     const ringMat = new THREE.MeshBasicMaterial({ color: TEAM_COLOR[team], transparent: true, opacity: 0.85, depthWrite: false });
     ringMat.toneMapped = false;
     ringMat.userData.outlineParameters = { visible: false };
@@ -521,26 +756,22 @@ export class SoccerPlace {
 
   update(t: number, dt: number) {
     if (!this.active || !this.room) return;
-    const moved = this.ball.update(dt);
+    const now = performance.now();
+    const moved = this.play(dt, now);
     const s = this.ball.shown;
     this.room.setBall(s.x, s.y, s.z, moved.dx, moved.dz);
     const since = performance.now() - this.goalAt;
     this.room.setBoard(this.view, this.clock(), since < 3000 ? 1 - since / 3000 : 0);
     this.room.update(t, dt);
+    this.show.update(dt, this.view, this.ball, this.clock()); // kits, moves, the replay (after the ball's placed)
     this.syncBibs();
     this.renderHud();
     // On the pitch without a team (back after a reload, say): over the boards you go.
     const p = this.host.player.pos;
     if (!this.team && performance.now() > this.joining && onPitch(p.x, p.z, -0.2) && p.y < 1) this.offPitch();
-    // The kick's meter.
-    if (this.meter) {
-      this.meter.hidden = !this.charge;
-      if (this.charge) {
-        const k = Math.min(1, (performance.now() - this.charge.t0) / CHARGE_MS);
-        (this.meter.firstChild as HTMLElement).style.width = `${Math.round(k * 100)}%`;
-        this.meter.classList.toggle('chip', this.charge.chip);
-      }
-    }
+    // The aim, and a kick's jolt.
+    this.showAim(now);
+    this.jolt(now);
   }
 
   /** Inside, the hall lights itself: bright and even, no sun through the roof, no haze. */

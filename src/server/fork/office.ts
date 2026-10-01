@@ -82,6 +82,7 @@ export function createFork(ctx: Ctx): Fork {
         const c = clients.get(id);
         return c && c.peer.floor === SOCCER ? c.peer : null;
       },
+      dataDir: cfg.dataDir, // the leaderboard (soccer.json)
     }),
     radio: new RadioProxy(),
     toRoof: to(ROOF),
@@ -116,7 +117,7 @@ const ENTRY: Record<(typeof PLACES)[number], Spot> = {
 export function enteredPlace(ctx: Ctx, c: Client, place: string | undefined) {
   if (place === CASINO) ctx.casino.enter(ctx.casinoPlayer(c));
   if (place === GYM) ctx.gym.enter(ctx.gymPlayer(c));
-  if (place === SOCCER) ctx.soccer.enter({ id: c.id, name: c.peer.name, send: (m) => ctx.sendTo(c, m) });
+  if (place === SOCCER) ctx.soccer.enter({ id: c.id, name: c.peer.name, owner: owner(c), send: (m) => ctx.sendTo(c, m) });
 }
 
 /** `floor.go` to one of the places, just inside its door. Whether it was one (else upstream's floors and roof). */
