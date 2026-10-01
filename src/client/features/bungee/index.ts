@@ -2,8 +2,13 @@
  * flrnoh fork (see FORK.md): bungee off the roof (bungee.ts, world/bungee.ts): a jetty over the
  * street, one jumper at a time; on the rope, F flips and nothing else is in reach.
  */
-import { roofDrop } from '../../../shared/layout';
+import { CASINO } from '../../../shared/casino';
+import { GYM } from '../../../shared/gym';
+import { HALL } from '../../../shared/hall';
+import { roofDrop, streetBelow } from '../../../shared/layout';
+import { SOCCER } from '../../../shared/soccer';
 import type { Ctx } from '../../core/context';
+import { noOutline } from '../../core/outline';
 import { aside, hintTitle, key } from '../../core/hint';
 import { Bungee } from '../../bungee';
 import { store } from '../../state';
@@ -27,6 +32,14 @@ export interface BungeeFeatureDeps {
 }
 
 export function installBungee(ctx: Ctx, deps: BungeeFeatureDeps): Bungee {
+  // From below too: on a floor of the office, its balcony or the street, the roof's deck is the tower's
+  // top (world/tower.ts), (count - index) storeys over your floor; not from the places across the street.
+  const below = (): number | null => {
+    const f = store.floor;
+    if (ctx.upTop() || !ctx.inOffice() || f === CASINO || f === GYM || f === HALL || f === SOCCER) return null;
+    const { index, count } = ctx.office.stack.state;
+    return count >= 1 ? streetBelow(index) + roofDrop(count) : null;
+  };
   const bungee = new Bungee({
     scene: ctx.scene,
     camera: ctx.camera,
@@ -36,6 +49,9 @@ export function installBungee(ctx: Ctx, deps: BungeeFeatureDeps): Bungee {
     you: () => store.you,
     officeNow: () => store.officeNow(),
     jetty: () => deps.roof()?.bungee ?? null,
+    below,
+    lookOf: (id) => store.peers.get(id)?.look,
+    noOutline,
     drop: () => roofDrop(deps.roofFloors()),
     send: (m) => ctx.net.send(m),
     toast,

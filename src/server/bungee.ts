@@ -4,8 +4,10 @@ import type { ClientMsg, ServerMsg } from '../shared/protocol.js';
 
 /*
  * Bungee off the roof (flrnoh fork, see FORK.md; the jump itself is shared/bungee.ts). The office keeps
- * who's on the rope and since when, one at a time, and counts the day's jumps. Every browser on the
- * roof works out the fall from `startedAt` and `drop`, so it only says so once, when someone jumps.
+ * who's on the rope and since when, one at a time, and counts the day's jumps. Every browser in the
+ * building works out the fall from `startedAt` and `drop`, so it only says so once, when someone jumps:
+ * to everyone, not only the roof, because the jetty sticks out over the street and the jump is seen
+ * from every floor's windows, the balconies and the street below as well.
  */
 
 export class BungeeRope {
@@ -27,7 +29,7 @@ export class BungeeRope {
     return this.count;
   }
 
-  /** The rope as everyone on the roof sees it: nobody on it once the last jump's over. */
+  /** The rope as everyone in the building sees it: nobody on it once the last jump's over. */
   state(): BungeeState {
     const today = this.today();
     if (this.on.jumper && this.now() >= this.on.startedAt + bungeeDuration(this.on.drop) * 1000) this.on = { ...NO_BUNGEE };
@@ -65,7 +67,8 @@ export interface BungeeHooks {
   onRoof: boolean;
   /** How many floors the roof stands on: the street is roofDrop of that below. */
   floors: number;
-  toRoof(msg: ServerMsg): void;
+  /** To everyone in the building (every floor and the street, not only the roof: the jump's seen from below). */
+  toBuilding(msg: ServerMsg): void;
   warn(text: string): void;
 }
 
@@ -74,5 +77,5 @@ export function bungeeMessage(rope: BungeeRope, _msg: Extract<ClientMsg, { t: 'b
   if (!c.onRoof) return c.warn('The bungee jetty is up on the roof');
   const r = rope.jump({ id: c.id, name: c.who, color: c.color }, roofDrop(Math.max(1, c.floors)));
   if ('error' in r) return c.warn(r.error);
-  c.toRoof({ t: 'bungee', state: r.state });
+  c.toBuilding({ t: 'bungee', state: r.state });
 }

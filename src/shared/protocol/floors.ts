@@ -140,7 +140,7 @@ export interface FloorView {
   boats?: CraftState[];
   /** Up on the roof: who's at the table games (flrnoh fork, see shared/tablegames). */
   tables?: TableSeat[];
-  /** Up on the roof: who's on the bungee rope, and the day's jumps (flrnoh fork, see shared/bungee.ts). */
+  /** Who's on the bungee rope, and the day's jumps (flrnoh fork, see shared/bungee.ts), in every view: the jump's seen from below too. */
   bungee?: BungeeState;
 }
 

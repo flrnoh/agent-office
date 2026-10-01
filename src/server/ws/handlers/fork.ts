@@ -25,7 +25,8 @@ const toClient = (ctx: Ctx) => (id: string, m: Parameters<Ctx['sendTo']>[1]) => 
 
 const leftTable = (ctx: Ctx, id: string) => ctx.roofTables.leave(id) && ctx.toRoof({ t: 'tables', tables: ctx.roofTables.state() }, id);
 const leftCourt = (ctx: Ctx, id: string) => ctx.padelCourts.leave(id) && ctx.toHall({ t: 'padel', courts: ctx.padelCourts.state() }, id);
-const offRope = (ctx: Ctx, id: string) => ctx.bungeeRope.leave(id) && ctx.toRoof({ t: 'bungee', state: ctx.bungeeRope.state() }, id);
+// The rope's news goes to the whole building: the jetty and the jump are seen from every floor and the street.
+const offRope = (ctx: Ctx, id: string) => ctx.bungeeRope.leave(id) && ctx.broadcast({ t: 'bungee', state: ctx.bungeeRope.state() }, id);
 const rigLeft = (ctx: Ctx, c: Client) => ctx.rigs.leave(c.id).forEach(ctx.rigChanged);
 /** Out of a craft at the jetty of the floor they're leaving (or left), and everyone still there told. */
 const boatLeft = (ctx: Ctx, c: Client, floorId: string | undefined) => {
@@ -97,7 +98,7 @@ export const forkHandlers = {
   'table.input': table,
   'table.sync': table,
   'bungee.jump'(ctx, c, msg) {
-    bungeeMessage(ctx.bungeeRope, msg, { id: c.id, who: c.peer.name, color: c.peer.color, onRoof: c.peer.floor === ROOF, floors: ctx.floors.size, toRoof: ctx.toRoof, warn: (t) => ctx.warn(c, t) });
+    bungeeMessage(ctx.bungeeRope, msg, { id: c.id, who: c.peer.name, color: c.peer.color, onRoof: c.peer.floor === ROOF, floors: ctx.floors.size, toBuilding: (m) => ctx.broadcast(m), warn: (t) => ctx.warn(c, t) });
   },
   'jukebox.speakers'(ctx, c, msg) {
     // The speakers all over the floor (client/speakers.ts); guests can't (guests.ts).
@@ -152,8 +153,10 @@ export const forkHooks: FeatureHooks = {
   },
 };
 
-// The roof's (dj, tables, bungee) come with roofExtras (fork/office.ts); a floor has none of them.
+// The roof's (dj, tables) come with roofExtras (fork/office.ts); a floor has none of them. The bungee rope
+// is in every view: the jump is seen from below too.
 export const rigView: ViewPieces['rig'] = (ctx, floor) => ctx.rigs.view(floor?.id);
 export const tvView: ViewPieces['tv'] = (_ctx, floor) => floor?.tv.state();
 export const boatsView: ViewPieces['boats'] = (ctx, floor) => ctx.marinas.view(floor?.id);
 export const noView = () => undefined;
+export const bungeeView: ViewPieces['bungee'] = (ctx) => ctx.bungeeRope.state();

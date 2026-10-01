@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { ANCHOR, BUNGEE, NO_BUNGEE, bungeePlan, bungeePose, type BungeePose, type BungeeState } from '../shared/bungee';
 import { FLOOR, WALL_T } from '../shared/layout';
+import { lookFromSeed, type Look } from '../shared/avatar';
 import type { ClientMsg, ServerMsg } from '../shared/protocol';
 import { EYE_HEIGHT, type PlayerController } from './player';
 import type { Interactable } from './world/types';
-import type { BungeeJetty } from './world/bungee';
+import { buildBungeeJetty, type BungeeJetty } from './world/bungee';
+import { Person } from './world/character';
 import { toon } from './world/toon';
 
 // Bungee off the roof (flrnoh fork, see FORK.md): E on the jetty's platform asks the office for the
@@ -14,6 +16,14 @@ import { toon } from './world/toon';
 // jumper's own page moves nobody else, and its player stays put on the platform all along (so a
 // reload mid-jump finds you there). This draws the rope, poses the jumper's body, and in the jumper's
 // page flies the camera; client/sound.ts has its sounds, world/bungee.ts the jetty.
+//
+// From below, too: the jetty sticks out over the street at the top of the building, so from any floor
+// of the office (at the windows, out on the balcony) or down on the street you see it up there, and
+// whoever's jumping off it falling past the facade and bouncing on the rope. The roof itself isn't in
+// the scene then (only the floor you're on is, and world/tower.ts's outside of the rest), and neither
+// is the jumper (people are only in the room with you on your own floor), so this keeps a second
+// jetty of its own, and a stand-in figure in the jumper's color, and poses them on the same curve,
+// lifted from the roof's frame (the deck at 0) into your floor's (the deck `below()` over you).
 
 /** The building's south face: the camera never goes through it. */
 const FACADE = FLOOR.maxZ + WALL_T;
@@ -39,6 +49,16 @@ export interface BungeeDeps {
   officeNow(): number;
   /** The jetty, once the roof's built. */
   jetty(): BungeeJetty | null;
+  /**
+   * Not on the roof but on the office's map, on a floor or down on the street under it: how high over
+   * your floor the roof's deck is (the tower's top, see world/tower.ts), or null where the roof isn't
+   * there to see (in the casino, the gym, the halls across the street, on a map of its own).
+   */
+  below(): number | null;
+  /** How someone looks, if they're about (the jumper's stand-in from below wears it). */
+  lookOf(id: string): Look | undefined;
+  /** Takes the cartoon outline off a person, as main.ts does for everyone else in the room. */
+  noOutline(obj: THREE.Object3D): void;
   /** How far below the roof the street is now. */
   drop(): number;
   send(msg: ClientMsg): void;
@@ -69,6 +89,9 @@ export class Bungee {
   private v = new THREE.Vector3();
   private v2 = new THREE.Vector3();
   private posed: THREE.Object3D | null = null;
+  /** The jetty as seen from below (built the first time it's wanted), and the jumper's stand-in down there. */
+  private low: BungeeJetty | null = null;
+  private standIn: { person: Person; id: string; color: string; name: string } | null = null;
 
   constructor(private d: BungeeDeps) {
     const geo = new THREE.CylinderGeometry(0.03, 0.03, 1, 6).translate(0, 0.5, 0);
@@ -138,20 +161,33 @@ export class Bungee {
     return (this.d.officeNow() - this.state.startedAt) / 1000;
   }
 
-  /** Every frame, after everyone's been moved: poses the jumper and the rope, and flies your camera if it's you. */
+  /**
+   * Every frame, after everyone's been moved: poses the jumper and the rope, and flies your camera if
+   * it's you. `up` is whether you're on the roof; off it, `below()` says whether the jump's in sight.
+   */
   update(up: boolean, firstPerson: boolean) {
     const s = this.state;
-    const jetty = this.d.jetty();
+    // Up on the roof everything's in the roof's own frame (lift 0); from below, lifted to the tower's top.
+    const lift = up ? 0 : this.d.below();
+    const below = !up && lift !== null;
+    const jetty = up ? this.d.jetty() : below ? this.lowJetty() : null;
+    if (this.low) {
+      // Only ever one jetty in the scene: the roof's up there, this one from below.
+      this.low.group.visible = below;
+      if (below) this.low.group.position.y = lift;
+    }
     jetty?.setToday(s.today);
-    const t = up ? this.elapsed() : null;
+    const t = up || below ? this.elapsed() : null;
     const plan = s.jumper ? bungeePlan(s.drop) : null;
     const live = t !== null && plan !== null && t < plan.end;
-    const mine = live && s.jumper === this.d.you();
+    // You're only ever on the rope up on the roof (going down takes you off it, see server/bungee.ts).
+    const mine = up && live && s.jumper === this.d.you();
     if (mine && !this.hold) this.start();
     if (!mine && this.hold) this.stop(up);
     if (jetty) jetty.setGate(plan && t !== null ? smooth((t - (plan.jump - 0.9)) / 0.6) * (1 - smooth((t - plan.end) / 0.6)) : 0);
-    if (!live || !plan || t === null) {
+    if (!live || !plan || t === null || lift === null) {
       this.unpose();
+      if (this.standIn) this.standIn.person.root.visible = false;
       this.rope.visible = false;
       this.poseNow = null;
       this.showCount('');
@@ -160,23 +196,66 @@ export class Bungee {
     }
     const pose = bungeePose(s.drop, t);
     this.poseNow = pose;
-    const body = mine ? this.d.me : this.d.bodyOf(s.jumper!);
+    // From below the jumper isn't in the room with you: their stand-in takes the jump instead.
+    const body = mine ? this.d.me : up ? this.d.bodyOf(s.jumper!) : this.standInFor(s);
     if (this.posed && this.posed !== body) this.unpose();
+    if (this.standIn) this.standIn.person.root.visible = !up;
     const flip = mine && this.flipAt ? smooth((this.d.officeNow() - this.flipAt) / 900) * Math.PI * 2 : 0;
     if (flip >= Math.PI * 2 - 1e-6) this.flipAt = 0;
     // The body: its feet (where the rope's tied) at the pose, tipped forward by its pitch, facing out.
     this.q.setFromAxisAngle(X_AXIS, pose.pitch + flip);
     if (body) {
-      body.position.set(pose.x, pose.y, pose.z);
+      body.position.set(pose.x, pose.y + lift, pose.z);
       body.quaternion.copy(this.q);
       body.visible = !(mine && firstPerson);
       this.posed = body;
     }
+    // The rope's one mesh, drawn in the roof's frame and lifted with the rest.
+    this.rope.position.y = lift;
     this.drawRope(pose, plan.length);
     // On the platform the rope hangs from the arm right in front of your eyes: out of your own first-person view there.
     if (mine && firstPerson && (pose.phase === 'count' || pose.phase === 'climb')) this.rope.visible = false;
-    this.events(s, t, pose, plan, mine);
+    this.events(s, t, pose, plan, mine, lift);
     if (mine) this.fly(pose, t, plan, flip, firstPerson);
+  }
+
+  /** The jetty to see from below: a copy of the roof's, nothing to walk on or pick (it's in the scene, not the office's group). */
+  private lowJetty(): BungeeJetty {
+    if (this.low) return this.low;
+    const j = buildBungeeJetty();
+    j.group.traverse((o) => {
+      delete o.userData.interact;
+      o.raycast = () => {};
+    });
+    j.group.visible = false;
+    this.d.scene.add(j.group);
+    this.low = j;
+    return j;
+  }
+
+  /** The jumper as seen from below: a figure in their color (and their look, if they're about), their name over it. */
+  private standInFor(s: BungeeState): THREE.Object3D {
+    const id = s.jumper!;
+    let si = this.standIn;
+    if (!si) {
+      const person = new Person(s.name, s.color || '#ff6b35', this.d.lookOf(id) ?? lookFromSeed(id));
+      person.root.visible = false;
+      this.d.scene.add(person.root);
+      this.d.noOutline(person.root);
+      // Blank, so its name tag and shirt are put on just below (without the mic a person's tag starts with).
+      si = this.standIn = { person, id, color: '', name: '' };
+    } else if (si.id !== id) {
+      si.id = id;
+      si.person.setLook(this.d.lookOf(id) ?? lookFromSeed(id));
+    }
+    if (si.color !== s.color || si.name !== s.name) {
+      si.color = s.color;
+      si.name = s.name;
+      si.person.setColor(s.color || '#ff6b35');
+      si.person.setLabel(s.name, null);
+      this.d.noOutline(si.person.root);
+    }
+    return si.person.root;
   }
 
   private start() {
@@ -261,7 +340,7 @@ export class Bungee {
   }
 
   /** The countdown, the toast for everyone else, the rope's twang, the wind. */
-  private events(s: BungeeState, t: number, pose: BungeePose, plan: ReturnType<typeof bungeePlan>, mine: boolean) {
+  private events(s: BungeeState, t: number, pose: BungeePose, plan: ReturnType<typeof bungeePlan>, mine: boolean, lift: number) {
     const seen = this.seen;
     if (seen.startedAt !== s.startedAt) {
       // Coming up mid-jump: nothing already past goes off again.
@@ -283,7 +362,7 @@ export class Bungee {
     }
     if (pose.taut !== seen.taut) {
       seen.taut = pose.taut;
-      if (pose.taut && pose.phase === 'fall') this.d.sound.bungee('twang', mine ? undefined : { x: pose.x, y: pose.y, z: pose.z });
+      if (pose.taut && pose.phase === 'fall') this.d.sound.bungee('twang', mine ? undefined : { x: pose.x, y: pose.y + lift, z: pose.z });
     }
     if (mine) this.d.sound.bungeeWind(pose.phase === 'fall' || pose.phase === 'hang' ? Math.min(1, Math.abs(pose.speed) / 22) : pose.phase === 'winch' ? 0.08 : 0);
   }
