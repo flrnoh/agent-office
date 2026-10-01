@@ -1,5 +1,6 @@
 import { GOAL, PITCH, PITCH_CX, defends, other, type GoalSide, type Team } from '../../shared/soccer.js';
 import { BALL_R, type Ball, stepBall } from '../../shared/soccer-ball.js';
+import { cardFor, type Card } from '../../shared/soccer-tackle.js'; // slide tackles
 import { pickMvp, type SoccerGoalRec, type SoccerLine, type SoccerStats, type SoccerTeamStats } from '../../shared/soccer-stats.js';
 
 /*
@@ -54,7 +55,7 @@ export interface MatchResult {
   mvp: boolean;
 }
 
-const zeroTeam = (): SoccerTeamStats => ({ shots: 0, onTarget: 0, passes: 0, saves: 0, possession: 50 });
+const zeroTeam = (): SoccerTeamStats => ({ shots: 0, onTarget: 0, passes: 0, saves: 0, tackles: 0, fouls: 0, possession: 50 });
 
 /** Where the goal `side` is: its line's z. */
 const goalLineZ = (side: GoalSide) => (side === 'north' ? PITCH.minZ : PITCH.maxZ);
@@ -111,7 +112,7 @@ export class MatchStats {
   seen(owner: string, name: string, team: Team, number?: number): Line {
     let l = this.lines.get(owner);
     if (!l) {
-      l = { key: owner, name, team, goals: 0, assists: 0, shots: 0, onTarget: 0, passes: 0, saves: 0 };
+      l = { key: owner, name, team, goals: 0, assists: 0, shots: 0, onTarget: 0, passes: 0, saves: 0, tackles: 0, fouls: 0, fouled: 0 };
       this.lines.set(owner, l);
     }
     l.name = name;
@@ -175,6 +176,28 @@ export class MatchStats {
     return !!line && line.side === aim && Math.abs(line.x - PITCH_CX) <= GOAL.width / 2 + SHOT_WIDE;
   }
 
+  /** Tackles: `owner` won the ball off an opponent with a clean slide. */
+  tackle(owner: string, name: string, team: Team, number?: number) {
+    const l = this.seen(owner, name, team, number);
+    l.tackles = (l.tackles ?? 0) + 1;
+  }
+
+  /** Tackles: `by` fouled `on`. Returns how many fouls `by` has in this match, and the card that came to (two a yellow, three a red). */
+  foul(by: { owner: string; name: string; team: Team; number?: number }, on: { owner: string; name: string; team: Team; number?: number }): { fouls: number; card?: Card } {
+    const l = this.seen(by.owner, by.name, by.team, by.number);
+    const v = this.seen(on.owner, on.name, on.team, on.number);
+    l.fouls = (l.fouls ?? 0) + 1;
+    v.fouled = (v.fouled ?? 0) + 1;
+    const card = cardFor(l.fouls);
+    if (card) l.card = card;
+    return { fouls: l.fouls, ...(card ? { card } : {}) };
+  }
+
+  /** Tackles: the card `owner` has in this match, if any. */
+  cardOf(owner: string): Card | undefined {
+    return this.lines.get(owner)?.card;
+  }
+
   /** A goal for `team` in `minute`: who scored and who laid it on (names), as it goes on the scoreboard. */
   goal(team: Team, minute: number, now: number): SoccerGoalRec {
     const last = this.touches.at(-1);
@@ -234,6 +257,8 @@ export class MatchStats {
       t.onTarget += l.onTarget;
       t.passes += l.passes;
       t.saves += l.saves;
+      t.tackles = (t.tackles ?? 0) + (l.tackles ?? 0);
+      t.fouls = (t.fouls ?? 0) + (l.fouls ?? 0);
     }
     const total = this.poss.red + this.poss.blue;
     if (total > 0) {

@@ -1,4 +1,5 @@
 import type { Team } from './soccer.js';
+import type { Card } from './soccer-tackle.js';
 
 // The soccer hall's numbers (flrnoh fork, see FORK.md "The soccer hall"): what a match's statistics
 // look like on the wire (the office keeps them, server/soccer/stats.ts, and sends them with the match),
@@ -27,6 +28,11 @@ export interface SoccerLine {
   onTarget: number;
   passes: number;
   saves: number;
+  /** Slide tackles (soccer-tackle.ts): tackles won, fouls committed and suffered, and the card it came to. */
+  tackles?: number;
+  fouls?: number;
+  fouled?: number;
+  card?: Card;
 }
 
 export interface SoccerTeamStats {
@@ -34,6 +40,9 @@ export interface SoccerTeamStats {
   onTarget: number;
   passes: number;
   saves: number;
+  /** Slide tackles won and fouls committed. */
+  tackles?: number;
+  fouls?: number;
   /** Share of the playing time the team last touched the ball, 0..100 (the two add up to 100; 50 each before anyone has). */
   possession: number;
 }
@@ -58,9 +67,9 @@ export interface SoccerLeader {
   mvp: number;
 }
 
-/** How the man of the match is found: goals count 3, assists 2, shots on target and saves 1 each. */
-export function mvpScore(l: Pick<SoccerLine, 'goals' | 'assists' | 'onTarget' | 'saves'>): number {
-  return l.goals * 3 + l.assists * 2 + l.onTarget + l.saves;
+/** How the man of the match is found: goals count 3, assists 2, shots on target, saves and tackles won 1 each. */
+export function mvpScore(l: Pick<SoccerLine, 'goals' | 'assists' | 'onTarget' | 'saves' | 'tackles'>): number {
+  return l.goals * 3 + l.assists * 2 + l.onTarget + l.saves + (l.tackles ?? 0);
 }
 
 /** The man of the match among `lines`: the best score, then more goals, then the winning side, then by name. Nobody when nobody scored a point. */

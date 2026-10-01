@@ -68,7 +68,7 @@ const PARTY_SEES = [
   'gym.profile', 'gym.station', 'gym.result', // fork: the gym is open to party guests
   'padel', 'padel.sync', 'padel.input', // fork: padel in the hall
   'bungee', // fork: bungee off the roof
-  'soccer', 'soccer.ball', // fork: the soccer hall
+  'soccer', 'soccer.ball', 'soccer.slide', // fork: the soccer hall (and its slide tackles)
 ] as const satisfies readonly T[];
 
 /** The work, the machine and the office's settings: never sent to a party guest. */

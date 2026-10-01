@@ -28,6 +28,7 @@ import {
 } from '../../shared/soccer-ball.js';
 import { SoccerMatch } from './match.js';
 import { SoccerRecords } from './records.js'; // stats: the leaderboard and shirt numbers
+import { SoccerTackles, type TacklePlayer } from './tackle.js'; // slide tackles and fouls
 
 /*
  * The soccer hall's game on the server (flrnoh fork, see FORK.md "The soccer hall"): who's in the
@@ -91,6 +92,8 @@ interface Member {
   lastKick: number;
   /** Until when they can't take the ball (ms: just after their own kick, a 50/50, losing a tackle). */
   coolUntil: number;
+  /** Tackles: beaten by a slide until then (ms): the poked ball goes past them, not off their shins. */
+  beatenUntil?: number;
   /** Where they were last seen standing, when, and how fast they were going. */
   track: { x: number; z: number; t: number; vx: number; vz: number } | null;
 }
@@ -126,9 +129,13 @@ export class Soccer {
   /** Where the ball was over the last HISTORY steps, for kicks from pages a little behind. */
   private history: { k: number; x: number; z: number; y: number }[] = [];
 
+  /** Slide tackles, fouls and cards (tackle.ts). */
+  readonly tackles: SoccerTackles;
+
   constructor(private deps: SoccerDeps) {
     this.now = deps.now ?? Date.now;
     this.records = new SoccerRecords(deps.dataDir); // stats
+    this.tackles = new SoccerTackles(this.tackleHost()); // tackles
   }
 
   // ---- In and out ---------------------------------------------------------------------------------
@@ -147,6 +154,7 @@ export class Soccer {
     const was = this.members.get(id);
     if (!was) return;
     this.members.delete(id);
+    this.tackles.forget(id); // tackles
     if (was.team) this.changed({ kind: 'leave', team: was.team, who: was.m.name, text: `${was.m.name} left the pitch` });
     if (!this.members.size) this.halt();
   }
@@ -171,6 +179,8 @@ export class Soccer {
     const p = this.members.get(id);
     if (!p) return { ok: false, reason: 'Come into the hall first' };
     if (p.team) return { ok: true, team: p.team };
+    const out = this.tackles.sentOff(ownerOf(p), this.now()); // tackles: a red card
+    if (out) return { ok: false, reason: out };
     const c = this.counts();
     const s = this.match.score;
     const team: Team = c.red !== c.blue ? (c.red < c.blue ? 'red' : 'blue') : s.red !== s.blue && this.match.phase !== 'waiting' ? (s.red < s.blue ? 'red' : 'blue') : 'red';
@@ -183,14 +193,15 @@ export class Soccer {
   }
 
   /** Off the pitch, back to watching. */
-  leavePitch(id: string): boolean {
+  leavePitch(id: string, text?: string): boolean {
     const p = this.members.get(id);
     if (!p?.team) return false;
     const team = p.team;
     delete p.team;
+    this.tackles.forget(id); // tackles
     if (this.toucher?.id === id) this.toucher = null;
     if (this.poss.id === id) this.poss.id = null;
-    this.changed({ kind: 'leave', team, who: p.m.name, text: `${p.m.name} left the pitch` });
+    this.changed({ kind: 'leave', team, who: p.m.name, text: text ?? `${p.m.name} left the pitch` });
     return true;
   }
 
@@ -207,16 +218,20 @@ export class Soccer {
     if (!nums.every((v) => typeof v === 'number' && Number.isFinite(v))) return 'bad kick';
     const now = this.now();
     if (now - p.lastKick < KICK_GAP_MS) return 'too soon';
-    if (this.held || !this.match.canTouch(p.team, now)) return 'not now';
+    const setPiece = !this.held && !this.match.canTouch(p.team, now) && this.match.setPieceKick(p.team, id, now); // tackles: a free kick or a penalty
+    if (this.held || (!this.match.canTouch(p.team, now) && !setPiece)) return 'not now';
+    if (this.tackles.sliding(id, now)) return 'sliding';
     const at = this.deps.where(id);
     if (!at || !this.reached(id, at.x, at.z)) return 'too far';
     p.lastKick = now;
     p.coolUntil = now + KICK_COOL_MS;
     this.poss.id = null;
     kick(this.ball, clamp01(power as number), dir as number, clamp01(loft as number), lift as number);
+    const restart = setPiece ? this.match.taken(now) : []; // tackles: the set piece is taken, play on
     this.touch(p);
     this.hit = { kind: 'kick', speed: Math.hypot(this.ball.vx, this.ball.vz, this.ball.vy), by: id };
     this.snap();
+    for (const ev of restart) this.apply(ev);
     return null;
   }
 
@@ -242,6 +257,9 @@ export class Soccer {
         break;
       case 'soccer.kick':
         this.kick(id, msg.power, msg.dir, msg.loft, msg.lift ?? 0);
+        break;
+      case 'soccer.slide': // tackles
+        this.tackles.start(id, p.team, this.deps.where(id), msg.dir, { x: msg.x, z: msg.z }, this.now());
         break;
     }
   }
@@ -278,6 +296,14 @@ export class Soccer {
       footers.push({ id: p.m.id, team: p.team, x: tr.x + tr.vx * ahead, z: tr.z + tr.vz * ahead, vx: tr.vx, vz: tr.vz, facing, free: now >= p.coolUntil });
     }
     if (this.held) this.poss.id = null;
+    // Tackles: what the slides hit first (a poke, a foul); sliders and anyone a foul stopped play for can't touch the ball.
+    this.tackles.tick(now);
+    for (let i = footers.length - 1; i >= 0; i--) {
+      const f = footers[i];
+      const m = this.members.get(f.id);
+      if (!m?.team || this.held || !this.match.canTouch(m.team, now) || this.tackles.sliding(f.id, now) || now < (m.beatenUntil ?? 0)) footers.splice(i, 1);
+      else f.free = now >= m.coolUntil;
+    }
 
     // The physics, in SIM_DT steps (its clock runs on while the ball's held for a kickoff).
     const had = this.poss.id;
@@ -316,7 +342,10 @@ export class Soccer {
 
   /** The view everyone in the hall gets. */
   view(): SoccerView {
-    const players = [...this.members.values()].filter((p) => p.team).map((p) => ({ id: p.m.id, name: p.m.name, team: p.team!, number: this.numbers.get(p.m.id) }));
+    const players = [...this.members.values()].filter((p) => p.team).map((p) => {
+      const card = this.match.stats.cardOf(ownerOf(p)); // tackles
+      return { id: p.m.id, name: p.m.name, team: p.team!, number: this.numbers.get(p.m.id), ...(card ? { card } : {}) };
+    });
     return { ...this.match.view(this.now()), players, stats: this.match.stats.view(), leaders: this.records.top(5) }; // stats
   }
 
@@ -331,6 +360,50 @@ export class Soccer {
   }
 
   // ---- Inside ------------------------------------------------------------------------------------
+
+  /** Tackles: what tackle.ts needs of the game. */
+  private tackleHost() {
+    const self = this;
+    return {
+      match: this.match,
+      ball: this.ball,
+      poss: this.poss,
+      held: () => this.held,
+      players: (): TacklePlayer[] => {
+        const now = this.now();
+        const out: TacklePlayer[] = [];
+        for (const p of this.members.values()) {
+          const tr = p.track;
+          if (!p.team || !tr) continue;
+          const ahead = Math.min(0.15, (now - tr.t) / 1000);
+          out.push({ id: p.m.id, name: p.m.name, team: p.team, owner: ownerOf(p), number: this.numbers.get(p.m.id), x: tr.x + tr.vx * ahead, z: tr.z + tr.vz * ahead, vx: tr.vx, vz: tr.vz });
+        }
+        return out;
+      },
+      touch: (id: string) => {
+        const m = this.members.get(id);
+        if (m) this.touch(m);
+      },
+      cool: (id: string, ms: number) => {
+        const m = this.members.get(id);
+        if (m) m.coolUntil = m.beatenUntil = Math.max(m.coolUntil, this.now() + ms);
+      },
+      placeBall: (x: number, z: number) => {
+        Object.assign(this.ball, { x, z, y: 0, vx: 0, vz: 0, vy: 0 });
+        this.poss.id = null;
+        this.history = [];
+        this.resetAt = 0;
+        this.snap();
+      },
+      hit: (speed: number) => {
+        self.hit = { kind: 'kick', speed };
+      },
+      event: (ev: SoccerEvent) => this.changed(ev),
+      sendOff: (id: string, text: string) => this.leavePitch(id, text),
+      send: (m: ServerMsg) => this.send(m),
+      tell: (id: string, m: ServerMsg) => this.members.get(id)?.m.send(m),
+    };
+  }
 
   private follow(p: Member, x: number, z: number, now: number) {
     const tr = p.track;
@@ -438,6 +511,7 @@ export class Soccer {
   private halt() {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    if (!this.members.size) this.tackles.clear(); // tackles
     // Nobody's left inside: the match is over, the ball back on the spot for whoever comes next.
     if (!this.members.size) {
       this.match.update(this.now(), { red: 0, blue: 0 });
