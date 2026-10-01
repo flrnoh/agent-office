@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { ELEVATOR, ELEVATOR_FRONT, FLOOR, ROAD, SLAB, STREET_Y, WALL_T } from '../../shared/layout';
 import { LOT, SIDE_LOT } from '../../shared/garage';
-import { STREET_END, shoreX } from '../../shared/scenic';
+import { STREET_END, STREET_Z, shoreX } from '../../shared/scenic';
+import { CROSSINGS, CROSSING_HALF, LOTS, pavedCorners } from '../../shared/city'; // fork: the city round the office
 import { CASINO_BOX, CASINO_HEIGHT } from '../../shared/casino'; // fork
 import { GYM_HEIGHT, GYM_STREET_BOX } from '../../shared/gym'; // fork
 import { HALL_BOX, HALL_HEIGHT, HALL_ROOF_RISE } from '../../shared/hall'; // fork
@@ -195,52 +196,6 @@ export function tree(scale: number): THREE.Group {
   return t;
 }
 
-/** A building across the street or out back: a painted block with rows of windows and a roof cap. */
-function building(w: number, h: number, d: number, color: string, lit: THREE.MeshToonMaterial[]): THREE.Group {
-  const g = new THREE.Group();
-  // Where the windows go across a floor (in 256ths): each column's middle half, 70 to 190 up.
-  const face = (n: number) =>
-    canvasTexture(256, 256, (c) => {
-      c.fillStyle = color;
-      c.fillRect(0, 0, 256, 256);
-      c.fillStyle = '#bfe3ff';
-      for (let i = 0; i < n; i++) c.fillRect(((i + 0.25) / n) * 256, 70, (0.5 / n) * 256, 120);
-      c.fillStyle = 'rgba(255,255,255,0.55)';
-      for (let i = 0; i < n; i++) c.fillRect(((i + 0.25) / n) * 256, 70, (0.12 / n) * 256, 120);
-    });
-  // At night about half of them are lit: lamps, a ceiling light, the odd TV.
-  const lights = (n: number, floors: number) =>
-    canvasTexture(64, 64 * floors, (c) => {
-      c.fillStyle = '#000000';
-      c.fillRect(0, 0, 64, 64 * floors);
-      for (let f = 0; f < floors; f++) {
-        for (let i = 0; i < n; i++) {
-          if (Math.random() < 0.45) continue;
-          c.fillStyle = Math.random() < 0.15 ? '#9ec9ff' : Math.random() < 0.5 ? '#ffd27a' : '#ffe6b0';
-          c.fillRect(((i + 0.25) / n) * 64, f * 64 + (70 / 256) * 64, (0.5 / n) * 64, (120 / 256) * 64);
-        }
-      }
-    });
-  const floors = Math.max(1, Math.round(h / 3.2));
-  const walls = (span: number) => {
-    const n = Math.max(1, Math.round(span / 2.6));
-    const t = face(n);
-    t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(1, floors);
-    const m = new THREE.MeshToonMaterial({ map: t, emissive: '#ffffff', emissiveMap: lights(n, floors), emissiveIntensity: 0, gradientMap: (toon('#fff') as THREE.MeshToonMaterial).gradientMap });
-    lit.push(m);
-    return m;
-  };
-  const sides = walls(d);
-  const fronts = walls(w);
-  const mats = [sides, sides, toon(color), toon(color), fronts, fronts];
-  g.add(new THREE.Mesh(box(w, h, d), mats));
-  (g.children[0] as THREE.Mesh).position.y = h / 2;
-  (g.children[0] as THREE.Mesh).castShadow = true;
-  g.add(mesh(box(w + 0.4, 0.4, d + 0.4), toon('#fffaf3'), 0, h + 0.2, 0));
-  return g;
-}
-
 /** A street lamp on the sidewalk at (x, z), its arm reaching out over the road toward `toward` (±1 in z). */
 export function streetLamp(parts: THREE.Group, night: NightParts, glass: THREE.MeshToonMaterial, colliders: Collider[], x: number, z: number, toward: number) {
   const ink = toon('#3d405b');
@@ -281,31 +236,41 @@ export function roadTexture(): THREE.CanvasTexture {
 }
 
 /**
- * The neighbours' buildings: [x, z, width, height, depth, paint], across the street and further out
- * behind and beside the office. The gap across the street from the balcony is the golf hole's
- * (GOLF_HOLE in layout).
+ * What stands on the street round the office that a golf ball can hit or the pines mustn't grow in:
+ * the city's buildings nearby (fork: shared/city.ts; they took the place of the handful of neighbours
+ * that stood here) and the houses across the street, each with how tall it stands (roof cap
+ * included) above the street.
  */
-const NEIGHBOURS: [number, number, number, number, number, string][] = [
-  // (fork: the two across the street to the west made way for the casino, world/casino/exterior.ts,
-  // the one to the east at x 30 for the padel hall, world/hall/exterior.ts, and the one at x 12 for the
-  // soccer hall, world/soccer/exterior.ts; the gym stands further east, world/gym/exterior.ts)
-  [-20, -42, 18, 14, 10, '#a2d2ff'],
-  [8, -44, 16, 20, 12, '#f4acb7'],
-  [-48, -6, 10, 12, 16, '#ffe5b4'],
-  [50, 4, 10, 15, 18, '#bde0fe'],
-];
-
-/** Which way a neighbour at (x, z) is turned: its front to the office. */
-const facing = (x: number, z: number) => (Math.abs(x) > 40 ? (x > 0 ? -Math.PI / 2 : Math.PI / 2) : z > 0 ? Math.PI : 0);
-
-/** The neighbours' footprints, and how tall each stands (roof cap included) above the street. */
 export function neighbourBoxes(): { minX: number; maxX: number; minZ: number; maxZ: number; top: number }[] {
-  return NEIGHBOURS.map(([x, z, w, h, d]) => {
-    // Turned a quarter, its width runs along z.
-    const [hx, hz] = Math.abs(Math.sin(facing(x, z))) > 0.5 ? [d / 2, w / 2] : [w / 2, d / 2];
-    return { minX: x - hx - 0.2, maxX: x + hx + 0.2, minZ: z - hz - 0.2, maxZ: z + hz + 0.2, top: h + 0.4 };
-  }).concat({ ...CASINO_BOX, top: CASINO_HEIGHT + 0.5 }, { ...HALL_BOX, top: HALL_HEIGHT + HALL_ROOF_RISE }, { ...SOCCER_BOX, top: SOCCER_HEIGHT + 6 }, { ...GYM_STREET_BOX, top: GYM_HEIGHT + 0.5 }); // fork: the casino, the padel hall, the soccer hall (and the billboard on its roof)
+  return LOTS.filter((l) => Math.hypot(l.x, l.z) < 160)
+    .map((l) => ({ minX: l.x - l.w / 2, maxX: l.x + l.w / 2, minZ: l.z - l.d / 2, maxZ: l.z + l.d / 2, top: l.h + (l.step?.up ?? 0) }))
+    .concat({ ...CASINO_BOX, top: CASINO_HEIGHT + 0.5 }, { ...HALL_BOX, top: HALL_HEIGHT + HALL_ROOF_RISE }, { ...SOCCER_BOX, top: SOCCER_HEIGHT + 6 }, { ...GYM_STREET_BOX, top: GYM_HEIGHT + 0.5 }); // fork: the casino, the padel hall, the soccer hall (and the billboard on its roof)
 }
+
+/** fork: the office's street's sidewalks stop where a city street comes in, and at the paved corners of its crossing. */
+function sidewalkRuns(z0: number, z1: number, from: number, to: number): [number, number][] {
+  const north = z1 <= STREET_Z;
+  const cuts: [number, number][] = [];
+  for (const c of CROSSINGS) {
+    if (c.b !== 0 || c.x < from - 10 || c.x > to + 10) continue;
+    const k = pavedCorners(c);
+    const street = north ? c.north : c.south;
+    if (!street) continue;
+    const east = north ? k.ne : k.se;
+    const west = north ? k.nw : k.sw;
+    cuts.push([c.x - (west ? CROSSING_HALF : ROAD_HALF), c.x + (east ? CROSSING_HALF : ROAD_HALF)]);
+  }
+  cuts.sort((a, b) => a[0] - b[0]);
+  const runs: [number, number][] = [];
+  let x = from;
+  for (const [a, b] of cuts) {
+    if (a > x) runs.push([x, a]);
+    x = Math.max(x, b);
+  }
+  if (x < to) runs.push([x, to]);
+  return runs;
+}
+const ROAD_HALF = (ROAD.maxZ - ROAD.minZ) / 2;
 
 /**
  * Everything outside, down on the street: grass, the lot in front of the garage, a road with
@@ -336,25 +301,27 @@ export function buildStreet(group: THREE.Group, colliders: Collider[], night: Ni
     [21, ROAD.minZ],
     [ROAD.maxZ, ROAD.maxZ + 2],
   ]) {
-    group.add(mesh(box(STREET_END * 2 - 4, 0.08, z1 - z0), toon('#e3ddd0'), 0, G, (z0 + z1) / 2));
+    for (const [x0, x1] of sidewalkRuns(z0, z1, -STREET_END + 2, STREET_END - 2)) group.add(mesh(box(x1 - x0, 0.08, z1 - z0), toon('#e3ddd0'), (x0 + x1) / 2, G, (z0 + z1) / 2));
   }
   const forest = new THREE.Group();
 
   // Trees along the sidewalks and around the building.
   const trees: [number, number, number][] = [
-    [-34, 22, 1.1],
-    [-22, 22, 1],
-    [22, 22, 1.05],
-    [34, 22, 0.95],
+    // fork: clear of the paved corners where the side streets come in at x ±28 (shared/city.ts)
+    [-37, 22, 1.1],
+    [-20.5, 22, 1],
+    [20.5, 22, 1.05],
+    [37, 22, 0.95],
     [-40, 32.5, 1.1],
     [-12, 32.5, 1],
     // (fork: the one at x 14 is gone, it stood in front of the soccer hall's sign and doors)
     [42, 32.5, 1],
-    [-27, -8, 1.2],
-    [-29, 4, 1],
-    [-26, 14, 0.9],
-    [29, -6, 1.1],
-    [30, 6, 1.25],
+    // fork: these stood where the side streets are now, either side of the office (shared/city.ts)
+    [-21.6, -8, 1.2],
+    [-21.4, 4, 1],
+    [-21.6, 14, 0.9],
+    [33.2, -6, 1.1],
+    [33.2, 6, 1.25],
     [-12, -22, 1.2],
     [4, -24, 1],
     // Clear of the back office, when a floor's built out into one (see WING).
@@ -373,17 +340,11 @@ export function buildStreet(group: THREE.Group, colliders: Collider[], night: Ni
   // Street lamps down both sidewalks, their arms out over the road.
   const lamps = new THREE.Group();
   const glass = bulb(night, '#fff3d6');
-  for (const x of [-40, -28, -16, -4, 8, 16, 28, 40]) streetLamp(lamps, night, glass, colliders, x, 22.2, 1);
+  for (const x of [-62, -40, -19, -4, 8, 19, 40, 62]) streetLamp(lamps, night, glass, colliders, x, 22.2, 1); // fork: ±19 (were ±28) clear of the side streets, ±62 (were ±16) further out along the city
   for (const x of [-37, -22, -4, 1.5, 26, 46, 62, 82]) streetLamp(lamps, night, glass, colliders, x, 31.8, -1); // fork: -37 (was -34), clear of the casino's doors; 46 (was 36), of the padel hall's; 1.5 (was 8), of the soccer hall's sign; 62 and 82 either side of the gym
   group.add(mergeByMaterial(lamps));
 
-  // The neighbours: across the street, and further out behind and beside the office.
-  for (const [x, z, w, h, d, color] of NEIGHBOURS) {
-    const b = building(w, h, d, color, night.windows);
-    b.position.set(x, G, z);
-    b.rotation.y = facing(x, z);
-    group.add(b);
-  }
+  // (fork: the neighbours that stood here are the city's buildings now, world/city.ts)
 
   // Puffy clouds, too far off for the fog to hide.
   const cloud = night.clouds;
@@ -420,6 +381,6 @@ export function buildStreet(group: THREE.Group, colliders: Collider[], night: Ni
 /** The street out front, the city along it, and the clouds over it all. */
 export const street: Fixture<never, StreetSite> = (site) => {
   // The clouds stay up in the sky, however far down the street is.
-  buildStreet(site.ground, site.groundColliders, site.get('night'), site.group);
+  buildStreet(site.outlook, site.groundColliders, site.get('night'), site.group); // fork: into the outlook (world/town/)
   return {};
 };

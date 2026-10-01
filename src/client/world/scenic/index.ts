@@ -117,6 +117,6 @@ declare module '../types' {
 
 /** Off either end of the street, the scenic loop: the farm, the pines, the mountains and the beach. */
 export const scenic: Fixture<'scenic', StreetSite> = (site) => {
-  const built = buildScenic(site.ground, site.groundColliders, site.get('night'));
+  const built = buildScenic(site.outlook, site.groundColliders, site.get('night')); // fork: into the outlook (world/town/)
   return { handle: { scenic: built }, update: (t) => built.update(t) };
 };

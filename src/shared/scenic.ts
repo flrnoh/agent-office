@@ -302,7 +302,8 @@ export const FARM = {
   windmill: { x: 128, z: -6 },
   fields: [
     { minX: 58, maxX: 132, minZ: 70, maxZ: 104 },
-    { minX: 62, maxX: 150, minZ: -40, maxZ: 14 },
+    // fork: from x 92, not 62, so the block east of the office across the side street is the city's (shared/city.ts)
+    { minX: 92, maxX: 150, minZ: -40, maxZ: 14 },
   ],
   /** The fenced field the cows are in, by the barn. */
   pasture: { minX: 48, maxX: 86, minZ: 38, maxZ: 62 },
