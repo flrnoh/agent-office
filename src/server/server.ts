@@ -589,6 +589,7 @@ export async function startServer(cfg: Config) {
       const c = clients.get(id);
       return c && c.peer.floor === SOCCER ? c.peer : null;
     },
+    dataDir: cfg.dataDir, // the leaderboard (soccer.json)
   });
   /**
    * Tells everyone about the maps, after a pick or a read of the folder. When the map everyone's on
@@ -1367,7 +1368,7 @@ export async function startServer(cfg: Config) {
     });
     if (inCasino) casino.enter(casinoPlayer(client));
     if (inGym) gym.enter(gymPlayer(client)); // fork
-    if (inSoccer) soccer.enter({ id, name: client.peer.name, send: (m) => sendTo(client, m) }); // fork
+    if (inSoccer) soccer.enter({ id, name: client.peer.name, owner: client.accountId ? `account:${client.accountId}` : `name:${client.peer.name}`, send: (m) => sendTo(client, m) }); // fork
     screensOf(client, floor);
     broadcast({ t: 'peer.join', peer: client.peer }, id);
     if (account) accountsChanged(); // now online
@@ -1504,7 +1505,7 @@ export async function startServer(cfg: Config) {
     const left = leave(c, SOCCER_ARRIVAL);
     c.peer.floor = SOCCER;
     sendTo(c, { t: 'floor.enter', peers: [...clients.values()].map((o) => o.peer), ...soccerView(floorView(undefined)) });
-    soccer.enter({ id: c.id, name: c.peer.name, send: (m) => sendTo(c, m) });
+    soccer.enter({ id: c.id, name: c.peer.name, owner: c.accountId ? `account:${c.accountId}` : `name:${c.peer.name}`, send: (m) => sendTo(c, m) });
     arrived(c, left);
     floorsChanged();
   };

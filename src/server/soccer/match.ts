@@ -12,6 +12,8 @@ import {
   type SoccerView,
   type Team,
 } from '../../shared/soccer.js';
+import { minuteOf } from '../../shared/soccer-stats.js';
+import { MatchStats } from './stats.js';
 
 /*
  * A match in the soccer hall (flrnoh fork, see FORK.md "The soccer hall"): the phases, the score and
@@ -44,6 +46,8 @@ export class SoccerMatch {
   private firstUntil = 0;
   /** Who kicked off the last match (the next one's kicked off by the other). */
   private opener: Team = 'blue';
+  /** The match's statistics (stats.ts): index.ts reports the touches; goals, time and new matches come from here. */
+  readonly stats = new MatchStats();
 
   /** Left on the clock at `now`. */
   clock(now: number): number {
@@ -88,6 +92,7 @@ export class SoccerMatch {
   /** Time passes and people come and go: what happens next. `counts`: players per team now. */
   update(now: number, counts: TeamCounts): SoccerEvent[] {
     const out: SoccerEvent[] = [];
+    this.stats.tick(now, this.phase === 'play'); // possession
     const both = counts.red > 0 && counts.blue > 0;
     if (counts.red === 0 && counts.blue === 0) {
       if (this.phase !== 'waiting' || this.score.red || this.score.blue) {
@@ -139,6 +144,7 @@ export class SoccerMatch {
   /** The ball went in for `team`, `who` last touched it: a goal (if it counts), or the end of the match. */
   scored(now: number, team: Team, who?: string): SoccerEvent[] {
     if (!this.counting) return [];
+    this.stats.goal(team, minuteOf(MATCH_MS - this.clock(now)), now);
     this.score[team] += 1;
     this.stopClock(now);
     const text = `⚽ GOAL! ${TEAM_NAME[team]}${who ? ` (${who})` : ''} · Red ${this.score.red}:${this.score.blue} Blue`;
@@ -154,6 +160,7 @@ export class SoccerMatch {
   }
 
   private start(now: number): SoccerEvent[] {
+    this.stats.reset();
     this.score = { red: 0, blue: 0 };
     this.clockLeft = MATCH_MS;
     this.clockFrom = null;
@@ -190,6 +197,7 @@ export class SoccerMatch {
   }
 
   private reset() {
+    this.stats.reset();
     this.phase = 'waiting';
     this.score = { red: 0, blue: 0 };
     this.clockLeft = MATCH_MS;

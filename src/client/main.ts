@@ -104,6 +104,7 @@ import { GYM } from '../shared/gym';
 import { HallPlace } from './hall'; // fork: the padel hall across the street
 import { HALL } from '../shared/hall';
 import { SoccerPlace } from './soccer/place'; // fork: the soccer hall across the street
+import { soccerLook } from './world/soccer/look'; // fork: the soccer hall's atmosphere
 import { SOCCER } from '../shared/soccer';
 import type { CafeItem } from '../shared/cafe';
 import { openDjBooth } from './ui/djbooth';
@@ -588,7 +589,11 @@ const soccer = new SoccerPlace({
   placeAt: (at) => placeAt(at),
   sound: (k, at, s) => sound.soccer(k, at, s),
   confetti: (x, y, z) => confetti.burst(x, y, z, 160, 0.8),
+  person: (id) => (id === store.you ? me : remotes.get(id)?.person), // kits and moves (soccer/show.ts)
+  camera, // the goal's replay
 });
+// fork: the soccer hall's crowd grows with the people in there (you too).
+soccerLook.bind({ sound, people: () => 1 + [...store.peers.values()].filter((p) => p.floor === SOCCER && p.id !== store.you).length });
 // fork: the padel courts, built into the hall's interior when it's first built (hall/courts.ts).
 hall.add({
   build: (room) => {
@@ -1261,6 +1266,7 @@ net.onMessage((msg) => {
   gym.onMessage(msg); // fork
   hall.onMessage(msg); // fork
   soccer.onMessage(msg); // fork: the soccer hall
+  soccerLook.onMessage(msg); // fork: its crowd, boards and announcer
   bungee.onMessage(msg); // fork: bungee off the roof
   switch (msg.t) {
     case 'welcome': {
@@ -5315,6 +5321,7 @@ function frame(ts?: number) {
   gym.mood({ sun, hemi, ambient, scene }); // fork: the gym lights itself
   hall.mood({ sun, hemi, ambient, scene }); // fork: so does the padel hall
   soccer.mood({ sun, hemi, ambient, scene }); // fork: and the soccer hall
+  soccerLook.mood({ hemi, ambient }, sky.daylight); // fork: its floodlights, the night in its windows
   if (!upTop && inOffice()) holiday.update(t, sky.lampsOn, camera);
   sound.setWeather(sky.rain, 1 - sky.daylight);
   if (upTop && roof) {
@@ -5367,7 +5374,7 @@ function frame(ts?: number) {
   tvStreams.frame(tvHere && !tvStream ? { camera, screen: office.tvScreen, boxes: world.colliders } : null);
   pointToWaiting(now);
   // Not while the camera's up at the boss's monitor or the arcade, where they'd cover the screen.
-  if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !tables.zoomed && !padel.zoomed && !golf.active && !thrower.active && !driver.active && !gym.zoomed) {
+  if (firstPerson && !soccer.replaying && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !tables.zoomed && !padel.zoomed && !golf.active && !thrower.active && !driver.active && !gym.zoomed) {
     // Hands go on top of everything, so they never clip into a desk you walk up to. They have
     // lights of their own, turned down to match wherever you're standing.
     renderer.clearDepth();
