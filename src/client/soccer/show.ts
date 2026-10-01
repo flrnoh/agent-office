@@ -57,7 +57,7 @@ export class SoccerShow {
   private cam = { pos: new THREE.Vector3(), look: new THREE.Vector3(), fresh: true };
   private lastBall = { x: 0, z: 0 };
   /** Tackles: laid over each player's moves (a slide, a fall after a foul: tackle.ts). */
-  pose: ((id: string, rig: ReturnType<Person['rig']>, dt: number) => void) | null = null;
+  pose: ((id: string, rig: ReturnType<Person['limbs']>, dt: number) => void) | null = null;
 
   constructor(private host: ShowHost) {
     // Before the hall's own keys (SoccerPlace makes this first): Tab, and Space or Esc during a replay.

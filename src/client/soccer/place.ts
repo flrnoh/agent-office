@@ -17,7 +17,7 @@ import {
   type SoccerView,
   type Team,
 } from '../../shared/soccer';
-import { BALL_R, KICK_REACH, type Footer, type KickSpec, type Mate, canKick, passKick, shotKick } from '../../shared/soccer-ball';
+import { KICK_REACH, type Footer, type KickSpec, type Mate, canKick, passKick, shotKick } from '../../shared/soccer-ball';
 import type { ClientMsg, FloorInfo, ServerMsg } from '../../shared/protocol';
 import { streetBelow } from '../../shared/layout';
 import type { Collider, Interactable } from '../world/types';
@@ -27,6 +27,7 @@ import { isTyping } from '../player';
 import { BallView } from './ball';
 import { KickButton, TAP_MS } from './controls';
 import { SoccerShow } from './show'; // stats, replays, kits and moves
+import { aimArrow, drawAim } from './aim'; // the aim's arrow and power bar
 import { SoccerTackle } from './tackle'; // slide tackles and fouls
 import { mayTakeSetPiece } from '../../shared/soccer-tackle';
 import type { Person } from '../world/character';
@@ -536,29 +537,7 @@ export class SoccerPlace {
   // ---- The aim ------------------------------------------------------------------------------------
 
   private aimArrow(): THREE.Group {
-    if (this.arrow) return this.arrow;
-    const g = new THREE.Group();
-    const mat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide });
-    mat.toneMapped = false;
-    mat.userData.outlineParameters = { visible: false };
-    const strip = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 1), mat);
-    strip.rotation.x = -Math.PI / 2;
-    strip.name = 'strip';
-    const tri = new THREE.Shape();
-    tri.moveTo(-0.26, 0);
-    tri.lineTo(0.26, 0);
-    tri.lineTo(0, 0.42);
-    tri.closePath();
-    const head = new THREE.Mesh(new THREE.ShapeGeometry(tri), mat);
-    head.rotation.x = Math.PI / 2;
-    head.name = 'head';
-    g.add(strip, head);
-    g.renderOrder = 5;
-    g.visible = false;
-    g.userData.mat = mat;
-    this.theRoom().group.add(g);
-    this.arrow = g;
-    return g;
+    return (this.arrow ??= aimArrow(this.theRoom().group));
   }
 
   /** The aim on the floor (a line from the ball the way it'll go) and by the crosshair (the power, who a pass is for). */
@@ -597,29 +576,9 @@ export class SoccerPlace {
       const name = k.to ? this.view?.players.find((x) => x.id === k.to)?.name : '';
       label = name ? `→ ${name}` : '';
     }
-    arrow.visible = opacity > 0;
-    if (arrow.visible) {
-      arrow.position.set(b.x, 0.03, b.z);
-      arrow.rotation.y = dir;
-      const strip = arrow.getObjectByName('strip')!;
-      strip.scale.set(1, len, 1);
-      strip.position.set(0, 0, len / 2 + BALL_R);
-      arrow.getObjectByName('head')!.position.set(0, 0.001, len + BALL_R);
-      const mat = arrow.userData.mat as THREE.MeshBasicMaterial;
-      mat.color.set(color);
-      mat.opacity = opacity;
-    }
     const passed = this.passedTo && now < this.passedTo.until ? this.view?.players.find((x) => x.id === this.passedTo!.id)?.name : '';
     const text = charging ? label : passed ? `→ ${passed}` : label;
-    const el = this.aimEl;
-    if (!el) return;
-    el.classList.toggle('charging', charging);
-    el.classList.toggle('lob', !!p?.lob);
-    el.classList.toggle('full', charging && charge >= 1);
-    el.classList.toggle('third', this.host.player.view === 'third');
-    (el.querySelector('.bar i') as HTMLElement).style.width = `${Math.round((charging ? charge : 0) * 100)}%`;
-    const t = el.querySelector('.who') as HTMLElement;
-    if (t.textContent !== text) t.textContent = text;
+    drawAim(arrow, this.aimEl, { at: b, dir, len, color, opacity, charging, lob: !!p?.lob, charge, text, third: this.host.player.view === 'third' });
   }
 
   // ---- The office's news --------------------------------------------------------------------------

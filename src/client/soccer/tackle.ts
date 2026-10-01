@@ -35,7 +35,7 @@ import { isTyping } from '../player';
  * SoccerPlace (place.ts) makes it, hands it the office's messages, and calls it every frame.
  */
 
-type Rig = ReturnType<Person['rig']>;
+type Rig = ReturnType<Person['limbs']>;
 type Spot = { x: number; y: number; z: number; rotY: number };
 
 export interface TackleHost {
