@@ -5,7 +5,7 @@ import { TEAM_COLOR, type SoccerServerMsg, type SoccerView, type Team } from '..
 import type { Crowd } from './crowd';
 import type { LedBoards } from './ads';
 import type { Floodlights, GoalNets, Shell } from './props';
-import { calloutFor, calmCrowd, crowdDensity, cueOf, floodlight, matchOn, nearMiss, react, settle, type Callout, type CrowdCue } from './matchday';
+import { CARD_AFTER_MS, cardCallout, calloutFor, calmCrowd, crowdDensity, cueOf, floodlight, matchOn, nearMiss, react, settle, type Callout, type CrowdCue } from './matchday';
 import './look.css';
 
 /*
@@ -19,7 +19,7 @@ import './look.css';
 /** What it needs of the page's sound (sound.ts's soccer crowd section). */
 export interface LookSound {
   setSoccerCrowd(level: number, intensity: number): void;
-  soccerCrowd(kind: 'horn' | 'roar' | 'oooh' | 'applause' | 'chant', strength?: number): void;
+  soccerCrowd(kind: 'horn' | 'roar' | 'oooh' | 'applause' | 'chant' | 'boo', strength?: number): void;
 }
 
 /** The hall's moving parts (interior.ts builds them and hands them over). */
@@ -101,6 +101,7 @@ export class SoccerLook {
       }
       return;
     }
+    if (m.t !== 'soccer') return; // a slide (soccer/tackle.ts)
     const was = this.view?.phase;
     this.view = m.state;
     if (m.state.phase === 'kickoff' && was !== 'kickoff' && (was === 'waiting' || was === 'paused' || was === 'over' || !was)) this.flareAt = now;
@@ -118,6 +119,14 @@ export class SoccerLook {
     if (ev.kind === 'start' || ev.kind === 'kickoff' || ev.kind === 'resume') this.sound?.soccerCrowd('applause', crowd);
     if (ev.kind === 'end') this.sound?.soccerCrowd(ev.team ? 'roar' : 'applause', crowd * 0.8);
     if (ev.kind === 'practice') this.sound?.soccerCrowd('applause', 0.35);
+    // Tackles: whistles and boos for a foul, its card called out after it; a clean tackle cheered.
+    if (ev.kind === 'foul') this.sound?.soccerCrowd('boo', crowd);
+    if (ev.kind === 'tackle') {
+      this.sound?.soccerCrowd('applause', crowd * 0.7);
+      this.sound?.soccerCrowd('roar', crowd * 0.35);
+    }
+    const card = cardCallout(ev);
+    if (card) window.setTimeout(() => this.active && this.showCallout(card), CARD_AFTER_MS);
     if (call?.horn) this.sound?.soccerCrowd('horn', 1);
   }
 
@@ -141,7 +150,7 @@ export class SoccerLook {
     p.crowd.update(t, dt, this.density, this.crowd, now);
     p.led.update(now, this.goal);
     p.nets.update(dt);
-    const playing = v?.phase === 'play' || v?.phase === 'kickoff' || v?.phase === 'goal';
+    const playing = v?.phase === 'play' || v?.phase === 'kickoff' || v?.phase === 'goal' || v?.phase === 'freekick' || v?.phase === 'penalty';
     this.light = floodlight(now, this.flareAt, playing);
     p.lights.set(this.light, 1 - this.daylight);
     // How exciting it is: the ball near a goal and going fast, while it's on.
@@ -188,6 +197,7 @@ export class SoccerLook {
     sub.textContent = c.sub;
     el.replaceChildren(head, sub);
     el.style.setProperty('--team', c.team ? TEAM_COLOR[c.team] : '#35c46a');
+    el.classList.toggle('card', !!c.small); // tackles: a card's longer head
     el.hidden = false;
     // Start its animation over.
     el.classList.remove('show');

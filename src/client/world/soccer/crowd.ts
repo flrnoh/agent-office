@@ -62,6 +62,7 @@ const TARGET: Record<CrowdAct, Pose> = {
   idle: { stand: 0, lean: 0.04, arm: -0.4, spread: 0.85, scarf: 0 },
   clap: { stand: 0, lean: 0.12, arm: -1.25, spread: 0.55, scarf: 0 },
   oooh: { stand: 0.55, lean: 0.32, arm: -2.55, spread: 0.72, scarf: 0 },
+  boo: { stand: 0.45, lean: 0.22, arm: -1.7, spread: 0.6, scarf: 0 },
   cheer: { stand: 1, lean: -0.05, arm: -2.95, spread: 1.15, scarf: 1 },
 };
 
@@ -202,6 +203,10 @@ export function buildCrowd(seats: Seat[]): Crowd {
         spread = 0.3 + 0.32 * Math.abs(Math.sin(t * 8 + ph));
       } else if (act === 'oooh') {
         lean += 0.05 * Math.sin(t * 3 + ph);
+      } else if (act === 'boo') {
+        // Arms out at the pitch, shaking: fingers in mouths, thumbs down.
+        arm += 0.18 * Math.sin(t * 9 + ph * 2);
+        lean += 0.04 * Math.sin(t * 4 + ph);
       }
       // Sitting down, the hips sink onto the seat as they arrive.
       const sink = (1 - p.presence) * 0.9;

@@ -5,7 +5,7 @@ import type { Pos } from './places';
 
 // ---- flrnoh fork: the soccer hall (soccer/place.ts) --------------------------------------------------
 
-export type SoccerSound = 'door' | 'kick' | 'board' | 'post' | 'net' | 'whistle' | 'final' | 'cheer';
+export type SoccerSound = 'door' | 'kick' | 'board' | 'post' | 'net' | 'whistle' | 'final' | 'cheer' | 'slide' | 'foul';
 
 /**
  * The soccer hall: a kick's thump, the ball off the boards (a bang and a rattle), a post's clang, the
@@ -26,7 +26,7 @@ export function soccer(a: AudioCore, kind: SoccerSound, at: Pos, strength = 1) {
     ]);
     return;
   }
-  const out = a.panner(at, kind === 'cheer' || kind === 'whistle' || kind === 'final' ? 8 : 2, 1.2);
+  const out = a.panner(at, kind === 'cheer' || kind === 'whistle' || kind === 'final' || kind === 'foul' ? 8 : 2, 1.2);
   out.connect(a.ambience);
   const whistle = (when: number, len: number, gain: number) => {
     // A pea whistle: a high tone warbling fast as the pea rattles round.
@@ -51,6 +51,20 @@ export function soccer(a: AudioCore, kind: SoccerSound, at: Pos, strength = 1) {
     }
   };
   switch (kind) {
+    case 'foul':
+      // A foul (fork, soccer/tackle.ts): two sharp blasts, the second held.
+      whistle(t0, 0.18, 0.08);
+      whistle(t0 + 0.26, 0.75, 0.08);
+      break;
+    case 'slide':
+      // A slide tackle: boots and shorts over the turf, a swish falling away as it slows, a thud going down.
+      hiss(a, out, t0, 1700, 0.6, [
+        [0.03, 0.08 * s],
+        [0.42, 0.02 * s],
+        [0.55, 0],
+      ]);
+      a.blip(out, t0, 90, 0.6, 0.18, 0.25 * s, 'triangle');
+      break;
     case 'kick':
       a.blip(out, t0, 120, 0.45, 0.14, 0.4 * s);
       a.play(pick(a.buf.steps), { gain: 0.5 * s, rate: 1.25, dest: out });

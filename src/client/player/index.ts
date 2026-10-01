@@ -64,6 +64,8 @@ export class PlayerController extends PlayerInput {
    * frame, with no walking, falling or bumping into things, and the camera follows.
    */
   rig: ((dt: number) => void) | null = null;
+  /** flrnoh fork: how far (m) the view sinks below your eyes (a slide tackle in the soccer hall, soccer/tackle.ts). */
+  eyeDrop = 0;
   /** The rig is a car (see features/cars/controller.ts): out on the street or in the garage, not up a shaft indoors. */
   riding = false;
 
@@ -282,7 +284,7 @@ export class PlayerController extends PlayerInput {
   }
 
   updateCamera(snap = false) {
-    aimCamera(this.camera, this, this.bob, this.lift, snap);
+    aimCamera(this.camera, this, this.bob, this.lift - this.eyeDrop, snap);
     this.shake();
   }
 

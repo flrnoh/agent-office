@@ -72,6 +72,7 @@ export const forkHandlers = {
   'soccer.join': soccer,
   'soccer.leave': soccer,
   'soccer.kick': soccer,
+  'soccer.slide': soccer, // fork: slide tackles (server/soccer/tackle.ts)
   'padel.look': padel,
   'padel.join': padel,
   'padel.leave': padel,

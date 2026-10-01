@@ -4,7 +4,7 @@ import { hiss } from './hiss';
 
 // ---- flrnoh fork: the soccer hall's crowd (world/soccer/look.ts) --------------------------------------
 
-export type SoccerCrowdSound = 'horn' | 'roar' | 'oooh' | 'applause' | 'chant';
+export type SoccerCrowdSound = 'horn' | 'roar' | 'oooh' | 'applause' | 'chant' | 'boo';
 
 /** The crowd's murmur in the soccer hall: a loop of voices, on only while something keeps it up (see set). */
 export class SoccerMurmur {
@@ -120,6 +120,42 @@ export function soccerCrowd(a: AudioCore, kind: SoccerCrowdSound, strength = 1) 
         ]);
       }
       break;
+    case 'boo': {
+      // A foul (fork, soccer/tackle.ts): whistles from all over the stands, a low "booo" under them.
+      for (let i = 0; i < 7; i++) {
+        const at = t0 + Math.random() * 0.5;
+        const len = rand(0.35, 0.8);
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        const f0 = rand(1800, 2900);
+        o.frequency.setValueAtTime(f0, at);
+        o.frequency.linearRampToValueAtTime(f0 * rand(1.08, 1.25), at + len * 0.35);
+        o.frequency.linearRampToValueAtTime(f0 * rand(0.8, 0.95), at + len);
+        const g = ctx.createGain();
+        envelope(g.gain, at, [
+          [0.03, 0.012 * s],
+          [len - 0.05, 0.01 * s],
+          [len, 0],
+        ]);
+        o.connect(g).connect(out);
+        o.start(at);
+        o.stop(at + len + 0.05);
+      }
+      const n = a.noise(a.buf.brown);
+      const f = biquad(ctx, 'bandpass', 240, 2.5);
+      f.frequency.setValueAtTime(260, t0);
+      f.frequency.linearRampToValueAtTime(200, t0 + 1.6);
+      const g = ctx.createGain();
+      envelope(g.gain, t0, [
+        [0.3, 0.4 * s],
+        [1.2, 0.35 * s],
+        [1.9, 0],
+      ]);
+      n.connect(f).connect(g).connect(out);
+      n.start(t0);
+      n.stop(t0 + 2);
+      break;
+    }
     case 'oooh': {
       // "Oooh": a vowel that rises as the ball goes close, and falls away as it doesn't go in.
       const n = a.noise(a.buf.brown);

@@ -1,6 +1,7 @@
 /* The soccer hall's stadium announcer (flrnoh fork, see world/soccer/look.ts): a big callout for a goal, the kick-off and the final whistle, in the score bar's style. */
 .soccer-callout { position: absolute; top: 32%; left: 50%; z-index: 6; pointer-events: none; display: grid; justify-items: center; gap: 6px; padding: 12px 26px 14px; border-radius: 18px; background: #1d3b2c; color: #f4fff7; border: 4px solid var(--ink, #1c1f2b); box-shadow: 0 5px 0 var(--ink, #1c1f2b), 0 0 0 6px var(--team, #35c46a) inset; text-align: center; transform: translateX(-50%); max-width: calc(100vw - 32px); }
 .soccer-callout b { font-size: clamp(34px, 6vw, 64px); font-weight: 900; letter-spacing: .04em; line-height: 1; color: #fff; text-shadow: 0 3px 0 var(--ink, #1c1f2b), 0 0 18px var(--team, #35c46a); }
+.soccer-callout.card b { font-size: clamp(24px, 4vw, 42px); letter-spacing: .01em; }
 .soccer-callout span { font-size: clamp(15px, 2.2vw, 22px); font-weight: 800; padding: 3px 12px; border-radius: 999px; background: var(--team, #35c46a); color: #fff; font-variant-numeric: tabular-nums; }
 .soccer-callout.show { animation: soccer-callout-in .45s cubic-bezier(.2, 1.6, .4, 1), soccer-callout-out .5s ease-in 2.9s forwards; }
 @keyframes soccer-callout-in { from { transform: translateX(-50%) scale(.4) rotate(-4deg); opacity: 0; } }

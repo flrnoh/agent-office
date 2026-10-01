@@ -11,7 +11,7 @@ import { GOAL, PITCH, PITCH_CX, type BallHitKind, type GoalSide, type SoccerEven
 // ---- How full the stands are ---------------------------------------------------------------------
 
 /** Whether a match is on (the stands fill up for it). Waiting and paused are between matches. */
-export const matchOn = (phase: SoccerPhase | undefined): boolean => phase === 'kickoff' || phase === 'play' || phase === 'goal' || phase === 'over';
+export const matchOn = (phase: SoccerPhase | undefined): boolean => phase === 'kickoff' || phase === 'play' || phase === 'goal' || phase === 'over' || phase === 'freekick' || phase === 'penalty';
 
 /**
  * How many of the seats have someone in them (0..1), from how many people are in the hall (players and
@@ -31,8 +31,8 @@ export const seatTaken = (threshold: number, density: number): boolean => thresh
 
 // ---- How the crowd reacts --------------------------------------------------------------------------
 
-/** What the crowd does: sit and watch, clap (a kick-off), "oooh" (a near miss), or jump and cheer (a goal). */
-export type CrowdAct = 'idle' | 'clap' | 'oooh' | 'cheer';
+/** What the crowd does: sit and watch, clap (a kick-off), "oooh" (a near miss), whistle and boo (a foul), or jump and cheer (a goal, a clean tackle). */
+export type CrowdAct = 'idle' | 'clap' | 'oooh' | 'boo' | 'cheer';
 
 export interface CrowdState {
   act: CrowdAct;
@@ -44,11 +44,13 @@ export interface CrowdState {
 }
 
 /** Something the crowd reacts to. */
-export type CrowdCue = { kind: 'goal'; team: Team } | { kind: 'win'; team?: Team } | { kind: 'nearMiss' } | { kind: 'kickoff' } | { kind: 'practice' } | { kind: 'chant' };
+export type CrowdCue = { kind: 'goal'; team: Team } | { kind: 'win'; team?: Team } | { kind: 'nearMiss' } | { kind: 'kickoff' } | { kind: 'practice' } | { kind: 'chant' } | { kind: 'foul' } | { kind: 'tackle'; team: Team };
 
 /** How long each reaction lasts (ms). */
-export const REACT_MS: Record<Exclude<CrowdAct, 'idle'>, number> = { clap: 2600, oooh: 1700, cheer: 4600 };
-const RANK: Record<CrowdAct, number> = { idle: 0, clap: 1, oooh: 2, cheer: 3 };
+export const REACT_MS: Record<Exclude<CrowdAct, 'idle'>, number> = { clap: 2600, oooh: 1700, boo: 2400, cheer: 4600 };
+/** A clean tackle's cheer is shorter than a goal's (ms). */
+export const TACKLE_CHEER_MS = 1800;
+const RANK: Record<CrowdAct, number> = { idle: 0, clap: 1, oooh: 2, boo: 2, cheer: 3 };
 
 export const calmCrowd = (now = 0): CrowdState => ({ act: 'idle', since: now, until: now });
 
@@ -64,9 +66,21 @@ export function settle(s: CrowdState, now: number): CrowdState {
 export function react(s: CrowdState, cue: CrowdCue, now: number): CrowdState {
   const cur = settle(s, now);
   const [act, team]: [Exclude<CrowdAct, 'idle'>, Team | undefined] =
-    cue.kind === 'goal' ? ['cheer', cue.team] : cue.kind === 'win' ? (cue.team ? ['cheer', cue.team] : ['clap', undefined]) : cue.kind === 'nearMiss' ? ['oooh', undefined] : ['clap', undefined];
+    cue.kind === 'goal' || cue.kind === 'tackle'
+      ? ['cheer', cue.team]
+      : cue.kind === 'win'
+        ? cue.team
+          ? ['cheer', cue.team]
+          : ['clap', undefined]
+        : cue.kind === 'nearMiss'
+          ? ['oooh', undefined]
+          : cue.kind === 'foul'
+            ? ['boo', undefined]
+            : ['clap', undefined];
   if (RANK[act] < RANK[cur.act]) return cur;
-  return { act, ...(team ? { team } : {}), since: now, until: now + REACT_MS[act] };
+  // A tackle's cheer doesn't cut a goal's short.
+  if (cue.kind === 'tackle' && cur.act === 'cheer') return cur;
+  return { act, ...(team ? { team } : {}), since: now, until: now + (cue.kind === 'tackle' ? TACKLE_CHEER_MS : REACT_MS[act]) };
 }
 
 /** What a fan of `fan` (null: neutral) does in the crowd's state: their team scored and they're up, or not. */
@@ -88,6 +102,10 @@ export function cueOf(ev: SoccerEvent): CrowdCue | null {
       return { kind: 'win', ...(ev.team ? { team: ev.team } : {}) };
     case 'practice':
       return { kind: 'practice' };
+    case 'foul':
+      return { kind: 'foul' };
+    case 'tackle':
+      return ev.team ? { kind: 'tackle', team: ev.team } : null;
     default:
       return null;
   }
@@ -167,6 +185,8 @@ export interface Callout {
   team?: Team;
   /** Sound the stadium horn with it. */
   horn: boolean;
+  /** Tackles: a card's callout, its head in smaller letters (it's longer). */
+  small?: boolean;
 }
 
 /** What the announcer calls out for one of the office's match events (the match as it is now), if anything. */
@@ -181,12 +201,27 @@ export function calloutFor(ev: SoccerEvent, view: SoccerView | null): Callout | 
     }
     case 'start':
       return { head: 'ANPFIFF!', sub: `${TEAM_DE.red} gegen ${TEAM_DE.blue} – los geht's`, horn: true };
+    case 'foul': {
+      // Tackles: the foul, and what it gives (a penalty in the box).
+      if (!ev.team) return null;
+      const by = ev.who ? `Foul von ${ev.who}` : 'Foul';
+      return ev.penalty ? { head: 'ELFMETER!', sub: `${by} – Elfmeter für ${TEAM_DE[ev.team]}`, team: ev.team, horn: false } : { head: 'FOUL!', sub: `FREISTOSS für ${TEAM_DE[ev.team]}${ev.who ? ` – ${by}` : ''}`, team: ev.team, horn: false };
+    }
     case 'end':
       return ev.team ? { head: 'ABPFIFF!', sub: `${TEAM_DE[ev.team]} gewinnt – ${score}`, team: ev.team, horn: true } : { head: 'ABPFIFF!', sub: `Unentschieden – ${score}`, horn: true };
     default:
       return null;
   }
 }
+
+/** Tackles: the card a foul got, called out after the foul's own callout (null: none). */
+export function cardCallout(ev: SoccerEvent): Callout | null {
+  if (ev.kind !== 'foul' || !ev.card || !ev.who) return null;
+  return ev.card === 'red' ? { head: `🟥 Rote Karte – ${ev.who}`, sub: 'drittes Foul: eine Minute raus', horn: false, small: true } : { head: `🟨 Gelbe Karte – ${ev.who}`, sub: 'zweites Foul', horn: false, small: true };
+}
+
+/** After a foul's callout, its card comes this much later (ms). */
+export const CARD_AFTER_MS = 1700;
 
 // ---- The floodlights -------------------------------------------------------------------------------
 
