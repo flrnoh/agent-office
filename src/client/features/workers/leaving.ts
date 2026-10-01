@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BALCONY, PARACHUTE } from '../../../shared/layout';
+import { storeyPlan, type Jump } from '../../../shared/storey'; // flrnoh fork: off whichever wall the storey's balcony hangs
 import { walkOff, type Pt } from '../../../shared/nav';
 import type { Worker } from '../../world/character';
 import type { Laptop } from './laptop';
@@ -102,6 +102,8 @@ interface Chute {
   angle: number;
   radius: number;
   height: number;
+  /** flrnoh fork: off which balcony, and which way's out from it. */
+  jump: Jump;
 }
 
 interface Leaver {
@@ -179,8 +181,8 @@ export class Departures {
     model.root.scale.setScalar(scale);
     model.leave(pick(FAREWELLS));
     const chair = desk.def.beanbag || from ? null : desk.chair;
-    const { way, chute: up } = this.ways().home(desk.def, from);
-    const chute: Chute | null = up ? { phase: 'walk', t: 0, color: pick(CANOPIES), canopy: null, from: new THREE.Vector3(), vel: new THREE.Vector3(), land: new THREE.Vector3(), angle: 0, radius: 0, height: 1 } : null;
+    const { way, chute: up, jump = storeyPlan(0).parachute } = this.ways().home(desk.def, from);
+    const chute: Chute | null = up ? { phase: 'walk', t: 0, color: pick(CANOPIES), canopy: null, from: new THREE.Vector3(), vel: new THREE.Vector3(), land: new THREE.Vector3(), angle: 0, radius: 0, height: 1, jump } : null;
     this.leavers.push({ model, deskId: desk.def.id, way, next: 0, t: from ? PACK + HOP : 0, seat, heading: model.root.rotation.y, stepIn: 0, chair, spin: 0, scale, gone: 0, chute });
     this.laptops.push({ laptop, deskId: desk.def.id, gone: 0 });
   }
@@ -312,12 +314,16 @@ export class Departures {
     const { root } = l.model;
     const pos = root.position;
     const turn = (to: number, rate: number) => (root.rotation.y += wrap(to - root.rotation.y) * Math.min(1, dt * rate));
+    // Out from the balcony's wall (flrnoh fork: each storey's on its own), and how far out the top rail is from where it climbs.
+    const { dir, side, rail, railTop, out, east } = c.jump;
+    const outward = Math.atan2(dir.x, dir.z);
     if (c.phase === 'climb') {
       // Up onto the top rail in a little hop, turning to face out over the street.
       const p = Math.min(1, c.t / CLIMB);
       const e = p * p * (3 - 2 * p);
-      pos.set(c.from.x, THREE.MathUtils.lerp(c.from.y, PARACHUTE.railTop - FEET, e) + Math.sin(p * Math.PI) * 0.35, THREE.MathUtils.lerp(c.from.z, BALCONY.maxZ - 0.06, e));
-      turn(0, 8);
+      const reach = (rail.x - c.from.x) * dir.x + (rail.z - c.from.z) * dir.z;
+      pos.set(c.from.x + dir.x * reach * e, THREE.MathUtils.lerp(c.from.y, railTop - FEET, e) + Math.sin(p * Math.PI) * 0.35, c.from.z + dir.z * reach * e);
+      turn(outward, 8);
       if (p < 1) return true;
       c.phase = 'teeter';
       c.t = 0;
@@ -327,12 +333,12 @@ export class Departures {
     if (c.phase === 'teeter') {
       // A wobble up there, then the leap.
       root.rotation.z = Math.sin(c.t * 11) * 0.1 * (1 - c.t / TEETER);
-      turn(0, 8);
+      turn(outward, 8);
       if (c.t < TEETER) return true;
       root.rotation.z = 0;
       c.phase = 'fall';
       c.t = 0;
-      c.vel.set(0, LEAP.up, LEAP.out);
+      c.vel.set(dir.x * LEAP.out, LEAP.up, dir.z * LEAP.out);
       return true;
     }
     if (c.phase === 'fall') {
@@ -346,9 +352,10 @@ export class Departures {
       chute.group.scale.setScalar(0.05);
       root.add(chute.group);
       c.canopy = chute;
-      const [e0, e1] = PARACHUTE.east;
-      const x = pos.x + e0 + Math.random() * (e1 - e0);
-      const z = pos.z + PARACHUTE.out;
+      const [e0, e1] = east;
+      const along = e0 + Math.random() * (e1 - e0);
+      const x = pos.x + side.x * along + dir.x * out;
+      const z = pos.z + side.z * along + dir.z * out;
       c.land.set(x, this.ground(x, z, pos.y) - FEET, z);
       c.radius = Math.hypot(pos.x - x, pos.z - z);
       c.angle = Math.atan2(pos.x - x, pos.z - z);

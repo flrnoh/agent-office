@@ -20,7 +20,8 @@ import { signs } from '../desksigns';
 import type { Collider, DeskView, Interactable, Office, OfficeHandles } from '../types';
 import { PALETTE, floorTexture, paintPlanks, type Looks } from './materials';
 import { boards, clearOfStairs, lamps, lounge, machineMonitor, nightLights, plants, rugs, tv } from './room';
-import { plug, walls, type Door } from './shell';
+import { plug, type Door } from './shell';
+import { storeyWalls } from './storey-walls'; // flrnoh fork: each storey's windows, balcony doors and accent wall
 import { balcony } from './balcony';
 import { downstairs } from './ground';
 import { wing } from './wing';
@@ -43,7 +44,7 @@ function floorPlan() {
     stack,
     rugs,
     nightLights,
-    walls,
+    storeyWalls, // fork: upstream's `walls`, a storey at a time
     balcony,
     tee,
     ...downstairs(cars, street, casinoOut, gymOut, hallOut, soccerOut, green, scenic), // fork: casinoOut … soccerOut
@@ -100,7 +101,12 @@ export function buildOffice(): Office {
     group,
     colliders,
     interactables,
-    wall: (wall, u, y, w, h) => void walls.push({ wall, u0: u - w / 2, u1: u + w / 2, y0: y - h / 2, y1: y + h / 2 }),
+    wall: (wall, u, y, w, h) => {
+      const rect = { wall, u0: u - w / 2, u1: u + w / 2, y0: y - h / 2, y1: y + h / 2 };
+      walls.push(rect);
+      return rect;
+    },
+    unwall: (rect) => void (walls.includes(rect) && walls.splice(walls.indexOf(rect), 1)), // flrnoh fork
     looks,
     planks,
     desks,

@@ -1,4 +1,5 @@
 import { storeyPlan } from '../../../shared/storey'; // flrnoh fork: each storey its own balcony
+import { nearDeck } from '../../../shared/balconies'; // flrnoh fork: on whichever wall it hangs
 import type { Ctx } from '../../core/context';
 import { hintTitle, key, onE } from '../../core/hint';
 import { toast } from '../../ui/dom';
@@ -24,11 +25,10 @@ export function installSmoke(ctx: Ctx) {
     ctx.net.send({ t: 'act', smoke: on });
   }
 
-  /** Out on the balcony (a little slack at the door), where smoking is allowed: this storey's, which reaches its own way. */
+  /** Out on a balcony (a little slack at the door), where smoking is allowed: any of this storey's, on whichever wall it hangs. */
   function onBalcony(): boolean {
     const p = ctx.player.pos;
-    const BALCONY = storeyPlan(ctx.office.stack.state.index).balcony;
-    return ctx.inOffice() && p.y > -0.5 && p.y < 2 && p.x > BALCONY.minX - 0.5 && p.x < BALCONY.maxX + 0.5 && p.z > BALCONY.minZ - 0.8 && p.z < BALCONY.maxZ + 0.5;
+    return ctx.inOffice() && p.y > -0.5 && p.y < 2 && storeyPlan(ctx.office.stack.state.index).balconies.some((b) => nearDeck(b, p.x, p.z, 0.5, 0.8));
   }
 
   /** Ends the break when the cigarette burns down, or when you take it back inside. */

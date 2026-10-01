@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BALCONY, FLOOR, GOLF_HOLE, GOLF_TEE, ROAD, SLAB, STOREY, STREET_Y, WALL_HEIGHT, WALL_T } from '../../../shared/layout';
-import { storeyPlan, type BalconyRect } from '../../../shared/storey'; // flrnoh fork: each storey its own balcony
+import { aimWithin, insideDecks, storeyTee, teeSpot, wallSide } from './storey'; // flrnoh fork: each storey its own balconies, the tee on its own
 import type { Collider, Interactable } from '../../world/types';
 import type { Fixture, StreetSite } from '../../world/office/fixture';
 import { bulb, neighbourBoxes, streetLamp, tree, type NightParts } from '../../world/outside';
@@ -36,9 +36,9 @@ export const TEE_BALL = new THREE.Vector3(GOLF_TEE.ball.x, MAT_H + TEE_H + BALL_
 /** The golfer stands this far from the ball, square to the line. */
 export const STANCE = 0.57;
 
-/** Where the golfer stands for a shot heading `yaw`, and which way they face: across the line, with the hole on their left. */
-export function stance(yaw: number): { x: number; z: number; facing: number } {
-  return { x: GOLF_TEE.ball.x + Math.cos(yaw) * STANCE, z: GOLF_TEE.ball.z - Math.sin(yaw) * STANCE, facing: yaw - Math.PI / 2 };
+/** Where the golfer stands for a shot heading `yaw` off the ball `at`, and which way they face: across the line, with the hole on their left. */
+export function stance(yaw: number, at: { x: number; z: number } = GOLF_TEE.ball): { x: number; z: number; facing: number } {
+  return { x: at.x + Math.cos(yaw) * STANCE, z: at.z - Math.sin(yaw) * STANCE, facing: yaw - Math.PI / 2 };
 }
 
 /** Which way from the tee the pin is. */
@@ -282,8 +282,11 @@ declare module '../../world/types' {
   }
 }
 
-/** The golf tee, out on the balcony. */
-export const tee: Fixture<'tee'> = (site) => ({ handle: { tee: buildTee(site.group, site.colliders, site.interactables) } });
+/** The golf tee, out on the balcony: each storey's furnished one (flrnoh fork, features/golf/storey.ts). */
+export const tee: Fixture<'tee'> = (site) => {
+  const t = storeyTee(site, buildTee);
+  return { handle: { tee: t.built }, setLevel: t.setLevel };
+};
 
 /** The green across the street, with the hole the tee's shots are hit at. */
 export const green: Fixture<'green', StreetSite> = (site) => {
@@ -303,9 +306,8 @@ const DRAG = 0.05;
 const ROLL_V = 1.2;
 /** Longest a ball's followed. */
 const MAX_SECONDS = 25;
-/** The top of the balcony's railing, and balcony `b` inside it that a ball rattles round (its center, at least; each storey's reaches its own way). */
+/** The top of the balcony's railing. */
 const RAIL_TOP = 1.11;
-const inside = (b: BalconyRect) => ({ minX: b.minX + 0.12 + BALL_R, maxX: b.maxX - 0.12 - BALL_R, minZ: b.minZ + BALL_R, maxZ: b.maxZ - 0.12 - BALL_R });
 
 export interface Hit {
   /** Seconds after the shot. */
@@ -341,12 +343,14 @@ export interface Flight {
 export function fly(shot: Shot, street: number, index: number): Flight {
   const power = THREE.MathUtils.clamp(shot.power, 0, 1);
   const loft = THREE.MathUtils.clamp(shot.loft, LOFT_MIN, LOFT_MAX);
-  const yaw = THREE.MathUtils.clamp(shot.yaw, -AIM_MAX, AIM_MAX);
+  const spot = teeSpot(index); // flrnoh fork: off this storey's tee, aimed out from its balcony
+  const yaw = aimWithin(spot, shot.yaw, AIM_MAX);
   const v = SPEED * power;
-  const INSIDE = inside(storeyPlan(index).balcony);
-  let x = TEE_BALL.x;
+  const DECKS = insideDecks(index, BALL_R);
+  const BELOW = Array.from({ length: index + 1 }, (_, k) => insideDecks(index - k, 0));
+  let x = spot.x;
   let y = TEE_BALL.y;
-  let z = TEE_BALL.z;
+  let z = spot.z;
   let vx = v * Math.cos(loft) * Math.sin(yaw);
   let vy = v * Math.sin(loft);
   let vz = v * Math.cos(loft) * Math.cos(yaw);
@@ -368,8 +372,7 @@ export function fly(shot: Shot, street: number, index: number): Flight {
   const under = (px: number, pz: number, from: number): [number, Lie] => {
     // This floor's balcony, or one further down the building, each storey's reaching its own way (shared/storey.ts).
     for (let k = 0; k <= index; k++) {
-      const b = storeyPlan(index - k).balcony;
-      if (from > -k * STOREY - 0.1 && px > b.minX && px < b.maxX && pz > b.minZ && pz < b.maxZ) return [-k * STOREY, k ? 'below' : 'deck'];
+      for (const { b } of BELOW[k]) if (from > -k * STOREY - 0.1 && px > b.rect.minX && px < b.rect.maxX && pz > b.rect.minZ && pz < b.rect.maxZ) return [-k * STOREY, k ? 'below' : 'deck'];
     }
     for (const b of boxes) if (b.roof && px > b.minX && px < b.maxX && pz > b.minZ && pz < b.maxZ && from > b.top - 0.1) return [b.top, 'roof'];
     return [street, lieAt(px, pz)];
@@ -387,27 +390,23 @@ export function fly(shot: Shot, street: number, index: number): Flight {
     let ny = y + vy * dt;
     let nz = z + vz * dt;
 
-    // Round the balcony: the railing on three sides, as high as its top, and the wall behind.
-    if (x > INSIDE.minX - 0.01 && x < INSIDE.maxX + 0.01 && z > INSIDE.minZ - 0.01 && z < INSIDE.maxZ + 0.01 && y > -0.2 && y < WALL_HEIGHT) {
-      if (ny < RAIL_TOP + BALL_R) {
-        if (nz > INSIDE.maxZ) {
-          nz = INSIDE.maxZ;
-          hit('rail', Math.abs(vz));
-          vz = -vz * 0.35;
-          vx *= 0.8;
-        }
-        if (nx < INSIDE.minX || nx > INSIDE.maxX) {
-          nx = THREE.MathUtils.clamp(nx, INSIDE.minX, INSIDE.maxX);
-          hit('rail', Math.abs(vx));
-          vx = -vx * 0.35;
-          vz *= 0.8;
-        }
-      }
-      if (nz < INSIDE.minZ) {
-        nz = INSIDE.minZ;
-        hit('wall', Math.abs(vz));
-        vz = -vz * 0.3;
+    // Round each balcony: the railing on its three open sides, as high as its top, and the wall behind (whichever wall it hangs off).
+    for (const { b, in: I } of DECKS) {
+      if (x <= I.minX - 0.01 || x >= I.maxX + 0.01 || z <= I.minZ - 0.01 || z >= I.maxZ + 0.01 || y <= -0.2 || y >= WALL_HEIGHT) continue;
+      const low = ny < RAIL_TOP + BALL_R;
+      const dz = nz > I.maxZ ? 1 : nz < I.minZ ? -1 : 0;
+      if (dz && (low || wallSide(b, 'z', dz))) {
+        nz = dz > 0 ? I.maxZ : I.minZ;
+        hit(wallSide(b, 'z', dz) ? 'wall' : 'rail', Math.abs(vz));
+        vz = -vz * (wallSide(b, 'z', dz) ? 0.3 : 0.35);
         vx *= 0.8;
+      }
+      const dx = nx > I.maxX ? 1 : nx < I.minX ? -1 : 0;
+      if (dx && (low || wallSide(b, 'x', dx))) {
+        nx = dx > 0 ? I.maxX : I.minX;
+        hit(wallSide(b, 'x', dx) ? 'wall' : 'rail', Math.abs(vx));
+        vx = -vx * (wallSide(b, 'x', dx) ? 0.3 : 0.35);
+        vz *= 0.8;
       }
     }
     // Off the side of a building.

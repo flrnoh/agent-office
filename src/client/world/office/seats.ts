@@ -248,7 +248,8 @@ export const desks: Fixture = (site) => {
       p.view.def = def;
       p.view.group.position.set(def.x, 0, def.z);
       p.view.group.rotation.y = def.rotY;
-      Object.assign(p.collider, { minX: def.x - hw, maxX: def.x + hw, minZ: def.z - hd, maxZ: def.z + hd });
+      const [ax, az] = Math.abs(Math.sin(def.rotY)) > 0.5 ? [hd, hw] : [hw, hd]; // a pod a storey turns faces ±x
+      Object.assign(p.collider, { minX: def.x - ax, maxX: def.x + ax, minZ: def.z - az, maxZ: def.z + az });
       const seat = deskSeat(def, 1.25);
       Object.assign(p.it, { x: seat.x, z: seat.z });
     }

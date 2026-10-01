@@ -38,14 +38,24 @@ export const rugs: Fixture = (site) => {
     site.group.add(rug);
     return rug;
   });
-  // flrnoh fork: each storey lays its desks out its own way (shared/storey.ts), and each rug goes under its four.
+  // flrnoh fork: each storey lays its desks out its own way (shared/storey.ts), and each rug goes under
+  // its four (turned with them, when the storey turns their pod), in that storey's colors.
   const setLevel = (index: number) =>
     laid.forEach((rug, i) => {
-      const four = storeyPlan(index).desks.slice(i * 4, i * 4 + 4);
-      rug.position.set(four.reduce((n, d) => n + d.x, 0) / 4, 0.011, four.reduce((n, d) => n + d.z, 0) / 4);
+      const plan = storeyPlan(index);
+      const [x, z] = podMiddle(index, i);
+      rug.position.set(x, 0.011, z);
+      rug.rotation.y = plan.podTurns[i];
+      rug.material = toon(PALETTE.rugs[(i + plan.rugShift) % PALETTE.rugs.length]);
     });
   return { setLevel };
 };
+
+/** flrnoh fork: the middle of pod `i` (four desks, see DESKS) on floor `index`, as that storey lays it out. */
+function podMiddle(index: number, i: number): [number, number] {
+  const four = storeyPlan(index).desks.slice(i * 4, i * 4 + 4);
+  return [four.reduce((n, d) => n + d.x, 0) / 4, four.reduce((n, d) => n + d.z, 0) / 4];
+}
 
 /** What the sky lights and darkens (see NightParts), which everything after it that has any adds to. */
 export const nightLights: Fixture<'night'> = () => ({

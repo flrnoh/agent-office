@@ -3,6 +3,7 @@ import type { FloorPalette } from '../../shared/floors';
 import { LOFT, WALL_HEIGHT, WALL_T, FLOOR, type DeskDef } from '../../shared/layout';
 import { OFFICE_PLAN, type BoardKey, type MapPlan, type Spot } from '../../shared/maps';
 import { officeNav, wayHome, wayIn, wayToBalcony, type Bounds, type NavGrid, type Pt } from '../../shared/nav';
+import { storeyPlan, type Jump } from '../../shared/storey'; // flrnoh fork
 import type { DungeonView } from './dungeon';
 import type { Person } from './character';
 import type { Area } from './confetti';
@@ -24,7 +25,7 @@ export interface Ways {
    * Out of the building from `seat`, or from `from` if it's already up and about: the first point
    * is where it gets down. `chute`: it goes over the balcony railing by parachute at the end.
    */
-  home(seat: DeskDef, from?: Pt): { way: Pt[]; chute: boolean };
+  home(seat: DeskDef, from?: Pt): { way: Pt[]; chute: boolean; jump?: Jump }; // flrnoh fork: `jump`, off which balcony, which way
   /** In to beside `seat`'s chair, from wherever workers come in (the office's elevator, the castle's doors). */
   in(seat: DeskDef): Pt[];
 }
@@ -107,7 +108,7 @@ export function officeWorld(office: Office, upstairs: () => boolean, wing: () =>
       return officeNav(wing(), storey());
     },
     ways: {
-      home: (seat) => (upstairs() ? { way: wayToBalcony(seat, wing(), storey()), chute: true } : { way: wayHome(seat, wing(), storey()), chute: false }),
+      home: (seat) => (upstairs() ? { way: wayToBalcony(seat, wing(), storey()), chute: true, jump: storeyPlan(storey()).parachute } : { way: wayHome(seat, wing(), storey()), chute: false }),
       in: (seat) => wayIn(seat, wing(), storey()),
     },
     rain: [
