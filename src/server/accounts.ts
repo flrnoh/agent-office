@@ -2,7 +2,7 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { existsSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { officeHome } from './config.js';
-import type { AccountInvite, AccountRole, AccountsState } from '../shared/protocol.js';
+import { accountRole, type AccountInvite, type AccountRole, type AccountsState } from '../shared/protocol.js';
 
 export const NAME_MAX = 24;
 export const PASSWORD_MIN = 8;
@@ -125,7 +125,7 @@ export class Accounts {
       id: randomBytes(5).toString('hex'),
       token: randomBytes(24).toString('base64url'),
       ...(n ? { name: n } : {}),
-      role: role === 'admin' ? 'admin' : 'member',
+      role: accountRole(role),
       createdBy: by,
       createdAt: now,
       expiresAt: now + INVITE_TTL_MS,
@@ -197,7 +197,7 @@ export class Accounts {
   setRole(id: string, role: AccountRole): Account | undefined {
     const a = this.get(id);
     if (!a) return undefined;
-    a.role = role === 'admin' ? 'admin' : 'member';
+    a.role = accountRole(role);
     this.save();
     return a;
   }
@@ -287,10 +287,12 @@ const HELP = `agent-office accounts — who can sign in to the office
 
 Usage:
   agent-office accounts [list]                 Accounts, open invites, and the shared password
-  agent-office accounts invite [name] [--admin]
-                                               Make a single-use invite link (valid 7 days)
+  agent-office accounts invite [name] [--admin|--guest|--party]
+                                               Make a single-use invite link (valid 7 days);
+                                               a guest only watches, and can't type in terminals;
+                                               a party guest parties on the roof and sees no work
   agent-office accounts revoke <name>          Delete an account; it's signed out at once
-  agent-office accounts role <name> admin|member
+  agent-office accounts role <name> admin|member|guest|party
   agent-office accounts password on|off        Whether the shared office password still works
 
 Options:
@@ -308,7 +310,7 @@ const day = (t: number) => new Date(t).toISOString().slice(0, 16).replace('T', '
 export function accountsCommand(argv: string[]): number {
   // An office started in this project keeps its accounts here; one started anywhere else, in its home.
   let dir = existsSync(path.join(process.cwd(), '.agent-office', 'config.json')) ? process.cwd() : officeHome();
-  let admin = false;
+  let role: AccountRole = 'member';
   const args: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -318,7 +320,9 @@ export function accountsCommand(argv: string[]): number {
     } else if (a === '-d' || a === '--dir') {
       if (!argv[i + 1]) return usage('--dir needs a value');
       dir = path.resolve(argv[++i]);
-    } else if (a === '--admin') admin = true;
+    } else if (a === '--admin') role = 'admin';
+    else if (a === '--guest') role = 'guest';
+    else if (a === '--party') role = 'party'; // fork: party guests
     else if (a.startsWith('-')) return usage(`unknown option ${a}`);
     else args.push(a);
   }
@@ -348,7 +352,7 @@ export function accountsCommand(argv: string[]): number {
       return 0;
     }
     case 'invite': {
-      const v = accounts.invite('the terminal', admin ? 'admin' : 'member', arg);
+      const v = accounts.invite('the terminal', role, arg);
       if (typeof v === 'string') return fail(v);
       console.log(`Invite ${v.name ? `for ${v.name} ` : ''}(${v.role}), single use, valid for 7 days:\n\n  /join#${v.token}\n`);
       console.log(`Open it on the office's own address, e.g. http://localhost:4600/join#${v.token}`);
@@ -364,9 +368,9 @@ export function accountsCommand(argv: string[]): number {
         console.log(`Revoked ${a.name}'s account. They're signed out of the office within seconds.`);
         return 0;
       }
-      if (arg2 !== 'admin' && arg2 !== 'member') return usage('role takes admin or member');
+      if (arg2 !== 'admin' && arg2 !== 'member' && arg2 !== 'guest' && arg2 !== 'party') return usage('role takes admin, member, guest or party');
       accounts.setRole(a.id, arg2);
-      console.log(`${a.name} is ${arg2 === 'admin' ? 'an admin' : 'a member'} now.`);
+      console.log(`${a.name} is ${arg2 === 'admin' ? 'an admin' : arg2 === 'guest' ? 'a guest' : arg2 === 'party' ? 'a party guest' : 'a member'} now.`);
       return 0;
     }
     case 'password': {

@@ -1,13 +1,14 @@
-import { MEETING_PATTERNS, MEETING_PATTERN_IDS, TOKENS_PER_SEAT, meetingSpend, outputProblem, slugify } from '../../shared/meetings';
+import './meeting.css';
+import { MEETING_PATTERNS, MEETING_PATTERN_IDS, TOKENS_PER_SEAT, meetingSpend, meetingStage, outputProblem, slugify } from '../../shared/meetings';
 import { fmtTokens, type Meeting, type MeetingPattern, type MeetingTurn } from '../../shared/protocol';
 import type { Net } from '../net';
 import { store } from '../state';
-import { meetingStage } from '../world/meeting';
 import { h, openModal, timeAgo, toast, STATUS_LABEL, type Modal } from './dom';
 import { confirmDialog } from './prompt';
 import { providerPicker } from './provider';
 import { officePrompt } from './prompts';
-import { issueVars } from './boards';
+import { issueVars } from './github/prompts';
+import { partyRefuses } from '../party'; // flrnoh fork
 
 /** What a meeting called from an issue, a PR or a task starts out with. */
 export interface MeetingPreset {
@@ -37,6 +38,7 @@ const PART_LABEL: Record<MeetingTurn['state'], string> = { waiting: '⏳ up next
  * that calls one.
  */
 export function openMeeting(net: Net, actions: MeetingActions, preset?: MeetingPreset) {
+  if (partyRefuses()) return; // fork: party guests see none of the work (party.ts)
   const close = h('button.btn.close', { 'aria-label': 'Close' }, '✕');
   const title = h('h2', {}, '🤝 Meeting room');
   const body = h('div.body.meeting');

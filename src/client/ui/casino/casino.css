@@ -1,0 +1,39 @@
+/* The casino's windows and chip counter (flrnoh fork, see client/casino.ts). */
+
+.modal.casino-modal { width: min(600px, 100%); }
+.modal.casino-modal header { background: #3a0d1c; color: #ffe7b0; }
+.modal.casino-modal header h2 { color: #ffe7b0; }
+.casino-chips { font-weight: 900; font-size: 16px; padding: 4px 10px; border-radius: 999px; background: #ffe7b0; color: #3a0d1c; border: 2px solid var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.casino-cabinet { position: relative; background: linear-gradient(#6d1a33, #3a0d1c); border: 3px solid var(--ink); border-radius: 16px; padding: 14px 14px 10px; box-shadow: inset 0 0 0 3px #d4a24c; }
+.casino-reels { display: block; width: 100%; height: auto; border-radius: 10px; border: 3px solid #d4a24c; background: #12060c; }
+.casino-slots.won .casino-cabinet { animation: casino-flash .3s ease-in-out 6 alternate; }
+@keyframes casino-flash { to { box-shadow: inset 0 0 0 3px #d4a24c, 0 0 22px 6px #ffd36b; } }
+.casino-message { margin-top: 10px; min-height: 1.4em; text-align: center; font-weight: 900; font-size: 17px; color: #ffe7b0; }
+
+.casino-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.casino-label { font-weight: 900; font-size: 14px; color: var(--muted); }
+.casino-bet { min-width: 46px; justify-content: center; font-variant-numeric: tabular-nums; }
+.casino-bet.on { background: #d4a24c; color: var(--ink); }
+.casino-spin { margin-left: auto; font-size: 16px; padding: 9px 18px; }
+@media (max-width: 480px) { .casino-spin { margin-left: 0; width: 100%; justify-content: center; } }
+
+.casino-pays { margin-top: 14px; }
+.casino-pays summary { cursor: pointer; font-weight: 900; }
+.casino-paytable { margin: 8px 0 0; border-collapse: collapse; width: 100%; font-size: 15px; }
+.casino-paytable caption { text-align: left; font-size: 12px; color: var(--muted); font-weight: 800; padding-bottom: 4px; }
+.casino-paytable td { padding: 3px 8px; border-top: 1px solid var(--paper-2); }
+.casino-paytable td:last-child { text-align: right; font-weight: 900; font-variant-numeric: tabular-nums; }
+.casino-note { margin: 10px 0 0; font-size: 13px; color: var(--muted); font-weight: 700; }
+
+.casino-soon { text-align: center; padding: 8px 4px; }
+.casino-soon-big { font-size: 30px; font-weight: 900; color: #6d1a33; }
+.casino-soon p { margin: 8px 0 0; font-weight: 700; }
+
+/* Your chips, top middle, while you're in the casino. */
+.casino-hud { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 5; pointer-events: none; display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: #3a0d1c; color: #ffe7b0; border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); font-weight: 900; font-size: 15px; font-variant-numeric: tabular-nums; }
+.casino-hud small { font-weight: 700; opacity: .8; font-size: 12px; }
+.casino-hud.bump { animation: casino-bump .35s ease-out; }
+@keyframes casino-bump { 40% { transform: translateX(-50%) scale(1.12); } }
+/* Out of the way while a window is open (the slot window shows your chips itself). */
+body:has(.backdrop) .casino-hud, .casino-hud[hidden] { display: none; }

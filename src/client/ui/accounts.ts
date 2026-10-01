@@ -1,3 +1,4 @@
+import './accounts.css';
 import type { AccountInvite, AccountRole, ServerMsg } from '../../shared/protocol';
 import type { Net } from '../net';
 import { store } from '../state';
@@ -35,7 +36,7 @@ export function openAccounts(net: Net) {
   );
 
   const nameInput = h('input', { type: 'text', maxlength: 24, placeholder: 'Their name (optional)', 'aria-label': 'Their name', autocomplete: 'off', spellcheck: 'false' }) as HTMLInputElement;
-  const roleSelect = h('select', { 'aria-label': 'Role' }, h('option', { value: 'member' }, 'Member'), h('option', { value: 'admin' }, 'Admin')) as HTMLSelectElement;
+  const roleSelect = h('select', { 'aria-label': 'Role' }, h('option', { value: 'member' }, 'Member'), h('option', { value: 'admin' }, 'Admin'), h('option', { value: 'guest' }, 'Guest (only watches)'), h('option', { value: 'party' }, 'Party guest (the rooftop party, no work)')) as HTMLSelectElement;
   const inviteBtn = h('button.btn.primary', { type: 'submit' }, 'Make invite link');
   const form = h('form.invite-row', {}, nameInput, roleSelect, inviteBtn) as HTMLFormElement;
   form.addEventListener('submit', (e) => {
@@ -62,14 +63,23 @@ export function openAccounts(net: Net) {
       const v = fresh;
       body.append(h('div.cmd', {}, h('pre', {}, inviteLink(v)), copyButton('Copy', () => inviteLink(v))));
     }
-    if (store.invites) body.append(h('p.note', {}, 'On this office they also need a way in: add their GitHub keys under 👥 Invite.'));
+    if (store.invites) body.append(h('p.note', {}, 'On this office they also need a way in first: see 👥 Invite teammates.'));
 
     const list = h('ul.team-list');
     for (const a of s.accounts) {
       const you = me.account?.name === a.name;
       const seen = a.online ? 'in the office' : a.lastSeenAt ? `seen ${timeAgo(a.lastSeenAt)}` : 'never came in';
-      const role = h('button.btn', { type: 'button', title: a.role === 'admin' ? 'Take away admin rights' : 'Let them manage accounts too' }, a.role === 'admin' ? 'Make member' : 'Make admin');
-      role.addEventListener('click', () => net.send({ t: 'accounts.role', accountId: a.id, role: a.role === 'admin' ? 'member' : 'admin' }));
+      // Admins manage accounts too; guests only watch, and can't type in a terminal or run anything.
+      const role = h(
+        'select.role-pick',
+        { 'aria-label': `${a.name}'s role`, title: 'Admins manage accounts too; guests only watch; party guests see none of the work' },
+        h('option', { value: 'admin' }, 'Admin'),
+        h('option', { value: 'member' }, 'Member'),
+        h('option', { value: 'guest' }, 'Guest'),
+        h('option', { value: 'party' }, 'Party guest'), // fork: party guests
+      ) as HTMLSelectElement;
+      role.value = a.role;
+      role.addEventListener('change', () => net.send({ t: 'accounts.role', accountId: a.id, role: role.value as AccountRole }));
       const revoke = h('button.btn.danger', { type: 'button', title: `Delete ${a.name}'s account` }, 'Revoke');
       revoke.addEventListener('click', () =>
         confirmDialog(

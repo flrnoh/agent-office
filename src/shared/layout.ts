@@ -2,6 +2,10 @@
 // Units are meters; +y is up. The office floor spans FLOOR.minX..maxX / minZ..maxZ at y = 0,
 // upstairs over a garage whose floor is level with the street (STREET_Y).
 
+import { RIG, RIG_SEAT } from './rig.js'; // flrnoh fork: the racing rig
+import { HALL_SEATING } from './hall-building.js'; // flrnoh fork: the padel hall
+import { GYM_SEATING } from './gym-rooms.js'; // flrnoh fork: the gym's benches, loungers and stools
+
 export const FLOOR = { minX: -18, maxX: 18, minZ: -13, maxZ: 13 } as const;
 /** How high the ceiling is: a meter over the loft's roof (LOFT.y + LOFT.height), all the way across the room. */
 export const WALL_HEIGHT = 6.8;
@@ -19,20 +23,22 @@ export interface DeskDef {
   station?: StationKind;
   /** A chair at the meeting room's table (see MEETING_SEATS): only a meeting seats a worker here. */
   room?: boolean;
+  /** A desk in the back office (see WING): there once the floor is built out this many rows. */
+  wing?: number;
+  /** The boss's own desk up in the loft (fork: see BOSS_DESK): hired at by hand, never handed out. */
+  boss?: boolean;
+  /** The floor it's on, when that's not the office floor (the loft's). */
+  y?: number;
 }
 
 const DESK_WIDTH = 2.2;
 const DESK_DEPTH = 1.1;
 export const DESK_SIZE = { width: DESK_WIDTH, depth: DESK_DEPTH, height: 0.78 } as const;
 
-/** Where the desk pods sit by default: two clusters across, each two back-to-back rows. Floors vary from this (see floorPlan). */
-const DESK_CLUSTERS_X = [-10.5, -1.5] as const;
-const DESK_PODS = [
-  { back: -4.55, front: -3.45 },
-  { back: 3.45, front: 4.55 },
-] as const;
-
-function buildDesks(clusterX: readonly number[] = DESK_CLUSTERS_X, pods: readonly { back: number; front: number }[] = DESK_PODS): DeskDef[] {
+/** Where the two desk clusters sit across, and each pod's two back-to-back rows (the far row faces +z); other floors vary these (shared/storey.ts). */
+export const DESK_CLUSTERS_X = [-10.5, -1.5] as const;
+export const DESK_PODS = [{ back: -4.55, front: -3.45 }, { back: 3.45, front: 4.55 }] as const;
+export function buildDesks(clusterX: readonly number[] = DESK_CLUSTERS_X, pods: readonly { back: number; front: number }[] = DESK_PODS): DeskDef[] {
   const desks: DeskDef[] = [];
   let n = 1;
   for (const pod of pods) {
@@ -52,6 +58,60 @@ function buildDesks(clusterX: readonly number[] = DESK_CLUSTERS_X, pods: readonl
 }
 
 export const DESKS: DeskDef[] = buildDesks();
+
+/**
+ * The back office: a bay knocked through the north wall between the gong and the east wall, for a
+ * floor that needs more desks than the room has. Each time someone expands the floor (see
+ * shared/floorplan.ts), its back wall goes another `row` meters north, with two more desks back to
+ * back in the middle, up to `rows` times: any further and it would stand in the street behind the
+ * building (world/city.ts). It runs from `minX` (the gong keeps its bit of wall) to the east wall,
+ * and from the old north wall back to wingMinZ.
+ */
+export const WING = { minX: 13.4, maxX: FLOOR.maxX, row: 4.6, rows: 2 } as const;
+
+/** A floor built out `level` rows, as a whole number from 0 (just the room) to WING.rows. */
+export function wingLevel(level: unknown): number {
+  return typeof level === 'number' && Number.isFinite(level) ? Math.max(0, Math.min(WING.rows, Math.floor(level))) : 0;
+}
+
+/** How far north the back office's back wall is, built out `level` rows: the north wall with none. */
+export function wingMinZ(level: number): number {
+  return FLOOR.minZ - wingLevel(level) * WING.row;
+}
+
+/** Whether (x, z) is in the back office, built out `level` rows. */
+export function inWing(x: number, z: number, level: number): boolean {
+  return level > 0 && x > WING.minX && x < WING.maxX && z <= FLOOR.minZ && z > wingMinZ(level);
+}
+
+/** The middle of the back office's row `row` (1 is the first, through the old north wall). */
+export function wingRowZ(row: number): number {
+  return FLOOR.minZ - (row - 0.5) * WING.row;
+}
+
+/**
+ * The back office's desks: a back-to-back pair down the middle of each row, like half a pod, with
+ * room to walk round either side. The far one's worker faces the room; the near one's faces the back.
+ */
+export const WING_DESKS: DeskDef[] = Array.from({ length: WING.rows }, (_, i) => {
+  const z = wingRowZ(i + 1);
+  const x = (WING.minX + WING.maxX) / 2;
+  const n = DESKS.length + 2 * i + 1;
+  return [
+    { id: `desk-${n}`, x, z: z - DESK_DEPTH / 2, rotY: Math.PI, label: `Desk ${n}`, wing: i + 1 },
+    { id: `desk-${n + 1}`, x, z: z + DESK_DEPTH / 2, rotY: 0, label: `Desk ${n + 1}`, wing: i + 1 },
+  ];
+}).flat();
+
+/** Whether `desk` is there on a floor built out `level` rows: every desk in the room is. */
+export function deskBuilt(desk: DeskDef, level: number): boolean {
+  return !desk.wing || desk.wing <= level;
+}
+
+/** Every desk on a floor built out `level` rows: the room's, then the back office's. */
+export function builtDesks(level: number): DeskDef[] {
+  return [...DESKS, ...WING_DESKS.filter((d) => deskBuilt(d, level))];
+}
 
 /**
  * Overflow seats: once every desk is taken, bean bags come out around the room, one at a time in
@@ -77,8 +137,8 @@ export const BEANBAGS: DeskDef[] = (
   ] as const
 ).map(([x, z, rotY], i) => ({ id: `beanbag-${i + 1}`, x, z, rotY, label: `Bean bag ${i + 1}`, beanbag: true }));
 
-/** Everywhere a worker can sit: the desks, then the bean bags. */
-export const SEATS: DeskDef[] = [...DESKS, ...BEANBAGS];
+/** Everywhere a worker can sit: the desks, the back office's once it's built out (see deskBuilt), then the bean bags. */
+export const SEATS: DeskDef[] = [...DESKS, ...WING_DESKS, ...BEANBAGS];
 
 /** The boards with an agent standing by: the Issues board, the PR board and the task queue. */
 export type StationKind = 'issues' | 'pulls' | 'queue';
@@ -107,6 +167,13 @@ export const STATION_AGENT: Record<StationKind, { name: string; color: string }>
 
 /** The upstairs office: a glass-walled loft on posts in the south-east corner, looking down on the desks. */
 export const LOFT = { minX: 9, maxX: FLOOR.maxX, minZ: 8, maxZ: FLOOR.maxZ, y: 3, height: 2.8 } as const;
+/**
+ * Fork: the boss's desk in the loft (buildLoft puts it there), a workstation of your own. A worker or
+ * shell is only ever hired there by hand from the boss's chair (client/ui/bossdesk.ts), never handed
+ * it by nextFreeSeat or the queue, and it's only on the office map. Nobody sits there but you: its
+ * worker isn't drawn, its terminal plays on the boss's monitor.
+ */
+export const BOSS_DESK: DeskDef = { id: 'boss', x: (LOFT.minX + LOFT.maxX) / 2 + 0.5, z: (LOFT.minZ + LOFT.maxZ) / 2 - 0.3, y: LOFT.y, rotY: 0, label: 'Boss desk', boss: true };
 /** Its stairs climb east along the south wall and arrive at the loft's west door. */
 export const STAIRS = { fromX: 3, toX: LOFT.minX, minZ: 11.2, maxZ: FLOOR.maxZ, steps: 15 } as const;
 
@@ -135,21 +202,24 @@ export const MEETING_SEATS: DeskDef[] = (
 /** The board on the meeting room's back (south) wall that shows the meeting's output file as it's written. */
 export const MEETING_BOARD = { x: MEETING_TABLE.x, y: 1.95, z: FLOOR.maxZ - 0.08, width: 3.6, height: 1.2 } as const;
 
-/** Any place a worker can be by id: the seats, the board agents' kiosks and the meeting room's chairs. */
-export const DESK_BY_ID = new Map([...SEATS, ...STATIONS, ...MEETING_SEATS].map((d) => [d.id, d]));
+/** Any place a worker can be by id: the seats (the back office's included), the board agents' kiosks and the meeting room's chairs. */
+export const DESK_BY_ID = new Map([...SEATS, ...STATIONS, ...MEETING_SEATS, BOSS_DESK].map((d) => [d.id, d]));
 
-/** The seat a new worker takes when nobody picks one: the first free desk, else the first free bean bag. */
-export function nextFreeSeat(taken: (id: string) => boolean): DeskDef | undefined {
-  return SEATS.find((d) => !taken(d.id));
+/**
+ * The seat a new worker takes when nobody picks one: the first free desk (in the back office too, as
+ * far as the floor is built out: `wing` rows), else the first free bean bag.
+ */
+export function nextFreeSeat(taken: (id: string) => boolean, wing = 0): DeskDef | undefined {
+  return SEATS.find((d) => !taken(d.id) && deskBuilt(d, wing));
 }
 
 /**
- * The bean bags that are out: every one in use, and while every desk is taken, the next free one
- * too, so there's always somewhere to hire the next worker.
+ * The bean bags that are out: every one in use, and while every desk is taken (the back office's
+ * too, built out `wing` rows), the next free one too, so there's always somewhere to hire the next worker.
  */
-export function beanbagsOut(taken: (id: string) => boolean): Set<string> {
+export function beanbagsOut(taken: (id: string) => boolean, wing = 0): Set<string> {
   const out = new Set(BEANBAGS.filter((b) => taken(b.id)).map((b) => b.id));
-  if (DESKS.every((d) => taken(d.id))) {
+  if (builtDesks(wing).every((d) => taken(d.id))) {
     const spare = BEANBAGS.find((b) => !taken(b.id));
     if (spare) out.add(spare.id);
   }
@@ -225,6 +295,16 @@ export const PLANTS: readonly (readonly [x: number, z: number, scale: number])[]
   [3.5, 0, 0.9],
   [8.5, 5, 1.1],
 ];
+
+/** A plant by the north wall east of the gong, in the way into the back office: put away once it's built. */
+export function plantByWing([x, z]: readonly [number, number, number]): boolean {
+  return x > WING.minX && z < FLOOR.minZ + 1.5;
+}
+
+/** The plants standing on a floor built out `level` rows (see WING). */
+export function plantsAt(level: number): readonly (readonly [x: number, z: number, scale: number])[] {
+  return level > 0 ? PLANTS.filter((p) => !plantByWing(p)) : PLANTS;
+}
 
 /**
  * The whiteboard on wheels everyone draws on together, out on the open floor between the desks and
@@ -376,6 +456,10 @@ export interface SeatDef {
   roof?: boolean;
   /** At the bar: E there, sitting down, orders a drink. */
   bar?: boolean;
+  /** Fork: in the padel hall across the street (shared/hall-building.ts), not in the office. */
+  hall?: boolean;
+  /** Fork: in the gym across the street (shared/gym-rooms.ts), not in the office. */
+  gym?: boolean;
 }
 
 /**
@@ -388,6 +472,8 @@ export const SEATING: SeatDef[] = [
   // Beanbags either side of the lounge, turned to the TV.
   { id: 'lounge-beanbag-1', label: '🫘 Beanbag', x: 12.5, y: 0, z: 3.5, rotY: Math.atan2(TV.x - 12.5, TV.z - 3.5), places: [0], hips: 0.42, depth: -0.1, out: 1.2 },
   { id: 'lounge-beanbag-2', label: '🫘 Beanbag', x: 14.5, y: 0, z: -3.4, rotY: Math.atan2(TV.x - 14.5, TV.z + 3.4), places: [0], hips: 0.42, depth: -0.1, out: 1.2 },
+  // Fork: the racing rig's bucket seat (shared/rig.ts), low down, facing its screen; you get out behind it.
+  { id: RIG_SEAT, label: '🏎️ Racing rig', x: RIG.x, y: 0, z: RIG.seatZ, rotY: 0, places: [0], hips: 0.36, depth: 0.02, out: -0.95 },
   // Up in the boss office: the couch against the east wall, and the chair at the big desk, facing the glass.
   { id: 'loft-couch', label: '🛋️ Couch', x: LOFT.maxX - 0.65, y: LOFT.y, z: (LOFT.minZ + LOFT.maxZ) / 2, rotY: -Math.PI / 2, places: [-0.5, 0.5], hips: 0.5, depth: -0.05, out: 0.9 },
   { id: 'boss-chair', label: "🪑 Boss's chair", x: (LOFT.minX + LOFT.maxX) / 2 + 0.5, y: LOFT.y, z: (LOFT.minZ + LOFT.maxZ) / 2 + 0.7, rotY: Math.PI, places: [0], hips: 0.62, depth: -0.05, out: -0.8, game: true },
@@ -403,6 +489,8 @@ export const SEATING: SeatDef[] = [
   { id: 'roof-sofa-3', label: '🛋️ Sofa', x: FIRE_PIT.x + 2.9, y: 0, z: FIRE_PIT.z + 0.4, rotY: -Math.PI / 2, places: [-0.6, 0.6], hips: 0.5, depth: -0.05, out: 0.8, roof: true },
   // …and sun loungers facing out over the city.
   ...LOUNGERS.map((x, i) => ({ id: `roof-lounger-${i + 1}`, label: '🏖️ Lounger', x, y: 0, z: FLOOR.maxZ - 1.5, rotY: 0, places: [0], hips: 0.42, depth: -0.2, out: -1, roof: true })),
+  ...HALL_SEATING, // fork: the padel hall's stand, bench and café chairs (shared/hall-building.ts)
+  ...GYM_SEATING, // fork: the gym's sauna and steam benches, loungers, stools (shared/gym-rooms.ts)
 ];
 export const SEATING_BY_ID = new Map(SEATING.map((s) => [s.id, s]));
 
@@ -444,9 +532,10 @@ export function seatAt(key: string): SeatPlace | undefined {
 }
 
 /** The place `key` names, if it's somewhere you can sit from where you are: up on the roof, or down on a floor. */
-export function seatHere(key: string, onRoof: boolean): SeatPlace | undefined {
+export function seatHere(key: string, onRoof: boolean, inHall = false, inGym = false): SeatPlace | undefined {
   const place = seatAt(key);
-  return place && !!SEATING_BY_ID.get(place.seatId)!.roof === onRoof ? place : undefined;
+  const seat = place && SEATING_BY_ID.get(place.seatId)!;
+  return seat && !!seat.roof === onRoof && !!seat.hall === inHall && !!seat.gym === inGym ? place : undefined; // fork: the hall's only in the hall, the gym's in the gym
 }
 
 /**
@@ -508,109 +597,3 @@ export const POLES: readonly PoleSpot[] = [
 ];
 /** A pole's hole in the floor, the railing round it, and how far from the pole you hang on. */
 export const POLE = { hole: 0.68, rail: 0.9, grip: 0.4, radius: 0.055 } as const;
-
-// ---- Per-floor plans --------------------------------------------------------------------------
-// Every floor of the building is a project, and in the real world no two would have the same
-// layout. `floorPlan(index)` is where each floor's plan lives: the same set of seats and fixtures
-// (same ids, same counts, so the server's seating is floor-agnostic), laid out its own way. It's a
-// pure function of the floor's index (0 is the bottom one), so the client and the server, and every
-// player's screen, all work out the same plan for a floor and its deterministic play (golf, the
-// basketball) stays in step. Floor 0's plan is the constants above; other floors vary from them
-// (see Stage 2). The result is cached, so a floor's plan is only worked out once.
-
-/** One floor's layout: its seats (all floors share the ids and counts), its balcony and what's on it, and its windows. */
-export interface FloorPlan {
-  /** The worker desks, `desk-1`..`desk-16`; the same ids on every floor, laid out per floor. */
-  desks: DeskDef[];
-  /** The overflow bean bags, `beanbag-1`..`beanbag-12`. */
-  beanbags: DeskDef[];
-  /** The board agents' kiosks; tied to the north-wall boards, so the same on every floor. */
-  stations: DeskDef[];
-  /** The meeting room's chairs; tied to the table, so the same on every floor. */
-  meetingSeats: DeskDef[];
-  /** Where a worker can sit: the desks, then the bean bags. */
-  seats: DeskDef[];
-  /** Any place a worker can be by id (seats, kiosks, meeting chairs) on this floor. */
-  deskById: Map<string, DeskDef>;
-  /** The smoking balcony off the south wall: its footprint (depth is fixed; it slides and widens along the wall). */
-  balcony: { minX: number; maxX: number; minZ: number; maxZ: number };
-  /** The glass doors out to it, in the south wall, within the balcony's span. */
-  balconyDoor: Opening;
-  /** The ashtray on the balcony, where a smoke break starts. */
-  ashtray: { x: number; z: number };
-  /** The golf tee on the balcony, its ball and the bag behind it. */
-  golfTee: typeof GOLF_TEE;
-  /** Leaving off the balcony by parachute (see PARACHUTE). */
-  parachute: typeof PARACHUTE;
-  /** The windows in the outside walls (the loft's two are fixed; the rest are laid out per floor). */
-  windows: Opening[];
-}
-
-const PLANS = new Map<number, FloorPlan>();
-
-/**
- * A little deterministic randomness for floor `index`, seeded from it alone (the same LCG the tower
- * uses): every page, and the server, works out the same numbers for a floor, so its look and its
- * deterministic play (golf, the basketball) stay in step.
- */
-function floorRandom(index: number): () => number {
-  let seed = (Math.imul(index + 1, 2654435761) ^ 0x9e3779b9) >>> 0;
-  seed = seed % 2147483647 || 1;
-  return () => {
-    seed = (seed * 16807) % 2147483647;
-    return (seed - 1) / 2147483646;
-  };
-}
-
-/** Puts a plan together from a floor's desks and balcony; everything else is the same on every floor. */
-function makePlan(desks: DeskDef[], balcony: FloorPlan['balcony']): FloorPlan {
-  const seats = [...desks, ...BEANBAGS];
-  const deskById = new Map([...seats, ...STATIONS, ...MEETING_SEATS].map((d) => [d.id, d]));
-  return {
-    desks,
-    beanbags: BEANBAGS,
-    stations: STATIONS,
-    meetingSeats: MEETING_SEATS,
-    seats,
-    deskById,
-    balcony,
-    balconyDoor: BALCONY_DOOR,
-    ashtray: ASHTRAY,
-    golfTee: GOLF_TEE,
-    parachute: PARACHUTE,
-    windows: WINDOWS,
-  };
-}
-
-/**
- * How floor `key` (1 and up) differs from floor 0: the desk pods sit a little differently, and the
- * balcony reaches further (or less far) along the south wall. The balcony always covers the doors and
- * what stands on it (the bench, the stools, the tee), and its doors, windows and depth don't move —
- * so no two floors have the same cut, without disturbing how you get out onto it or what's out there.
- */
-function variedPlan(key: number): FloorPlan {
-  const rnd = floorRandom(key);
-  const span = (mid: number, half: number) => mid + (rnd() * 2 - 1) * half;
-  // The desk clusters slide a little across, and each pod up or down the room; the 2×2 pods and the
-  // way each row faces stay as they are, so it still reads as an office of desks.
-  const clusterX = DESK_CLUSTERS_X.map((x) => span(x, 1.2));
-  const pods = DESK_PODS.map((p) => {
-    const c = span((p.back + p.front) / 2, 0.8);
-    return { back: c - 0.55, front: c + 0.55 };
-  });
-  const desks = buildDesks(clusterX, pods);
-  // The balcony reaches out to a different width, still hanging from the same doors and over the same
-  // depth. minX stays left of the bench, maxX right of the stools, so everything out there sits on it.
-  const balcony = { minX: -10.4 - rnd() * 1.9, maxX: 2.0 + rnd() * 1.9, minZ: BALCONY.minZ, maxZ: BALCONY.maxZ };
-  return makePlan(desks, balcony);
-}
-
-/** The plan of floor `index` (0 is the bottom one), worked out once and kept. Floor 0 is the constants above. */
-export function floorPlan(index: number): FloorPlan {
-  const key = Math.max(0, Math.trunc(index));
-  let plan = PLANS.get(key);
-  if (plan) return plan;
-  plan = key === 0 ? makePlan(DESKS, BALCONY) : variedPlan(key);
-  PLANS.set(key, plan);
-  return plan;
-}

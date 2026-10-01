@@ -7,6 +7,7 @@ import { MEETING_SEATS } from '../shared/layout.js';
 import { MAX_MEETING_BUDGET, MEETING_NOTES_DIR, MEETING_PATTERNS, TOKENS_PER_SEAT, isMeetingPattern, meetingRecord, outputProblem, slugify } from '../shared/meetings.js';
 import { fmtTokens, isAgentEffort, isAgentProvider, tokensOf, type AgentChoice, type AgentEffort, type AgentProvider, type Meeting, type MeetingRecord, type MeetingRequest, type MeetingState, type MeetingTurn, type WorkerInfo, type WorkerStatus } from '../shared/protocol.js';
 import { validateWorkerEffort, validateWorkerModel } from './agents.js';
+import { providerMeta, takesEffort, takesModel } from '../shared/providers.js';
 import { gitError, type WorktreeRef, type WorktreeState } from './worktrees.js';
 import { PROMPTS, fillPrompt, type PromptId, type PromptVars } from '../shared/prompts.js';
 
@@ -28,7 +29,8 @@ export interface MeetingWorkers {
 
 /** Git for the meeting's own worktree: made when it starts, tidied away once everyone has gone home. */
 export interface MeetingTrees {
-  create(slug: string): (Required<WorktreeRef> & { from?: string }) | string;
+  /** `note` says when commits the project has were left out of it (see Worktrees.create). */
+  create(slug: string): (Required<Omit<WorktreeRef, 'made'>> & { from?: string; note?: string }) | string;
   inspect(wt: WorktreeRef): Promise<WorktreeState>;
   remove(wt: WorktreeRef, cleanup: 'worktree' | 'all'): Promise<string | undefined>;
 }
@@ -127,8 +129,8 @@ export class MeetingRoom {
     const picked = req.provider !== undefined ? { provider: req.provider, model: req.model, effort: req.effort } : (this.workers.officeDefault ?? { provider: this.workers.defaultProvider });
     const provider = picked.provider;
     if (!isAgentProvider(provider) || (provider === 'custom' && this.workers.defaultProvider !== 'custom')) return 'Unknown agent provider';
-    const model = provider === 'claude' || provider === 'opencode' ? picked.model || undefined : undefined;
-    const effort = provider === 'claude' && isAgentEffort(picked.effort) ? picked.effort : undefined;
+    const model = takesModel(provider) ? picked.model || undefined : undefined;
+    const effort = takesEffort(provider) && isAgentEffort(picked.effort) ? picked.effort : undefined;
     const bad = validateWorkerModel('agent', provider, model) ?? validateWorkerEffort('agent', provider, effort);
     if (bad) return bad;
 
@@ -163,7 +165,9 @@ export class MeetingRoom {
     if (this.trees) {
       const made = this.trees.create(`meeting-${slug}-${id.slice(0, 4)}`);
       if (typeof made === 'string') return made;
-      worktree = made;
+      const { note, ...ref } = made;
+      worktree = ref;
+      if (note) this.events.toast(`🌿 The meeting's worktree ${note}`, 'info');
     }
     const m: Meeting = {
       id,
@@ -490,7 +494,7 @@ export class MeetingRoom {
       // A worker sent home took its figures with it: keep the last ones seen.
       if (w?.usage) {
         s.tokens = tokensOf(w.usage);
-        s.cost = w.usage.costKnown === false || (w.provider === 'codex' && w.usage.costKnown !== true) ? undefined : w.usage.cost;
+        s.cost = w.usage.costKnown === false || (!!providerMeta(w.provider)?.usage.noCost && w.usage.costKnown !== true) ? undefined : w.usage.cost;
       }
       tokens += s.tokens ?? 0;
       if (s.tokens && s.cost === undefined) known = false;

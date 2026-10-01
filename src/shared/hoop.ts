@@ -2,7 +2,8 @@
 // was last thrown (see server/court.ts); every page works out the rest itself, flying and bouncing it
 // the same way from that throw (simulate below), so everyone on the floor sees the same shot.
 
-import { FLOOR, floorPlan, LOFT, WALL_HEIGHT } from './layout.js';
+import { FLOOR, LOFT, WALL_HEIGHT } from './layout.js';
+import { storeyPlan } from './storey.js'; // flrnoh fork: each storey its own balcony
 
 /**
  * The hoop, on the west wall between the exit door and the kitchen, facing into the room (+x).
@@ -64,7 +65,7 @@ export function throwOk(s: { x: number; y: number; z: number; vx: number; vy: nu
 /** Inside the office (or out on floor `index`'s balcony), under the ceiling, give or take `slack` meters. */
 function inBounds(x: number, y: number, z: number, slack = 0, index = 0): boolean {
   if (y < -0.5 - slack || y > WALL_HEIGHT + slack) return false;
-  const bal = floorPlan(index).balcony;
+  const bal = storeyPlan(index).balcony;
   const room = x > FLOOR.minX - slack && x < FLOOR.maxX + slack && z > FLOOR.minZ - slack && z < FLOOR.maxZ + slack;
   const balcony = x > bal.minX - slack && x < bal.maxX + slack && z > bal.minZ - 1 - slack && z < bal.maxZ + slack;
   return room || balcony;
@@ -125,7 +126,7 @@ export function launch(s: { x: number; y: number; z: number; vx: number; vy: num
 
 /** The solids near enough to floor `index` for the ball to reach; the rest of the building (the street, other floors) can't be. */
 export function nearSolids(all: readonly Solid[], index = 0): Solid[] {
-  const maxZ = floorPlan(index).balcony.maxZ;
+  const maxZ = storeyPlan(index).balcony.maxZ;
   return all.filter((c) => c.maxX > FLOOR.minX - 2 && c.minX < FLOOR.maxX + 2 && c.maxZ > FLOOR.minZ - 2 && c.minZ < maxZ + 2 && c.top > -1 && (c.bottom ?? 0) < WALL_HEIGHT + 1);
 }
 

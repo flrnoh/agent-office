@@ -2,10 +2,13 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BALCONY, DESKS, DESK_SIZE, EXIT_STAIRS, FLOOR, PLANTS, STREET_Y, WALL_HEIGHT, WINDOWS } from '../../shared/layout';
 import type { Theme } from '../../shared/protocol';
+import { mulberry32 } from '../../shared/rng';
 import { batWingGeometry, glowTexture } from './costumes';
-import type { Collider, Office } from './office';
+import { plantLeaves } from './office';
+import type { Collider, Office } from './types';
 import { SPOOKY_MOON } from './sky';
 import { mergeByMaterial, mesh, textPlane, toon, toonUnique } from './toon';
+import { deskGifts, type DeskGifts } from './deskgifts'; // flrnoh fork
 
 /*
  * The building dressed up for a holiday (the costumes are in world/costumes.ts). Halloween puts
@@ -363,7 +366,8 @@ function christmasTree(h: number, lights: THREE.MeshToonMaterial[], lit?: THREE.
   if (trunk) g.add(mesh(new THREE.CylinderGeometry(h * 0.035, h * 0.045, base + 0.1, 10), toon('#6b4226'), 0, (base + 0.1) / 2, 0));
   const tierH = ((h - base) * 0.92) / (tiers * 0.72);
   const baubles = ['#e63946', '#ffd166', '#4cc9f0', '#f1faee', '#c77dff'].map((c) => toon(c));
-  const rand = mulberry(Math.round(h * 1000));
+  // Seeded, so the trees look the same every time.
+  const rand = mulberry32(Math.round(h * 1000));
   for (let i = 0; i < tiers; i++) {
     const r = (h * 0.34 * (tiers - i)) / tiers + h * 0.05;
     const y0 = base + i * tierH * 0.72;
@@ -459,18 +463,6 @@ function snowman(): THREE.Group {
   return g;
 }
 
-/** A small seeded random, so the trees look the same every time. */
-function mulberry(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 // -----------------------------------------------------------------------------------------------
 
 export class Holiday {
@@ -496,6 +488,7 @@ export class Holiday {
   /** The plants' leaves, and the tree each becomes at Christmas. */
   private plants: { leaves: THREE.Object3D[]; tree: THREE.Object3D }[] = [];
   private readonly camPos = new THREE.Vector3();
+  private readonly gifts: DeskGifts; // flrnoh fork: on the desks, wherever this storey has them
 
   constructor(private office: Office) {
     this.halloween.visible = this.christmas.visible = false;
@@ -559,7 +552,7 @@ export class Holiday {
     }
 
     const batMat = new THREE.MeshBasicMaterial({ color: '#150b1f', side: THREE.DoubleSide });
-    const rand = mulberry(31);
+    const rand = mulberry32(31);
     for (let i = 0; i < 12; i++) {
       const b = bat(batMat, 1.2 + rand() * 0.8);
       this.halloween.add(b.root);
@@ -583,8 +576,10 @@ export class Holiday {
       m.userData.outlineParameters = { visible: false };
       return m;
     });
-    // The potted plants become little trees, with presents round the pot.
+    // The potted plants become little trees standing in their pots, with presents round them: the
+    // leaves are hidden and the tree shown instead.
     office.plants.forEach((p, i) => {
+      const leaves = plantLeaves(p);
       const tree = new THREE.Group();
       const t = christmasTree(1.25, this.lights);
       t.position.y = 0.45;
@@ -605,18 +600,10 @@ export class Holiday {
       const merged = mergeByMaterial(tree);
       merged.visible = false;
       p.add(merged);
-      this.plants.push({ leaves: p.children.slice(1, 4), tree: merged });
+      this.plants.push({ leaves, tree: merged });
     });
-    // A present on every desk.
-    const deskGifts = new THREE.Group();
-    DESK_SPOTS.forEach(([x, y, z, , rotY], i) => {
-      const [paper, ribbon] = PAPERS[i % PAPERS.length];
-      const g = present(0.17, paper, ribbon);
-      g.position.set(x, y, z);
-      g.rotation.y = rotY + 0.3;
-      deskGifts.add(g);
-    });
-    this.christmas.add(mergeByMaterial(deskGifts));
+    // A present on every desk, riding on it: each storey lays its desks out its own way (flrnoh fork).
+    this.gifts = deskGifts(this.office.desks, (i) => present(0.17, ...PAPERS[i % PAPERS.length]));
     // The big tree out front, lit up, with a heap of presents.
     const out = new THREE.Group();
     const lit: THREE.Vector3[] = [];
@@ -660,6 +647,7 @@ export class Holiday {
     if (theme) colliders.push(...this.colliders[theme]);
     this.halloween.visible = theme === 'halloween';
     this.christmas.visible = theme === 'christmas';
+    this.gifts.show(theme === 'christmas');
     for (const p of this.plants) {
       p.tree.visible = theme === 'christmas';
       for (const l of p.leaves) l.visible = theme !== 'christmas';

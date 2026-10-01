@@ -3,6 +3,10 @@
 // elevator goes up there from every floor. Shared by the server (who's up there, what they're
 // holding) and the client (which builds it and plays the music).
 
+// Fork: the kitchen fridge's bottles, cans and snacks are held like the bar's drinks (see fridge.ts).
+import { FRIDGE_ITEMS, type FridgeGlass, type FridgeItemId } from './fridge.js';
+import { CAFE_ITEMS, type CafeGlass, type CafeItemId } from './cafe.js'; // fork: the padel hall's café
+
 /**
  * Where you are while you're on the roof (a peer's `floor`, and `floor.go`'s). It can never be a
  * project floor's id, which is only ever lowercase letters, digits and dashes.
@@ -11,9 +15,9 @@ export const ROOF = '@roof';
 export const ROOF_NAME = 'Rooftop bar';
 
 /** What a drink comes in: a pint, a wine glass, a martini glass, a tall glass or a shot glass. */
-export type Glass = 'pint' | 'wine' | 'martini' | 'highball' | 'shot';
+export type Glass = 'pint' | 'wine' | 'martini' | 'highball' | 'shot' | FridgeGlass | CafeGlass;
 
-export type DrinkId = 'beer' | 'wine' | 'martini' | 'maitai' | 'shot' | 'mojito' | 'water';
+export type DrinkId = 'beer' | 'wine' | 'martini' | 'maitai' | 'shot' | 'mojito' | 'water' | FridgeItemId | CafeItemId;
 
 export interface Drink {
   id: DrinkId;
@@ -41,7 +45,8 @@ export const DRINKS: readonly Drink[] = [
   { id: 'water', name: 'Water', emoji: '💧', blurb: 'Clears your head a little', strength: -0.3, color: '#d6f1ff', glass: 'highball' },
 ];
 
-export const DRINK_BY_ID = new Map(DRINKS.map((d) => [d.id, d]));
+/** The bar's drinks, and (fork) what comes out of the kitchen fridge. */
+export const DRINK_BY_ID = new Map<DrinkId, Drink>([...DRINKS, ...FRIDGE_ITEMS, ...CAFE_ITEMS].map((d) => [d.id, d]));
 
 export function isDrink(v: unknown): v is DrinkId {
   return typeof v === 'string' && DRINK_BY_ID.has(v as DrinkId);

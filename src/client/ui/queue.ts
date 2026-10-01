@@ -1,10 +1,12 @@
+import './queue.css';
 import type { AgentProvider, QueueTask, Usage } from '../../shared/protocol';
 import type { Net } from '../net';
 import { store } from '../state';
 import { h, openModal, timeAgo, STATUS_LABEL } from './dom';
 import { confirmDialog } from './prompt';
-import { providerPicker, providerLabel, providerUsageState, resolvedProvider, modelBadge } from './provider';
-import { officeFull } from '../world/machine';
+import { providerPicker, providerLabel, providerUsageState, providerWaitingLabel, resolvedProvider, modelBadge } from './provider';
+import { officeFull } from '../../shared/machine';
+import { partyRefuses } from '../party';
 
 export interface QueueActions {
   openTerminal(workerId: string): void;
@@ -34,6 +36,7 @@ function outcome(t: QueueTask): string {
 }
 
 export function openQueue(net: Net, actions: QueueActions) {
+  if (partyRefuses()) return; // fork: party guests see none of the work (party.ts)
   const body = h('div.body.queue');
   const close = h('button.btn.close', { 'aria-label': 'Close' }, '✕');
   const limitValue = h('b');
@@ -89,7 +92,10 @@ export function openQueue(net: Net, actions: QueueActions) {
     const model = badge ? ` · initial: ${badge}` : '';
     const usageSuffix = (provider: AgentProvider | undefined, usage?: Usage) => {
       const state = providerUsageState(provider, store.project, usage);
-      return state === 'untracked' ? ' · usage untracked' : state === 'waiting' && resolvedProvider(provider, store.project) === 'opencode' ? ' · waiting for metrics' : state === 'waiting' && resolvedProvider(provider, store.project) === 'codex' ? ' · waiting for first report' : '';
+      if (state === 'untracked') return ' · usage untracked';
+      if (state !== 'waiting') return '';
+      const waiting = providerWaitingLabel(provider, store.project);
+      return waiting ? ` · ${waiting}` : '';
     };
     let pos: string | null = null;
     if (t.status === 'running') {
