@@ -2370,9 +2370,10 @@ export class OfficeSound {
   /**
    * The soccer hall: a kick's thump, the ball off the boards (a bang and a rattle), a post's clang, the
    * net's swish, the referee's whistle (short, or the final whistle's three), the crowd's cheer for a
-   * goal; the doors. `strength` 0..1 (how hard it was hit). On the effects' volume, quiet from far off.
+   * goal; the doors; a slide tackle's swish over the turf and the long whistle for a foul. `strength`
+   * 0..1 (how hard it was hit). On the effects' volume, quiet from far off.
    */
-  soccer(kind: 'door' | 'kick' | 'board' | 'post' | 'net' | 'whistle' | 'final' | 'cheer', at: Pos, strength = 1) {
+  soccer(kind: 'door' | 'kick' | 'board' | 'post' | 'net' | 'whistle' | 'final' | 'cheer' | 'slide' | 'foul', at: Pos, strength = 1) {
     const ctx = this.ctx;
     if (!ctx) return;
     this.count(`soccer-${kind}`);
@@ -2386,7 +2387,7 @@ export class OfficeSound {
       ]);
       return;
     }
-    const out = this.panner(at, kind === 'cheer' || kind === 'whistle' || kind === 'final' ? 8 : 2, 1.2);
+    const out = this.panner(at, kind === 'cheer' || kind === 'whistle' || kind === 'final' || kind === 'foul' ? 8 : 2, 1.2);
     out.connect(this.ambience);
     const whistle = (when: number, len: number, gain: number) => {
       // A pea whistle: a high tone warbling fast as the pea rattles round.
@@ -2432,6 +2433,20 @@ export class OfficeSound {
         break;
       case 'whistle':
         whistle(t0, 0.45, 0.07);
+        break;
+      case 'foul':
+        // A foul: two sharp blasts, the second held.
+        whistle(t0, 0.18, 0.08);
+        whistle(t0 + 0.26, 0.75, 0.08);
+        break;
+      case 'slide':
+        // Boots and shorts over the turf: a swish that falls away as it slows, a thud going down.
+        this.hiss(out, t0, 1700, 0.6, [
+          [0.03, 0.08 * s],
+          [0.42, 0.02 * s],
+          [0.55, 0],
+        ]);
+        this.blip(out, t0, 90, 0.6, 0.18, 0.25 * s, 'triangle');
         break;
       case 'final':
         whistle(t0, 0.35, 0.07);
@@ -2504,10 +2519,11 @@ export class OfficeSound {
 
   /**
    * The soccer hall's crowd and stadium: the horn (a goal, the kick-off, the final whistle), the roar of
-   * a goal, the "oooh" of a near miss, applause for a kick-off, the rhythmic clap of a chant.
-   * `strength` 0..1 how many are in it. All round you (the stands are), on the effects' volume.
+   * a goal, the "oooh" of a near miss, applause for a kick-off, the rhythmic clap of a chant, and for a
+   * foul the stands' whistles and boos. `strength` 0..1 how many are in it. All round you (the stands
+   * are), on the effects' volume.
    */
-  soccerCrowd(kind: 'horn' | 'roar' | 'oooh' | 'applause' | 'chant', strength = 1) {
+  soccerCrowd(kind: 'horn' | 'roar' | 'oooh' | 'applause' | 'chant' | 'boo', strength = 1) {
     const ctx = this.ctx;
     if (!ctx) return;
     this.count(`soccer-crowd-${kind}`);
@@ -2589,6 +2605,42 @@ export class OfficeSound {
         // A couple of seconds of clapping, thinning out.
         for (let i = 0; i < 26; i++) clap(t0 + i * 0.09 + Math.random() * 0.05, 0.028 * s * (1 - i / 34), 3);
         break;
+      case 'boo': {
+        // A foul: whistles from all over the stands (fingers in mouths, rising and falling), a low "booo" under them.
+        for (let i = 0; i < 7; i++) {
+          const at = t0 + Math.random() * 0.5;
+          const len = rand(0.35, 0.8);
+          const o = ctx.createOscillator();
+          o.type = 'sine';
+          const f0 = rand(1800, 2900);
+          o.frequency.setValueAtTime(f0, at);
+          o.frequency.linearRampToValueAtTime(f0 * rand(1.08, 1.25), at + len * 0.35);
+          o.frequency.linearRampToValueAtTime(f0 * rand(0.8, 0.95), at + len);
+          const g = ctx.createGain();
+          envelope(g.gain, at, [
+            [0.03, 0.012 * s],
+            [len - 0.05, 0.01 * s],
+            [len, 0],
+          ]);
+          o.connect(g).connect(out);
+          o.start(at);
+          o.stop(at + len + 0.05);
+        }
+        const n = this.noise(this.buf.brown);
+        const f = biquad(ctx, 'bandpass', 240, 2.5);
+        f.frequency.setValueAtTime(260, t0);
+        f.frequency.linearRampToValueAtTime(200, t0 + 1.6);
+        const g = ctx.createGain();
+        envelope(g.gain, t0, [
+          [0.3, 0.4 * s],
+          [1.2, 0.35 * s],
+          [1.9, 0],
+        ]);
+        n.connect(f).connect(g).connect(out);
+        n.start(t0);
+        n.stop(t0 + 2);
+        break;
+      }
       case 'chant':
         // The stands clap along: clap clap, clap clap clap, twice over.
         for (let r = 0; r < 2; r++) for (const at of [0, 0.3, 0.8, 1.0, 1.2]) clap(t0 + r * 1.6 + at, 0.035 * s, 6);

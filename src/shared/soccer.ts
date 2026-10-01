@@ -9,6 +9,7 @@
 // Outside, it stands on every floor's street between the golf hole and the padel hall.
 
 import type { SoccerLeader, SoccerStats } from './soccer-stats.js';
+import type { Card, SetPieceView } from './soccer-tackle.js'; // slide tackles and fouls
 
 /** Where you are while you're in the soccer hall (a peer's `floor`, and `floor.go`'s). Never a project floor's id. */
 export const SOCCER = '@soccer';
@@ -95,7 +96,8 @@ export const OVER_MS = 10_000;
 /** After the kickoff's freeze, only the kicking-off team may touch the ball, for up to this long (or until it does). */
 export const KICKOFF_FIRST_MS = 3000;
 
-export type SoccerPhase = 'waiting' | 'kickoff' | 'play' | 'goal' | 'paused' | 'over';
+/** `freekick`/`penalty`: after a foul (soccer-tackle.ts), until the fouled team takes it (or it goes on by itself). */
+export type SoccerPhase = 'waiting' | 'kickoff' | 'play' | 'goal' | 'paused' | 'over' | 'freekick' | 'penalty';
 
 export interface SoccerPlayer {
   id: string;
@@ -103,6 +105,8 @@ export interface SoccerPlayer {
   team: Team;
   /** Their shirt number, 1..99, kept for them from match to match (soccer-stats.ts assignNumber). */
   number?: number;
+  /** Tackles: their card in this match (two fouls a yellow, three a red). */
+  card?: Card;
 }
 
 /** The match as everyone in the hall sees it (a `soccer` message). Clocks are "ms left" as of when it was sent. */
@@ -123,15 +127,23 @@ export interface SoccerView {
   stats?: SoccerStats;
   /** The all-time leaderboard's top (the Hall of Fame). */
   leaders?: SoccerLeader[];
+  /** Tackles: the free kick or penalty on now (phase freekick/penalty). */
+  setPiece?: SetPieceView;
 }
 
 /** Something that happened, for a toast, a whistle or a cheer. */
 export interface SoccerEvent {
-  kind: 'start' | 'kickoff' | 'play' | 'goal' | 'end' | 'pause' | 'resume' | 'reset' | 'practice' | 'join' | 'leave';
+  kind: 'start' | 'kickoff' | 'play' | 'goal' | 'end' | 'pause' | 'resume' | 'reset' | 'practice' | 'join' | 'leave' | 'foul' | 'tackle' | 'restart';
   team?: Team;
   /** Who (a goal's scorer, if the office knows; who joined or left). */
   who?: string;
   text?: string;
+  /** Tackles: who slid (a foul's or a clean tackle's), who was fouled (id, name), whether it's a penalty, and the card it got. */
+  id?: string;
+  victim?: string;
+  victimName?: string;
+  penalty?: boolean;
+  card?: Card;
 }
 
 /** The ball on the wire: [x, z, y, vx, vz, vy] (interior coordinates, y the bottom of the ball above the floor). */
@@ -149,7 +161,9 @@ export type SoccerClientMsg =
    * `power` 0..1, `dir` its angle along the floor (sin, cos on x/z), `loft` 0..1 (a lob or a chip),
    * `lift` how steeply a shot rises (radians, 0..MAX_LIFT: aiming up). The office clamps them all.
    */
-  | { t: 'soccer.kick'; power: number; dir: number; loft: number; lift?: number };
+  | { t: 'soccer.kick'; power: number; dir: number; loft: number; lift?: number }
+  /** A slide tackle (soccer-tackle.ts) along `dir` (the way you face), from where your page has you (x, z). */
+  | { t: 'soccer.slide'; dir: number; x?: number; z?: number };
 
 export type SoccerServerMsg =
   /** The match and who plays for whom (on every change, and now and then to keep the clock true); `event` for a toast or a whistle. */
@@ -159,9 +173,12 @@ export type SoccerServerMsg =
    * so pages can play it back on the office's clock), `c` who's dribbling it; `hit` and `hs` (speed)
    * when it just hit something, `by` who kicked it.
    */
-  | { t: 'soccer.ball'; b: BallWire; k: number; c?: string; hit?: BallHitKind; hs?: number; by?: string };
+  | { t: 'soccer.ball'; b: BallWire; k: number; c?: string; hit?: BallHitKind; hs?: number; by?: string }
+  /** `id` slides (the curve: from x, z along dir, d m: soccer-tackle.ts slideAt); `no`: yours wasn't taken, and why. */
+  | { t: 'soccer.slide'; id: string; x: number; z: number; dir: number; d: number; no?: undefined }
+  | { t: 'soccer.slide'; id: string; no: string };
 
-export const isSoccerMsg = (t: string): t is SoccerClientMsg['t'] => t === 'soccer.join' || t === 'soccer.leave' || t === 'soccer.kick';
+export const isSoccerMsg = (t: string): t is SoccerClientMsg['t'] => t === 'soccer.join' || t === 'soccer.leave' || t === 'soccer.kick' || t === 'soccer.slide';
 
 /** mm:ss of a clock in ms (rounded up, so it shows 0:00 only when it's done). */
 export function clockText(ms: number): string {

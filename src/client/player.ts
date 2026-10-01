@@ -81,6 +81,8 @@ export class PlayerController {
    * frame, with no walking, falling or bumping into things, and the camera follows.
    */
   rig: ((dt: number) => void) | null = null;
+  /** flrnoh fork: how far (m) the view sinks below your eyes (a slide tackle in the soccer hall, soccer/tackle.ts). */
+  eyeDrop = 0;
   /** The rig is a car (see driving.ts): out on the street or in the garage, not up a shaft indoors. */
   riding = false;
   /**
@@ -535,12 +537,12 @@ export class PlayerController {
 
   updateCamera(snap = false) {
     if (this.view === 'first') {
-      this.camera.position.set(this.pos.x, this.pos.y + EYE_HEIGHT + this.bob + this.stepOffset + this.lift, this.pos.z);
+      this.camera.position.set(this.pos.x, this.pos.y + EYE_HEIGHT + this.bob + this.stepOffset + this.lift - this.eyeDrop, this.pos.z);
       this.camera.rotation.set(this.lookPitch, this.camYaw, 0);
       this.shake();
       return;
     }
-    const target = new THREE.Vector3(this.pos.x, this.pos.y + this.stepOffset + this.lift + 1.3, this.pos.z);
+    const target = new THREE.Vector3(this.pos.x, this.pos.y + this.stepOffset + this.lift + 1.3 - this.eyeDrop, this.pos.z);
     const off = new THREE.Vector3(
       Math.sin(this.camYaw) * Math.cos(this.camPitch),
       Math.sin(this.camPitch),

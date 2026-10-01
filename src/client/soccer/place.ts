@@ -27,6 +27,8 @@ import { isTyping } from '../player';
 import { BallView } from './ball';
 import { KickButton, TAP_MS } from './controls';
 import { SoccerShow } from './show'; // stats, replays, kits and moves
+import { SoccerTackle } from './tackle'; // slide tackles and fouls
+import { mayTakeSetPiece } from '../../shared/soccer-tackle';
 import type { Person } from '../world/character';
 import './soccer.css';
 
@@ -47,7 +49,7 @@ import './soccer.css';
 /** Where you stand, to be put somewhere: main.ts's placeAt. */
 type Spot = { x: number; y: number; z: number; rotY: number };
 
-export type SoccerSoundKind = 'door' | 'kick' | 'board' | 'post' | 'net' | 'whistle' | 'final' | 'cheer';
+export type SoccerSoundKind = 'door' | 'kick' | 'board' | 'post' | 'net' | 'whistle' | 'final' | 'cheer' | 'slide' | 'foul';
 
 export interface SoccerHost {
   scene: THREE.Scene;
@@ -69,6 +71,9 @@ export interface SoccerHost {
     camDist: number;
     view: 'first' | 'third';
     enabled: boolean;
+    /** Tackles: the slide drives you (player.ts rig), and the view dips (eyeDrop). */
+    rig: ((dt: number) => void) | null;
+    eyeDrop: number;
     colliders: Collider[];
     room: { minX: number; maxX: number; minZ: number; maxZ: number; wall: number; enclosed: boolean };
   };
@@ -136,9 +141,25 @@ export class SoccerPlace {
   private floorLight = new THREE.Color('#5f7a66');
   /** The stats, the replay, the kits and the moves (show.ts). */
   private show: SoccerShow;
+  /** Slide tackles and fouls (tackle.ts). */
+  private tackle: SoccerTackle;
 
   constructor(private host: SoccerHost) {
     this.show = new SoccerShow(host); // first, so its keys (Tab, skipping a replay) come before kicking's
+    this.tackle = new SoccerTackle({
+      send: (m) => host.send(m),
+      you: () => host.you(),
+      player: host.player,
+      view: () => this.view,
+      viewAt: () => this.viewAt,
+      team: () => this.team,
+      playing: () => this.playing(),
+      room: () => this.room?.group ?? null,
+      body: (id) => host.body(id),
+      placeAt: (at) => host.placeAt(at),
+      sound: (k, at, s) => host.sound(k, at, s),
+    });
+    this.show.pose = (id, rig) => this.tackle.pose(id, rig); // slides and falls over the kit's moves
     // Kicking: captured before the player's own handlers, only while you play in here.
     window.addEventListener('pointerdown', (e) => this.pointerDown(e), true);
     window.addEventListener('pointerup', (e) => this.pointerUp(e), true);
@@ -256,6 +277,7 @@ export class SoccerPlace {
       this.clearBibs();
     }
     this.show.setActive(inside);
+    this.tackle.setActive(inside);
     this.showHud(inside);
   }
 
@@ -399,6 +421,7 @@ export class SoccerPlace {
   }
 
   private tryKick(now: number) {
+    if (this.tackle.locked) return; // sliding, or down after a foul
     const p = this.host.player.pos;
     const k = this.button.fire(now, canKick(this.ball.b, p.x, p.z), this.reachAt, this.mayTouch());
     if (!k) return;
@@ -416,13 +439,22 @@ export class SoccerPlace {
   private mayTouch(): boolean {
     const v = this.view;
     if (!v || !this.team) return false;
+    // Tackles: a free kick (the fouled team) or a penalty (its taker), once it's ready.
+    if ((v.phase === 'freekick' || v.phase === 'penalty') && v.setPiece) return mayTakeSetPiece(v.setPiece, this.team, this.host.you()) && performance.now() - this.viewAt >= v.setPiece.readyMs;
+    return this.mayRun();
+  }
+
+  /** Whether you may run the ball along (dribble): in play, not at a set piece (those are kicked). */
+  private mayRun(): boolean {
+    const v = this.view;
+    if (!v || !this.team) return false;
     if (v.phase === 'waiting' || v.phase === 'paused') return true;
     return v.phase === 'play' && (!v.kickoff || v.kickoff === this.team);
   }
 
   /** You as the ball sees you (for dribbling on this page), or null when you may not touch it. */
   private footer(now: number): Footer | null {
-    if (!this.team || !this.mayTouch() || !this.host.player.enabled) return null;
+    if (!this.team || !this.mayRun() || !this.host.player.enabled || this.tackle.locked) return null;
     const p = this.host.player.pos;
     return { id: this.host.you(), team: this.team, x: p.x, z: p.z, vx: this.vel.x, vz: this.vel.z, facing: this.host.player.facing, free: now >= this.coolUntil };
   }
@@ -593,9 +625,11 @@ export class SoccerPlace {
   // ---- The office's news --------------------------------------------------------------------------
 
   onMessage(msg: ServerMsg) {
-    if (msg.t !== 'soccer' && msg.t !== 'soccer.ball') return;
+    if (msg.t !== 'soccer' && msg.t !== 'soccer.ball' && msg.t !== 'soccer.slide') return;
     this.show.onMessage(msg as SoccerServerMsg); // stats, replays, moves
     const m = msg as SoccerServerMsg;
+    this.tackle.onMessage(m); // slides, fouls
+    if (m.t === 'soccer.slide') return;
     if (m.t === 'soccer.ball') {
       const mine = m.hit === 'kick' && m.by === this.host.you();
       this.ball.snapshot(m.b, m.k, m.c, mine);
@@ -629,7 +663,8 @@ export class SoccerPlace {
         this.host.sound('whistle', centre, 0.8);
         if (this.active) this.host.confetti(PITCH_CX, GOAL.height, goalZ);
       }
-      if (ev.kind === 'play') this.host.sound('whistle', centre, 0.7);
+      if (ev.kind === 'play' || ev.kind === 'restart') this.host.sound('whistle', centre, 0.7);
+      if (ev.kind === 'foul') this.host.sound('foul', centre, 1); // tackles: the referee's long whistle
       if (ev.kind === 'end') this.host.sound('final', centre, 1);
       if (ev.text && ev.kind !== 'kickoff' && ev.kind !== 'play') toast(ev.text, ev.kind === 'pause' ? 'warn' : 'info');
     }
@@ -675,7 +710,7 @@ export class SoccerPlace {
   private showHud(on: boolean) {
     if (on && !this.hud) {
       this.hud = h('div.soccer-hud', { 'aria-live': 'polite' });
-      this.keysEl = h('div.soccer-keys', {}, 'Click pass · Hold shoot · Right-click lob · Shift sprint');
+      this.keysEl = h('div.soccer-keys', {}, 'Click pass · Hold shoot · Right-click lob · Shift sprint · Q slide');
       this.aimEl = h('div.soccer-aim', {}, h('span.ring'), h('span.bar', {}, h('i')), h('span.who'));
       document.body.append(this.hud, this.keysEl, this.aimEl);
     }
@@ -692,7 +727,7 @@ export class SoccerPlace {
     if (!el || el.hidden) return;
     const v = this.view;
     const s = v?.score ?? { red: 0, blue: 0 };
-    const phase = !v || v.phase === 'waiting' ? (v?.players.length ? 'waiting for both teams' : 'E at the halfway boards to play') : v.phase === 'kickoff' ? `kick-off: ${TEAM_NAME[v.kickoff ?? 'red']}` : v.phase === 'paused' ? 'paused' : v.phase === 'goal' ? 'GOAL!' : v.phase === 'over' ? 'full time' : '';
+    const phase = !v || v.phase === 'waiting' ? (v?.players.length ? 'waiting for both teams' : 'E at the halfway boards to play') : v.phase === 'kickoff' ? `kick-off: ${TEAM_NAME[v.kickoff ?? 'red']}` : v.phase === 'paused' ? 'paused' : v.phase === 'goal' ? 'GOAL!' : v.phase === 'over' ? 'full time' : v.phase === 'freekick' ? `free kick: ${TEAM_NAME[v.setPiece?.team ?? 'red']}` : v.phase === 'penalty' ? `penalty: ${TEAM_NAME[v.setPiece?.team ?? 'red']}` : '';
     const mine = this.team ? `you: ${TEAM_NAME[this.team]}` : '';
     const key = `${s.red}|${s.blue}|${clockText(this.clock())}|${phase}|${mine}`;
     if (key === this.hudKey) return;
@@ -757,6 +792,7 @@ export class SoccerPlace {
   update(t: number, dt: number) {
     if (!this.active || !this.room) return;
     const now = performance.now();
+    this.tackle.frame(dt, now); // slides move bodies, the spray, the set piece's ring and places
     const moved = this.play(dt, now);
     const s = this.ball.shown;
     this.room.setBall(s.x, s.y, s.z, moved.dx, moved.dz);

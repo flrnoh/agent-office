@@ -56,6 +56,8 @@ export class SoccerShow {
   private fame: { canvas: HTMLCanvasElement; tex: THREE.CanvasTexture; key: string } | null = null;
   private cam = { pos: new THREE.Vector3(), look: new THREE.Vector3(), fresh: true };
   private lastBall = { x: 0, z: 0 };
+  /** Tackles: laid over each player's moves (a slide, a fall after a foul: tackle.ts). */
+  pose: ((id: string, rig: ReturnType<Person['rig']>, dt: number) => void) | null = null;
 
   constructor(private host: ShowHost) {
     // Before the hall's own keys (SoccerPlace makes this first): Tab, and Space or Esc during a replay.
@@ -136,6 +138,7 @@ export class SoccerShow {
       }
       return;
     }
+    if (m.t !== 'soccer') return; // a slide: tackle.ts
     this.view = m.state;
     this.drawFame(m.state.leaders ?? []);
     const ev = m.event;
@@ -253,6 +256,7 @@ export class SoccerShow {
           if (side) this.moves.dive(p.id, side, body.rotation.y);
         }
         this.moves.apply(p.id, person.rig(), dt);
+        this.pose?.(p.id, person.rig(), dt); // tackles
       }
     }
     this.renderSub();
@@ -408,7 +412,7 @@ export class SoccerShow {
       );
     // Everyone on the pitch, with their numbers now; those without a touch yet at nothing.
     const players = [...(s?.players ?? [])].map((l) => ({ ...l, number: v?.players.find((p) => p.name === l.name && p.team === l.team)?.number ?? l.number }));
-    for (const p of v?.players ?? []) if (!players.some((l) => l.name === p.name && l.team === p.team)) players.push({ name: p.name, team: p.team, number: p.number, goals: 0, assists: 0, shots: 0, onTarget: 0, passes: 0, saves: 0 });
+    for (const p of v?.players ?? []) if (!players.some((l) => l.name === p.name && l.team === p.team)) players.push({ name: p.name, team: p.team, number: p.number, goals: 0, assists: 0, shots: 0, onTarget: 0, passes: 0, saves: 0, tackles: 0, fouls: 0, fouled: 0, ...(p.card ? { card: p.card } : {}) });
     players.sort((a, b) => (a.team === b.team ? 0 : a.team === 'red' ? -1 : 1));
     el.replaceChildren(
       h('button.close', { type: 'button', 'aria-label': 'Close', title: 'Close (Tab or Esc)', onclick: () => this.togglePanel(false) }, '✕'),
@@ -430,17 +434,19 @@ export class SoccerShow {
         row('On target', t?.red.onTarget ?? 0, t?.blue.onTarget ?? 0),
         row('Passes', t?.red.passes ?? 0, t?.blue.passes ?? 0),
         row('Saves', t?.red.saves ?? 0, t?.blue.saves ?? 0),
+        row('Tackles', t?.red.tackles ?? 0, t?.blue.tackles ?? 0),
+        row('Fouls', t?.red.fouls ?? 0, t?.blue.fouls ?? 0),
       ),
       h(
         'table.players',
         {},
-        h('thead', {}, h('tr', {}, ...['#', 'Player', 'G', 'A', 'Sh', 'OT', 'Pa', 'Sv'].map((c) => h('th', {}, c)))),
+        h('thead', {}, h('tr', {}, ...['#', 'Player', 'G', 'A', 'Sh', 'OT', 'Pa', 'Sv', 'Tk', 'Fl'].map((c) => h('th', {}, c)))),
         h(
           'tbody',
           {},
           ...(players.length
-            ? players.map((p) => h(`tr.${p.team}`, {}, h('td', {}, p.number ? String(p.number) : '–'), h('td.name', {}, p.name), ...[p.goals, p.assists, p.shots, p.onTarget, p.passes, p.saves].map((n) => h('td', {}, String(n)))))
-            : [h('tr', {}, h('td.empty', { colspan: '8' }, 'No match yet: E at the halfway boards to play'))]),
+            ? players.map((p) => h(`tr.${p.team}`, {}, h('td', {}, p.number ? String(p.number) : '–'), h('td.name', {}, p.name, ...(p.card ? [h(`span.card.${p.card}`, { title: p.card === 'red' ? 'Red card' : 'Yellow card' }, p.card === 'red' ? ' 🟥' : ' 🟨')] : [])), ...[p.goals, p.assists, p.shots, p.onTarget, p.passes, p.saves, p.tackles ?? 0, p.fouls ?? 0].map((n) => h('td', {}, String(n)))))
+            : [h('tr', {}, h('td.empty', { colspan: '10' }, 'No match yet: E at the halfway boards to play'))]),
         ),
       ),
       h('h3', {}, '🏆 Hall of Fame'),
@@ -451,7 +457,7 @@ export class SoccerShow {
           ? v!.leaders!.map((r) => h('li', {}, h('span.name', {}, `${r.name}${r.number ? ` #${r.number}` : ''}`), h('span.nums', {}, `${r.goals} G · ${r.assists} A · ${r.wins}/${r.matches} W · ${r.mvp} MVP`)))
           : [h('li.empty', {}, 'Nobody yet: finish a match to get on it')]),
       ),
-      h('p.foot', {}, h('kbd', {}, 'Tab'), ' closes this · MVP = goals×3 + assists×2 + shots on target + saves'),
+      h('p.foot', {}, h('kbd', {}, 'Tab'), ' closes this · MVP = goals×3 + assists×2 + shots on target + saves + tackles won · Tk tackles won, Fl fouls'),
     );
   }
 }

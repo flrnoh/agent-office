@@ -19,7 +19,8 @@ const DIM = '#8fa39a';
 export function scoreboardKey(v: SoccerView | null, clockMs: number, flash: number): string {
   const s = v?.stats;
   const st = s ? `${s.goals.length}|${s.teams.red.possession}|${s.teams.red.shots}|${s.teams.blue.shots}|${s.teams.red.onTarget}|${s.teams.blue.onTarget}|${s.teams.red.passes}|${s.teams.blue.passes}|${s.teams.red.saves}|${s.teams.blue.saves}|${s.mvp?.name}` : '';
-  return `${v?.phase}|${v?.score.red}|${v?.score.blue}|${clockText(clockMs)}|${v?.players.length}|${v?.kickoff}|${v?.winner}|${flash > 0 ? Math.floor(flash * 8) % 2 : -1}|${st}`;
+  const cards = (v?.players ?? []).filter((p) => p.card).map((p) => `${p.name}:${p.card}`).join(',') + `|${s?.teams.red.tackles}|${s?.teams.blue.tackles}|${s?.teams.red.fouls}|${s?.teams.blue.fouls}|${v?.setPiece?.team}`;
+  return `${v?.phase}|${v?.score.red}|${v?.score.blue}|${clockText(clockMs)}|${v?.players.length}|${v?.kickoff}|${v?.winner}|${flash > 0 ? Math.floor(flash * 8) % 2 : -1}|${st}|${cards}`;
 }
 
 /** Who scored the last goal (for the flash), from the view: the conceding team kicks off. */
@@ -55,7 +56,45 @@ export function phaseText(v: SoccerView | null): string {
       return 'PAUSED · A TEAM IS EMPTY';
     case 'over':
       return 'FULL TIME';
+    case 'freekick':
+      return `FREE KICK · ${v.setPiece?.team === 'blue' ? 'BLUE' : 'RED'}`;
+    case 'penalty':
+      return `PENALTY · ${v.setPiece?.team === 'blue' ? 'BLUE' : 'RED'}`;
   }
+}
+
+/** Tackles: a card, drawn (canvas emoji aren't everywhere): a yellow or red slip with a dark edge. */
+function card(g: CanvasRenderingContext2D, x: number, y: number, h: number, c: 'yellow' | 'red') {
+  const w = h * 0.68;
+  g.save();
+  g.translate(x, y);
+  g.rotate(-0.12);
+  g.fillStyle = c === 'red' ? '#e5383b' : '#ffd23f';
+  g.strokeStyle = 'rgba(0,0,0,0.6)';
+  g.lineWidth = 2;
+  g.fillRect(-w / 2, -h / 2, w, h);
+  g.strokeRect(-w / 2, -h / 2, w, h);
+  g.restore();
+}
+
+/** Tackles: the bookings, "▮ BOB  ▮ ANN", centred at y in `max` px. */
+function bookings(g: CanvasRenderingContext2D, v: SoccerView, cx: number, y: number, size: number, max: number) {
+  const booked = v.players.filter((p) => p.card);
+  if (!booked.length) return;
+  g.font = `800 ${size}px ${FONT}`;
+  const items = booked.map((p) => ({ p, w: size * 0.8 + g.measureText(p.name.toUpperCase()).width + size * 0.9 }));
+  const total = items.reduce((a, i) => a + i.w, 0);
+  const k = total > max ? max / total : 1;
+  if (k < 1) g.font = `800 ${size * k}px ${FONT}`;
+  let x = cx - (total * k) / 2;
+  g.textAlign = 'left';
+  for (const { p, w } of items) {
+    card(g, x + size * 0.3 * k, y, size * 1.05 * k, p.card!);
+    g.fillStyle = TEAM_COLOR[p.team];
+    g.fillText(p.name.toUpperCase(), x + size * 0.8 * k, y + 1);
+    x += w * k;
+  }
+  g.textAlign = 'center';
 }
 
 function frame(g: CanvasRenderingContext2D, w: number, h: number) {
@@ -141,12 +180,20 @@ export function drawScoreboard(g: CanvasRenderingContext2D, w: number, h: number
   }
   g.textAlign = 'center';
   // Shots, small, in the middle under the scorers' line.
+  // Tackles: with anyone booked, the shots go on one line and the bookings under them.
+  const booked = !!v?.players.some((p) => p.card);
   if (stats && (stats.teams.red.shots || stats.teams.blue.shots)) {
     g.font = `700 ${h * 0.055}px ${FONT}`;
     g.fillStyle = DIM;
-    g.fillText(`SHOTS ${stats.teams.red.shots} · ${stats.teams.blue.shots}`, w * 0.5, h * 0.64);
-    g.fillText(`ON TARGET ${stats.teams.red.onTarget} · ${stats.teams.blue.onTarget}`, w * 0.5, h * 0.72);
+    if (booked) {
+      fit(g, `SHOTS ${stats.teams.red.shots} · ${stats.teams.blue.shots}  ·  ON TARGET ${stats.teams.red.onTarget} · ${stats.teams.blue.onTarget}`, 700, h * 0.05, w * 0.42);
+      g.fillText(`SHOTS ${stats.teams.red.shots} · ${stats.teams.blue.shots}  ·  ON TARGET ${stats.teams.red.onTarget} · ${stats.teams.blue.onTarget}`, w * 0.5, h * 0.64);
+    } else {
+      g.fillText(`SHOTS ${stats.teams.red.shots} · ${stats.teams.blue.shots}`, w * 0.5, h * 0.64);
+      g.fillText(`ON TARGET ${stats.teams.red.onTarget} · ${stats.teams.blue.onTarget}`, w * 0.5, h * 0.72);
+    }
   }
+  if (v && booked) bookings(g, v, w * 0.5, h * 0.725, h * 0.055, w * 0.42);
   // The possession bar along the bottom.
   possessionBar(g, w * 0.05, h * 0.855, w * 0.9, h * 0.075, stats?.teams.red.possession ?? 50, h);
 }
@@ -193,26 +240,29 @@ function drawResults(g: CanvasRenderingContext2D, w: number, h: number, v: Socce
   const mvp = s.mvp ? `★ MVP  ${s.mvp.name}` : '★ MVP  —';
   fit(g, mvp, 900, h * 0.08, w * 0.8);
   g.fillStyle = s.mvp ? TEAM_COLOR[s.mvp.team] : DIM;
-  g.fillText(mvp, w * 0.5, h * 0.4);
+  g.fillText(mvp, w * 0.5, h * 0.37);
+  bookings(g, v, w * 0.5, h * 0.95, h * 0.045, w * 0.8); // tackles
   const rows: [string, number, number, boolean][] = [
     ['POSSESSION %', s.teams.red.possession, s.teams.blue.possession, true],
     ['SHOTS', s.teams.red.shots, s.teams.blue.shots, false],
     ['ON TARGET', s.teams.red.onTarget, s.teams.blue.onTarget, false],
     ['PASSES', s.teams.red.passes, s.teams.blue.passes, false],
     ['SAVES', s.teams.red.saves, s.teams.blue.saves, false],
+    ['TACKLES', s.teams.red.tackles ?? 0, s.teams.blue.tackles ?? 0, false],
+    ['FOULS', s.teams.red.fouls ?? 0, s.teams.blue.fouls ?? 0, false],
   ];
   rows.forEach(([label, a, b], i) => {
-    const y = h * (0.52 + i * 0.095);
+    const y = h * (0.485 + i * 0.07);
     const total = a + b || 1;
     const half = w * 0.28;
     // Bars out from the middle toward each side, by each team's share.
     g.fillStyle = TEAM_COLOR.red;
     g.globalAlpha = 0.55;
-    g.fillRect(w * 0.5 - w * 0.12 - half * (a / total), y - h * 0.03, half * (a / total), h * 0.06);
+    g.fillRect(w * 0.5 - w * 0.12 - half * (a / total), y - h * 0.026, half * (a / total), h * 0.052);
     g.fillStyle = TEAM_COLOR.blue;
-    g.fillRect(w * 0.5 + w * 0.12, y - h * 0.03, half * (b / total), h * 0.06);
+    g.fillRect(w * 0.5 + w * 0.12, y - h * 0.026, half * (b / total), h * 0.052);
     g.globalAlpha = 1;
-    g.font = `900 ${h * 0.065}px ${FONT}`;
+    g.font = `900 ${h * 0.058}px ${FONT}`;
     g.fillStyle = '#ffffff';
     g.textAlign = 'right';
     g.fillText(String(a), w * 0.1, y);
