@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BENCHES, BOARD, GOAL, MARKS, PITCH, PITCH_CX, SOCCER_ROOM, STAND, TEAM_COLOR, type GoalSide, type Team } from '../../../shared/soccer';
-import type { Collider } from '../office';
+import type { Collider } from '../types';
 import { mesh, toon } from '../toon';
 import { box, canvasTexture, glow, FONT } from '../casino/parts';
 import type { Seat } from './crowd';

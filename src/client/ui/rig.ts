@@ -4,7 +4,7 @@ import { RIG, RIG_GAME, type RigFrame } from '../../shared/rig';
 import type { Net } from '../net';
 import { store } from '../state';
 import type { RigModel } from '../world/rig';
-import { ScreenZoom } from './arcade';
+import { ScreenZoom } from '../features/arcade/ui';
 import { h, openModal, toast, type Modal } from './dom';
 import { H, W, paintRig, type RigScreenView } from './rigscreen';
 

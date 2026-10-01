@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GYM_DOOR, GYM_ROOM, GYM_STATION_BY_ID, JUICE_BAR, type JuiceBarView } from '../../../shared/gym';
 import type { WellnessView } from '../../../shared/gym-wellness';
 import { CHANGING_DOOR, JUICE_COUNTER, JUICE_STOOL_X, JUICE_STOOL_ZS, LOCKERS, RECEPTION, SPA, STRETCH, TURF, TURNSTILE } from '../../../shared/gym-rooms';
-import type { Interactable } from '../office';
+import type { Interactable } from '../types';
 import { mergeByMaterial, mesh, textPlane, toon } from '../toon';
 import { blk, cyl, decal, picture, plant, seatable, speaker, tex, type GymParts } from './kit';
 import { glow, mirrorTexture, neonSign, rubberFloor } from './parts';
@@ -355,7 +355,7 @@ export function buildGymRooms(p: GymParts, showCeiling: boolean): GymRooms {
     p.still.add(g);
     seatable(p, g, `gym-stool-${i + 1}`, 0.9);
   }
-  const jb: Interactable = { kind: 'gym-station', gymStation: JUICE_BAR.id, x: (C.minX + C.maxX) / 2 + 0.6, z: jz, y: 0, radius: 1.6 };
+  const jb: Interactable = { kind: 'gymstation', gymStation: JUICE_BAR.id, x: (C.minX + C.maxX) / 2 + 0.6, z: jz, y: 0, radius: 1.6 };
   p.interactables.push(jb);
   menu.userData.interact = jb;
 
@@ -490,7 +490,7 @@ export function buildGymRooms(p: GymParts, showCeiling: boolean): GymRooms {
   let yogaLight: THREE.MeshBasicMaterial | null = null;
   if (yoga) {
     for (let i = 0; i < 3; i++) blk(p, 0.62, 0.02, 1.8, ['#7c5cd6', '#3fa0c4', '#e08a3f'][i], yoga.x - 0.75 + i * 0.75, 0.013, yoga.z);
-    const it: Interactable = { kind: 'gym-station', gymStation: yoga.id, x: yoga.x, z: yoga.z, y: 0, radius: 1.8 };
+    const it: Interactable = { kind: 'gymstation', gymStation: yoga.id, x: yoga.x, z: yoga.z, y: 0, radius: 1.8 };
     p.interactables.push(it);
     yogaLight = glow(null, '#4b5a3a');
     const lamp = mesh(new THREE.SphereGeometry(0.06, 8, 6), yogaLight, yoga.x + 1.3, 0.1, yoga.z - 0.8, false);

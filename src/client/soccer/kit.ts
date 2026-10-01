@@ -9,12 +9,12 @@ import { FONT } from '../world/casino/parts';
  * beyond walking. The kit is a team-coloured shirt over the body and arms with the
  * player's short name and number on the back and the number small on the chest, shorts and socks in
  * the team's colours. The moves are laid over each body's pose after Person.update has done its
- * frame (Person.rig hands over the limbs): a kick (the right leg swings through), celebrations after
+ * frame (Person.limbs hands them over): a kick (the right leg swings through), celebrations after
  * a goal (arms up, a knee slide, the aeroplane, jumping), teammates' high fives, a goalkeeper's dive
  * when the ball flies past someone in their own penalty area, and the run in a replay.
  */
 
-type Rig = ReturnType<Person['rig']>;
+type Rig = ReturnType<Person['limbs']>;
 
 /** Seconds a kick's swing takes, a celebration lasts at most, and a dive. */
 export const KICK_S = 0.5;

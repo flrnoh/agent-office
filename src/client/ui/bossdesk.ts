@@ -3,7 +3,7 @@ import { BOSS_DESK } from '../../shared/layout';
 import type { WorkerInfo } from '../../shared/protocol';
 import { isAsleep } from '../../shared/status';
 import { store } from '../state';
-import { paintScreen } from '../world/laptop';
+import { paintScreen } from '../features/workers/laptop';
 import { h, openModal, STATUS_LABEL, type Modal } from './dom';
 
 // Fork: working at the boss's desk up in the loft (see FORK.md, "Working at the boss desk").

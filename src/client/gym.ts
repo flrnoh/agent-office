@@ -6,7 +6,7 @@ import { WELLNESS_SPOTS, type WellnessView } from '../shared/gym-wellness';
 import { AUFGUSS_BOOST_MS, SPA, WALK_IN_BY_STATION, inRect } from '../shared/gym-rooms';
 import type { ClientMsg, FloorInfo, ServerMsg } from '../shared/protocol';
 import { streetBelow } from '../shared/layout';
-import type { Collider, Interactable } from './world/office';
+import type { Collider, Interactable } from './world/types';
 import { buildGymInterior, type GymInterior } from './world/gym/interior';
 import type { MachineSound } from './world/gym/equipment';
 import type { Person } from './world/character';
@@ -225,7 +225,7 @@ export class GymPlace {
       }
       return true;
     }
-    if (it.kind !== 'gym-station') return false;
+    if (it.kind !== 'gymstation') return false;
     if (key !== 'E' || !it.gymStation) return true;
     if (it.gymAct) {
       // Fork: the sauna's bucket, the steam room's bowl: straight to it, no window (you're in there).

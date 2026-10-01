@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CASHIER, CASINO_DOOR, CASINO_ROOM, CASINO_TABLES, type CasinoTableDef } from '../../../shared/casino';
 import { SPIN_MS, type SlotsView } from '../../../shared/casino-slots';
 import { cardLabel, suitOf, type BlackjackView, type Card } from '../../../shared/casino-blackjack';
-import type { Collider, Interactable } from '../office';
+import type { Collider, Interactable } from '../types';
 import { mergeByMaterial, mesh, textPlane, toon } from '../toon';
 import { Reels, drawReels } from '../../ui/casino/reels';
 import { WheelClock } from '../../ui/casino/roulette-wheel';
@@ -334,7 +334,7 @@ export function buildCasinoInterior(): CasinoInterior {
 
   // ---- The tables -----------------------------------------------------------------------------------
   const tableMesh = (def: CasinoTableDef, felt: THREE.Mesh, rim: THREE.Object3D, footprint: { w: number; d: number }) => {
-    const it: Interactable = { kind: 'casino-table', casinoTable: def.id, x: def.x, z: def.z, y: 0, radius: Math.max(footprint.w, footprint.d) / 2 + 1.3 };
+    const it: Interactable = { kind: 'casinotable', casinoTable: def.id, x: def.x, z: def.z, y: 0, radius: Math.max(footprint.w, footprint.d) / 2 + 1.3 };
     felt.userData.interact = it;
     rim.userData.interact = it;
     interactables.push(it);
@@ -471,7 +471,7 @@ export function buildCasinoInterior(): CasinoInterior {
     const screen = mesh(new THREE.PlaneGeometry(0.82, 0.52), glow(tex), x + 0.451, 1.5, z, false);
     screen.rotation.y = Math.PI / 2;
     group.add(screen);
-    const it: Interactable = { kind: 'casino-table', casinoTable: def.id, x: x + 0.95, z, y: 0, radius: 0.95 };
+    const it: Interactable = { kind: 'casinotable', casinoTable: def.id, x: x + 0.95, z, y: 0, radius: 0.95 };
     interactables.push(it);
     screen.userData.interact = it;
     top.userData.interact = it;
@@ -505,7 +505,7 @@ export function buildCasinoInterior(): CasinoInterior {
   const cashierSign = mesh(new THREE.PlaneGeometry(3.6, 0.9), glow(neonSign('CASHIER', '#ffd36b', 768, 192)), R.maxX - 0.05, 3.1, CASHIER.z, false);
   cashierSign.rotation.y = -Math.PI / 2;
   group.add(cashierSign);
-  const cashier: Interactable = { kind: 'casino-table', casinoTable: 'cashier', x: cx - 1.1, z: CASHIER.z, y: 0, radius: 1.6 };
+  const cashier: Interactable = { kind: 'casinotable', casinoTable: 'cashier', x: cx - 1.1, z: CASHIER.z, y: 0, radius: 1.6 };
   interactables.push(cashier);
   cashierSign.userData.interact = cashier;
 

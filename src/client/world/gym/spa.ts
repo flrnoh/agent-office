@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GYM_ROOM, GYM_STATION_BY_ID } from '../../../shared/gym';
 import type { WellnessView } from '../../../shared/gym-wellness';
 import { CABIN_HEIGHT, JACUZZI, LOUNGER, LOUNGER_ZS, MASSAGE_OPENING, MASSAGE_ROOM, MASSAGE_TABLES, PLUNGE, SAUNA, SPA, SPA_DOOR, SPA_WALL, SPA_WALL_HEIGHT, STEAM, cabinWalls, inRect, type WalkInRoom } from '../../../shared/gym-rooms';
-import type { Interactable } from '../office';
+import type { Interactable } from '../types';
 import { mesh, textPlane, toon } from '../toon';
 import { blk, candle, cyl, decal, flameMat, picture, plant, seatable, tex, type GymParts } from './kit';
 import { Cloud } from './particles';
@@ -290,7 +290,7 @@ export function buildGymSpa(p: GymParts): GymSpa {
     ladle.rotation.z = -0.35;
     p.still.add(ladle);
     cyl(p, 0.05, 0.04, 0.05, '#8a5a33', b.x - 0.01, 0.2, b.z + 0.03, 8);
-    const pourIt: Interactable = { kind: 'gym-station', gymStation: SAUNA.station, gymAct: 'ladle', x: b.x, z: b.z, y: 0, radius: 1.3 };
+    const pourIt: Interactable = { kind: 'gymstation', gymStation: SAUNA.station, gymAct: 'ladle', x: b.x, z: b.z, y: 0, radius: 1.3 };
     p.interactables.push(pourIt);
     bucket.userData.interact = pourIt;
     // An hourglass and the thermometer/hygrometer on the wall by the door, a lamp in the corner.
@@ -356,7 +356,7 @@ export function buildGymSpa(p: GymParts): GymSpa {
       leaf.scale.set(1.6, 0.4, 0.7);
       p.still.add(leaf);
     }
-    const bowlIt: Interactable = { kind: 'gym-station', gymStation: STEAM.station, gymAct: 'ladle', x: b.x, z: b.z, y: 0, radius: 1.3 };
+    const bowlIt: Interactable = { kind: 'gymstation', gymStation: STEAM.station, gymAct: 'ladle', x: b.x, z: b.z, y: 0, radius: 1.3 };
     p.interactables.push(bowlIt);
     ped.userData.interact = bowlIt;
     cyl(p, 0.05, 0.05, 0.12, steel, 31.8, 0.3, inn.minZ + 0.06, 8).rotation.x = Math.PI / 2;
@@ -393,7 +393,7 @@ export function buildGymSpa(p: GymParts): GymSpa {
   const wisps = new Cloud(40, '#ffffff');
   wisps.lift = 0.08;
   p.group.add(wisps.points);
-  const hottubIt: Interactable = { kind: 'gym-station', gymStation: 'hottub', x: J.x, z: J.z, y: 0, radius: J.r + 1.2 };
+  const hottubIt: Interactable = { kind: 'gymstation', gymStation: 'hottub', x: J.x, z: J.z, y: 0, radius: J.r + 1.2 };
   p.interactables.push(hottubIt);
   tub.userData.interact = hottubIt;
 
@@ -423,7 +423,7 @@ export function buildGymSpa(p: GymParts): GymSpa {
   cold.position.set(P.x, 0.5, P.z + P.half + 0.01);
   cold.scale.setScalar(0.6);
   p.group.add(cold);
-  const plungeIt: Interactable = { kind: 'gym-station', gymStation: 'coldplunge', x: P.x, z: P.z, y: 0, radius: P.half + 1.2 };
+  const plungeIt: Interactable = { kind: 'gymstation', gymStation: 'coldplunge', x: P.x, z: P.z, y: 0, radius: P.half + 1.2 };
   p.interactables.push(plungeIt);
   iceWater.userData.interact = plungeIt;
 
@@ -483,7 +483,7 @@ export function buildGymSpa(p: GymParts): GymSpa {
     p.still.add(g);
     const def = GYM_STATION_BY_ID.get(t.id);
     if (def) {
-      const it: Interactable = { kind: 'gym-station', gymStation: t.id, x: t.x, z: t.z, y: 0, radius: 1.8 };
+      const it: Interactable = { kind: 'gymstation', gymStation: t.id, x: t.x, z: t.z, y: 0, radius: 1.8 };
       p.interactables.push(it);
       g.traverse((o) => (o.userData.interact = it));
     }

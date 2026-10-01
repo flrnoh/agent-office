@@ -6,7 +6,7 @@ import { DOOR, FENCE_TOP, GLASS_H, HALF_L, HALF_W, SERVICE, SIDE_FENCE_H, SIDE_G
 import { PADEL, PHASE, type PadelState } from '../../shared/padel/game';
 import { pointCall, golden } from '../../shared/padel/rules';
 import { Person } from '../world/character';
-import type { Collider, Interactable } from '../world/office';
+import type { Collider, Interactable } from '../world/types';
 import { mergeByMaterial, mesh, toon } from '../world/toon';
 
 /*

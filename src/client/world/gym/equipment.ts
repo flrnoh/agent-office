@@ -3,7 +3,7 @@ import type { GymStationDef } from '../../../shared/gym';
 import type { CardioView } from '../../../shared/gym-cardio';
 import { EXERCISES, type StrengthView } from '../../../shared/gym-strength';
 import { REP_PEAK, cardioHz, ease, setAttempts, setMotion, type SetMotion } from '../../../shared/gym-motion';
-import type { Collider, Interactable } from '../office';
+import type { Collider, Interactable } from '../types';
 import type { Bones, Person } from '../character';
 import { mergeByColor } from '../toon';
 import { Poser, type Machine, type MachineState } from './machines/kit';
@@ -141,7 +141,7 @@ export function buildEquipment(parent: THREE.Group, defs: readonly GymStationDef
     const ox = frame.position.x + cx * Math.cos(def.rotY) + cz * Math.sin(def.rotY);
     const oz = frame.position.z - cx * Math.sin(def.rotY) + cz * Math.cos(def.rotY);
     colliders.push({ minX: ox - hx, maxX: ox + hx, minZ: oz - hz, maxZ: oz + hz, bottom: 0, top });
-    const it: Interactable = { kind: 'gym-station', gymStation: def.id, x: ox, z: oz, y: 0, radius: Math.max(hx, hz) + 1.1 };
+    const it: Interactable = { kind: 'gymstation', gymStation: def.id, x: ox, z: oz, y: 0, radius: Math.max(hx, hz) + 1.1 };
     frame.userData.interact = it;
     interactables.push(it);
     const ex = EXERCISES[def.machine];

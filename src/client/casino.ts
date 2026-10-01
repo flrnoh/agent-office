@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CASINO, CASINO_ENTRY, CASINO_NAME, CASINO_ROOM, CASINO_STREET_SPOT, CASINO_TABLE_BY_ID, START_CHIPS, type CasinoServerMsg } from '../shared/casino';
 import type { ClientMsg, FloorInfo, ServerMsg } from '../shared/protocol';
 import { streetBelow } from '../shared/layout';
-import type { Collider, Interactable } from './world/office';
+import type { Collider, Interactable } from './world/types';
 import { buildCasinoInterior, type CasinoInterior } from './world/casino/interior';
 import { h, openModal, toast } from './ui/dom';
 import { casinoUiFor, chipText, type CasinoSoundKind, type CasinoUi } from './ui/casino/registry';
@@ -202,7 +202,7 @@ export class CasinoPlace {
       }
       return true;
     }
-    if (it.kind !== 'casino-table') return false;
+    if (it.kind !== 'casinotable') return false;
     if (key !== 'E' || !it.casinoTable) return true;
     if (it.casinoTable === 'cashier') this.cashier();
     else this.sitAt(it.casinoTable);

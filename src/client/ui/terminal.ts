@@ -1,3 +1,4 @@
+import './terminal.css';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -12,7 +13,8 @@ import { findLine } from '../../shared/search';
 import { DROP_MAX_BYTES, droppedPaths } from '../../shared/drops';
 import { providerLabel, providerUsageNote, providerUsageState, providerWaitingLabel, resolvedProvider } from './provider';
 import { naturalKey } from './termkeys';
-import { partyRefuses } from '../party';
+import { termTabs } from './termtabs';
+import { partyRefuses } from '../party'; // flrnoh fork
 
 /** A line to scroll to once the terminal has loaded: a search hit (see search.ts). */
 export interface TerminalFind {
@@ -135,12 +137,15 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
   const sayBtn = h('button.btn.primary', { type: 'submit' }, 'Send');
   const sayForm = h('form.term-say', {}, say, sayBtn);
   const keypad = opts.keypad && !watchOnly ? h('div.term-keypad', {}, keys, sayForm) : null;
-  // The keypad has an Esc of its own.
+  const tabs = termTabs(workerId, { host, keypad, focusTerm: () => term.focus() });
+  // The keypad has an Esc of its own. (Fork: a guest only watches: no models, Esc or changes.)
   const el = h(
     'div.modal.term',
     { role: 'dialog', 'aria-label': `${info.name} terminal` },
     h('header', {}, dot, title, pill, watching, cost, viewers, typed, watchOnly ? null : modelsBtn, keypad || watchOnly ? null : escBtn, onChanges && !watchOnly ? changesBtn : null, closeBtn),
+    tabs.bar,
     host,
+    tabs.pages,
     keypad,
   );
 

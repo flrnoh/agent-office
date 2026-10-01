@@ -5,7 +5,7 @@ import { PONG, PHASE, type PongState } from '../../shared/tablegames/pingpong';
 import { POCKETS, POOL, POOL_PHASE, type PoolState } from '../../shared/tablegames/pool';
 import { TABLES, type TableDef, type TableId } from '../../shared/tablegames/tables';
 import type { GameState } from '../../shared/tablegames/game';
-import type { Collider, Interactable } from '../world/office';
+import type { Collider, Interactable } from '../world/types';
 import { mergeByMaterial, mesh, roundedBox, toon } from '../world/toon';
 
 // The four tables on the roof (flrnoh fork, see shared/tablegames): a pool table, a kicker, an air
