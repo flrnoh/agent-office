@@ -22,7 +22,7 @@ import { teamHandlers } from './team.js';
 import { usageHandlers } from './usage.js';
 import { whiteboardHandlers, whiteboardHooks, whiteboardView } from './whiteboard.js';
 import { jailView, workerHandlers, workerHooks, workersView } from './workers.js';
-import { forkHandlers, forkHooks, noView, rigView, tvView } from './fork.js'; // flrnoh fork
+import { boatsView, forkHandlers, forkHooks, noView, rigView, tvView } from './fork.js'; // flrnoh fork
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
 
 /** Each domain's handlers put together, in alphabetical order. */
@@ -78,6 +78,7 @@ export const views: ViewPieces = {
   // flrnoh fork: the racing rig and the TV on a floor; the roof's own come with roofExtras (fork/office.ts).
   rig: rigView,
   tv: tvView,
+  boats: boatsView,
   dj: noView,
   tables: noView,
   bungee: noView,

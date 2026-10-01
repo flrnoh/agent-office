@@ -13,6 +13,7 @@ import { tableMessage } from '../../tablegames.js';
 import { padelMessage } from '../../padel.js';
 import { bungeeMessage } from '../../bungee.js';
 import { rigMessage } from '../../rig.js';
+import { boatMessage } from '../../boats.js';
 import { here } from './common.js';
 import { jukeboxChanged } from './jukebox.js';
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
@@ -26,6 +27,11 @@ const leftTable = (ctx: Ctx, id: string) => ctx.roofTables.leave(id) && ctx.toRo
 const leftCourt = (ctx: Ctx, id: string) => ctx.padelCourts.leave(id) && ctx.toHall({ t: 'padel', courts: ctx.padelCourts.state() }, id);
 const offRope = (ctx: Ctx, id: string) => ctx.bungeeRope.leave(id) && ctx.toRoof({ t: 'bungee', state: ctx.bungeeRope.state() }, id);
 const rigLeft = (ctx: Ctx, c: Client) => ctx.rigs.leave(c.id).forEach(ctx.rigChanged);
+/** Out of a craft at the jetty of the floor they're leaving (or left), and everyone still there told. */
+const boatLeft = (ctx: Ctx, c: Client, floorId: string | undefined) => {
+  const floor = floorId ? ctx.floors.get(floorId) : undefined;
+  if (floor && ctx.marinas.leave(floorId, c.id)) ctx.toFloor(floor, { t: 'boats', boats: ctx.marinas.of(floor.id).state() });
+};
 
 type Casino = Ctx['casino'];
 type Gym = Ctx['gym'];
@@ -45,6 +51,10 @@ function table(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `table.${st
 }
 function padel(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `padel.${string}` }>) {
   padelMessage(ctx.padelCourts, msg, { id: c.id, who: c.peer.name, color: c.peer.color, inHall: c.peer.floor === HALL, toHall: ctx.toHall, toClient: toClient(ctx), warn: (t) => ctx.warn(c, t) });
+}
+function boat(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `boat.${string}` }>) {
+  const floor = ctx.floorOf(c); // the jetskis and the motorboat at the beach (boats.ts)
+  boatMessage(ctx.marinas, msg, { id: c.id, floor: floor?.id, send: (m) => ctx.sendTo(c, m), toNeighbors: (m, droppable) => ctx.toNeighbors(c, m, droppable) });
 }
 function rig(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `rig.${string}` }>) {
   const floor = ctx.floorOf(c);
@@ -97,6 +107,10 @@ export const forkHandlers = {
     jukeboxChanged(ctx, floor);
     ctx.toastFloor(floor, msg.on === true ? `🔊 ${who} switched the speakers on` : `🔈 ${who} switched the speakers off`);
   },
+  'boat.enter': boat,
+  'boat.leave': boat,
+  'boat.drive': boat,
+  'boat.horn': boat,
   'rig.play': rig,
   'rig.leave': rig,
   'rig.frame': rig,
@@ -114,7 +128,7 @@ export const forkHandlers = {
 
 /** Letting go of the fork's things on leaving a floor (or the roof, or a place) and the office. */
 export const forkHooks: FeatureHooks = {
-  leaving(ctx, c) {
+  leaving(ctx, c, was) {
     ctx.casino.leave(c.id); // up from the casino's tables
     ctx.gym.leave(c.id); // off the gym's stations
     if (c.peer.floor === ROOF) leftTable(ctx, c.id); // off the roof, away from its tables
@@ -122,6 +136,7 @@ export const forkHooks: FeatureHooks = {
     ctx.soccer.leave(c.id); // out of the soccer hall, off its pitch
     if (c.peer.floor === ROOF) offRope(ctx, c.id); // and off the bungee rope
     rigLeft(ctx, c); // the racing rig
+    boatLeft(ctx, c, was?.id); // out of a boat at the beach
   },
   closed(ctx, c) {
     ctx.casino.leave(c.id);
@@ -132,9 +147,13 @@ export const forkHooks: FeatureHooks = {
     offRope(ctx, c.id);
     rigLeft(ctx, c);
   },
+  closedOn(ctx, c, floor) {
+    boatLeft(ctx, c, floor.id); // out of a boat at the beach
+  },
 };
 
 // The roof's (dj, tables, bungee) come with roofExtras (fork/office.ts); a floor has none of them.
 export const rigView: ViewPieces['rig'] = (ctx, floor) => ctx.rigs.view(floor?.id);
 export const tvView: ViewPieces['tv'] = (_ctx, floor) => floor?.tv.state();
+export const boatsView: ViewPieces['boats'] = (ctx, floor) => ctx.marinas.view(floor?.id);
 export const noView = () => undefined;

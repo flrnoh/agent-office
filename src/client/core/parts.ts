@@ -45,6 +45,7 @@ import type { installWalking } from '../features/walking';
 import type { installWorkerActions } from '../features/workers/actions';
 import type { installWorkerViews } from '../features/workers/views';
 // flrnoh fork (see FORK.md): this fork's own features.
+import type { installBeach } from '../features/beach';
 import type { installBossDesk } from '../features/bossdesk';
 import type { installBungee } from '../features/bungee';
 import type { installDjSets } from '../features/djset';
@@ -141,4 +142,5 @@ export interface Parts {
   tables: Made<typeof installTableGames>;
   bungee: Made<typeof installBungee>;
   guests: Made<typeof installGuests>;
+  beach: Made<typeof installBeach>;
 }

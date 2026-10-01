@@ -37,6 +37,7 @@ import { fidgeting, Typing } from './typing';
 import { Rain, thunder } from './weather';
 // flrnoh fork (see FORK.md): the fork's own sounds, a recipe file each.
 import { bulliHorn } from './bulli';
+import { beach, Outboards, type BeachSound, type Outboard } from '../features/beach/sound';
 import { bungee, BungeeWind } from './bungee';
 import { casino, type CasinoSound } from './casino';
 import { doorbell } from './doorbell';
@@ -74,6 +75,7 @@ export class OfficeSound {
   private readonly fidgets = fidgeting(this.a, this.typing);
   private readonly spa = new GymSpa(this.a); // fork
   private readonly bungeeAir = new BungeeWind(this.a); // fork
+  private readonly outboards = new Outboards(this.a); // fork
   /** A stream that won't play here. */
   onMusicError?: (text: string) => void;
   /** Fork: a stream the browser won't start before you click (autoplay rules). */
@@ -362,6 +364,16 @@ export class OfficeSound {
 
   doorbell() {
     doorbell(this.a);
+  }
+
+  /** A day at the beach: splashes, strokes, the kiosk's bell and fryer, a gull, the boats' horns (features/beach/sound.ts). */
+  beach(kind: BeachSound, at: Pos, strength = 1) {
+    beach(this.a, kind, at, strength);
+  }
+
+  /** The boats' outboards running now, every frame (an empty list lets them die away). */
+  setOutboards(list: Outboard[]) {
+    this.outboards.set(list);
   }
 
   casino(kind: CasinoSound) {

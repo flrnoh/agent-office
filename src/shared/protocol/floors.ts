@@ -11,6 +11,7 @@ import type { WhiteboardView } from '../whiteboard.js';
 import type { BungeeState } from '../bungee.js'; // flrnoh fork
 import type { DjSetState } from '../djset.js'; // flrnoh fork
 import type { RigView } from '../rig.js'; // flrnoh fork
+import type { CraftState } from '../boats.js'; // flrnoh fork: the jetty's boats
 import type { TableSeat } from '../tablegames/tables.js'; // flrnoh fork
 import type { TvState } from '../tv.js'; // flrnoh fork
 import type { AgentProvider } from './agents.js';
@@ -135,6 +136,8 @@ export interface FloorView {
   rig?: RigView;
   /** On a floor: the stream on its TV, if any (flrnoh fork, see shared/tv.ts). */
   tv?: TvState;
+  /** On a floor: the jetskis and the motorboat at the beach's jetty, and who's in them (flrnoh fork, see shared/boats.ts). */
+  boats?: CraftState[];
   /** Up on the roof: who's at the table games (flrnoh fork, see shared/tablegames). */
   tables?: TableSeat[];
   /** Up on the roof: who's on the bungee rope, and the day's jumps (flrnoh fork, see shared/bungee.ts). */

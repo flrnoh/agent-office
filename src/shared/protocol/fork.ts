@@ -2,6 +2,7 @@
 // own protocol files only carry a hook line each. protocol.ts puts these into ClientMsg and ServerMsg.
 
 import type { CasinoClientMsg, CasinoServerMsg } from '../casino.js';
+import type { BoatClientMsg, BoatServerMsg } from '../boats.js';
 import type { BungeeState } from '../bungee.js';
 import type { DjSetState } from '../djset.js';
 import type { GymClientMsg, GymServerMsg } from '../gym.js';
@@ -16,6 +17,7 @@ export type ForkClientMsg =
   | GymClientMsg // the gym (shared/gym.ts)
   | PadelClientMsg // padel in the hall (shared/padel/court.ts)
   | SoccerClientMsg // the soccer hall (shared/soccer.ts)
+  | BoatClientMsg // the jetskis and the motorboat at the beach (shared/boats.ts)
   /** Put a YouTube, SoundCloud or Mixcloud set on at the DJ booth, for everyone on the roof (see shared/djset.ts). */
   | { t: 'dj.play'; url: string }
   /** Back to the house DJ. */
@@ -46,6 +48,7 @@ export type ForkServerMsg =
   | GymServerMsg
   | PadelServerMsg
   | SoccerServerMsg
+  | BoatServerMsg
   /** The DJ set on the roof changed (sent to everyone up there). */
   | { t: 'dj'; state: DjSetState }
   /** The stream on the floor's TV changed (sent to everyone on the floor). */

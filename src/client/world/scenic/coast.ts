@@ -4,6 +4,9 @@ import { bulb } from '../outside';
 import { tilingCanvasTexture } from '../texture';
 import { mergeByColor, mesh, textPlane, toon } from '../toon';
 import { boulder } from './flora';
+import { SAILBOATS } from '../../../shared/beach'; // flrnoh fork: a day at the beach
+import { LADDER_GAP, buildJettyFun } from './jetty'; // fork
+import { buildKiosk, type KioskSpot } from './kiosk'; // fork
 import { G, beside, box, indexAt, stretch, type ScenicKit } from './kit';
 
 /** A sailboat out on the water, and where it bobs. */
@@ -14,9 +17,10 @@ export interface Boat {
   phase: number;
 }
 
-/** The beach, the pier and the boats, and the lighthouse out on its point. Returns the boats, to bob, and the lighthouse's beam, to turn. */
-export function buildCoast(kit: ScenicKit): { boats: Boat[]; beam: THREE.Group } {
+/** The beach, the pier and the boats, and the lighthouse out on its point. Returns the boats, to bob, the lighthouse's beam, to turn, and (fork) where the kiosk is. */
+export function buildCoast(kit: ScenicKit): { boats: Boat[]; beam: THREE.Group; kiosk: KioskSpot } {
   const { root, labels, rand, parts, colliders, night, around, taken, light } = kit;
+  let kiosk!: KioskSpot; // fork
   const boats: { g: THREE.Group; x: number; z: number; phase: number }[] = [];
   {
     const b = parts.beach;
@@ -72,31 +76,17 @@ export function buildCoast(kit: ScenicKit): { boats: Boat[]; beam: THREE.Group }
       b.add(mesh(new THREE.SphereGeometry(0.22, 10, 8), toon('#ffd166'), x + 3, G + 0.22, z - 1));
       taken.push({ x, z, r: 6 });
     }
+    // flrnoh fork: the snack shack by the road is open (world/scenic/kiosk.ts; Uschi serves, features/beach).
     {
       const q = stretch('beach')[0].from + 130;
       const i = indexAt(q);
       const p = LOOP[i];
       const at = beside(i, LOOP_HALF + 7);
-      const shack = new THREE.Group();
-      shack.add(mesh(box(4.4, 2.6, 3.2), toon('#ffcad4'), 0, 1.3, 0));
-      shack.add(mesh(box(5, 0.2, 3.8), toon('#fefae0'), 0, 2.7, 0));
-      for (let k = 0; k < 5; k++) {
-        const stripe = mesh(box(1, 0.08, 1.4), toon(k % 2 ? '#fefae0' : '#ef476f'), -2 + k, 2.2, -2.2);
-        stripe.rotation.x = -0.35;
-        shack.add(stripe);
-      }
-      shack.add(mesh(box(4.4, 0.9, 0.2), toon('#fefae0'), 0, 1.1, -1.7));
-      shack.position.set(at.x, G, at.z);
       // Its counter toward the road.
-      shack.rotation.y = Math.atan2(p.tz, -p.tx);
-      b.add(shack);
-      const sign = textPlane('🍦 Snacks', { color: '#3d2b1f', bg: '#fefae0', size: 56 });
-      sign.scale.setScalar(1.1);
-      sign.position.copy(new THREE.Vector3(0, 3.35, -1.95).applyAxisAngle(new THREE.Vector3(0, 1, 0), shack.rotation.y).add(shack.position));
-      sign.rotation.y = shack.rotation.y + Math.PI;
-      labels.add(sign);
-      colliders.push({ minX: at.x - 2.6, maxX: at.x + 2.6, minZ: at.z - 2.6, maxZ: at.z + 2.6, bottom: G, top: G + 2.8 });
-      taken.push({ x: at.x, z: at.z, r: 5 });
+      const built = buildKiosk(b, labels, at.x, at.z, Math.atan2(p.tz, -p.tx));
+      kiosk = built.spot;
+      for (const r of built.boxes) colliders.push({ ...r, bottom: G, top: G + 2.8 });
+      taken.push({ x: at.x, z: at.z, r: 6 });
     }
     // The pier, out into the sea on posts, with a rail along each side.
     {
@@ -111,22 +101,26 @@ export function buildCoast(kit: ScenicKit): { boats: Boat[]; beam: THREE.Group }
           b.add(mesh(box(0.12, 1, 0.12), wood, x, G + deck + 0.5, PIER.z + s * (PIER.width / 2 - 0.1)));
         }
       }
-      for (const s of [-1, 1]) b.add(mesh(box(x0 - x1 - 4, 0.12, 0.12), wood, (x0 + x1) / 2 - 2, G + deck + 0.95, PIER.z + s * (PIER.width / 2 - 0.1)));
+      // The rails, the south one with a gap at the swim ladder (flrnoh fork: see LADDER_GAP).
+      for (const [s, from] of [
+        [-1, x1],
+        [1, x1 + LADDER_GAP],
+      ])
+        b.add(mesh(box(x0 - 4 - from, 0.12, 0.12), wood, (x0 - 4 + from) / 2, G + deck + 0.95, PIER.z + s * (PIER.width / 2 - 0.1)));
       colliders.push({ minX: x1, maxX: x0, minZ: PIER.z - PIER.width / 2, maxZ: PIER.z + PIER.width / 2, bottom: G - 1, top: G + deck });
-      for (const s of [-1, 1]) colliders.push({ minX: x1, maxX: x0 - 4, minZ: PIER.z + s * (PIER.width / 2) - 0.1, maxZ: PIER.z + s * (PIER.width / 2) + 0.1, bottom: G + deck, top: G + deck + 1, fence: true });
-      colliders.push({ minX: x1 - 0.2, maxX: x1, minZ: PIER.z - PIER.width / 2, maxZ: PIER.z + PIER.width / 2, bottom: G + deck, top: G + deck + 1, fence: true });
+      for (const [s, from] of [
+        [-1, x1],
+        [1, x1 + LADDER_GAP],
+      ])
+        colliders.push({ minX: from, maxX: x0 - 4, minZ: PIER.z + s * (PIER.width / 2) - 0.1, maxZ: PIER.z + s * (PIER.width / 2) + 0.1, bottom: G + deck, top: G + deck + 1, fence: true });
+      buildJettyFun(b, colliders, labels); // flrnoh fork: the open end, the diving board and the swim ladder
       taken.push({ x: x0 - 4, z: PIER.z, r: 6 });
       night.halos.push({ at: new THREE.Vector3(x1 + 1, G + 2.4, PIER.z), size: 1.6, color: '#ffe8a3', ground: true });
       b.add(mesh(box(0.12, 2.2, 0.12), toon('#3d405b'), x1 + 1, G + 1.3, PIER.z + 1.7));
       b.add(mesh(new THREE.SphereGeometry(0.18, 10, 8), bulb(night, '#ffe8a3', 0.1), x1 + 1, G + 2.4, PIER.z + 1.7, false));
     }
     // Sailboats out on the water, bobbing.
-    for (const [x, z] of [
-      [-300, 170],
-      [-335, 262],
-      [-290, 330],
-      [-320, 80],
-    ]) {
+    for (const [x, z] of SAILBOATS) {
       const g = new THREE.Group();
       const hull = new THREE.Shape();
       hull.moveTo(-2.6, 0.9);
@@ -200,5 +194,5 @@ export function buildCoast(kit: ScenicKit): { boats: Boat[]; beam: THREE.Group }
     around(beam, L.x, L.z, 70, H + 8);
   }
 
-  return { boats, beam };
+  return { boats, beam, kiosk };
 }
