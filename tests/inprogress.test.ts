@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { isInProgress } from '../src/client/inprogress.js';
-import { store } from '../src/client/state.js';
+import { store } from '../src/client/state/index.js';
 import type { GhIssue } from '../src/shared/protocol.js';
 
 const issue = (over: Partial<GhIssue> = {}): GhIssue => ({ number: 7, title: 'x', state: 'OPEN', assignees: [], labels: [], ...over }) as GhIssue;

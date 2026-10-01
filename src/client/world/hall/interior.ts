@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { COURT, COURTS, GALLERY, HALL_DOOR_INSIDE, HALL_ROOM } from '../../../shared/hall';
 import { CAFE_CHAIR_OFF, CAFE_COUNTER, CAFE_ORDER, CAFE_TABLES, DOOR_BENCH, GALLERY_PILLARS, GALLERY_SLAB, HALL_STAIRS, HALL_STAND, LOCKERS, RECEPTION, stairStep } from '../../../shared/hall-building';
 import { SEATING_BY_ID } from '../../../shared/layout';
-import type { Collider, Interactable } from '../office';
+import type { Collider, Interactable } from '../types';
 import { mergeByMaterial, mesh, textPlane, toon } from '../toon';
 import { box, canvasTexture, glow, FONT } from '../casino/parts';
 import { padelSign } from './exterior';

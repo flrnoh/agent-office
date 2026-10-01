@@ -3,7 +3,7 @@ import { ANCHOR, BUNGEE, NO_BUNGEE, bungeePlan, bungeePose, type BungeePose, typ
 import { FLOOR, WALL_T } from '../shared/layout';
 import type { ClientMsg, ServerMsg } from '../shared/protocol';
 import { EYE_HEIGHT, type PlayerController } from './player';
-import type { Interactable } from './world/office';
+import type { Interactable } from './world/types';
 import type { BungeeJetty } from './world/bungee';
 import { toon } from './world/toon';
 

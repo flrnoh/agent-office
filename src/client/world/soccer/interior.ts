@@ -15,7 +15,7 @@ import {
   type SoccerView,
 } from '../../../shared/soccer';
 import { BALL_R } from '../../../shared/soccer-ball';
-import type { Collider, Interactable } from '../office';
+import type { Collider, Interactable } from '../types';
 import { mergeByMaterial, mesh, toon } from '../toon';
 import { box, canvasTexture, glow, FONT } from '../casino/parts';
 
@@ -434,7 +434,7 @@ export function buildSoccerInterior(): SoccerInterior {
     g.fillText('E · join a team', 256, 190);
   });
   for (const spot of JOIN_SPOTS) {
-    const it: Interactable = { kind: 'soccer-pitch', x: spot.x, z: spot.z, y: 0, radius: 1.8 };
+    const it: Interactable = { kind: 'soccerpitch', x: spot.x, z: spot.z, y: 0, radius: 1.8 };
     interactables.push(it);
     // A sign standing on top of the boards, readable from both sides.
     for (const face of [-1, 1]) {

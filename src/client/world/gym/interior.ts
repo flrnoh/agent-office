@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GYM_ROOM, GYM_DOOR, GYM_STATIONS } from '../../../shared/gym';
 import { gymFixtures } from '../../../shared/gym-rooms';
-import type { Collider, Interactable } from '../office';
+import type { Collider, Interactable } from '../types';
 import { mergeByColor, mergeByMaterial, mesh, textPlane, toon } from '../toon';
 import { box, glow } from './parts';
 import { buildGymRooms } from './rooms'; // the hall, lobby, juice bar, turf, stretch area, decor

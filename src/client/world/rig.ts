@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RIG } from '../../shared/rig';
 import { mesh, roundedBox, toon } from './toon';
-import type { Collider, Interactable } from './office';
+import type { Collider, Interactable } from './types';
 
 // The racing rig in the lounge (flrnoh fork, see FORK.md): a bucket seat on an aluminium cockpit
 // frame, a wheel on its mount, three pedals, and a TV on a stand at the far end, facing the seat.

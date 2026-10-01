@@ -20,7 +20,7 @@ import {
 import { canKick } from '../../shared/soccer-ball';
 import type { ClientMsg, FloorInfo, ServerMsg } from '../../shared/protocol';
 import { streetBelow } from '../../shared/layout';
-import type { Collider, Interactable } from '../world/office';
+import type { Collider, Interactable } from '../world/types';
 import { buildSoccerInterior, type SoccerInterior } from '../world/soccer/interior';
 import { h, toast } from '../ui/dom';
 import { isTyping } from '../player';
@@ -261,7 +261,7 @@ export class SoccerPlace {
       }
       return true;
     }
-    if (it.kind !== 'soccer-pitch') return false;
+    if (it.kind !== 'soccerpitch') return false;
     if (key !== 'E' || !this.active) return true;
     if (this.team) {
       this.host.send({ t: 'soccer.leave' });
@@ -411,7 +411,7 @@ export class SoccerPlace {
   /** The hint bar over something of the hall's, or null when it isn't the hall's. */
   hint(it: Interactable, title: (t: string) => HTMLElement, key: (k: string, label: string) => HTMLElement, aside: (t: string) => HTMLElement): { k: string; parts: (HTMLElement | string)[] } | null {
     if (it.kind === 'soccer') return this.active ? { k: 'soccer-out', parts: [title('🚪 Street'), key('E', 'Go out')] } : { k: 'soccer-in', parts: [title(`⚽ ${SOCCER_NAME}`), aside('indoor five-a-side'), key('E', 'Go in')] };
-    if (it.kind !== 'soccer-pitch') return null;
+    if (it.kind !== 'soccerpitch') return null;
     const c = this.counts();
     const teams = aside(`Red ${c.red} · Blue ${c.blue}`);
     if (this.team) return { k: `pitch-in|${this.team}`, parts: [title(`⚽ You play for ${TEAM_NAME[this.team]}`), key('E', 'Leave the pitch')] };
