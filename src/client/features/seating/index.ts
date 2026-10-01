@@ -3,6 +3,7 @@
  * does what the seat's for (the TV from the couch, Minesweeper from the boss's chair, the bar's menu).
  */
 import { seatPlace, type SeatDef, type SeatPlace } from '../../../shared/layout';
+import { storeySeat } from '../../../shared/storey'; // flrnoh fork
 import type { Ctx } from '../../core/context';
 import { aside, hintTitle, key, onE } from '../../core/hint';
 import { store } from '../../state';
@@ -42,7 +43,7 @@ export function installSeating(ctx: Ctx, deps: SeatingDeps) {
     let bestD = Infinity;
     const player = ctx.player;
     for (let i = 0; i < seat.places.length; i++) {
-      const place = seatPlace(seat, i);
+      const place = storeySeat(seatPlace(seat, i), ctx.inOffice() ? ctx.office.stack.state.index : 0); // fork: the balcony's seats where this storey has them
       const d = Math.hypot(place.x - player.pos.x, place.z - player.pos.z);
       if (!taken.has(place.key) && d < bestD) {
         best = place;

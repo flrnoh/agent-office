@@ -4,9 +4,10 @@
 // An office floor built out into the back office (see WING) has more of it to get round: the office's
 // helpers take how many rows it's built out (`wing`), and each level gets a grid of its own.
 
-import { BEANBAGS, BOOKSHELF, CABINET, DESK_SIZE, ELEVATOR, ELEVATOR_FRONT, EXIT_DOOR, EXIT_STAIRS, FLOOR, GONG, JUKEBOX, KIOSK, LADDER, LOFT, MEETING_ROOM, MEETING_SEATS, MEETING_TABLE, POLE, POLES, ROAD, STAIRS, STATIONS, WHITEBOARD, WING, plantsAt, wingLevel, wingMinZ, type DeskDef } from './layout.js';
+import { BALCONY, BALCONY_DOOR, BEANBAGS, BOOKSHELF, CABINET, DESK_SIZE, ELEVATOR, ELEVATOR_FRONT, EXIT_DOOR, EXIT_STAIRS, FLOOR, GONG, JUKEBOX, KIOSK, LADDER, LOFT, MEETING_ROOM, MEETING_SEATS, MEETING_TABLE, POLE, POLES, ROAD, STAIRS, STATIONS, WHITEBOARD, WING, plantsAt, wingLevel, wingMinZ, type DeskDef } from './layout.js';
 import { RIG } from './rig.js'; // flrnoh fork
 import { storeyDesks, storeyPlan } from './storey.js'; // flrnoh fork: each storey its own cut, so its own grid (`index`, 0 is the bottom floor)
+import { balconyAt } from './balconies.js'; // flrnoh fork: each storey's balcony on its own wall
 
 
 export type Pt = [number, number];
@@ -50,8 +51,9 @@ function obstacles(wing: number, index: number): Obstacles {
   const hw = DESK_SIZE.width / 2;
   const hd = DESK_SIZE.depth / 2;
   for (const d of storeyDesks(index, wing)) {
-    // Desks face ±z, so their tops are axis-aligned.
-    rects.push([d.x - hw, d.x + hw, d.z - hd, d.z + hd]);
+    // Desks face ±z (or, in a pod a storey turns, ±x: flrnoh fork), so their tops are axis-aligned.
+    const [ax, az] = Math.abs(Math.sin(d.rotY)) > 0.5 ? [hd, hw] : [hw, hd];
+    rects.push([d.x - ax, d.x + ax, d.z - az, d.z + az]);
     const [cx, cz] = deskPoint(d, 0, 0.9);
     circles.push([cx, cz, 0.35]); // the chair
   }
@@ -427,12 +429,18 @@ export function wayHome(seat: DeskDef, wing = 0, index = 0): Pt[] {
 /**
  * The same walk on a floor above the bottom one, which has no exit door: round the furniture to the
  * balcony doors, out across the balcony and up to its railing (parachute.jump), where it goes over.
- * Each storey has its own balcony (see shared/storey.ts), so its doors and railing are floor `index`'s.
+ * Each storey has its own balcony (see shared/storey.ts), on its own wall, so its doors and railing
+ * are floor `index`'s: just inside the doors and just out of them are where they are on the bottom
+ * floor's, turned onto that wall.
  */
 export function wayToBalcony(seat: DeskDef, wing = 0, index = 0): Pt[] {
-  const { balcony, balconyDoor, parachute } = storeyPlan(index);
-  const inside = wayTo(seat, [balconyDoor.u, FLOOR.maxZ - 0.45], wing, index);
-  return [...inside, [balconyDoor.u, balcony.minZ + 0.4], [parachute.jump.x, parachute.jump.z]];
+  const { balconies, parachute } = storeyPlan(index);
+  const at = (x: number, z: number): Pt => {
+    const p = balconyAt(balconies[0], x, z);
+    return [p.x, p.z];
+  };
+  const inside = wayTo(seat, at(BALCONY_DOOR.u, FLOOR.maxZ - 0.45), wing, index);
+  return [...inside, at(BALCONY_DOOR.u, BALCONY.minZ + 0.4), [parachute.jump.x, parachute.jump.z]];
 }
 
 /** From `from`, down on the street, over to the near sidewalk and off along it to the west, where they're gone. */

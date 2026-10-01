@@ -8,7 +8,10 @@ import { SOCCER } from '../../shared/soccer'; // fork
 import { CARS, type CarSeat } from '../../shared/garage';
 import { seatOn, type MapPlan } from '../../shared/maps';
 import { store } from '../state';
-import { storeyPlan } from '../../shared/storey'; // flrnoh fork: each storey its own balcony
+import { onBalcony } from '../../shared/storey'; // flrnoh fork: each storey its own balconies
+
+/** flrnoh fork: where floor `floor` is in the stack (0 is the bottom one), whose cut it has (shared/storey.ts). */
+const storeyOf = (floor: string | undefined) => store.floors.filter((f) => !f.cloning).findIndex((f) => f.id === floor);
 
 /**
  * What a teammate is up to, for the line under their name tag and in the sidebar: whatever they have
@@ -46,12 +49,9 @@ export function whereabouts(p: PeerInfo, car?: { car: number; seat: CarSeat }, p
   // Through the north wall in the back office: nobody gets there unless the floor's built out.
   if (p.y > -1 && inWing(p.x, p.z, WING.rows)) return '🏗️ in the back office';
   // Down on the street, or out the back door on the stairs down to it.
-  if (p.y < -1 || p.x < FLOOR.minX || p.x > FLOOR.maxX || p.z < FLOOR.minZ) return '🚶 outside';
-  if (p.z > FLOOR.maxZ) {
-    // Each storey's balcony reaches its own way (shared/storey.ts): theirs is the floor they're on's.
-    const b = storeyPlan(store.floors.filter((f) => !f.cloning).findIndex((f) => f.id === p.floor)).balcony;
-    return p.x >= b.minX && p.x <= b.maxX ? '🌇 on the balcony' : '🚶 outside';
-  }
+  // Each storey has its balconies where it has them (shared/storey.ts): theirs are the floor they're on's, maybe round the side.
+  if (p.y > -1 && onBalcony(p.x, p.z, storeyOf(p.floor), 0.05)) return '🌇 on the balcony';
+  if (p.y < -1 || p.x < FLOOR.minX || p.x > FLOOR.maxX || p.z < FLOOR.minZ || p.z > FLOOR.maxZ) return '🚶 outside';
   if (p.y > LOFT.y - 0.5 && p.x > LOFT.minX && p.z > LOFT.minZ) return "👔 in the boss's office";
   if (p.x > MEETING_ROOM.minX && p.z > MEETING_ROOM.minZ) return '🤝 in the meeting room';
   return undefined;

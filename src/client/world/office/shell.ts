@@ -141,8 +141,7 @@ export function exitDoor(night: NightParts): { group: THREE.Group; door: Door } 
 }
 
 /** Glass doors out to the balcony that slide apart, into the wall on either side, when someone comes up. */
-export function balconyDoor(): { group: THREE.Group; door: Door } {
-  const o = BALCONY_DOOR;
+export function balconyDoor(o: Opening = BALCONY_DOOR): { group: THREE.Group; door: Door } { // flrnoh fork: `o`, each storey's balconies their own doors
   const g = doorFrame(o);
   const F = 0.08;
   const half = (o.width - 2 * F) / 2;

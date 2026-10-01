@@ -4,6 +4,7 @@
  * A key of yours takes over.
  */
 import { seatOn } from '../../../shared/maps';
+import { storeySeat } from '../../../shared/storey'; // flrnoh fork
 import type { PeerInfo } from '../../../shared/protocol';
 import type { Ctx } from '../../core/context';
 import type { CoreState } from '../../core/ctx';
@@ -52,7 +53,8 @@ export function installWalking(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'wo
 
   /** Where they are, sitting or standing. */
   function whereIs(p: PeerInfo): { x: number; y: number; z: number } {
-    return parts.cars.rideOf(p.id) ?? ((p.seat && seatOn(plan(), p.seat)) || p);
+    const sat = p.seat ? storeySeat(seatOn(plan(), p.seat), inOffice() ? ctx.office.stack.state.index : 0) : undefined; // fork: the balcony's seats where this storey has them
+    return parts.cars.rideOf(p.id) ?? (sat || p);
   }
 
   /** There: stop, and turn to them. */

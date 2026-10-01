@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { sameLook } from '../../../shared/avatar';
 import { seatOn } from '../../../shared/maps';
+import { storeySeat } from '../../../shared/storey'; // flrnoh fork
 import type { PeerInfo } from '../../../shared/protocol';
 import { DRINK_BY_ID } from '../../../shared/rooftop';
 import { hipsOf } from '../../../shared/garage';
@@ -102,7 +103,7 @@ export function installPeers(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'puff
       if (!p) continue;
       // Sitting, they're wherever their seat puts them; in a car, right in it as it goes.
       const ride = parts.cars.rideOf(id);
-      const sat = ride ?? (p.seat ? seatOn(plan(), p.seat) : undefined);
+      const sat = ride ?? (p.seat ? storeySeat(seatOn(plan(), p.seat), parts.worlds.inOffice() ? office.stack.state.index : 0) : undefined); // fork: the balcony's seats where this storey has them
       const at = sat ?? p;
       r.target.set(at.x, at.y, at.z);
       const pos = r.person.root.position;

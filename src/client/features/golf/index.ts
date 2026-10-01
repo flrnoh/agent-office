@@ -10,7 +10,8 @@ import { DESK_KEYS } from '../../interaction';
 import { store } from '../../state';
 import { clip, h, toast } from '../../ui/dom';
 import { BACKSWING_TIME, IMPACT, type Person } from '../../world/character';
-import { GolfBalls, PIN_DISTANCE, TEE_BALL, fly, pinText, type Flight, type Hit, type Shot } from './world';
+import { GolfBalls, TEE_BALL, fly, pinText, type Flight, type Hit, type Shot } from './world';
+import { teeSpot } from './storey'; // flrnoh fork: each storey's tee where its balcony is
 
 // The kinds of thing you can use that this defines (see InteractKinds in world/types.ts).
 declare module '../../world/types' {
@@ -66,6 +67,7 @@ export function installGolf(ctx: Ctx, deps: GolfDeps) {
     },
     ball: () => balls.mine,
     street: () => ctx.player.street,
+    spot: () => teeSpot(ctx.office.stack.state.index), // fork
     done: () => ctx.hint.invalidate(),
   });
   ctx.activities.add({
@@ -150,7 +152,7 @@ export function installGolf(ctx: Ctx, deps: GolfDeps) {
       const other = teeTaken();
       if (other) return { k: `taken|${other}`, parts: [hintTitle('⛳ Golf tee'), aside(`🏌️ ${clip(other, 24)} is teeing off`)] };
       const { best, holes } = golfRecord();
-      const about = [holes ? `🏆 ${holes} hole${holes === 1 ? '' : 's'} in one` : '', best !== null ? `your best ${pinText(best)} from the pin` : `the pin's ${Math.round(PIN_DISTANCE)} m out`].filter(Boolean).join(' · ');
+      const about = [holes ? `🏆 ${holes} hole${holes === 1 ? '' : 's'} in one` : '', best !== null ? `your best ${pinText(best)} from the pin` : `the pin's ${Math.round(teeSpot(ctx.office.stack.state.index).pinDistance)} m out`].filter(Boolean).join(' · ');
       return { k: about, parts: [hintTitle('⛳ Golf tee'), aside(about), key('E', 'Tee off')] };
     },
     use: onE(() => teeOff()),
@@ -166,7 +168,8 @@ export function installGolf(ctx: Ctx, deps: GolfDeps) {
       if (store.floor !== floor || ctx.upTop()) return;
       balls.launch(shotHere(shot), p.name, false);
       teeEmptyUntil = performance.now() + 1800;
-      ctx.sound.golf('hit', TEE_BALL);
+      const at = teeSpot(ctx.office.stack.state.index); // fork: this storey's tee
+      ctx.sound.golf('hit', TEE_BALL.clone().set(at.x, TEE_BALL.y, at.z));
     }, (BACKSWING_TIME + IMPACT) * 1000);
   }
 

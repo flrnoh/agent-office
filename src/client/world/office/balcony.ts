@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { ASHTRAY, BALCONY, EXIT_STAIRS, SLAB, STREET_Y } from '../../../shared/layout';
-import { storeyPlan, type BalconyRect } from '../../../shared/storey'; // flrnoh fork: each storey its own balcony
-import { bulb, type NightParts } from '../outside';
+import { balconyAt, balconyBox, localRect, type Balcony, type BalconyRect } from '../../../shared/balconies'; // flrnoh fork: each storey's balconies on their own walls
+import { storeyPlan, type StoreyPlan } from '../../../shared/storey'; // flrnoh fork
+import { bulb, type Lamp } from '../outside';
 import { mergeByMaterial, mesh, roundedBox, textPlane, toon } from '../toon';
 import type { Collider, Interactable } from '../types';
 import type { Fixture } from './fixture';
@@ -9,11 +10,16 @@ import { PALETTE, box, floorTexture, glassPane } from './materials';
 import { floorPlant, plant } from './props';
 import { seatable } from './seats';
 
-// Outside the office's walls: the smoking balcony off the south wall, the posts under the bottom
-// floor's, and the steps from the exit door down to the street.
+// Outside the office's walls: the smoking balcony, the posts under the bottom floor's, and the steps
+// from the exit door down to the street. (flrnoh fork: each storey has its balconies on walls of its
+// own, see shared/balconies.ts. Each is built in the bottom floor's balcony's frame, off the south
+// wall, and turned onto its own: the furnished one's bench, table, stools, ashtray and sign once, the
+// decks, railings and lights again for every floor.)
 
-/** A sagging string of party bulbs from `a` to `b`, in `bulbs` (one per color); they light up at night. */
-function stringLights(a: THREE.Vector3, b: THREE.Vector3, sag: number, bulbs: [string, THREE.Material][], night: NightParts): THREE.Group {
+type Halo = { at: THREE.Vector3; size: number; color: string };
+
+/** A sagging string of party bulbs from `a` to `b`, in `bulbs` (one per color), each with a halo in `halos` for the night. */
+function stringLights(a: THREE.Vector3, b: THREE.Vector3, sag: number, bulbs: [string, THREE.Material][], halos: Halo[]): THREE.Group {
   const mid = a.clone().add(b).multiplyScalar(0.5);
   mid.y -= sag * 2;
   const curve = new THREE.QuadraticBezierCurve3(a, mid, b);
@@ -24,18 +30,24 @@ function stringLights(a: THREE.Vector3, b: THREE.Vector3, sag: number, bulbs: [s
     const p = curve.getPoint(i / n);
     const [color, mat] = bulbs[i % bulbs.length];
     g.add(mesh(new THREE.SphereGeometry(0.055, 8, 6), mat, p.x, p.y - 0.06, p.z, false));
-    night.halos.push({ at: new THREE.Vector3(p.x, p.y - 0.06, p.z), size: 0.55, color });
+    halos.push({ at: new THREE.Vector3(p.x, p.y - 0.06, p.z), size: 0.55, color });
   }
   return mergeByMaterial(g);
 }
 
+/** Turns `group`, built in the bottom floor's balcony's frame, onto balcony `b`'s wall. */
+function place(group: THREE.Object3D, b: Balcony) {
+  const p = balconyAt(b, 0, 0);
+  group.position.set(p.x, 0, p.z);
+  group.rotation.y = b.turn;
+}
+
 /**
- * The balcony's deck as storey `bal` lays it out (flrnoh fork: each storey's reaches its own way along
- * the south wall, see shared/storey.ts): the slab, the planks, a glass railing on its three open sides
- * and a plant in two of its corners. Built again when you change floors (see `balcony` below).
+ * A balcony's deck, in its own frame (`rect`): the slab, the planks, a glass railing on its three open
+ * sides and a plant in two of its corners. Built again when you change floors (see `balcony` below).
  */
-function buildDeck(group: THREE.Group, colliders: Collider[], bal: BalconyRect) {
-  const { minX, maxX, minZ, maxZ } = bal;
+function buildDeck(group: THREE.Group, colliders: Collider[], rect: BalconyRect) {
+  const { minX, maxX, minZ, maxZ } = rect;
   const w = maxX - minX;
   const d = maxZ - minZ;
   const cx = (minX + maxX) / 2;
@@ -79,8 +91,10 @@ function buildDeck(group: THREE.Group, colliders: Collider[], bal: BalconyRect) 
     }
     colliders.push({ minX: Math.min(x0, x1) - 0.05, maxX: Math.max(x0, x1) + 0.05, minZ: Math.min(z0, z1) - 0.05, maxZ: Math.max(z0, z1) + 0.05, bottom: -SLAB, top: 99 });
   }
+  // A plain balcony's shallow: both its plants stand by the rail, out of the way of its doors.
+  const plain = d < 2.5;
   for (const [i, [px, pz, sc]] of [
-    [maxX - 0.55, minZ + 0.5, 1.1],
+    [maxX - 0.55, plain ? maxZ - 0.5 : minZ + 0.5, plain ? 0.8 : 1.1],
     [minX + 0.55, maxZ - 0.55, 0.9],
   ].entries()) {
     // Starting past the monstera, which spreads too wide for a spot this near the rail.
@@ -93,34 +107,64 @@ function buildDeck(group: THREE.Group, colliders: Collider[], bal: BalconyRect) 
   group.add(mergeByMaterial(parts));
 }
 
-/**
- * The smoking balcony off the south wall, over the garage entrance: its deck (buildDeck), string lights,
- * a bench under the window, a bistro table, and the ashtray, where you take a smoke break. What's
- * here stands where the bottom floor's balcony has it, which every storey's covers (shared/storey.ts),
- * so it stays put as the deck changes from floor to floor, and so do the lights the sky's made of it.
- */
-export function buildBalcony(group: THREE.Group, colliders: Collider[], interactables: Interactable[], night: NightParts) {
-  const { minX, maxX, minZ, maxZ } = BALCONY;
-  const cx = (minX + maxX) / 2;
-  const cz = (minZ + maxZ) / 2;
-  const railH = 1.05;
-  const ink = toon(PALETTE.deskLeg);
-  const wood = toon(PALETTE.wood);
-  const inset = 0.06;
-  // Everything that doesn't move and isn't textured goes in here, merged at the end.
-  const parts = new THREE.Group();
+/** Where the smoke break sign hangs on the wall, and the string lights from just over it. */
+const SIGN_X = -6.5;
 
-  // Lamp poles on the outer corners, with string lights to them from the wall and between them.
+/**
+ * The lamp poles on the furnished deck's outer corners, string lights to them from the wall and
+ * between them, and where the bulbs' halos are, in its own frame (`rect`). Built again with the deck.
+ */
+function buildLights(group: THREE.Group, rect: BalconyRect, bulbs: [string, THREE.Material][], halos: Halo[]) {
+  const { minX, maxX, minZ, maxZ } = rect;
+  const railH = 1.05;
+  const inset = 0.06;
   const poleH = 2.7;
+  const parts = new THREE.Group();
   const sw = new THREE.Vector3(minX + inset, poleH, maxZ - inset);
   const se = new THREE.Vector3(maxX - inset, poleH, maxZ - inset);
-  for (const p of [sw, se]) parts.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, poleH - railH, 6), ink, p.x, (poleH + railH) / 2, p.z, false));
-  const bulbs = ['#ffd166', '#ff8fa3', '#8ecae6', '#caffbf'].map((c): [string, THREE.Material] => [c, bulb(night, c, 0.4)]);
-  parts.add(stringLights(sw, se, 0.35, bulbs, night));
-  parts.add(stringLights(sw, new THREE.Vector3(-6.5, 3.5, minZ + 0.02), 0.3, bulbs, night));
-  parts.add(stringLights(new THREE.Vector3(-6.5, 3.5, minZ + 0.02), se, 0.35, bulbs, night));
-  // At night they light the deck, the table and whoever's out there.
-  for (const x of [cx - 3.2, cx + 3.2]) night.lamps.push({ x, y: 2.4, z: cz, reach: 5.5, color: '#ffc9a6', power: 2.4 });
+  for (const p of [sw, se]) parts.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, poleH - railH, 6), toon(PALETTE.deskLeg), p.x, (poleH + railH) / 2, p.z, false));
+  const hook = new THREE.Vector3(SIGN_X, 3.5, minZ + 0.02);
+  parts.add(stringLights(sw, se, 0.35, bulbs, halos));
+  parts.add(stringLights(sw, hook, 0.3, bulbs, halos));
+  parts.add(stringLights(hook, se, 0.35, bulbs, halos));
+  group.add(mergeByMaterial(parts));
+}
+
+/** A soft round blob, each halo's glow (as the sky's halos have it). */
+function haloTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.25, 'rgba(255,255,255,0.35)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
+/** The bulbs' halos, as points that glow at night (see NightParts.glows) and move with their deck. */
+function haloPoints(halos: Halo[], mat: THREE.PointsMaterial): THREE.Points {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(halos.flatMap((h) => [h.at.x, h.at.y, h.at.z]), 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(halos.flatMap((h) => new THREE.Color(h.color).toArray()), 3));
+  const p = new THREE.Points(geo, mat);
+  p.frustumCulled = false;
+  return p;
+}
+
+/**
+ * What stands on the furnished balcony, in the bottom floor's balcony's frame: a bench under the
+ * window, a bistro table with two stools, the ashtray (where you take a smoke break) and the sign.
+ */
+export function buildBalcony(group: THREE.Group, colliders: Collider[], interactables: Interactable[]) {
+  const { minZ, maxZ } = BALCONY;
+  const cz = (minZ + maxZ) / 2;
+  const ink = toon(PALETTE.deskLeg);
+  const wood = toon(PALETTE.wood);
+  // Everything that doesn't move and isn't textured goes in here, merged at the end.
+  const parts = new THREE.Group();
 
   // A bench under the window, a bistro table with two stools, and plants.
   const bench = new THREE.Group();
@@ -180,34 +224,89 @@ export function buildBalcony(group: THREE.Group, colliders: Collider[], interact
 
   const sign = textPlane('🚬 Smoke break', { bg: '#2b2d42', color: '#fffaf3', size: 56, border: '#fffaf3' });
   sign.scale.multiplyScalar(0.8);
-  sign.position.set(-6.5, 2.2, minZ + 0.02);
+  sign.position.set(SIGN_X, 2.2, minZ + 0.02);
   group.add(sign);
 }
 
-/** The smoking balcony, out the glass doors on the south wall; its deck is this storey's (flrnoh fork). */
+/** Something built in the bottom floor's balcony's frame (`base`), and where it is on this storey's (`live`, the one the floor has). */
+export interface Moved<T> {
+  base: T;
+  live: T;
+}
+
+/** Takes what's in the way and what there is to use, built in the bottom floor's balcony's frame, into the floor, to be turned onto each storey's. */
+export function movable(cols: Collider[], its: Interactable[], into: { colliders: Collider[]; interactables: Interactable[] }): { colliders: Moved<Collider>[]; interactables: Moved<Interactable>[] } {
+  into.colliders.push(...cols);
+  into.interactables.push(...its);
+  return { colliders: cols.map((c) => ({ base: { ...c }, live: c })), interactables: its.map((it) => ({ base: { ...it }, live: it })) };
+}
+
+/** Turns `group` and what's in `moved` onto balcony `b`. */
+export function moveOnto(b: Balcony, group: THREE.Object3D, moved: ReturnType<typeof movable>) {
+  place(group, b);
+  for (const c of moved.colliders) Object.assign(c.live, balconyBox(b, c.base));
+  for (const it of moved.interactables) Object.assign(it.live, balconyAt(b, it.base.x, it.base.z));
+}
+
+/** The balconies, out their glass doors (world/office/storey-walls.ts), each storey's where it has them (flrnoh fork). */
 export const balcony: Fixture = (site) => {
-  buildBalcony(site.group, site.colliders, site.interactables, site.get('night'));
-  let deck: { group: THREE.Group; colliders: Collider[] } | null = null;
-  const lay = (bal: BalconyRect) => {
-    if (deck) {
-      site.group.remove(deck.group);
-      deck.group.traverse((m) => {
+  const night = site.get('night');
+  // The furnished one's furniture: built once, in the bottom floor's frame, and turned onto each storey's.
+  const furniture = new THREE.Group();
+  site.group.add(furniture);
+  const cols: Collider[] = [];
+  const its: Interactable[] = [];
+  buildBalcony(furniture, cols, its);
+  const moved = movable(cols, its, site);
+
+  // At night two lamps light the furnished deck, the table and whoever's out there: the sky places
+  // them again whenever you change floors (Sky.placeLamps), and these move with the deck.
+  const lamps: Lamp[] = [-3.2, 3.2].map(() => ({ x: 0, y: 2.4, z: 0, reach: 5.5, color: '#ffc9a6', power: 2.4 }));
+  night.lamps.push(...lamps);
+  const bulbs = ['#ffd166', '#ff8fa3', '#8ecae6', '#caffbf'].map((c): [string, THREE.Material] => [c, bulb(night, c, 0.4)]);
+  const glow = new THREE.PointsMaterial({ size: 0.55, map: haloTexture(), vertexColors: true, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+  glow.visible = false;
+  night.glows.push({ mat: glow, max: 0.85 });
+
+  // The decks, their railings and plants, and the furnished one's lights: laid again for each storey.
+  let decks: { group: THREE.Group; colliders: Collider[] } | null = null;
+  const lay = (plan: StoreyPlan) => {
+    if (decks) {
+      site.group.remove(decks.group);
+      decks.group.traverse((m) => {
         const o = m as THREE.Mesh<THREE.BufferGeometry, THREE.MeshToonMaterial>;
         o.geometry?.dispose();
         if (o.userData.own) o.material.map?.dispose(), o.material.dispose();
       });
-      for (const c of deck.colliders) site.colliders.splice(site.colliders.indexOf(c), 1);
+      for (const c of decks.colliders) site.colliders.splice(site.colliders.indexOf(c), 1);
     }
-    deck = { group: new THREE.Group(), colliders: [] };
-    buildDeck(deck.group, deck.colliders, bal);
-    site.group.add(deck.group);
-    site.colliders.push(...deck.colliders);
+    decks = { group: new THREE.Group(), colliders: [] };
+    for (const b of plan.balconies) {
+      const g = new THREE.Group();
+      const local: Collider[] = [];
+      const rect = localRect(b);
+      buildDeck(g, local, rect);
+      if (b.furnished) {
+        const halos: Halo[] = [];
+        buildLights(g, rect, bulbs, halos);
+        g.add(haloPoints(halos, glow));
+        const cx = (rect.minX + rect.maxX) / 2;
+        const cz = (rect.minZ + rect.maxZ) / 2;
+        lamps.forEach((l, i) => Object.assign(l, balconyAt(b, cx + (i ? 3.2 : -3.2), cz)));
+      }
+      place(g, b);
+      decks.group.add(g);
+      decks.colliders.push(...local.map((c) => balconyBox(b, c)));
+    }
+    site.group.add(decks.group);
+    site.colliders.push(...decks.colliders);
+    moveOnto(plan.balconies[0], furniture, moved);
   };
-  let shown: BalconyRect | null = null;
+  let shown: StoreyPlan | null = null;
   return {
     setLevel: (index) => {
-      const bal = storeyPlan(index).balcony;
-      if (bal !== shown) lay((shown = bal));
+      const plan = storeyPlan(index);
+      if (plan !== shown) lay((shown = plan));
     },
   };
 };
