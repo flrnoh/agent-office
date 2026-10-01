@@ -6,6 +6,7 @@ import type { NightParts } from '../outside';
 import { hazeReach } from '../sky';
 import { mergeByColor } from '../toon';
 import { buildCoast } from './coast';
+import type { KioskSpot } from './kiosk'; // flrnoh fork
 import { buildFarm } from './farm';
 import { G, makeKit } from './kit';
 import { buildMountains } from './mountains';
@@ -28,6 +29,8 @@ import { buildWater } from './water';
 export interface Scenic {
   /** The road and everything along it (the text on the signs isn't merged). */
   group: THREE.Group;
+  /** Fork: where the beach kiosk is (features/beach serves at it). */
+  kiosk: KioskSpot;
   /** The sails of the windmill, the lighthouse's beam, boats bobbing and the water moving: `t` in seconds. */
   update(t: number): void;
   /**
@@ -48,7 +51,7 @@ export function buildScenic(group: THREE.Group, colliders: Collider[], night: Ni
   const { waters, surf } = buildWater(kit, road);
   buildMountains(kit);
   buildTunnel(kit, road);
-  const { boats, beam } = buildCoast(kit);
+  const { boats, beam, kiosk } = buildCoast(kit);
   plantTrees(kit);
 
   // Merged by material a square of the map at a time, so what's lost in the haze needn't be drawn.
@@ -82,6 +85,7 @@ export function buildScenic(group: THREE.Group, colliders: Collider[], night: Ni
 
   return {
     group: root,
+    kiosk,
     cull(eye: THREE.Vector3, street: number, far: number) {
       const up = eye.y - street;
       for (const t of seen) {

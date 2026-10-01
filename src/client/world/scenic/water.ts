@@ -4,6 +4,8 @@ import { mulberry32 } from '../../../shared/rng';
 import { tilingCanvasTexture } from '../texture';
 import { mesh, toon } from '../toon';
 import { boulder } from './flora';
+import { SWIM_OUT } from '../../../shared/beach'; // flrnoh fork: swimming out to the buoys
+import { buoys } from './buoys'; // fork
 import { G, beside, box, flat, flatMesh, indexAt, strip, withTangents, type Along, type ScenicKit } from './kit';
 import type { Road } from './road';
 
@@ -114,7 +116,7 @@ export function buildWater(kit: ScenicKit, road: Road): { waters: THREE.Texture[
     foam.depthWrite = false;
     surf.push(foam);
     root.add(flatMesh(strip(line, -2.6, 0.2, G - 0.135, () => 0), foam));
-    // Walk into the shallows, or out along the pier, but not out to sea.
+    // Walk into the shallows, or out along the pier, and (flrnoh fork) swim out as far as the buoys.
     const bands: [number, number][] = [
       [-400, PIER.z - PIER.width / 2],
       [PIER.z + PIER.width / 2, 640],
@@ -124,10 +126,11 @@ export function buildWater(kit: ScenicKit, road: Road): { waters: THREE.Texture[
         const zEnd = Math.min(z1, z + 40);
         let x = Infinity;
         for (let k = z; k <= zEnd; k += 2) x = Math.min(x, shoreX(k));
-        colliders.push({ minX: -1600, maxX: x - 6, minZ: z, maxZ: zEnd, bottom: G - 1, top: G + 2, fence: true });
+        colliders.push({ minX: -1600, maxX: x - SWIM_OUT, minZ: z, maxZ: zEnd, bottom: G - 2, top: G + 2, fence: true });
       }
     }
-    colliders.push({ minX: -1600, maxX: shoreX(PIER.z) - PIER.length - 0.2, minZ: PIER.z - PIER.width / 2, maxZ: PIER.z + PIER.width / 2, bottom: G - 1, top: G + 2, fence: true });
+    colliders.push({ minX: -1600, maxX: shoreX(PIER.z) - SWIM_OUT, minZ: PIER.z - PIER.width / 2, maxZ: PIER.z + PIER.width / 2, bottom: G - 2, top: G + 2, fence: true });
+    buoys(root, cullable);
   }
 
   return { waters, surf };

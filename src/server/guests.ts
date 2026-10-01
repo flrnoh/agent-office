@@ -24,6 +24,7 @@ const GUEST = [
   'padel.look', 'padel.join', 'padel.leave', 'padel.input', 'padel.sync', // fork: padel in the hall
   'bungee.jump', // fork: bungee off the roof
   'soccer.join', 'soccer.leave', 'soccer.kick', 'soccer.slide', // fork: the soccer hall (and its slide tackles)
+  'boat.enter', 'boat.leave', 'boat.drive', 'boat.horn', // fork: jetskis and the motorboat at the beach
 ] as const satisfies readonly ClientMsg['t'][];
 
 /** What a guest's page sends on its own (resizing a terminal it watches, polling boards): dropped without a word. */

@@ -65,6 +65,8 @@ export interface Interactable {
   gymAct?: string;
   /** Fork: which of the padel hall's courts (shared/hall.ts COURTS), for 'padel'. */
   court?: CourtId;
+  /** Fork: which of the jetty's jetskis and boats (shared/boats.ts CRAFTS), for a 'watercraft'. */
+  craft?: number;
 }
 
 /** A desk, a bean bag, a board agent's kiosk or a chair at the meeting table: somewhere a worker sits (or stands). */

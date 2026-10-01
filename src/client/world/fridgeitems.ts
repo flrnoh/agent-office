@@ -3,6 +3,8 @@ import { FRIDGE_BY_ID, type FridgeItemId } from '../../shared/fridge';
 import type { Drink } from '../../shared/rooftop';
 import { mesh, toon } from './toon';
 import { cafeItem } from './hall/cafeitems'; // fork: the padel hall's café
+import { kioskItem } from './kioskitems'; // fork: the beach kiosk
+import { isKioskGlass } from '../../shared/kiosk';
 
 // What comes out of the kitchen fridge (flrnoh fork, see FORK.md), held like a glass from the bar:
 // character.ts's drinkGlass hands anything that isn't one of the bar's glasses over to here. Each is
@@ -93,8 +95,8 @@ export function fridgeItem(d: Drink, S = 1): THREE.Group {
       break;
     }
     default:
-      // A cup, a glass or a slice of cake from the padel hall's café.
-      g.add(cafeItem(d, S));
+      // A cup, a glass or a slice of cake from the padel hall's café; or (fork) something from the beach kiosk.
+      g.add(isKioskGlass(d.glass) ? kioskItem(d, S) : cafeItem(d, S));
   }
   return g;
 }

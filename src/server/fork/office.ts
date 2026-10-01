@@ -17,6 +17,7 @@ import { Gym, type GymPlayer } from '../gym/index.js';
 import { Turn, readTurnKey } from '../turn.js';
 import { CarKeys } from '../carkeys.js';
 import { RigTable, Rigs } from '../rig.js';
+import { Marinas } from '../boats.js';
 import { RoofTables } from '../tablegames.js';
 import { PadelCourts } from '../padel.js';
 import { BungeeRope } from '../bungee.js';
@@ -33,6 +34,7 @@ export interface Fork {
   turn: Turn; // TURN so voice gets through from outside (turn.ts)
   carKeys: CarKeys; // who drives the Bulli
   rigs: Rigs; // the racing rig in the lounge, one driver a floor, one table for the building
+  marinas: Marinas; // the jetskis and the motorboat at each floor's jetty on the beach
   roofTables: RoofTables; // the table games on the roof
   padelCourts: PadelCourts; // padel in the hall
   bungeeRope: BungeeRope; // bungee off the roof
@@ -74,6 +76,7 @@ export function createFork(ctx: Ctx): Fork {
     turn: new Turn(readTurnKey(cfg.dataDir), cfg.iceServers),
     carKeys: new CarKeys(cfg.dataDir),
     rigs,
+    marinas: new Marinas(),
     roofTables: new RoofTables(),
     padelCourts: new PadelCourts(),
     bungeeRope: new BungeeRope(),
