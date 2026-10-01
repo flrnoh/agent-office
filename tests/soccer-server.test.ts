@@ -4,7 +4,7 @@ import { KICK_GAP_MS, Soccer } from '../src/server/soccer/index.js';
 import { SOCCER_ARRIVAL, backInSoccer, soccerView } from '../src/server/soccer/place.js';
 import { GUEST_MSGS } from '../src/server/guests.js';
 import { PARTY_SEES_MSGS } from '../src/server/party.js';
-import { KICKOFF_MS, MAX_PER_TEAM, PITCH, PITCH_CX, SOCCER, SOCCER_ENTRY, SOCCER_ROOM, isSoccerMsg, type SoccerServerMsg } from '../src/shared/soccer.js';
+import { GOAL_MS, KICKOFF_MS, MAX_PER_TEAM, PITCH, PITCH_CX, SOCCER, SOCCER_ENTRY, SOCCER_ROOM, isSoccerMsg, type SoccerServerMsg } from '../src/shared/soccer.js';
 import { KICK_MAX } from '../src/shared/soccer-ball.js';
 import type { FloorView, ServerMsg } from '../src/shared/protocol.js';
 
@@ -163,7 +163,7 @@ test('the ball goes out while it moves, a goal is seen, scored and told to every
   assert.match(goal.event!.text!, /GOAL! Red \(Ann\) · Red 1:0 Blue/);
   assert.deepEqual(goal.state.score, { red: 1, blue: 0 });
   // Celebration, then the kickoff: the ball's back on the spot, blue to kick off.
-  h.tick(3200);
+  h.tick(GOAL_MS + 200);
   assert.equal(h.s.match.phase, 'kickoff');
   assert.equal(h.s.match.kickoff, 'blue');
   assert.deepEqual([h.s.ball.x, h.s.ball.z, h.s.ball.vz], [PITCH_CX, 0, 0]);

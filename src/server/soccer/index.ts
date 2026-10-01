@@ -27,6 +27,7 @@ import {
   touchBall,
 } from '../../shared/soccer-ball.js';
 import { SoccerMatch } from './match.js';
+import { SoccerRecords } from './records.js'; // stats: the leaderboard and shirt numbers
 
 /*
  * The soccer hall's game on the server (flrnoh fork, see FORK.md "The soccer hall"): who's in the
@@ -42,6 +43,8 @@ import { SoccerMatch } from './match.js';
 export interface SoccerMember {
   id: string;
   name: string;
+  /** Stats: who they are for the leaderboard, `account:<id>` or `name:<name>` (default: by name). */
+  owner?: string;
   send(m: ServerMsg): void;
 }
 
@@ -52,6 +55,8 @@ export interface SoccerDeps {
   now?: () => number;
   /** Runs itself on a timer while anyone's inside (the default); tests step it with `tick`. */
   timer?: boolean;
+  /** Stats: where the leaderboard's kept (soccer.json); none: in memory only. */
+  dataDir?: string;
 }
 
 export const TICK_HZ = 30;
@@ -96,6 +101,9 @@ export class Soccer {
   private members = new Map<string, Member>();
   readonly ball: Ball = centreBall();
   readonly match = new SoccerMatch();
+  /** Stats: the all-time leaderboard, and everyone's shirt number (by id) while they're on the pitch. */
+  readonly records: SoccerRecords;
+  private numbers = new Map<string, number>();
   private readonly now: () => number;
   private timer: ReturnType<typeof setInterval> | null = null;
   private lastTickAt = 0;
@@ -120,6 +128,7 @@ export class Soccer {
 
   constructor(private deps: SoccerDeps) {
     this.now = deps.now ?? Date.now;
+    this.records = new SoccerRecords(deps.dataDir); // stats
   }
 
   // ---- In and out ---------------------------------------------------------------------------------
@@ -168,6 +177,7 @@ export class Soccer {
     if (c[team] >= MAX_PER_TEAM) return { ok: false, reason: `The pitch is full: ${MAX_PER_TEAM} a side` };
     p.team = team;
     p.lastKick = 0;
+    this.numbers.set(id, this.records.numberFor(ownerOf(p), p.m.name, new Set([...this.members.values()].filter((o) => o !== p && o.team).map((o) => this.numbers.get(o.m.id) ?? 0)))); // stats: a shirt number
     this.changed({ kind: 'join', team, who: p.m.name, text: `⚽ ${p.m.name} plays for ${TEAM_NAME[team]}` });
     return { ok: true, team };
   }
@@ -306,8 +316,14 @@ export class Soccer {
 
   /** The view everyone in the hall gets. */
   view(): SoccerView {
-    const players = [...this.members.values()].filter((p) => p.team).map((p) => ({ id: p.m.id, name: p.m.name, team: p.team! }));
-    return { ...this.match.view(this.now()), players };
+    const players = [...this.members.values()].filter((p) => p.team).map((p) => ({ id: p.m.id, name: p.m.name, team: p.team!, number: this.numbers.get(p.m.id) }));
+    return { ...this.match.view(this.now()), players, stats: this.match.stats.view(), leaders: this.records.top(5) }; // stats
+  }
+
+  /** Stats: the final whistle: everyone on the pitch is in the match's numbers, and all of them go on the leaderboard. */
+  private fullTime() {
+    for (const p of this.members.values()) if (p.team) this.match.stats.seen(ownerOf(p), p.m.name, p.team, this.numbers.get(p.m.id));
+    this.records.record(this.match.stats.finish(this.match.winner ?? 'draw'));
   }
 
   stop() {
@@ -357,6 +373,8 @@ export class Soccer {
   private touch(p: Member) {
     if (!p.team) return;
     this.toucher = { id: p.m.id, name: p.m.name, team: p.team };
+    // Stats: a touch in play (a kick when it's their kick's moment).
+    if (this.match.phase === 'play') this.match.stats.touch(ownerOf(p), p.m.name, p.team, this.now(), p.lastKick === this.now(), this.ball, this.numbers.get(p.m.id));
     this.match.touched(p.team);
   }
 
@@ -382,6 +400,7 @@ export class Soccer {
     }
     if (ev.kind === 'play' || ev.kind === 'pause' || ev.kind === 'reset') this.held = false;
     if (ev.kind === 'reset' || ev.kind === 'start') this.toucher = null;
+    if (ev.kind === 'end') this.fullTime(); // stats
     this.changed(ev);
   }
 
@@ -434,3 +453,5 @@ export class Soccer {
   }
 }
 
+/** Stats: who someone is for the leaderboard. */
+const ownerOf = (p: Member) => p.m.owner ?? `name:${p.m.name}`;

@@ -26,13 +26,15 @@ Back to the [README](../README.md).
 | Ctrl + K (⌘K on a Mac) | Command palette: find a worker, issue, PR, service, board, teammate or action; Enter opens it, Shift+Enter walks you there first |
 | V | Join voice; in voice, hold to talk (you're muted when you let go) |
 | M | Mute / unmute in voice |
-| Tab | The ☰ menu: every window, and what shows on screen |
+| Tab | The ☰ menu: every window, and what shows on screen (in the soccer hall: the match's stats and the Hall of Fame instead; **Tab**, **✕** or **Esc** closes them) |
 | Esc | Close any window (a terminal too) and get back to looking around |
 | Ctrl + [ | Send Esc to a terminal instead, to close a menu like Claude's `/skills` or interrupt Claude. **⎋ Esc** in the terminal's header does the same |
 
 On a padel court in the padel hall: your player runs for the ball by itself; **W A S D** / arrows steer yourself while held; the **mouse** aims (the ring on the court); **click** or **Space** swings (on time, as the ball comes past, is hard and true); hold **Shift** for a lob; a high ball near the net is smashed. Serving, click or **Space** drops the ball and hits it into the service box across (the ring shows where). **✕** or **Esc** steps off the court.
 
 On the pitch in the soccer hall (after **E** at the boards on the halfway line): **W A S D** runs (**Shift** sprints), and running onto the ball takes it: it stays just ahead of your feet as you run (further ahead at a sprint, easier to lose), and stopping traps it at your feet. **Click** (a tap of the **left mouse button**, or **Space**) passes along the ground to the teammate nearest the line you look along (led if they're running; with nobody there, it rolls about 8 m the way you look). **Hold** it to charge a shot (full after about a second: the meter under the crosshair, and a line on the floor from the ball shows where it goes) and let go to shoot where you look, rising the higher you look (first person). The **right mouse button** (or **C**) does the same in the air: a tap lobs to a teammate over whoever's in between, a hold chips a shot. A kick pressed a moment before the ball's in reach waits for it. Running into someone who has the ball tackles them. Space doesn't jump on the pitch. **E** at the halfway boards again leaves the pitch.
+
+In the soccer hall, after a goal everyone sees an instant replay of it (the last seconds from a TV camera, the end in slow motion): **Space** or **Esc** skips it.
 
 You can also click a nearby desk to interact with it, or click a worker in the Workers panel (**🤖 Workers**, top right) to open its terminal.
 
