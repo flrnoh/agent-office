@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ANCHOR, BODY, BUNGEE, COOLDOWN_MS, COUNTDOWN, MARGIN, bungeeDuration, bungeePlan, bungeePose } from '../src/shared/bungee.js';
-import { FLOOR, WALL_T, roofDrop } from '../src/shared/layout.js';
+import { FLOOR, STOREY, WALL_T, roofDrop, streetBelow } from '../src/shared/layout.js';
 import { BungeeRope, bungeeMessage, type BungeeHooks } from '../src/server/bungee.js';
 import { GUEST_MSGS } from '../src/server/guests.js';
 import type { ServerMsg } from '../src/shared/protocol.js';
@@ -89,10 +89,29 @@ test('bungee motion: winched back up and onto the platform, 12 to 18 seconds all
   assert.ok(ANCHOR.z > BUNGEE.edgeZ && ANCHOR.y > BUNGEE.deckY + 2);
 });
 
+test('bungee from below: lifted into a floor’s frame, the jetty sits on the tower’s top and the jumper stays over the street', () => {
+  // client/bungee.ts lifts the roof's frame (deck at 0) by the deck's height over your floor:
+  // streetBelow(index) + roofDrop(count), which is the top of world/tower.ts's building.
+  for (const count of [1, 2, 3, 6, 10]) {
+    const drop = roofDrop(count);
+    for (let index = 0; index < count; index++) {
+      const lift = streetBelow(index) + drop;
+      assert.ok(Math.abs(lift - (count - index) * STOREY) < 1e-9, `floor ${index} of ${count}: deck ${lift} over it`);
+      const street = streetBelow(index);
+      const plan = bungeePlan(drop);
+      for (let t = 0; t <= plan.end; t += 0.05) {
+        const p = bungeePose(drop, t);
+        const head = p.y + lift - BODY * Math.max(0, -Math.cos(p.pitch));
+        assert.ok(head >= street + MARGIN - 1e-6, `floor ${index} of ${count} t ${t.toFixed(2)}: head ${head.toFixed(2)}, street ${street}`);
+      }
+    }
+  }
+});
+
 function hooks(over: Partial<BungeeHooks> = {}) {
   const sent: ServerMsg[] = [];
   const warned: string[] = [];
-  const h: BungeeHooks = { id: 'a', who: 'Ann', color: '#f00', onRoof: true, floors: 3, toRoof: (m) => sent.push(m), warn: (t) => warned.push(t), ...over };
+  const h: BungeeHooks = { id: 'a', who: 'Ann', color: '#f00', onRoof: true, floors: 3, toBuilding: (m) => sent.push(m), warn: (t) => warned.push(t), ...over };
   return { h, sent, warned };
 }
 
@@ -104,7 +123,7 @@ test('bungee server: only from the roof, one on the rope at a time, a cooldown a
   bungeeMessage(rope, { t: 'bungee.jump' }, r.h);
   assert.equal(r.sent.length, 0);
   assert.match(r.warned[0], /roof/);
-  // On the roof: jumps, to everyone up there, from as high as the building is.
+  // On the roof: jumps, to everyone in the building (it's seen from below too), from as high as the building is.
   r = hooks();
   bungeeMessage(rope, { t: 'bungee.jump' }, r.h);
   assert.equal(r.sent.length, 1);

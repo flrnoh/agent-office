@@ -140,7 +140,7 @@ export function backInPlace(wanted: string | null, floors: number): (typeof PLAC
 }
 
 /** The roof's own things on top of an empty floor view. */
-export const roofExtras = (ctx: Ctx): Partial<FloorView> => ({ dj: ctx.djBooth.state(), tables: ctx.roofTables.state(), bungee: ctx.bungeeRope.state() });
+export const roofExtras = (ctx: Ctx): Partial<FloorView> => ({ dj: ctx.djBooth.state(), tables: ctx.roofTables.state() });
 
 export function startFork(ctx: Ctx) {
   ctx.turn.start();

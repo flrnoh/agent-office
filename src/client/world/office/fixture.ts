@@ -44,6 +44,11 @@ export interface StreetSite extends Site {
    */
   readonly ground: THREE.Group;
   readonly groundColliders: Collider[];
+  /**
+   * Fork: what you see out there (the street, the city round it, the country past it), in the ground, in
+   * a group of its own that the roof borrows while you're up there (see the town fixture, world/town/).
+   */
+  readonly outlook: THREE.Group;
 }
 
 /** What a fixture hands back once it's built. `K` names the fields of Office it gives (see OfficeHandles). */

@@ -65,6 +65,7 @@ import { installWorkerViews } from './features/workers/views';
 import { installBeach } from './features/beach';
 import { installBossDesk } from './features/bossdesk';
 import { installBungee } from './features/bungee';
+import { installTown } from './features/town'; // flrnoh fork: the city round the office
 import { installDjSets } from './features/djset';
 import { installDoorbell } from './features/doorbell';
 import { installFogbox } from './features/fogbox';
@@ -196,6 +197,7 @@ parts.bossDesk = installBossDesk(ctx, { arcade: parts.arcade, hire: (id) => part
 parts.rig = installRig(ctx, { freePlace: (seat) => parts.seating.freePlace(seat), standUp });
 parts.tables = installTableGames(ctx, { roof: parts.rooftop.roof });
 parts.bungee = installBungee(ctx, { roof: parts.rooftop.roof, roofFloors: parts.rooftop.roofFloors, bodyOf: (id) => personOf(id)?.root });
+installTown(ctx, { roof: parts.rooftop.roof, roofFloors: parts.rooftop.roofFloors, bodies: () => [...parts.peers.remotes.values()].map((r) => r.person.root) }); // fork
 parts.places = installPlaces(ctx, core, parts, { served: (d) => parts.fridge.serveFromCafe(d) });
 parts.guests = installGuests(ctx, { openWorkerTerminal: (id) => parts.waiting.openWorkerTerminal(id) });
 installDoorbell(ctx);

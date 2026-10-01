@@ -57,7 +57,7 @@ export type ForkServerMsg =
   | { t: 'tables'; tables: TableSeat[] }
   | { t: 'table.sync'; table: TableId; snap: TableSnap }
   | { t: 'table.input'; table: TableId; side: Side; input: number[] }
-  /** Someone jumped off the bungee jetty (to everyone on the roof). */
+  /** Someone jumped off the bungee jetty, or came off the rope (to everyone in the building: it's seen from below). */
   | { t: 'bungee'; state: BungeeState }
   /** Who's at the racing rig on your floor now and the building's tables, and their race (to everyone else on the floor). */
   | { t: 'rig'; state: RigState }

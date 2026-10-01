@@ -22,7 +22,9 @@ export function downstairs<P extends Fixture<never, StreetSite>[]>(...parts: P):
   const down: Fixture = (site) => {
     const ground = new THREE.Group();
     const groundColliders: Collider[] = [];
-    street = { ...site, ground, groundColliders };
+    const outlook = new THREE.Group(); // fork: what the roof borrows to look out at (world/town/)
+    ground.add(outlook);
+    street = { ...site, ground, groundColliders, outlook };
     exit = exitDoor(site.get('night'));
     ground.add(exit.group);
     site.doors.push(exit.door);

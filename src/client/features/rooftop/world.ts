@@ -878,7 +878,6 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
       const drop = f.part === 'drop';
       // How much the lights stand out: faint in the sun, blazing at night.
       const show = 0.3 + 0.7 * dark;
-      city.update(t, dt, dark);
       elevator.update(dt);
       games.update(dt, dark);
       dj.update(t, f, motion);
