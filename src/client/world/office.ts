@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ASHTRAY, BALCONY, BALCONY_DOOR, BEANBAGS, BOARDS, BOOKSHELF, CABINET, DESKS, DESK_SIZE, ELEVATOR, EXIT_DOOR, EXIT_STAIRS, FLOOR, GONG, JUKEBOX, KIOSK, LADDER, LOFT, MACHINE_MONITOR, MEETING_BOARD, MEETING_ROOM, MEETING_SEATS, MEETING_TABLE, PLANTS, SEATING_BY_ID, SLAB, STAIRS, STATIONS, STATION_AGENT, STOREY, STREET_Y, TV, WALL_HEIGHT, WALL_T, WINDOWS, deskSeat, streetBelow, type DeskDef, type Opening, type Side, type StationKind } from '../../shared/layout';
+import { ASHTRAY, BALCONY, BALCONY_DOOR, BEANBAGS, BOARDS, BOOKSHELF, CABINET, DESKS, DESK_SIZE, ELEVATOR, EXIT_DOOR, EXIT_STAIRS, FLOOR, floorPlan, GONG, JUKEBOX, KIOSK, LADDER, LOFT, MACHINE_MONITOR, MEETING_BOARD, MEETING_ROOM, MEETING_SEATS, MEETING_TABLE, PLANTS, SEATING_BY_ID, SLAB, STAIRS, STATIONS, STATION_AGENT, STOREY, STREET_Y, TV, WALL_HEIGHT, WALL_T, WINDOWS, deskSeat, streetBelow, type DeskDef, type Opening, type Side, type StationKind } from '../../shared/layout';
 import { wallFacing, type WallId, type WallRect } from '../../shared/decor';
 import { deskPoint } from '../../shared/nav';
 import { FLOOR_PALETTES, type FloorPalette } from '../../shared/floors';
@@ -417,8 +417,8 @@ function stringLights(a: THREE.Vector3, b: THREE.Vector3, sag: number, bulbs: [s
  * its three open sides, string lights, a bench under the window, a bistro table, plants and the
  * ashtray, where you take a smoke break.
  */
-function buildBalcony(group: THREE.Group, colliders: Collider[], interactables: Interactable[], night: NightParts) {
-  const { minX, maxX, minZ, maxZ } = BALCONY;
+function buildBalcony(group: THREE.Group, colliders: Collider[], interactables: Interactable[], night: NightParts, bal: { minX: number; maxX: number; minZ: number; maxZ: number } = BALCONY) {
+  const { minX, maxX, minZ, maxZ } = bal;
   const w = maxX - minX;
   const d = maxZ - minZ;
   const cx = (minX + maxX) / 2;
@@ -971,7 +971,62 @@ export function buildOffice(): Office {
   group.add(slider.group);
   doors.push(slider.door);
   fixture(BALCONY_DOOR.wall, BALCONY_DOOR.u, (BALCONY_DOOR.y1 + 0.1) / 2, BALCONY_DOOR.width + 0.2, BALCONY_DOOR.y1 + 0.1);
-  buildBalcony(group, colliders, interactables, night);
+  // The balcony off the south wall is laid out per floor (see floorPlan): its deck and railing reach
+  // as far as the floor's plan says, so it's rebuilt when you change floors (see setLevel). Its doors
+  // stay put (they're in the wall above, which doesn't move), and so does what stands out on it.
+  let balconyGroup: THREE.Group | null = null;
+  let balconyColliders: Collider[] = [];
+  let balconyInteractables: Interactable[] = [];
+  let balconyLamps: NightParts['lamps'] = [];
+  let balconyBulbs: NightParts['bulbs'] = [];
+  let balconyHalos: NightParts['halos'] = [];
+  const makeBalcony = (index: number) => {
+    if (balconyGroup) {
+      group.remove(balconyGroup);
+      balconyGroup.traverse((m) => {
+        if ((m as THREE.Mesh).isMesh) (m as THREE.Mesh).geometry.dispose();
+      });
+      for (const c of balconyColliders) {
+        const i = colliders.indexOf(c);
+        if (i >= 0) colliders.splice(i, 1);
+      }
+      for (const it of balconyInteractables) {
+        const i = interactables.indexOf(it);
+        if (i >= 0) interactables.splice(i, 1);
+      }
+      // Its lamps and lit bulbs were added to `night`: take them out by reference, so a floor change
+      // doesn't leave phantom lights where the old balcony was.
+      for (const l of balconyLamps) {
+        const i = night.lamps.indexOf(l);
+        if (i >= 0) night.lamps.splice(i, 1);
+      }
+      for (const b of balconyBulbs) {
+        const i = night.bulbs.indexOf(b);
+        if (i >= 0) night.bulbs.splice(i, 1);
+      }
+      for (const h of balconyHalos) {
+        const i = night.halos.indexOf(h);
+        if (i >= 0) night.halos.splice(i, 1);
+      }
+    }
+    const bg = new THREE.Group();
+    const bc: Collider[] = [];
+    const bi: Interactable[] = [];
+    const bulbs0 = new Set(night.bulbs);
+    const lamps0 = new Set(night.lamps);
+    const halos0 = new Set(night.halos);
+    buildBalcony(bg, bc, bi, night, floorPlan(index).balcony);
+    group.add(bg);
+    colliders.push(...bc);
+    interactables.push(...bi);
+    balconyGroup = bg;
+    balconyColliders = bc;
+    balconyInteractables = bi;
+    balconyBulbs = night.bulbs.filter((b) => !bulbs0.has(b));
+    balconyLamps = night.lamps.filter((l) => !lamps0.has(l));
+    balconyHalos = night.halos.filter((h) => !halos0.has(h));
+  };
+  makeBalcony(0);
   const tee = buildTee(group, colliders, interactables);
 
   // Down to the street, which is the bottom floor's: its exit door and the steps down from it, the
@@ -1002,18 +1057,24 @@ export function buildOffice(): Office {
   const tower = buildTower(colliders, night);
   group.add(tower.group);
 
-  // Desks
+  // Desks — laid out per floor (see floorPlan), so they're moved to the floor's layout when you
+  // change floors (see setLevel). Their colliders and interactables are kept so they move with them.
   const desks = new Map<string, DeskView>();
+  const deskColliders = new Map<string, Collider>();
+  const deskIts = new Map<string, Interactable>();
   DESKS.forEach((def, i) => {
     const view = buildDesk(def, i, trimMat);
     group.add(view.group);
     desks.set(def.id, view);
     const hw = DESK_SIZE.width / 2 - 0.05;
     const hd = DESK_SIZE.depth / 2 - 0.02;
-    colliders.push({ minX: def.x - hw, maxX: def.x + hw, minZ: def.z - hd, maxZ: def.z + hd, top: DESK_SIZE.height });
+    const collider: Collider = { minX: def.x - hw, maxX: def.x + hw, minZ: def.z - hd, maxZ: def.z + hd, top: DESK_SIZE.height };
+    colliders.push(collider);
+    deskColliders.set(def.id, collider);
     const seat = deskSeat(def, 1.25);
     const it: Interactable = { kind: 'desk', deskId: def.id, x: seat.x, z: seat.z, radius: 1.3 };
     interactables.push(it);
+    deskIts.set(def.id, it);
     view.group.userData.interact = it;
   });
 
@@ -1280,7 +1341,37 @@ export function buildOffice(): Office {
     }
   };
 
+  // Moves the desks to floor `index`'s layout (see floorPlan): each keeps its id, so the workers at
+  // them (parented to the seat anchor) come along, and its collider and interactable move with it.
+  const repositionDesks = (index: number) => {
+    const hw = DESK_SIZE.width / 2 - 0.05;
+    const hd = DESK_SIZE.depth / 2 - 0.02;
+    for (const def of floorPlan(index).desks) {
+      const view = desks.get(def.id);
+      if (!view) continue;
+      view.group.position.set(def.x, 0, def.z);
+      view.group.rotation.y = def.rotY;
+      view.def = def;
+      const c = deskColliders.get(def.id);
+      if (c) {
+        c.minX = def.x - hw;
+        c.maxX = def.x + hw;
+        c.minZ = def.z - hd;
+        c.maxZ = def.z + hd;
+      }
+      const it = deskIts.get(def.id);
+      if (it) {
+        const seat = deskSeat(def, 1.25);
+        it.x = seat.x;
+        it.z = seat.z;
+      }
+    }
+  };
+
   const setLevel = (index: number, count: number) => {
+    // Lay this floor's interior out its own way (see floorPlan): the desks and the balcony.
+    repositionDesks(index);
+    makeBalcony(index);
     const drop = index * STOREY;
     ground.position.y = -drop;
     for (const g of groundBase) {

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BALCONY, PARACHUTE } from '../../shared/layout';
+import { floorPlan } from '../../shared/layout';
 import { walkOff, wayHome, wayIn, wayToBalcony, type Pt } from '../../shared/nav';
 import type { Worker } from './character';
 import type { Laptop } from './laptop';
@@ -125,6 +125,8 @@ interface Leaver {
   gone: number;
   /** Off a floor with no exit door: out over the balcony railing by parachute. */
   chute: Chute | null;
+  /** Which floor of the building it left (0 is the bottom one): the balcony it jumps off is laid out per floor. */
+  index: number;
 }
 
 interface Closing {
@@ -157,6 +159,8 @@ export class Departures {
     private onUp: (deskId: string) => void,
     /** Whether this floor is above the bottom one, with no exit door: the way out is off the balcony. */
     private upstairs: () => boolean,
+    /** Which floor of the building this is (0 is the bottom one): its plan is laid out per floor (see floorPlan). */
+    private index: () => number = () => 0,
   ) {}
 
   /** Takes over a worker's model and laptop the moment it's sent home from `desk`. */
@@ -173,9 +177,10 @@ export class Departures {
     model.leave(pick(FAREWELLS));
     const chair = desk.def.beanbag ? null : desk.chair;
     const up = this.upstairs();
+    const index = this.index();
     const chute: Chute | null = up ? { phase: 'walk', t: 0, color: pick(CANOPIES), canopy: null, from: new THREE.Vector3(), vel: new THREE.Vector3(), land: new THREE.Vector3(), angle: 0, radius: 0, height: 1 } : null;
-    const way = up ? wayToBalcony(desk.def) : wayHome(desk.def);
-    this.leavers.push({ model, deskId: desk.def.id, way, next: 0, t: 0, seat, heading: model.root.rotation.y, stepIn: 0, chair, spin: 0, scale, gone: 0, chute });
+    const way = up ? wayToBalcony(desk.def, index) : wayHome(desk.def, index);
+    this.leavers.push({ model, deskId: desk.def.id, way, next: 0, t: 0, seat, heading: model.root.rotation.y, stepIn: 0, chair, spin: 0, scale, gone: 0, chute, index });
     this.laptops.push({ laptop, deskId: desk.def.id, gone: 0 });
   }
 
@@ -310,7 +315,8 @@ export class Departures {
       // Up onto the top rail in a little hop, turning to face out over the street.
       const p = Math.min(1, c.t / CLIMB);
       const e = p * p * (3 - 2 * p);
-      pos.set(c.from.x, THREE.MathUtils.lerp(c.from.y, PARACHUTE.railTop - FEET, e) + Math.sin(p * Math.PI) * 0.35, THREE.MathUtils.lerp(c.from.z, BALCONY.maxZ - 0.06, e));
+      const plan = floorPlan(l.index);
+      pos.set(c.from.x, THREE.MathUtils.lerp(c.from.y, plan.parachute.railTop - FEET, e) + Math.sin(p * Math.PI) * 0.35, THREE.MathUtils.lerp(c.from.z, plan.balcony.maxZ - 0.06, e));
       turn(0, 8);
       if (p < 1) return true;
       c.phase = 'teeter';
@@ -340,9 +346,10 @@ export class Departures {
       chute.group.scale.setScalar(0.05);
       root.add(chute.group);
       c.canopy = chute;
-      const [e0, e1] = PARACHUTE.east;
+      const { east, out } = floorPlan(l.index).parachute;
+      const [e0, e1] = east;
       const x = pos.x + e0 + Math.random() * (e1 - e0);
-      const z = pos.z + PARACHUTE.out;
+      const z = pos.z + out;
       c.land.set(x, this.ground(x, z, pos.y) - FEET, z);
       c.radius = Math.hypot(pos.x - x, pos.z - z);
       c.angle = Math.atan2(pos.x - x, pos.z - z);
@@ -452,6 +459,8 @@ export class Arrivals {
     /** The top of whatever is underfoot at (x, z) for feet at `y`. */
     private ground: (x: number, z: number, y: number) => number,
     private footstep: (x: number, y: number, z: number) => void,
+    /** Which floor of the building this is (0 is the bottom one): its plan is laid out per floor (see floorPlan). */
+    private index: () => number = () => 0,
   ) {}
 
   /** Walks `model` in to its seat at `desk`, a moment after whoever stepped out of the elevator last. */
@@ -459,7 +468,7 @@ export class Arrivals {
     const now = performance.now() / 1000;
     const delay = Math.max(0, this.nextAt - now);
     this.nextAt = now + delay + IN_SPACING;
-    const way = wayIn(desk.def);
+    const way = wayIn(desk.def, this.index());
     const [x, z] = way[0];
     this.parent.add(model.root);
     model.root.position.set(x, this.ground(x, z, 0) - FEET, z);

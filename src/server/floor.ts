@@ -109,7 +109,7 @@ export class Floor {
   readonly ready: Promise<void>;
   readonly dog: Dog;
   /** The basketball by the hoop: who has it, or how it was last thrown. */
-  readonly court = new Court();
+  readonly court: Court;
   private timer: NodeJS.Timeout;
   /** Pull requests merging, to ring the gong for. */
   private merges = new MergeWatch();
@@ -119,6 +119,8 @@ export class Floor {
   constructor(
     readonly def: FloorDef,
     private ctx: FloorContext,
+    /** Where this floor is in the stack (0 is the bottom one): its plan is laid out per floor (see floorPlan). */
+    private readonly index = 0,
   ) {
     this.id = def.id;
     this.dir = def.dir;
@@ -127,13 +129,19 @@ export class Floor {
     excludeFromGit(def.dir);
     this.project = projectInfo(def.dir, def.name, ctx.agentCmd, ctx.agentArgs);
     this.docs = new Docs(def.dir);
+    this.court = new Court(undefined, index);
 
     // Before the workers, so it hears about the ones who wake up needing input.
-    this.dog = new Dog(def.id, dataDir, {
-      workers: () => this.workers?.list() ?? [],
-      people: () => ctx.peers(this),
-      send: (dog) => ctx.emit(this, { t: 'dog', dog }),
-    });
+    this.dog = new Dog(
+      def.id,
+      dataDir,
+      {
+        workers: () => this.workers?.list() ?? [],
+        people: () => ctx.peers(this),
+        send: (dog) => ctx.emit(this, { t: 'dog', dog }),
+      },
+      index,
+    );
 
     this.workers = new WorkerManager(
       def.dir,

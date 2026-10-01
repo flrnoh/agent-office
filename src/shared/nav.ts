@@ -1,7 +1,7 @@
 // Getting around the office floor downstairs (no stairs, no loft, no elevator), round the furniture
 // on a coarse grid: the dog's walks (server/dog.ts), and a worker's way out when it's sent home.
 
-import { BALCONY, BALCONY_DOOR, BEANBAGS, BOOKSHELF, CABINET, DESK_SIZE, DESKS, ELEVATOR, ELEVATOR_FRONT, EXIT_DOOR, EXIT_STAIRS, FLOOR, GONG, JUKEBOX, KIOSK, LADDER, LOFT, MEETING_ROOM, MEETING_SEATS, MEETING_TABLE, PARACHUTE, PLANTS, POLE, POLES, ROAD, STAIRS, STATIONS, WHITEBOARD, type DeskDef } from './layout.js';
+import { BOOKSHELF, CABINET, DESK_SIZE, ELEVATOR, ELEVATOR_FRONT, EXIT_DOOR, EXIT_STAIRS, FLOOR, floorPlan, GONG, JUKEBOX, KIOSK, LADDER, LOFT, MEETING_ROOM, MEETING_TABLE, PLANTS, POLE, POLES, ROAD, STAIRS, WHITEBOARD, type DeskDef, type FloorPlan } from './layout.js';
 
 
 export type Pt = [number, number];
@@ -21,12 +21,12 @@ export function deskPoint(d: DeskDef, t: number, s: number): Pt {
 }
 
 /** What's in the way on the floor. The lounge, kitchen and plants are where office.ts puts them. */
-function obstacles(): { rects: Rect[]; circles: Circle[] } {
+function obstacles(plan: FloorPlan): { rects: Rect[]; circles: Circle[] } {
   const rects: Rect[] = [];
   const circles: Circle[] = [];
   const hw = DESK_SIZE.width / 2;
   const hd = DESK_SIZE.depth / 2;
-  for (const d of DESKS) {
+  for (const d of plan.desks) {
     // Desks face ±z, so their tops are axis-aligned.
     rects.push([d.x - hw, d.x + hw, d.z - hd, d.z + hd]);
     const [cx, cz] = deskPoint(d, 0, 0.9);
@@ -57,14 +57,14 @@ function obstacles(): { rects: Rect[]; circles: Circle[] } {
   for (const p of POLES) rects.push([p.x - POLE.rail - 0.05, p.x + POLE.rail + 0.05, p.z - POLE.rail - 0.05, p.z + POLE.rail + 0.05]);
   // The overflow bean bags and their lap desks. They're only out while every desk is taken, but they
   // always come out in the same spots, so the dog keeps off those.
-  for (const b of BEANBAGS) {
+  for (const b of plan.beanbags) {
     const corners = [deskPoint(b, -0.62, -1.1), deskPoint(b, 0.62, -1.1), deskPoint(b, -0.62, 0.64), deskPoint(b, 0.62, 0.64)];
     const xs = corners.map(([x]) => x);
     const zs = corners.map(([, z]) => z);
     rects.push([Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)]);
   }
   // The board agents' kiosks, and the agent standing behind each one.
-  for (const k of STATIONS) {
+  for (const k of plan.stations) {
     const corners = [deskPoint(k, -KIOSK.width / 2, -KIOSK.depth / 2), deskPoint(k, KIOSK.width / 2, -KIOSK.depth / 2), deskPoint(k, -KIOSK.width / 2, KIOSK.stand + 0.35), deskPoint(k, KIOSK.width / 2, KIOSK.stand + 0.35)];
     const xs = corners.map(([x]) => x);
     const zs = corners.map(([, z]) => z);
@@ -80,7 +80,7 @@ function obstacles(): { rects: Rect[]; circles: Circle[] } {
   const t = MEETING_TABLE;
   rects.push([t.x - t.width / 2, t.x + t.width / 2, t.z - t.depth / 2, t.z + t.depth / 2]);
   // Chairs tucked in at the table, a little smaller than a desk's, so there's a way round behind them.
-  for (const d of MEETING_SEATS) {
+  for (const d of plan.meetingSeats) {
     const [cx, cz] = deskPoint(d, 0, 0.85);
     circles.push([cx, cz, 0.3]);
   }
@@ -94,23 +94,35 @@ function isBlocked(x: number, z: number, o: ReturnType<typeof obstacles>): boole
   return false;
 }
 
-const GRID = (() => {
-  const o = obstacles();
+function buildGrid(plan: FloorPlan): Uint8Array {
+  const o = obstacles(plan);
   const g = new Uint8Array(COLS * ROWS);
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) g[r * COLS + c] = isBlocked(FLOOR.minX + (c + 0.5) * CELL, FLOOR.minZ + (r + 0.5) * CELL, o) ? 1 : 0;
   return g;
-})();
+}
+
+// Each floor has its own layout (see floorPlan), so its own grid of what's in the way; worked out once and kept.
+const GRIDS = new Map<number, Uint8Array>();
+function gridFor(index: number): Uint8Array {
+  const key = Math.max(0, Math.trunc(index));
+  let g = GRIDS.get(key);
+  if (!g) {
+    g = buildGrid(floorPlan(key));
+    GRIDS.set(key, g);
+  }
+  return g;
+}
 
 const colOf = (x: number) => Math.max(0, Math.min(COLS - 1, Math.floor((x - FLOOR.minX) / CELL)));
 const rowOf = (z: number) => Math.max(0, Math.min(ROWS - 1, Math.floor((z - FLOOR.minZ) / CELL)));
 const centerOf = (i: number): Pt => [FLOOR.minX + ((i % COLS) + 0.5) * CELL, FLOOR.minZ + (Math.floor(i / COLS) + 0.5) * CELL];
 
-export function walkable(x: number, z: number): boolean {
-  return x > FLOOR.minX && x < FLOOR.maxX && z > FLOOR.minZ && z < FLOOR.maxZ && !GRID[rowOf(z) * COLS + colOf(x)];
+export function walkable(x: number, z: number, index = 0): boolean {
+  return x > FLOOR.minX && x < FLOOR.maxX && z > FLOOR.minZ && z < FLOOR.maxZ && !gridFor(index)[rowOf(z) * COLS + colOf(x)];
 }
 
-/** Whether it can trot straight from a to b: every cell the line crosses is clear. */
-function clearLine(a: Pt, b: Pt): boolean {
+/** Whether it can trot straight from a to b on `grid`: every cell the line crosses is clear. */
+function clearLine(a: Pt, b: Pt, grid: Uint8Array): boolean {
   let c = colOf(a[0]);
   let r = rowOf(a[1]);
   const c1 = colOf(b[0]);
@@ -124,11 +136,11 @@ function clearLine(a: Pt, b: Pt): boolean {
   let nextC = sc ? (FLOOR.minX + (c + (sc > 0 ? 1 : 0)) * CELL - a[0]) / dx : Infinity;
   let nextR = sr ? (FLOOR.minZ + (r + (sr > 0 ? 1 : 0)) * CELL - a[1]) / dz : Infinity;
   for (let n = 0; n <= COLS + ROWS; n++) {
-    if (GRID[r * COLS + c]) return false;
+    if (grid[r * COLS + c]) return false;
     if (c === c1 && r === r1) return true;
     if (Math.abs(nextC - nextR) < 1e-9) {
       // Right through a corner: both cells beside it count.
-      if (GRID[r * COLS + c + sc] || GRID[(r + sr) * COLS + c]) return false;
+      if (grid[r * COLS + c + sc] || grid[(r + sr) * COLS + c]) return false;
       c += sc;
       r += sr;
       nextC += stepC;
@@ -144,13 +156,14 @@ function clearLine(a: Pt, b: Pt): boolean {
   return false;
 }
 
-/** The middle of the nearest cell it can stand in. */
-export function nearestWalkable(p: Pt): Pt {
-  if (walkable(p[0], p[1])) return p;
+/** The middle of the nearest cell it can stand in, on floor `index`. */
+export function nearestWalkable(p: Pt, index = 0): Pt {
+  const grid = gridFor(index);
+  if (walkable(p[0], p[1], index)) return p;
   let best = -1;
   let bestD = Infinity;
-  for (let i = 0; i < GRID.length; i++) {
-    if (GRID[i]) continue;
+  for (let i = 0; i < grid.length; i++) {
+    if (grid[i]) continue;
     const [x, z] = centerOf(i);
     const d = (x - p[0]) ** 2 + (z - p[1]) ** 2;
     if (d < bestD) {
@@ -161,17 +174,18 @@ export function nearestWalkable(p: Pt): Pt {
   return best < 0 ? p : centerOf(best);
 }
 
-/** A* over the grid, then pulled tight: the corners of a route from `from` to `to`, both included. */
-export function route(from: Pt, to: Pt): Pt[] {
-  const goal = nearestWalkable(to);
-  const start = nearestWalkable(from);
+/** A* over floor `index`'s grid, then pulled tight: the corners of a route from `from` to `to`, both included. */
+export function route(from: Pt, to: Pt, index = 0): Pt[] {
+  const grid = gridFor(index);
+  const goal = nearestWalkable(to, index);
+  const start = nearestWalkable(from, index);
   const lead: Pt[] = start === from ? [from] : [from, start];
-  if (clearLine(start, goal)) return [...lead, goal];
+  if (clearLine(start, goal, grid)) return [...lead, goal];
   const s = rowOf(start[1]) * COLS + colOf(start[0]);
   const g = rowOf(goal[1]) * COLS + colOf(goal[0]);
-  const cost = new Float64Array(GRID.length).fill(Infinity);
-  const came = new Int32Array(GRID.length).fill(-1);
-  const closed = new Uint8Array(GRID.length);
+  const cost = new Float64Array(grid.length).fill(Infinity);
+  const came = new Int32Array(grid.length).fill(-1);
+  const closed = new Uint8Array(grid.length);
   const heap = new Heap();
   const gc = g % COLS;
   const gr = Math.floor(g / COLS);
@@ -196,9 +210,9 @@ export function route(from: Pt, to: Pt): Pt[] {
         const nr = r + dz;
         if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS) continue;
         const n = nr * COLS + nc;
-        if (GRID[n] || closed[n]) continue;
+        if (grid[n] || closed[n]) continue;
         // No cutting corners past something in the way.
-        if (dx && dz && (GRID[r * COLS + nc] || GRID[nr * COLS + c])) continue;
+        if (dx && dz && (grid[r * COLS + nc] || grid[nr * COLS + c])) continue;
         const next = cost[i] + (dx && dz ? Math.SQRT2 : 1);
         if (next >= cost[n]) continue;
         cost[n] = next;
@@ -215,7 +229,7 @@ export function route(from: Pt, to: Pt): Pt[] {
   const out: Pt[] = [...lead];
   for (let i = 0; i < pts.length - 1; ) {
     let j = pts.length - 1;
-    while (j > i + 1 && !clearLine(pts[i], pts[j])) j--;
+    while (j > i + 1 && !clearLine(pts[i], pts[j], grid)) j--;
     out.push(pts[j]);
     i = j;
   }
@@ -271,8 +285,6 @@ class Heap {
 
 /** Just inside the exit door, in the west wall. */
 const EXIT: Pt = [FLOOR.minX + 0.45, EXIT_DOOR.u];
-/** Just inside the balcony doors, in the south wall. */
-const BALCONY_IN: Pt = [BALCONY_DOOR.u, FLOOR.maxZ - 0.45];
 /** Down the middle of the steps outside it. */
 const STEPS_X = (EXIT_STAIRS.minX + EXIT_STAIRS.maxX) / 2;
 /** Along the near sidewalk, between the lot and the trees planted in it. */
@@ -289,9 +301,9 @@ const IN_FROM: Pt = [ELEVATOR.x, ELEVATOR_FRONT + 0.5];
  * A worker's walk in to its seat when it's called to a meeting: out of the elevator and round the
  * furniture to beside its chair (the last point), on whichever side is the shorter way, where it hops on.
  */
-export function wayIn(seat: DeskDef): Pt[] {
+export function wayIn(seat: DeskDef, index = 0): Pt[] {
   const ways = [-1, 1].map((side) => {
-    const pts = [...route(IN_FROM, deskPoint(seat, side * 0.7, seat.room ? 1.4 : 1.75)), deskPoint(seat, side * 0.7, 0.95)];
+    const pts = [...route(IN_FROM, deskPoint(seat, side * 0.7, seat.room ? 1.4 : 1.75), index), deskPoint(seat, side * 0.7, 0.95)];
     return { pts, cost: pathLength(pts) };
   });
   return ways[0].cost <= ways[1].cost ? ways[0].pts : ways[1].pts;
@@ -303,19 +315,21 @@ export function wayIn(seat: DeskDef): Pt[] {
  * furniture to the exit door in the west wall, across the landing outside, down the steps to the
  * street and off along the sidewalk.
  */
-export function wayHome(seat: DeskDef): Pt[] {
-  const inside = wayTo(seat, EXIT);
+export function wayHome(seat: DeskDef, index = 0): Pt[] {
+  const inside = wayTo(seat, EXIT, index);
   const { landingZ1, steps, run } = EXIT_STAIRS;
   return [...inside, [STEPS_X, EXIT_DOOR.u], ...walkOff([STEPS_X, landingZ1 + (steps - 1) * run + 0.6])];
 }
 
 /**
  * The same walk on a floor above the bottom one, which has no exit door: round the furniture to the
- * balcony doors, out across the balcony and up to its railing (PARACHUTE.jump), where it goes over.
+ * balcony doors, out across the balcony and up to its railing (parachute.jump), where it goes over.
+ * The balcony is laid out per floor (see floorPlan), so its doors and railing are floor `index`'s.
  */
-export function wayToBalcony(seat: DeskDef): Pt[] {
-  const inside = wayTo(seat, BALCONY_IN);
-  return [...inside, [BALCONY_DOOR.u, BALCONY.minZ + 0.4], [PARACHUTE.jump.x, PARACHUTE.jump.z]];
+export function wayToBalcony(seat: DeskDef, index = 0): Pt[] {
+  const { balcony, balconyDoor, parachute } = floorPlan(index);
+  const inside = wayTo(seat, [balconyDoor.u, FLOOR.maxZ - 0.45], index);
+  return [...inside, [balconyDoor.u, balcony.minZ + 0.4], [parachute.jump.x, parachute.jump.z]];
 }
 
 /** From `from`, down on the street, over to the near sidewalk and off along it to the west, where they're gone. */
@@ -323,8 +337,8 @@ export function walkOff(from: Pt): Pt[] {
   return [from, [from[0], SIDEWALK_Z], [WALK_OFF_X, SIDEWALK_Z]];
 }
 
-/** From beside `seat`, where it hops down, round the furniture to `door` on the office floor. */
-function wayTo(seat: DeskDef, door: Pt): Pt[] {
+/** From beside `seat`, where it hops down, round floor `index`'s furniture to `door` on the office floor. */
+function wayTo(seat: DeskDef, door: Pt, index = 0): Pt[] {
   const ways = [-1, 1].map((side) => {
     // Beside the chair and back from the desk into the aisle, off the bean bag and round behind it, or
     // out from behind the kiosk and round its front, into the room.
@@ -335,8 +349,8 @@ function wayTo(seat: DeskDef, door: Pt): Pt[] {
         : // At the meeting table there's less room behind the chair, before the glass.
           [deskPoint(seat, side * 0.7, 0.95), deskPoint(seat, side * 0.7, seat.room ? 1.4 : 1.75)];
     // A bean bag or a kiosk can stand with one side up against something (the elevator, by the queue).
-    const blocked = !!(seat.beanbag || seat.station) && !walkable(down[0], down[1]);
-    const pts = [down, ...route(back, door)];
+    const blocked = !!(seat.beanbag || seat.station) && !walkable(down[0], down[1], index);
+    const pts = [down, ...route(back, door, index)];
     return { pts, cost: (blocked ? 1000 : 0) + pathLength(pts) };
   });
   return ways[0].cost <= ways[1].cost ? ways[0].pts : ways[1].pts;

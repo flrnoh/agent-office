@@ -511,7 +511,9 @@ export async function startServer(cfg: Config) {
       return undefined;
     }
     try {
-      const floor = new Floor(def, floorContext);
+      // Where it is in the stack (0 is the bottom one): its plan is laid out per floor (see floorPlan).
+      const index = Math.max(0, building.list().findIndex((d) => d.id === def.id));
+      const floor = new Floor(def, floorContext, index);
       floors.set(def.id, floor);
       return floor;
     } catch (err) {

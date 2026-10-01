@@ -13,7 +13,11 @@ export class Court {
   private shot: { x: number; y: number; z: number; vx: number; vy: number; vz: number; by: string; at: number } | undefined;
   private last = new Map<string, number>();
 
-  constructor(private now = () => Date.now()) {}
+  constructor(
+    private now = () => Date.now(),
+    /** Which floor of the building this is (0 is the bottom one): its balcony is laid out per floor (see floorPlan). */
+    private floorIndex = 0,
+  ) {}
 
   /** The ball as it is now, for the floor's pages. */
   state(): BallState {
@@ -33,7 +37,7 @@ export class Court {
 
   /** `id` throws the ball they have (or drops it, slowly). Says whether anything changed. */
   throw(id: string, s: { x: number; y: number; z: number; vx: number; vy: number; vz: number }): boolean {
-    if (this.holder !== id || !throwOk(s)) return false;
+    if (this.holder !== id || !throwOk(s, this.floorIndex)) return false;
     this.holder = undefined;
     this.shot = { x: s.x, y: s.y, z: s.z, vx: s.vx, vy: s.vy, vz: s.vz, by: id, at: this.now() };
     return true;

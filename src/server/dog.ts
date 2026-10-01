@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { DESK_BY_ID, FLOOR, KIOSK, type DeskDef } from '../shared/layout.js';
+import { DESK_BY_ID, FLOOR, floorPlan, KIOSK, type DeskDef, type FloorPlan } from '../shared/layout.js';
 import { cleanDogName, dogAt, dogDefaults, legSeconds, type DogAct, type DogState } from '../shared/dog.js';
 import { deskPoint, nearestWalkable, route, walkable, type Pt } from '../shared/nav.js';
 import type { PeerInfo, WorkerInfo } from '../shared/protocol.js';
@@ -67,12 +67,17 @@ export class Dog {
   private waking = false;
   private lastPet = 0;
   private stopped = false;
+  /** This floor's plan: its desks and bean bags are laid out its own way (see floorPlan). */
+  private readonly plan: FloorPlan;
 
   constructor(
     readonly floorId: string,
     dataDir: string,
     private env: DogEnv,
+    /** Which floor of the building this is (0 is the bottom one). */
+    private readonly index = 0,
   ) {
+    this.plan = floorPlan(index);
     const d = dogDefaults(floorId);
     this.fallbackName = d.name;
     this.coat = d.coat;
@@ -191,12 +196,12 @@ export class Dog {
     const pts: Pt[] = [from];
     let start = from;
     // Still under the desk (or on its way in), not just somewhere on the way there.
-    if (this.exit && !walkable(from[0], from[1])) {
+    if (this.exit && !walkable(from[0], from[1], this.index)) {
       pts.push(this.exit);
       start = this.exit;
     }
     this.exit = undefined;
-    pts.push(...route(start, to).slice(1));
+    pts.push(...route(start, to, this.index).slice(1));
     if (last) pts.push(last);
     this.go(pts, speed, act, extra);
     return legSeconds(this.leg) * 1000;
@@ -228,7 +233,7 @@ export class Dog {
     const call = this.nextCall();
     if (call) return this.barkAt(call);
     // Only at a desk or a bean bag: a board agent's kiosk has nothing to curl up under.
-    const busy = this.env.workers().filter((w) => w.status === 'working' && DESK_BY_ID.has(w.deskId) && !DESK_BY_ID.get(w.deskId)?.station);
+    const busy = this.env.workers().filter((w) => w.status === 'working' && this.plan.deskById.has(w.deskId) && !this.plan.deskById.get(w.deskId)?.station);
     const people = this.env.people().filter((p) => p.y < 0.5);
     const was = this.mode;
     const options: [number, () => void][] = [
@@ -260,7 +265,7 @@ export class Dog {
     let spot: Pt = at;
     for (let i = 0; i < 30; i++) {
       const p: Pt = [rand(FLOOR.minX + 1, FLOOR.maxX - 1), rand(FLOOR.minZ + 1, FLOOR.maxZ - 1)];
-      if (walkable(p[0], p[1]) && dist(p, at) > 4) {
+      if (walkable(p[0], p[1], this.index) && dist(p, at) > 4) {
         spot = p;
         break;
       }
@@ -271,11 +276,11 @@ export class Dog {
 
   /** Curls up under a busy worker's desk, at its feet. */
   private nap(w: WorkerInfo) {
-    const desk = DESK_BY_ID.get(w.deskId)!;
+    const desk = this.plan.deskById.get(w.deskId)!;
     this.mode = 'nap';
     let side = this.sideOf(desk);
     // A bean bag has no desk to get under, so it curls up beside it, on whichever side has room.
-    if (desk.beanbag && !walkable(...deskPoint(desk, side * 1.05, 0.1))) side = -side;
+    if (desk.beanbag && !walkable(...deskPoint(desk, side * 1.05, 0.1), this.index)) side = -side;
     const approach = desk.beanbag ? deskPoint(desk, side * 1.3, 1.2) : deskPoint(desk, side * 0.8, 1.3);
     const under = desk.beanbag ? deskPoint(desk, side * 1.05, 0.1) : deskPoint(desk, side * 0.45, 0.15);
     // Head out toward the chair.
@@ -300,7 +305,7 @@ export class Dog {
       return this.think();
     }
     const person: Pt = [p.x, p.z];
-    const behind = nearestWalkable([p.x - Math.sin(p.rotY) * 1.1, p.z - Math.cos(p.rotY) * 1.1]);
+    const behind = nearestWalkable([p.x - Math.sin(p.rotY) * 1.1, p.z - Math.cos(p.rotY) * 1.1], this.index);
     const end = this.leg.path[this.leg.path.length - 1];
     const along = this.leg.act === 'sit' && this.leg.following === p.id;
     // Someone standing still who just turns around doesn't need it circling round behind them.
@@ -315,7 +320,7 @@ export class Dog {
 
   /** Runs to the desk of a worker that needs input, and barks at it. */
   private barkAt(w: WorkerInfo) {
-    const desk = DESK_BY_ID.get(w.deskId)!;
+    const desk = this.plan.deskById.get(w.deskId)!;
     const already = this.mode === 'bark' && this.leg.workerId === w.id;
     this.mode = 'bark';
     this.follow = undefined;

@@ -2,7 +2,7 @@ import './style.css';
 import * as THREE from 'three';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { sameLook } from '../shared/avatar';
-import { BALCONY, DESK_BY_ID, DESKS, ELEVATOR, ELEVATOR_CAR, FLOOR, GOLF_HOLE, LADDER, LOFT, POLE, POLES, SEATING_BY_ID, SLAB, STATIONS, STATION_AGENT, STOREY, WALL_HEIGHT, beanbagsOut, deskSeat, inElevator, nextFreeSeat, roofDrop, seatAt, seatPlace, streetBelow, vacantSeats, type DeskDef, type SeatDef, type SeatPlace, type StationKind } from '../shared/layout';
+import { DESK_BY_ID, DESKS, ELEVATOR, ELEVATOR_CAR, FLOOR, floorPlan, GOLF_HOLE, LADDER, LOFT, POLE, POLES, SEATING_BY_ID, SLAB, STATIONS, STATION_AGENT, STOREY, WALL_HEIGHT, beanbagsOut, deskSeat, inElevator, nextFreeSeat, roofDrop, seatAt, seatPlace, streetBelow, vacantSeats, type DeskDef, type SeatDef, type SeatPlace, type StationKind } from '../shared/layout';
 import { floorPalette } from '../shared/floors';
 import type { AgentEffort, AgentProvider, CarriedIssue, FloorInfo, GhIssue, GongWhy, PeerInfo, WorkerInfo, WorkerTask } from '../shared/protocol';
 import { MEETING_PATTERNS } from '../shared/meetings';
@@ -20,7 +20,7 @@ import { djFrame, djTime } from './dnb';
 import { openBar } from './ui/bar';
 import { DRINK_BY_ID, ROOF, ROOF_NAME, type Drink, type DrinkId } from '../shared/rooftop';
 import { BACKSWING_TIME, IMPACT, Person, Worker, type Stage } from './world/character';
-import { GolfBalls, PIN_DISTANCE, TEE_BALL, fly, lieText, pinText, type Flight, type Hit, type Shot } from './world/golf';
+import { GolfBalls, pinDistance, teeBall, fly, lieText, pinText, type Flight, type Hit, type Shot } from './world/golf';
 import { Golfer } from './golf';
 import { Thrower } from './throwing';
 import { ROUND, score, targetFrame, type BarGame, type Score, type Toss } from '../shared/bargames';
@@ -395,6 +395,7 @@ const golf = new Golfer(player, me, camera, {
   },
   ball: () => balls.mine,
   street: () => player.street,
+  index: () => office.stack.state.index,
   done: () => {
     // Not '': that reads as "no hint shown", and the golf hint would stay up.
     hintKey = 'stale';
@@ -456,7 +457,7 @@ function theirShot(id: string, shot: Shot) {
     if (store.floor !== floor || upTop) return;
     balls.launch(shotHere(shot), p.name, false);
     teeEmptyUntil = performance.now() + 1800;
-    sound.golf('hit', TEE_BALL);
+    sound.golf('hit', teeBall(office.stack.state.index));
   }, (BACKSWING_TIME + IMPACT) * 1000);
 }
 // ---- Darts and axes at the rooftop bar ------------------------------------------------------------
@@ -689,6 +690,9 @@ function syncStack() {
   if (s.index === Math.max(0, index) && s.count === count && s.up === up && s.down === down) return;
   office.stack.set({ index: Math.max(0, index), count, up, down });
   office.setLevel(Math.max(0, index), count);
+  // The basketball flies and bounces the same way on every page (see shared/hoop.ts); each floor is
+  // laid out its own way (see floorPlan), so it needs to know which floor this is.
+  ball.index = Math.max(0, index);
   player.street = streetBelow(index);
 }
 store.on('floors', syncStack);
@@ -732,12 +736,14 @@ const departures = new Departures(
   (x, y, z) => sound.stepAt(x, z, y),
   () => arrangeSeats(),
   () => office.stack.state.index > 0,
+  () => office.stack.state.index,
 );
 // Workers called to a meeting, walking in from the elevator to the meeting table.
 const arrivals = new Arrivals(
   scene,
   (x, z, y) => groundAt(office.colliders, x, z, y),
   (x, y, z) => sound.stepAt(x, z, y),
+  () => office.stack.state.index,
 );
 /** Set while a floor's workers arrive with it (a welcome, an elevator ride): they're in their seats already. */
 let seatedAlready = false;
@@ -1364,7 +1370,7 @@ function walkTick(now: number) {
   if (Math.hypot(at.x - player.pos.x, at.z - player.pos.z) < NEAR_ENOUGH && Math.abs(at.y - player.pos.y) < 1) return arrivedAt(at);
   if (now < walkingTo.replanAt) return;
   walkingTo.replanAt = now + 800;
-  player.walkPath(wayTo(player.pos, at));
+  player.walkPath(wayTo(player.pos, at, office.stack.state.index));
 }
 
 player.onPathEnd = (why) => {
@@ -1431,7 +1437,7 @@ function syncWorkers() {
     v.model.setPr(workerPr(w, store.pulls.items, store.queue.tasks));
     const engineBadge = w.kind === 'agent' ? modelBadge(w.provider, w.model, w.effort) : undefined;
     v.model.setTask(meetingCard(w) ?? (w.task && w.kind === 'agent' ? { ...w.task, name: `${providerLabel(w.provider, store.project)}${engineBadge ? ` · ${engineBadge}` : ''} · ${w.task.name}` } : w.task));
-    const deskDef = DESK_BY_ID.get(w.deskId);
+    const deskDef = floorPlan(office.stack.state.index).deskById.get(w.deskId);
     // Keys clack while it types, not while it reads, watches its tests or browses.
     if (deskDef) sound.setTyping(w.id, deskDef.x, deskDef.z, w.status === 'working' && (!w.action || w.action === 'edit'));
     const again = w.kind === 'shell' ? 'restart' : 'resume';
@@ -2080,10 +2086,11 @@ function setSmoking(on: boolean) {
   net.send({ t: 'act', smoke: on });
 }
 
-/** Out on the balcony (a little slack at the door), where smoking is allowed. */
+/** Out on the balcony (a little slack at the door), where smoking is allowed. The balcony is laid out per floor (see floorPlan). */
 function onBalcony(): boolean {
   const p = player.pos;
-  return p.y > -0.5 && p.y < 2 && p.x > BALCONY.minX - 0.5 && p.x < BALCONY.maxX + 0.5 && p.z > BALCONY.minZ - 0.8 && p.z < BALCONY.maxZ + 0.5;
+  const b = floorPlan(office.stack.state.index).balcony;
+  return p.y > -0.5 && p.y < 2 && p.x > b.minX - 0.5 && p.x < b.maxX + 0.5 && p.z > b.minZ - 0.8 && p.z < b.maxZ + 0.5;
 }
 
 /** Ends the break when the cigarette burns down, or when you take it back inside. */
@@ -2644,7 +2651,7 @@ function hintFor(it: Interactable): Hint {
       const other = teeTaken();
       if (other) return { k: `taken|${other}`, parts: [title('⛳ Golf tee'), aside(`🏌️ ${clip(other, 24)} is teeing off`)] };
       const { best, holes } = golfRecord();
-      const about = [holes ? `🏆 ${holes} hole${holes === 1 ? '' : 's'} in one` : '', best !== null ? `your best ${pinText(best)} from the pin` : `the pin's ${Math.round(PIN_DISTANCE)} m out`].filter(Boolean).join(' · ');
+      const about = [holes ? `🏆 ${holes} hole${holes === 1 ? '' : 's'} in one` : '', best !== null ? `your best ${pinText(best)} from the pin` : `the pin's ${Math.round(pinDistance(office.stack.state.index))} m out`].filter(Boolean).join(' · ');
       return { k: about, parts: [title('⛳ Golf tee'), aside(about), key('E', 'Tee off')] };
     }
     case 'jukebox': {
@@ -3626,7 +3633,7 @@ function frame(ts?: number) {
 
   const camPos = camera.position;
   for (const [id, v] of workerViews) {
-    const desk = DESK_BY_ID.get(v.deskId)!;
+    const desk = floorPlan(office.stack.state.index).deskById.get(v.deskId)!;
     // A jumping worker holds still while you're near enough to read its card, and jumps again once you walk away.
     const d = v.model.root.getWorldPosition(workerPos).distanceTo(player.pos);
     v.model.held = d < (v.model.held ? HOLD_LEAVE : HOLD_NEAR);

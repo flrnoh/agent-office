@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BALCONY, BALCONY_DOOR, ELEVATOR, ELEVATOR_FRONT, EXIT_DOOR, FLOOR, ROOF_BAR, SLAB, STAGE, STOREY, WALL_HEIGHT, WALL_T, WINDOWS, type Opening, type Side } from '../../shared/layout';
+import { ELEVATOR, ELEVATOR_FRONT, EXIT_DOOR, FLOOR, floorPlan, ROOF_BAR, SLAB, STAGE, STOREY, WALL_HEIGHT, WALL_T, type Opening, type Side } from '../../shared/layout';
 import type { Collider } from './office';
 import { bulb, type NightParts } from './outside';
 import { mergeByMaterial, mesh, toon, toonUnique } from './toon';
@@ -121,9 +121,9 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
     parts.add(onFace(g, o.wall, o.u));
   };
 
-  /** The balcony off a floor `y0` up: its deck, and a railing with glass in it round the three open sides. */
-  const balcony = (parts: THREE.Group, y0: number) => {
-    const { minX, maxX, minZ, maxZ } = BALCONY;
+  /** The balcony off a floor `y0` up (laid out per floor, see floorPlan): its deck, and a railing with glass in it round the three open sides. */
+  const balcony = (parts: THREE.Group, y0: number, bal: { minX: number; maxX: number; minZ: number; maxZ: number }) => {
+    const { minX, maxX, minZ, maxZ } = bal;
     const w = maxX - minX;
     const d = maxZ - minZ;
     parts.add(mesh(new THREE.BoxGeometry(w, SLAB - 0.01, d), deck, (minX + maxX) / 2, y0 - SLAB / 2 - 0.005, (minZ + maxZ) / 2, false));
@@ -262,16 +262,18 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
       const r = k - index;
       if (r === 0) continue;
       const y0 = r * STOREY;
+      // Each floor is laid out its own way (see floorPlan): its own windows, balcony and doors.
+      const plan = floorPlan(k);
       for (const side of Object.keys(FACES) as Side[]) {
-        const holes: Opening[] = WINDOWS.filter((o) => o.wall === side);
-        if (side === 'south') holes.push(BALCONY_DOOR);
+        const holes: Opening[] = plan.windows.filter((o) => o.wall === side);
+        if (side === 'south') holes.push(plan.balconyDoor);
         // Only the bottom floor has a way out on the west side; its door stands in the hole (see office.ts).
         if (side === 'west' && k === 0) holes.push(EXIT_DOOR);
         facade(parts, side, y0, holes);
       }
-      for (const o of WINDOWS) glazing(parts, o, y0, false);
-      glazing(parts, BALCONY_DOOR, y0, true);
-      balcony(parts, y0);
+      for (const o of plan.windows) glazing(parts, o, y0, false);
+      glazing(parts, plan.balconyDoor, y0, true);
+      balcony(parts, y0, plan.balcony);
       if (k === 0) {
         // Dark behind the exit door, through its porthole.
         const back = mesh(new THREE.PlaneGeometry(EXIT_DOOR.width, EXIT_DOOR.y1), behind, FLOOR.minX - 0.02, y0 + EXIT_DOOR.y1 / 2, EXIT_DOOR.u, false);

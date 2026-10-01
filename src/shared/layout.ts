@@ -25,14 +25,15 @@ const DESK_WIDTH = 2.2;
 const DESK_DEPTH = 1.1;
 export const DESK_SIZE = { width: DESK_WIDTH, depth: DESK_DEPTH, height: 0.78 } as const;
 
-function buildDesks(): DeskDef[] {
+/** Where the desk pods sit by default: two clusters across, each two back-to-back rows. Floors vary from this (see floorPlan). */
+const DESK_CLUSTERS_X = [-10.5, -1.5] as const;
+const DESK_PODS = [
+  { back: -4.55, front: -3.45 },
+  { back: 3.45, front: 4.55 },
+] as const;
+
+function buildDesks(clusterX: readonly number[] = DESK_CLUSTERS_X, pods: readonly { back: number; front: number }[] = DESK_PODS): DeskDef[] {
   const desks: DeskDef[] = [];
-  const clusterX = [-10.5, -1.5];
-  // Each pod is two back-to-back rows; the far row faces +z (rotY = PI).
-  const pods = [
-    { back: -4.55, front: -3.45 },
-    { back: 3.45, front: 4.55 },
-  ];
   let n = 1;
   for (const pod of pods) {
     for (const cx of clusterX) {
@@ -507,3 +508,109 @@ export const POLES: readonly PoleSpot[] = [
 ];
 /** A pole's hole in the floor, the railing round it, and how far from the pole you hang on. */
 export const POLE = { hole: 0.68, rail: 0.9, grip: 0.4, radius: 0.055 } as const;
+
+// ---- Per-floor plans --------------------------------------------------------------------------
+// Every floor of the building is a project, and in the real world no two would have the same
+// layout. `floorPlan(index)` is where each floor's plan lives: the same set of seats and fixtures
+// (same ids, same counts, so the server's seating is floor-agnostic), laid out its own way. It's a
+// pure function of the floor's index (0 is the bottom one), so the client and the server, and every
+// player's screen, all work out the same plan for a floor and its deterministic play (golf, the
+// basketball) stays in step. Floor 0's plan is the constants above; other floors vary from them
+// (see Stage 2). The result is cached, so a floor's plan is only worked out once.
+
+/** One floor's layout: its seats (all floors share the ids and counts), its balcony and what's on it, and its windows. */
+export interface FloorPlan {
+  /** The worker desks, `desk-1`..`desk-16`; the same ids on every floor, laid out per floor. */
+  desks: DeskDef[];
+  /** The overflow bean bags, `beanbag-1`..`beanbag-12`. */
+  beanbags: DeskDef[];
+  /** The board agents' kiosks; tied to the north-wall boards, so the same on every floor. */
+  stations: DeskDef[];
+  /** The meeting room's chairs; tied to the table, so the same on every floor. */
+  meetingSeats: DeskDef[];
+  /** Where a worker can sit: the desks, then the bean bags. */
+  seats: DeskDef[];
+  /** Any place a worker can be by id (seats, kiosks, meeting chairs) on this floor. */
+  deskById: Map<string, DeskDef>;
+  /** The smoking balcony off the south wall: its footprint (depth is fixed; it slides and widens along the wall). */
+  balcony: { minX: number; maxX: number; minZ: number; maxZ: number };
+  /** The glass doors out to it, in the south wall, within the balcony's span. */
+  balconyDoor: Opening;
+  /** The ashtray on the balcony, where a smoke break starts. */
+  ashtray: { x: number; z: number };
+  /** The golf tee on the balcony, its ball and the bag behind it. */
+  golfTee: typeof GOLF_TEE;
+  /** Leaving off the balcony by parachute (see PARACHUTE). */
+  parachute: typeof PARACHUTE;
+  /** The windows in the outside walls (the loft's two are fixed; the rest are laid out per floor). */
+  windows: Opening[];
+}
+
+const PLANS = new Map<number, FloorPlan>();
+
+/**
+ * A little deterministic randomness for floor `index`, seeded from it alone (the same LCG the tower
+ * uses): every page, and the server, works out the same numbers for a floor, so its look and its
+ * deterministic play (golf, the basketball) stay in step.
+ */
+function floorRandom(index: number): () => number {
+  let seed = (Math.imul(index + 1, 2654435761) ^ 0x9e3779b9) >>> 0;
+  seed = seed % 2147483647 || 1;
+  return () => {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+}
+
+/** Puts a plan together from a floor's desks and balcony; everything else is the same on every floor. */
+function makePlan(desks: DeskDef[], balcony: FloorPlan['balcony']): FloorPlan {
+  const seats = [...desks, ...BEANBAGS];
+  const deskById = new Map([...seats, ...STATIONS, ...MEETING_SEATS].map((d) => [d.id, d]));
+  return {
+    desks,
+    beanbags: BEANBAGS,
+    stations: STATIONS,
+    meetingSeats: MEETING_SEATS,
+    seats,
+    deskById,
+    balcony,
+    balconyDoor: BALCONY_DOOR,
+    ashtray: ASHTRAY,
+    golfTee: GOLF_TEE,
+    parachute: PARACHUTE,
+    windows: WINDOWS,
+  };
+}
+
+/**
+ * How floor `key` (1 and up) differs from floor 0: the desk pods sit a little differently, and the
+ * balcony reaches further (or less far) along the south wall. The balcony always covers the doors and
+ * what stands on it (the bench, the stools, the tee), and its doors, windows and depth don't move —
+ * so no two floors have the same cut, without disturbing how you get out onto it or what's out there.
+ */
+function variedPlan(key: number): FloorPlan {
+  const rnd = floorRandom(key);
+  const span = (mid: number, half: number) => mid + (rnd() * 2 - 1) * half;
+  // The desk clusters slide a little across, and each pod up or down the room; the 2×2 pods and the
+  // way each row faces stay as they are, so it still reads as an office of desks.
+  const clusterX = DESK_CLUSTERS_X.map((x) => span(x, 1.2));
+  const pods = DESK_PODS.map((p) => {
+    const c = span((p.back + p.front) / 2, 0.8);
+    return { back: c - 0.55, front: c + 0.55 };
+  });
+  const desks = buildDesks(clusterX, pods);
+  // The balcony reaches out to a different width, still hanging from the same doors and over the same
+  // depth. minX stays left of the bench, maxX right of the stools, so everything out there sits on it.
+  const balcony = { minX: -10.4 - rnd() * 1.9, maxX: 2.0 + rnd() * 1.9, minZ: BALCONY.minZ, maxZ: BALCONY.maxZ };
+  return makePlan(desks, balcony);
+}
+
+/** The plan of floor `index` (0 is the bottom one), worked out once and kept. Floor 0 is the constants above. */
+export function floorPlan(index: number): FloorPlan {
+  const key = Math.max(0, Math.trunc(index));
+  let plan = PLANS.get(key);
+  if (plan) return plan;
+  plan = key === 0 ? makePlan(DESKS, BALCONY) : variedPlan(key);
+  PLANS.set(key, plan);
+  return plan;
+}

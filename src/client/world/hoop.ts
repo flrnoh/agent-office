@@ -208,6 +208,8 @@ export class Basketball {
   /** performance.now() when the throw left their hands, on this page's clock. */
   private t0 = 0;
   private solids: Solid[] = [];
+  /** Which floor of the building this is (0 is the bottom one): its balcony is laid out per floor (see floorPlan). Set on a floor change. */
+  index = 0;
   /** The throw's end has been told about (a basket or a miss). */
   private settled = false;
   private last = new THREE.Vector3(BALL.home.x, BALL.r, BALL.home.z);
@@ -260,7 +262,7 @@ export class Basketball {
     this.endThrow();
     this.start(s, now - s.elapsed);
     // Catch up with it quietly: what it hit before you saw it is over and done with.
-    simulate(this.sim!, (now - this.t0) / 1000, this.solids);
+    simulate(this.sim!, (now - this.t0) / 1000, this.solids, undefined, this.index);
     if (this.sim!.t < 0.3) this.onThrow?.(s.by);
     this.settled = this.sim!.scored || this.sim!.still || this.sim!.lost;
   }
@@ -282,7 +284,7 @@ export class Basketball {
   private start(s: BallShot, t0: number) {
     this.shot = s;
     this.t0 = t0;
-    this.solids = nearSolids(this.colliders());
+    this.solids = nearSolids(this.colliders(), this.index);
     this.sim = launch(s);
     this.settled = false;
   }
@@ -314,7 +316,7 @@ export class Basketball {
     if (s) {
       const hits: BallHit[] = [];
       const was = s.scored;
-      simulate(s, (now - this.t0) / 1000, this.solids, hits);
+      simulate(s, (now - this.t0) / 1000, this.solids, hits, this.index);
       pos.set(s.x, s.y, s.z);
       for (const h of hits) this.onHit?.(h, pos);
       if (s.scored && !was && this.shot) {
