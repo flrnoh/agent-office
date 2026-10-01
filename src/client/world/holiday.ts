@@ -8,6 +8,7 @@ import { plantLeaves } from './office';
 import type { Collider, Office } from './types';
 import { SPOOKY_MOON } from './sky';
 import { mergeByMaterial, mesh, textPlane, toon, toonUnique } from './toon';
+import { deskGifts, type DeskGifts } from './deskgifts'; // flrnoh fork
 
 /*
  * The building dressed up for a holiday (the costumes are in world/costumes.ts). Halloween puts
@@ -487,6 +488,7 @@ export class Holiday {
   /** The plants' leaves, and the tree each becomes at Christmas. */
   private plants: { leaves: THREE.Object3D[]; tree: THREE.Object3D }[] = [];
   private readonly camPos = new THREE.Vector3();
+  private readonly gifts: DeskGifts; // flrnoh fork: on the desks, wherever this storey has them
 
   constructor(private office: Office) {
     this.halloween.visible = this.christmas.visible = false;
@@ -600,16 +602,8 @@ export class Holiday {
       p.add(merged);
       this.plants.push({ leaves, tree: merged });
     });
-    // A present on every desk.
-    const deskGifts = new THREE.Group();
-    DESK_SPOTS.forEach(([x, y, z, , rotY], i) => {
-      const [paper, ribbon] = PAPERS[i % PAPERS.length];
-      const g = present(0.17, paper, ribbon);
-      g.position.set(x, y, z);
-      g.rotation.y = rotY + 0.3;
-      deskGifts.add(g);
-    });
-    this.christmas.add(mergeByMaterial(deskGifts));
+    // A present on every desk, riding on it: each storey lays its desks out its own way (flrnoh fork).
+    this.gifts = deskGifts(this.office.desks, (i) => present(0.17, ...PAPERS[i % PAPERS.length]));
     // The big tree out front, lit up, with a heap of presents.
     const out = new THREE.Group();
     const lit: THREE.Vector3[] = [];
@@ -653,6 +647,7 @@ export class Holiday {
     if (theme) colliders.push(...this.colliders[theme]);
     this.halloween.visible = theme === 'halloween';
     this.christmas.visible = theme === 'christmas';
+    this.gifts.show(theme === 'christmas');
     for (const p of this.plants) {
       p.tree.visible = theme === 'christmas';
       for (const l of p.leaves) l.visible = theme !== 'christmas';

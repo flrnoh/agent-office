@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ASHTRAY, BALCONY, EXIT_STAIRS, SLAB, STREET_Y } from '../../../shared/layout';
+import { storeyPlan, type BalconyRect } from '../../../shared/storey'; // flrnoh fork: each storey its own balcony
 import { bulb, type NightParts } from '../outside';
 import { mergeByMaterial, mesh, roundedBox, textPlane, toon } from '../toon';
 import type { Collider, Interactable } from '../types';
@@ -29,23 +30,23 @@ function stringLights(a: THREE.Vector3, b: THREE.Vector3, sag: number, bulbs: [s
 }
 
 /**
- * The smoking balcony off the south wall, over the garage entrance: a deck with a glass railing on
- * its three open sides, string lights, a bench under the window, a bistro table, plants and the
- * ashtray, where you take a smoke break.
+ * The balcony's deck as storey `bal` lays it out (flrnoh fork: each storey's reaches its own way along
+ * the south wall, see shared/storey.ts): the slab, the planks, a glass railing on its three open sides
+ * and a plant in two of its corners. Built again when you change floors (see `balcony` below).
  */
-export function buildBalcony(group: THREE.Group, colliders: Collider[], interactables: Interactable[], night: NightParts) {
-  const { minX, maxX, minZ, maxZ } = BALCONY;
+function buildDeck(group: THREE.Group, colliders: Collider[], bal: BalconyRect) {
+  const { minX, maxX, minZ, maxZ } = bal;
   const w = maxX - minX;
   const d = maxZ - minZ;
   const cx = (minX + maxX) / 2;
   const cz = (minZ + maxZ) / 2;
-  // Everything that doesn't move and isn't textured goes in here, merged at the end.
   const parts = new THREE.Group();
   parts.add(mesh(box(w, SLAB - 0.01, d), toon(PALETTE.wallTrim), cx, -SLAB / 2 - 0.005, cz));
   const deck = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshToonMaterial({ map: floorTexture(w, d), color: '#d6a574', gradientMap: (toon('#fff') as THREE.MeshToonMaterial).gradientMap }));
   deck.rotation.x = -Math.PI / 2;
   deck.position.set(cx, 0.002, cz);
   deck.receiveShadow = true;
+  deck.userData.own = true; // its planks are its own: let go of with it
   group.add(deck);
   colliders.push({ minX, maxX, minZ, maxZ, bottom: -SLAB, top: 0 });
 
@@ -78,6 +79,36 @@ export function buildBalcony(group: THREE.Group, colliders: Collider[], interact
     }
     colliders.push({ minX: Math.min(x0, x1) - 0.05, maxX: Math.max(x0, x1) + 0.05, minZ: Math.min(z0, z1) - 0.05, maxZ: Math.max(z0, z1) + 0.05, bottom: -SLAB, top: 99 });
   }
+  for (const [i, [px, pz, sc]] of [
+    [maxX - 0.55, minZ + 0.5, 1.1],
+    [minX + 0.55, maxZ - 0.55, 0.9],
+  ].entries()) {
+    // Starting past the monstera, which spreads too wide for a spot this near the rail.
+    const p = plant(floorPlant(i + 1), sc);
+    p.position.set(px, 0, pz);
+    parts.add(p);
+    const r = 0.3 * sc;
+    colliders.push({ minX: px - r, maxX: px + r, minZ: pz - r, maxZ: pz + r, top: 0.5 * sc });
+  }
+  group.add(mergeByMaterial(parts));
+}
+
+/**
+ * The smoking balcony off the south wall, over the garage entrance: its deck (buildDeck), string lights,
+ * a bench under the window, a bistro table, and the ashtray, where you take a smoke break. What's
+ * here stands where the bottom floor's balcony has it, which every storey's covers (shared/storey.ts),
+ * so it stays put as the deck changes from floor to floor, and so do the lights the sky's made of it.
+ */
+export function buildBalcony(group: THREE.Group, colliders: Collider[], interactables: Interactable[], night: NightParts) {
+  const { minX, maxX, minZ, maxZ } = BALCONY;
+  const cx = (minX + maxX) / 2;
+  const cz = (minZ + maxZ) / 2;
+  const railH = 1.05;
+  const ink = toon(PALETTE.deskLeg);
+  const wood = toon(PALETTE.wood);
+  const inset = 0.06;
+  // Everything that doesn't move and isn't textured goes in here, merged at the end.
+  const parts = new THREE.Group();
 
   // Lamp poles on the outer corners, with string lights to them from the wall and between them.
   const poleH = 2.7;
@@ -122,18 +153,6 @@ export function buildBalcony(group: THREE.Group, colliders: Collider[], interact
     colliders.push({ minX: x - 0.2, maxX: x + 0.2, minZ: tz - 0.2, maxZ: tz + 0.2, top: 0.49 });
     seatable(stool, sx < 0 ? 'stool-1' : 'stool-2', 0.9, interactables);
   }
-  for (const [i, [px, pz, sc]] of [
-    [maxX - 0.55, minZ + 0.5, 1.1],
-    [minX + 0.55, maxZ - 0.55, 0.9],
-  ].entries()) {
-    // Starting past the monstera, which spreads too wide for a spot this near the rail.
-    const p = plant(floorPlant(i + 1), sc);
-    p.position.set(px, 0, pz);
-    parts.add(p);
-    const r = 0.3 * sc;
-    colliders.push({ minX: px - r, maxX: px + r, minZ: pz - r, maxZ: pz + r, top: 0.5 * sc });
-  }
-
   group.add(mergeByMaterial(parts));
 
   // The ashtray: a standing bin with a sand-filled bowl and a couple of butts in it.
@@ -165,10 +184,32 @@ export function buildBalcony(group: THREE.Group, colliders: Collider[], interact
   group.add(sign);
 }
 
-/** The smoking balcony, out the glass doors on the south wall. */
+/** The smoking balcony, out the glass doors on the south wall; its deck is this storey's (flrnoh fork). */
 export const balcony: Fixture = (site) => {
   buildBalcony(site.group, site.colliders, site.interactables, site.get('night'));
-  return {};
+  let deck: { group: THREE.Group; colliders: Collider[] } | null = null;
+  const lay = (bal: BalconyRect) => {
+    if (deck) {
+      site.group.remove(deck.group);
+      deck.group.traverse((m) => {
+        const o = m as THREE.Mesh<THREE.BufferGeometry, THREE.MeshToonMaterial>;
+        o.geometry?.dispose();
+        if (o.userData.own) o.material.map?.dispose(), o.material.dispose();
+      });
+      for (const c of deck.colliders) site.colliders.splice(site.colliders.indexOf(c), 1);
+    }
+    deck = { group: new THREE.Group(), colliders: [] };
+    buildDeck(deck.group, deck.colliders, bal);
+    site.group.add(deck.group);
+    site.colliders.push(...deck.colliders);
+  };
+  let shown: BalconyRect | null = null;
+  return {
+    setLevel: (index) => {
+      const bal = storeyPlan(index).balcony;
+      if (bal !== shown) lay((shown = bal));
+    },
+  };
 };
 
 /** The bottom floor's balcony stands on posts down to the street, at its outer corners (the ones above it hang off their walls). */

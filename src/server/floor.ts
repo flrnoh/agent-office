@@ -57,6 +57,8 @@ export interface FloorContext {
   changes(state: ChangesState, clients: string[]): void;
   /** A worker on this floor changed, or left (then just its id). */
   workerChanged(floor: Floor, w: WorkerInfo | string): void;
+  /** flrnoh fork: where this floor is in the stack (0 is the bottom one), which lays it out its own way (shared/storey.ts). */
+  index?(floor: Floor): number;
   /** How many people are on this floor right now. */
   people(floor: Floor): number;
   /** Who's on this floor, and where they stand. */
@@ -133,7 +135,7 @@ export class Floor {
   readonly ready: Promise<void>;
   readonly dog: Dog;
   /** The basketball by the hoop: who has it, or how it was last thrown. */
-  readonly court = new Court();
+  readonly court = new Court(undefined, () => this.ctx.index?.(this) ?? 0); // flrnoh fork: each storey its own balcony
   /** The cars in the garage: who's in which, and where their drivers have left them. */
   readonly garage = new Garage();
   /** Workers sent home on a map that locks them up (see MapPlan.sendHome). */
@@ -167,6 +169,7 @@ export class Floor {
       people: () => ctx.peers(this),
       send: (dog) => ctx.emit(this, { t: 'dog', dog }),
       wing: () => this.plan.wing,
+      index: () => ctx.index?.(this) ?? 0, // flrnoh fork: each storey its own desks
     });
 
     this.workers = new WorkerManager(

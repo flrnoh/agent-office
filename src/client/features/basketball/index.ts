@@ -31,7 +31,7 @@ export interface BasketballDeps {
 export function installBasketball(ctx: Ctx, deps: BasketballDeps) {
   const { office } = ctx;
   /** The floor's basketball, by the hoop on the west wall (see world.ts). */
-  const ball = new Basketball(() => office.colliders);
+  const ball = new Basketball(() => office.colliders, () => office.stack.state.index); // fork: each storey its own balcony
   office.group.add(ball.group);
   /**
    * Ball messages of yours the office hasn't answered yet (it answers every one): until it has, what

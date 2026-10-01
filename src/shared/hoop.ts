@@ -2,7 +2,8 @@
 // was last thrown (see server/court.ts); every page works out the rest itself, flying and bouncing it
 // the same way from that throw (simulate below), so everyone on the floor sees the same shot.
 
-import { BALCONY, FLOOR, LOFT, WALL_HEIGHT } from './layout.js';
+import { FLOOR, LOFT, WALL_HEIGHT } from './layout.js';
+import { storeyPlan } from './storey.js'; // flrnoh fork: each storey its own balcony
 
 /**
  * The hoop, on the west wall between the exit door and the kitchen, facing into the room (+x).
@@ -53,19 +54,20 @@ export interface BallState {
   shot?: BallShot;
 }
 
-/** Whether a throw from the page is one the office passes on: from somewhere on the floor, no faster than anyone throws. */
-export function throwOk(s: { x: number; y: number; z: number; vx: number; vy: number; vz: number }): boolean {
+/** Whether a throw from the page is one the office passes on: from somewhere on floor `index`, no faster than anyone throws. */
+export function throwOk(s: { x: number; y: number; z: number; vx: number; vy: number; vz: number }, index = 0): boolean {
   const n = [s.x, s.y, s.z, s.vx, s.vy, s.vz];
   if (!n.every((v) => typeof v === 'number' && Number.isFinite(v))) return false;
   if (Math.hypot(s.vx, s.vy, s.vz) > BALL.maxSpeed + 1e-6) return false;
-  return inBounds(s.x, s.y, s.z, 1);
+  return inBounds(s.x, s.y, s.z, 1, index);
 }
 
-/** Inside the office (or out on the balcony), under the ceiling, give or take `slack` meters. */
-function inBounds(x: number, y: number, z: number, slack = 0): boolean {
+/** Inside the office (or out on floor `index`'s balcony), under the ceiling, give or take `slack` meters. */
+function inBounds(x: number, y: number, z: number, slack = 0, index = 0): boolean {
   if (y < -0.5 - slack || y > WALL_HEIGHT + slack) return false;
+  const bal = storeyPlan(index).balcony;
   const room = x > FLOOR.minX - slack && x < FLOOR.maxX + slack && z > FLOOR.minZ - slack && z < FLOOR.maxZ + slack;
-  const balcony = x > BALCONY.minX - slack && x < BALCONY.maxX + slack && z > BALCONY.minZ - 1 - slack && z < BALCONY.maxZ + slack;
+  const balcony = x > bal.minX - slack && x < bal.maxX + slack && z > bal.minZ - 1 - slack && z < bal.maxZ + slack;
   return room || balcony;
 }
 
@@ -122,9 +124,10 @@ export function launch(s: { x: number; y: number; z: number; vx: number; vy: num
   return { x: s.x, y: s.y, z: s.z, vx: s.vx, vy: s.vy, vz: s.vz, t: 0, still: false, lost: false, scored: false, touched: { rim: false, board: false }, under: false };
 }
 
-/** The solids near enough to the floor for the ball to reach; the rest of the building (the street, other floors) can't be. */
-export function nearSolids(all: readonly Solid[]): Solid[] {
-  return all.filter((c) => c.maxX > FLOOR.minX - 2 && c.minX < FLOOR.maxX + 2 && c.maxZ > FLOOR.minZ - 2 && c.minZ < BALCONY.maxZ + 2 && c.top > -1 && (c.bottom ?? 0) < WALL_HEIGHT + 1);
+/** The solids near enough to floor `index` for the ball to reach; the rest of the building (the street, other floors) can't be. */
+export function nearSolids(all: readonly Solid[], index = 0): Solid[] {
+  const maxZ = storeyPlan(index).balcony.maxZ;
+  return all.filter((c) => c.maxX > FLOOR.minX - 2 && c.minX < FLOOR.maxX + 2 && c.maxZ > FLOOR.minZ - 2 && c.minZ < maxZ + 2 && c.top > -1 && (c.bottom ?? 0) < WALL_HEIGHT + 1);
 }
 
 /** The backboard, as the ball meets it (the office's colliders have it too, for walking into). */
@@ -133,8 +136,8 @@ export function backboard(): Solid {
   return { minX: HOOP.face - b.thick, maxX: HOOP.face, minZ: HOOP.z - b.width / 2, maxZ: HOOP.z + b.width / 2, bottom: b.bottom, top: b.top, board: true };
 }
 
-/** Moves the ball on by one STEP, bouncing it off `solids` and the rim. Hits go in `hits`, if given. */
-export function step(s: BallSim, solids: readonly Solid[], hits?: BallHit[]) {
+/** Moves the ball on by one STEP, bouncing it off `solids` and the rim on floor `index`. Hits go in `hits`, if given. */
+export function step(s: BallSim, solids: readonly Solid[], hits?: BallHit[], index = 0) {
   if (s.still || s.lost) return;
   const y0 = s.y;
   // Exactly as it falls (not a step behind), so a throw at idealSpeed goes where it should.
@@ -180,7 +183,7 @@ export function step(s: BallSim, solids: readonly Solid[], hits?: BallHit[]) {
     }
   }
   if (s.t > MAX_TIME) s.still = true;
-  if (!inBounds(s.x, s.y, s.z, 0.5)) s.lost = true;
+  if (!inBounds(s.x, s.y, s.z, 0.5, index)) s.lost = true;
 }
 
 /** Bounces the ball off the ring: a hoop of tube round the rim's middle. */
@@ -276,9 +279,9 @@ function bounce(s: BallSim, nx: number, ny: number, nz: number, keep: number): n
   return -vn;
 }
 
-/** Steps a throw on until `seconds` after it was let go of (or it's lying still). */
-export function simulate(s: BallSim, seconds: number, solids: readonly Solid[], hits?: BallHit[]) {
-  while (s.t + STEP <= seconds && !s.still && !s.lost) step(s, solids, hits);
+/** Steps a throw on floor `index` until `seconds` after it was let go of (or it's lying still). */
+export function simulate(s: BallSim, seconds: number, solids: readonly Solid[], hits?: BallHit[], index = 0) {
+  while (s.t + STEP <= seconds && !s.still && !s.lost) step(s, solids, hits, index);
 }
 
 /**

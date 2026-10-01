@@ -299,7 +299,8 @@ export function installWorkerActions(ctx: Ctx, core: CoreState, parts: WorkerAct
   }
 
   /** Behind the worker, looking over their shoulder at the laptop (or in front of a board agent's kiosk). */
-  function standAt(desk: DeskDef) {
+  function standAt(seat: DeskDef) {
+    const desk = ctx.world().desks.get(seat.id)?.def ?? seat; // fork: where this storey has it (shared/storey.ts)
     const { seating } = parts;
     if (player.seat) seating.standUp();
     // The car first (the activities' own order has it last).

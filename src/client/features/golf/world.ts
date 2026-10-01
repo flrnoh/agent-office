@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BALCONY, FLOOR, GOLF_HOLE, GOLF_TEE, ROAD, SLAB, STOREY, STREET_Y, WALL_HEIGHT, WALL_T } from '../../../shared/layout';
+import { storeyPlan, type BalconyRect } from '../../../shared/storey'; // flrnoh fork: each storey its own balcony
 import type { Collider, Interactable } from '../../world/types';
 import type { Fixture, StreetSite } from '../../world/office/fixture';
 import { bulb, neighbourBoxes, streetLamp, tree, type NightParts } from '../../world/outside';
@@ -302,9 +303,9 @@ const DRAG = 0.05;
 const ROLL_V = 1.2;
 /** Longest a ball's followed. */
 const MAX_SECONDS = 25;
-/** The top of the balcony's railing, and the balcony inside it that a ball rattles round (its center, at least). */
+/** The top of the balcony's railing, and balcony `b` inside it that a ball rattles round (its center, at least; each storey's reaches its own way). */
 const RAIL_TOP = 1.11;
-const INSIDE = { minX: BALCONY.minX + 0.12 + BALL_R, maxX: BALCONY.maxX - 0.12 - BALL_R, minZ: BALCONY.minZ + BALL_R, maxZ: BALCONY.maxZ - 0.12 - BALL_R };
+const inside = (b: BalconyRect) => ({ minX: b.minX + 0.12 + BALL_R, maxX: b.maxX - 0.12 - BALL_R, minZ: b.minZ + BALL_R, maxZ: b.maxZ - 0.12 - BALL_R });
 
 export interface Hit {
   /** Seconds after the shot. */
@@ -342,6 +343,7 @@ export function fly(shot: Shot, street: number, index: number): Flight {
   const loft = THREE.MathUtils.clamp(shot.loft, LOFT_MIN, LOFT_MAX);
   const yaw = THREE.MathUtils.clamp(shot.yaw, -AIM_MAX, AIM_MAX);
   const v = SPEED * power;
+  const INSIDE = inside(storeyPlan(index).balcony);
   let x = TEE_BALL.x;
   let y = TEE_BALL.y;
   let z = TEE_BALL.z;
@@ -364,12 +366,10 @@ export function fly(shot: Shot, street: number, index: number): Flight {
 
   /** What's under the ball at (x, z), coming down from `from`: the ground, a neighbour's roof, or a balcony. */
   const under = (px: number, pz: number, from: number): [number, Lie] => {
-    if (px > BALCONY.minX && px < BALCONY.maxX && pz > BALCONY.minZ && pz < BALCONY.maxZ) {
-      // This floor's balcony, or one further down the building.
-      for (let k = 0; k <= index; k++) {
-        const deck = -k * STOREY;
-        if (from > deck - 0.1) return [deck, k ? 'below' : 'deck'];
-      }
+    // This floor's balcony, or one further down the building, each storey's reaching its own way (shared/storey.ts).
+    for (let k = 0; k <= index; k++) {
+      const b = storeyPlan(index - k).balcony;
+      if (from > -k * STOREY - 0.1 && px > b.minX && px < b.maxX && pz > b.minZ && pz < b.maxZ) return [-k * STOREY, k ? 'below' : 'deck'];
     }
     for (const b of boxes) if (b.roof && px > b.minX && px < b.maxX && pz > b.minZ && pz < b.maxZ && from > b.top - 0.1) return [b.top, 'roof'];
     return [street, lieAt(px, pz)];

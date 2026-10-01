@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BALCONY, BALCONY_DOOR, ELEVATOR, ELEVATOR_FRONT, EXIT_DOOR, FLOOR, ROOF_BAR, SLAB, STAGE, STOREY, STREET_Y, WALL_HEIGHT, WALL_T, WINDOWS, WING, wingMinZ, wingRowZ, type Opening, type Side } from '../../shared/layout';
+import { ELEVATOR, ELEVATOR_FRONT, EXIT_DOOR, FLOOR, ROOF_BAR, SLAB, STAGE, STOREY, STREET_Y, WALL_HEIGHT, WALL_T, WING, wingMinZ, wingRowZ, type Opening, type Side } from '../../shared/layout';
+import { storeyPlan, type BalconyRect } from '../../shared/storey'; // flrnoh fork: each storey its own balcony
 import type { Collider } from './types';
 import type { Fixture } from './office/fixture';
 import { bulb, type NightParts } from './outside';
@@ -140,9 +141,9 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
     parts.add(onFace(g, o.wall, o.u));
   };
 
-  /** The balcony off a floor `y0` up: its deck, and a railing with glass in it round the three open sides. */
-  const balcony = (parts: THREE.Group, y0: number) => {
-    const { minX, maxX, minZ, maxZ } = BALCONY;
+  /** The balcony off a floor `y0` up (each storey's reaches its own way): its deck, and a railing with glass in it round the three open sides. */
+  const balcony = (parts: THREE.Group, y0: number, bal: BalconyRect) => {
+    const { minX, maxX, minZ, maxZ } = bal;
     const w = maxX - minX;
     const d = maxZ - minZ;
     parts.add(mesh(new THREE.BoxGeometry(w, SLAB - 0.01, d), deck, (minX + maxX) / 2, y0 - SLAB / 2 - 0.005, (minZ + maxZ) / 2, false));
@@ -331,16 +332,17 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
       const r = k - index;
       if (r === 0) continue;
       const y0 = r * STOREY;
+      const plan = storeyPlan(k); // each storey its own cut: its windows, its balcony
       for (const side of Object.keys(FACES) as Side[]) {
-        const holes: Opening[] = WINDOWS.filter((o) => o.wall === side);
-        if (side === 'south') holes.push(BALCONY_DOOR);
+        const holes: Opening[] = plan.windows.filter((o) => o.wall === side);
+        if (side === 'south') holes.push(plan.balconyDoor);
         // Only the bottom floor has a way out on the west side; its door stands in the hole (see world/office/shell.ts).
         if (side === 'west' && k === 0) holes.push(EXIT_DOOR);
         facade(parts, side, y0, holes);
       }
-      for (const o of WINDOWS) glazing(parts, o, y0, false);
-      glazing(parts, BALCONY_DOOR, y0, true);
-      balcony(parts, y0);
+      for (const o of plan.windows) glazing(parts, o, y0, false);
+      glazing(parts, plan.balconyDoor, y0, true);
+      balcony(parts, y0, plan.balcony);
       const wing = wings[k] ?? 0;
       if (wing > 0) bay(parts, y0, wing, k + 1 < count ? (wings[k + 1] ?? 0) : 0, k > 0 ? (wings[k - 1] ?? 0) : 0);
       if (k === 0) {

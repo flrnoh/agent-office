@@ -234,7 +234,11 @@ export class Basketball {
   /** A throw of `by`'s came to nothing: it stopped, or somebody took it, without going in. */
   onMiss: ((by: string) => void) | null = null;
 
-  constructor(private colliders: () => readonly Solid[]) {
+  constructor(
+    private colliders: () => readonly Solid[],
+    /** flrnoh fork: which floor of the building this is (0 is the bottom one): each storey's balcony reaches its own way (shared/storey.ts). */
+    private storey: () => number = () => 0,
+  ) {
     this.ball = ballMesh();
     // Rays pick the ball by a bigger, invisible ball round it, so it's easy to point at.
     this.ball.raycast = () => {};
@@ -275,7 +279,7 @@ export class Basketball {
     this.endThrow();
     this.start(s, now - s.elapsed);
     // Catch up with it quietly: what it hit before you saw it is over and done with.
-    simulate(this.sim!, (now - this.t0) / 1000, this.solids);
+    simulate(this.sim!, (now - this.t0) / 1000, this.solids, undefined, this.storey());
     if (this.sim!.t < 0.3) this.onThrow?.(s.by);
     this.settled = this.sim!.scored || this.sim!.still || this.sim!.lost;
   }
@@ -297,7 +301,7 @@ export class Basketball {
   private start(s: BallShot, t0: number) {
     this.shot = s;
     this.t0 = t0;
-    this.solids = nearSolids(this.colliders());
+    this.solids = nearSolids(this.colliders(), this.storey());
     this.sim = launch(s);
     this.settled = false;
   }
@@ -329,7 +333,7 @@ export class Basketball {
     if (s) {
       const hits: BallHit[] = [];
       const was = s.scored;
-      simulate(s, (now - this.t0) / 1000, this.solids, hits);
+      simulate(s, (now - this.t0) / 1000, this.solids, hits, this.storey());
       pos.set(s.x, s.y, s.z);
       for (const h of hits) this.onHit?.(h, pos);
       if (s.scored && !was && this.shot) {

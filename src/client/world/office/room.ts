@@ -8,6 +8,7 @@ import type { Fixture } from './fixture';
 import { PALETTE } from './materials';
 import { coffeeTable, floorPlant, loungeCouch, pendant, plant, pouf, wallBoard } from './props';
 import { seatable } from './seats';
+import { storeyPlan } from '../../../shared/storey'; // flrnoh fork: each storey its own desks
 
 // The room itself, past its walls and its seats: the rugs, what the sky lights and darkens, the boards
 // on the walls, the TV and the machine's monitor, the lounge, the plants and the lamps.
@@ -27,16 +28,23 @@ declare module '../types' {
 
 /** Rugs under each desk cluster. */
 export const rugs: Fixture = (site) => {
-  [
+  const laid = [
     [-10.5, -4],
     [-1.5, -4],
     [-10.5, 4],
     [-1.5, 4],
-  ].forEach(([x, z], i) => {
+  ].map(([x, z], i) => {
     const rug = mesh(roundedBox(6.2, 0.02, 4.6, 0.6), toon(PALETTE.rugs[i]), x, 0.011, z, false);
     site.group.add(rug);
+    return rug;
   });
-  return {};
+  // flrnoh fork: each storey lays its desks out its own way (shared/storey.ts), and each rug goes under its four.
+  const setLevel = (index: number) =>
+    laid.forEach((rug, i) => {
+      const four = storeyPlan(index).desks.slice(i * 4, i * 4 + 4);
+      rug.position.set(four.reduce((n, d) => n + d.x, 0) / 4, 0.011, four.reduce((n, d) => n + d.z, 0) / 4);
+    });
+  return { setLevel };
 };
 
 /** What the sky lights and darkens (see NightParts), which everything after it that has any adds to. */

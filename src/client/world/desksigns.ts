@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { DESKS, DESK_BY_ID, DESK_SIZE, WALL_HEIGHT, WING_DESKS, type DeskDef } from '../../shared/layout';
 import { signInk, type DeskLabel } from '../../shared/floorplan';
+import { storeyPlan } from '../../shared/storey'; // flrnoh fork: each storey its own desks
 import type { Fixture } from './office/fixture';
 import { mergeByMaterial, mesh, roundedBox, toon } from './toon';
 
@@ -87,11 +88,18 @@ export interface DeskSigns {
   set(labels: Record<string, DeskLabel>, built: (desk: DeskDef) => boolean): void;
   /** The sign over a desk, if it has one. */
   get(deskId: string): THREE.Object3D | undefined;
+  /** flrnoh fork: you're on floor `index`, whose desks are laid out its own way (shared/storey.ts): the signs go over them. */
+  setLevel(index: number): void;
 }
 
 export function buildDeskSigns(): DeskSigns {
   const group = new THREE.Group();
   const hung = new Map<string, Hung>();
+  let storey = 0; // flrnoh fork: the floor you're on, and a sign hung over its desk as that storey lays it out
+  const hang = (id: string, h: Hung) => {
+    const d = storeyPlan(storey).deskById.get(id);
+    if (d) h.root.position.set(d.x, 0, d.z), (h.root.rotation.y = d.rotY);
+  };
   const cordMat = toon('#2b2d42');
 
   const make = (desk: DeskDef, label: DeskLabel, back: boolean): Hung => {
@@ -172,7 +180,12 @@ export function buildDeskSigns(): DeskSigns {
         let h = hung.get(id);
         if (!h) hung.set(id, (h = make(desk, label, twoSided(id, labels, built))));
         h.root.visible = built(desk);
+        hang(id, h);
       }
+    },
+    setLevel(index) {
+      storey = index;
+      for (const [id, h] of hung) hang(id, h);
     },
   };
 }
@@ -187,5 +200,5 @@ declare module './types' {
 /** The signs over the desks. */
 export const signs: Fixture<'signs'> = () => {
   const built = buildDeskSigns();
-  return { group: built.group, handle: { signs: built } };
+  return { group: built.group, handle: { signs: built }, setLevel: (index) => built.setLevel(index) };
 };

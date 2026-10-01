@@ -164,7 +164,7 @@ export function installWorkerViews(ctx: Ctx, core: CoreState, parts: WorkerViews
       v.model.setLost(!!w.lost);
       const engineBadge = w.kind === 'agent' ? modelBadge(w.provider, w.model, w.effort) : undefined;
       v.model.setTask(meetingCard(w) ?? (w.task && w.kind === 'agent' ? { ...w.task, name: `${providerLabel(w.provider, store.project)}${engineBadge ? ` · ${engineBadge}` : ''} · ${w.task.name}` } : w.task));
-      const deskDef = plan().byId.get(w.deskId);
+      const deskDef = world.desks.get(w.deskId)?.def ?? plan().byId.get(w.deskId); // fork: where this storey has it
       // Keys clack while it types, not while it reads, watches its tests or browses.
       if (deskDef) sound.setTyping(w.id, deskDef.x, deskDef.z, w.status === 'working' && (!w.action || w.action === 'edit'));
       const again = w.kind === 'shell' ? 'restart' : 'resume';
@@ -292,7 +292,7 @@ export function installWorkerViews(ctx: Ctx, core: CoreState, parts: WorkerViews
     const aging = !!plan().agents.ageMinutes && now - agedAt > 1000;
     if (aging) agedAt = now;
     for (const [id, v] of workerViews) {
-      const desk = plan().byId.get(v.deskId)!;
+      const desk = ctx.world().desks.get(v.deskId)?.def ?? plan().byId.get(v.deskId)!; // fork: where this storey has it
       if (aging) {
         const w = store.workers.get(id);
         if (w) v.model.setAge(ageOf(w));
@@ -400,7 +400,7 @@ export function installWorkerViews(ctx: Ctx, core: CoreState, parts: WorkerViews
       const at = v.model.root.position;
       return confetti.burst(at.x, at.y + 2.1, at.z, n);
     }
-    const d = plan().byId.get(deskId);
+    const d = ctx.world().desks.get(deskId)?.def ?? plan().byId.get(deskId); // fork: where this storey has it
     if (d) confetti.burst(d.x, (d.y ?? 0) + 2.3, d.z, n); // fork: the boss desk's up in the loft
   }
 

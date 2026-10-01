@@ -68,7 +68,7 @@ export function installPalette(ctx: Ctx, parts: PaletteParts) {
     const { waiting, actions, meeting, hanging } = parts;
     const out: PaletteEntry[] = [];
     for (const w of store.workers.values()) {
-      const desk = DESK_BY_ID.get(w.deskId);
+      const desk = ctx.world().desks.get(w.deskId)?.def ?? DESK_BY_ID.get(w.deskId); // fork: where this storey has it
       const spot = desk && deskSpot(desk);
       const open = () => waiting.openWorkerTerminal(w.id);
       out.push({

@@ -35,14 +35,11 @@ const DESK_WIDTH = 2.2;
 const DESK_DEPTH = 1.1;
 export const DESK_SIZE = { width: DESK_WIDTH, depth: DESK_DEPTH, height: 0.78 } as const;
 
-function buildDesks(): DeskDef[] {
+/** Where the two desk clusters sit across, and each pod's two back-to-back rows (the far row faces +z); other floors vary these (shared/storey.ts). */
+export const DESK_CLUSTERS_X = [-10.5, -1.5] as const;
+export const DESK_PODS = [{ back: -4.55, front: -3.45 }, { back: 3.45, front: 4.55 }] as const;
+export function buildDesks(clusterX: readonly number[] = DESK_CLUSTERS_X, pods: readonly { back: number; front: number }[] = DESK_PODS): DeskDef[] {
   const desks: DeskDef[] = [];
-  const clusterX = [-10.5, -1.5];
-  // Each pod is two back-to-back rows; the far row faces +z (rotY = PI).
-  const pods = [
-    { back: -4.55, front: -3.45 },
-    { back: 3.45, front: 4.55 },
-  ];
   let n = 1;
   for (const pod of pods) {
     for (const cx of clusterX) {

@@ -1,4 +1,4 @@
-import { BALCONY, DANCE_FLOOR, FIRE_PIT, FLOOR, LOFT, MEETING_ROOM, ROOF_BAR, ROOF_TABLES, SEATING_BY_ID, STAGE, WING, inWing, seatAt } from '../../shared/layout';
+import { DANCE_FLOOR, FIRE_PIT, FLOOR, LOFT, MEETING_ROOM, ROOF_BAR, ROOF_TABLES, SEATING_BY_ID, STAGE, WING, inWing, seatAt } from '../../shared/layout';
 import type { PeerInfo } from '../../shared/protocol';
 import { ROOF } from '../../shared/rooftop';
 import { CASINO } from '../../shared/casino'; // fork
@@ -8,6 +8,7 @@ import { SOCCER } from '../../shared/soccer'; // fork
 import { CARS, type CarSeat } from '../../shared/garage';
 import { seatOn, type MapPlan } from '../../shared/maps';
 import { store } from '../state';
+import { storeyPlan } from '../../shared/storey'; // flrnoh fork: each storey its own balcony
 
 /**
  * What a teammate is up to, for the line under their name tag and in the sidebar: whatever they have
@@ -46,7 +47,11 @@ export function whereabouts(p: PeerInfo, car?: { car: number; seat: CarSeat }, p
   if (p.y > -1 && inWing(p.x, p.z, WING.rows)) return '🏗️ in the back office';
   // Down on the street, or out the back door on the stairs down to it.
   if (p.y < -1 || p.x < FLOOR.minX || p.x > FLOOR.maxX || p.z < FLOOR.minZ) return '🚶 outside';
-  if (p.z > FLOOR.maxZ) return p.x >= BALCONY.minX && p.x <= BALCONY.maxX ? '🌇 on the balcony' : '🚶 outside';
+  if (p.z > FLOOR.maxZ) {
+    // Each storey's balcony reaches its own way (shared/storey.ts): theirs is the floor they're on's.
+    const b = storeyPlan(store.floors.filter((f) => !f.cloning).findIndex((f) => f.id === p.floor)).balcony;
+    return p.x >= b.minX && p.x <= b.maxX ? '🌇 on the balcony' : '🚶 outside';
+  }
   if (p.y > LOFT.y - 0.5 && p.x > LOFT.minX && p.z > LOFT.minZ) return "👔 in the boss's office";
   if (p.x > MEETING_ROOM.minX && p.z > MEETING_ROOM.minZ) return '🤝 in the meeting room';
   return undefined;

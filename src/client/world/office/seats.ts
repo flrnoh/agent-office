@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BEANBAGS, DESKS, DESK_SIZE, FLOOR, KIOSK, SEATING_BY_ID, STATIONS, STATION_AGENT, deskSeat, type DeskDef, type StationKind } from '../../../shared/layout';
 import { deskPoint } from '../../../shared/nav';
+import { storeyPlan } from '../../../shared/storey'; // flrnoh fork: each storey its own desks
 import { mesh, roundedBox, textPlane, toon } from '../toon';
 import type { Collider, DeskView, Interactable } from '../types';
 import type { Fixture } from './fixture';
@@ -223,19 +224,36 @@ declare module '../types' {
 
 /** The desks, each with its chair, and what's on it. */
 export const desks: Fixture = (site) => {
+  const hw = DESK_SIZE.width / 2 - 0.05;
+  const hd = DESK_SIZE.depth / 2 - 0.02;
+  const placed = new Map<string, { view: DeskView; collider: Collider; it: Interactable }>();
   DESKS.forEach((def, i) => {
     const view = buildDesk(def, i, site.looks.trim);
     site.group.add(view.group);
     site.desks.set(def.id, view);
-    const hw = DESK_SIZE.width / 2 - 0.05;
-    const hd = DESK_SIZE.depth / 2 - 0.02;
-    site.colliders.push({ minX: def.x - hw, maxX: def.x + hw, minZ: def.z - hd, maxZ: def.z + hd, top: DESK_SIZE.height });
+    const collider: Collider = { minX: def.x - hw, maxX: def.x + hw, minZ: def.z - hd, maxZ: def.z + hd, top: DESK_SIZE.height };
+    site.colliders.push(collider);
     const seat = deskSeat(def, 1.25);
     const it: Interactable = { kind: 'desk', deskId: def.id, x: seat.x, z: seat.z, radius: 1.3 };
     site.interactables.push(it);
     view.group.userData.interact = it;
+    placed.set(def.id, { view, collider, it });
   });
-  return {};
+  // flrnoh fork: each storey lays its desks out its own way (shared/storey.ts). They keep their ids, so
+  // the workers at them (in the seat anchor) and their laptops come along, and so do what's in the way and what to use.
+  const setLevel = (index: number) => {
+    for (const def of storeyPlan(index).desks) {
+      const p = placed.get(def.id);
+      if (!p || p.view.def === def) continue;
+      p.view.def = def;
+      p.view.group.position.set(def.x, 0, def.z);
+      p.view.group.rotation.y = def.rotY;
+      Object.assign(p.collider, { minX: def.x - hw, maxX: def.x + hw, minZ: def.z - hd, maxZ: def.z + hd });
+      const seat = deskSeat(def, 1.25);
+      Object.assign(p.it, { x: seat.x, z: seat.z });
+    }
+  };
+  return { setLevel };
 };
 
 /** Bean bags, put away until every desk is taken. */

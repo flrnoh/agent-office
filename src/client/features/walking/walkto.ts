@@ -2,8 +2,9 @@
 // shared/nav.ts), and up the stairs to the boss's office or out through the balcony doors when that's
 // where they are.
 
-import { BALCONY, BALCONY_DOOR, FLOOR, LOFT, STAIRS, WALL_T, inWing } from '../../../shared/layout';
+import { BALCONY_DOOR, FLOOR, LOFT, STAIRS, WALL_T, inWing } from '../../../shared/layout';
 import { route } from '../../../shared/nav';
+import { storeyPlan } from '../../../shared/storey'; // flrnoh fork: each storey its own balcony and desks
 
 export interface Spot {
   x: number;
@@ -32,11 +33,12 @@ const WAY_DOWN: Record<Zone, { x: number; z: number }[]> = {
   outside: [],
 };
 
-function zoneOf(p: Spot, wing: number): Zone {
+function zoneOf(p: Spot, wing: number, index: number): Zone {
+  const balcony = storeyPlan(index).balcony;
   // The back office is more of the office floor, through where the north wall was.
   if (p.y > -1 && p.y < 0.5 && inWing(p.x, p.z, wing)) return 'floor';
   if (p.y < -1 || p.x < FLOOR.minX || p.x > FLOOR.maxX || p.z < FLOOR.minZ) return 'outside';
-  if (p.z > FLOOR.maxZ) return p.x >= BALCONY.minX && p.x <= BALCONY.maxX ? 'balcony' : 'outside';
+  if (p.z > FLOOR.maxZ) return p.x >= balcony.minX && p.x <= balcony.maxX ? 'balcony' : 'outside';
   if (p.x > LOFT.minX && p.z > LOFT.minZ && p.y > LOFT.y - 0.5) return 'loft';
   // Off the office floor's map, which has the stairs down as a wall.
   if (p.x > STAIRS.fromX - 0.1 && p.x < STAIRS.toX + 0.1 && p.z > STAIRS.minZ - 0.1 && p.y > 0.05) return 'stairs';
@@ -45,11 +47,11 @@ function zoneOf(p: Spot, wing: number): Zone {
 
 /**
  * The corners of a walk from `from` to `to`, `to` included when it's somewhere you can stand, on a
- * floor built out `wing` rows into the back office.
+ * floor built out `wing` rows into the back office, `index` up the building (each storey its own cut).
  */
-export function wayTo(from: Spot, to: Spot, wing = 0): { x: number; z: number }[] {
-  const a = zoneOf(from, wing);
-  const b = zoneOf(to, wing);
+export function wayTo(from: Spot, to: Spot, wing = 0, index = 0): { x: number; z: number }[] {
+  const a = zoneOf(from, wing, index);
+  const b = zoneOf(to, wing, index);
   // Across the same room upstairs or on the balcony, or somewhere the office has no map of: straight there.
   if ((a === b && a !== 'floor') || a === 'outside' || b === 'outside') return [{ x: to.x, z: to.z }];
   // Between the stairs and the boss's office at the top of them: through its door.
@@ -59,7 +61,7 @@ export function wayTo(from: Spot, to: Spot, wing = 0): { x: number; z: number }[
   const start = out[out.length - 1] ?? from;
   const end = into[0] ?? to;
   // Across the office floor; route stops at the nearest place to stand if they're in a chair or on the couch.
-  const across = route([start.x, start.z], [end.x, end.z], wing)
+  const across = route([start.x, start.z], [end.x, end.z], wing, index)
     .slice(1)
     .map(([x, z]) => ({ x, z }));
   return [...out, ...across, ...into.slice(1), ...(b === 'floor' ? [] : [{ x: to.x, z: to.z }])];

@@ -91,6 +91,7 @@ function ceilingOver(x: number, z: number): number {
  * workers leave by the balcony), and `wing` how many rows its back office is built out (see WING).
  */
 export function officeWorld(office: Office, upstairs: () => boolean, wing: () => number): World {
+  const storey = () => office.stack.state.index; // flrnoh fork: each storey its own cut (shared/storey.ts)
   return {
     plan: OFFICE_PLAN,
     group: office.group,
@@ -103,11 +104,11 @@ export function officeWorld(office: Office, upstairs: () => boolean, wing: () =>
     meetingSign: office.meetingSign,
     gong: office.gong,
     get nav() {
-      return officeNav(wing());
+      return officeNav(wing(), storey());
     },
     ways: {
-      home: (seat) => (upstairs() ? { way: wayToBalcony(seat, wing()), chute: true } : { way: wayHome(seat, wing()), chute: false }),
-      in: (seat) => wayIn(seat, wing()),
+      home: (seat) => (upstairs() ? { way: wayToBalcony(seat, wing(), storey()), chute: true } : { way: wayHome(seat, wing(), storey()), chute: false }),
+      in: (seat) => wayIn(seat, wing(), storey()),
     },
     rain: [
       { area: FLOOR, top: ceilingOver },
