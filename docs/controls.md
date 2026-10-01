@@ -26,13 +26,15 @@ Back to the [README](../README.md).
 | Ctrl + K (⌘K on a Mac) | Command palette: find a worker, issue, PR, service, board, teammate or action; Enter opens it, Shift+Enter walks you there first |
 | V | Join voice; in voice, hold to talk (you're muted when you let go) |
 | M | Mute / unmute in voice |
-| Tab | The ☰ menu: every window, and what shows on screen |
+| Tab | The ☰ menu: every window, and what shows on screen (in the soccer hall: the match's stats and the Hall of Fame instead; **Tab**, **✕** or **Esc** closes them) |
 | Esc | Close any window (a terminal too) and get back to looking around |
 | Ctrl + [ | Send Esc to a terminal instead, to close a menu like Claude's `/skills` or interrupt Claude. **⎋ Esc** in the terminal's header does the same |
 
 On a padel court in the padel hall: your player runs for the ball by itself; **W A S D** / arrows steer yourself while held; the **mouse** aims (the ring on the court); **click** or **Space** swings (on time, as the ball comes past, is hard and true); hold **Shift** for a lob; a high ball near the net is smashed. Serving, click or **Space** drops the ball and hits it into the service box across (the ring shows where). **✕** or **Esc** steps off the court.
 
 On the pitch in the soccer hall (after **E** at the boards on the halfway line): **W A S D** runs (**Shift** faster), and running into the ball dribbles it along. Hold the **left mouse button** or **Space** to charge a kick (the meter under the crosshair) and let go to kick the way you face; the **right mouse button**, or **Shift** pressed while charging, chips it over. Space doesn't jump on the pitch. **E** at the halfway boards again leaves the pitch.
+
+In the soccer hall, after a goal everyone sees an instant replay of it (the last seconds from a TV camera, the end in slow motion): **Space** or **Esc** skips it.
 
 You can also click a nearby desk to interact with it, or click a worker in the Workers panel (**🤖 Workers**, top right) to open its terminal.
 

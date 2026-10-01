@@ -581,6 +581,8 @@ const soccer = new SoccerPlace({
   placeAt: (at) => placeAt(at),
   sound: (k, at, s) => sound.soccer(k, at, s),
   confetti: (x, y, z) => confetti.burst(x, y, z, 160, 0.8),
+  person: (id) => (id === store.you ? me : remotes.get(id)?.person), // kits and moves (soccer/show.ts)
+  camera, // the goal's replay
 });
 // fork: the padel courts, built into the hall's interior when it's first built (hall/courts.ts).
 hall.add({
@@ -5360,7 +5362,7 @@ function frame(ts?: number) {
   tvStreams.frame(tvHere && !tvStream ? { camera, screen: office.tvScreen, boxes: world.colliders } : null);
   pointToWaiting(now);
   // Not while the camera's up at the boss's monitor or the arcade, where they'd cover the screen.
-  if (firstPerson && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !tables.zoomed && !padel.zoomed && !golf.active && !thrower.active && !driver.active) {
+  if (firstPerson && !soccer.replaying && !telescope.active && !arcade.zoomed && !cabinet.zoomed && !rig.zoomed && !tables.zoomed && !padel.zoomed && !golf.active && !thrower.active && !driver.active) {
     // Hands go on top of everything, so they never clip into a desk you walk up to. They have
     // lights of their own, turned down to match wherever you're standing.
     renderer.clearDepth();

@@ -507,6 +507,11 @@ export class Person {
     this.setLabel(name, false);
   }
 
+  /** Fork: the body and limbs, for a pose laid over the frame's after update (soccer/kit.ts: kicks, celebrations, dives, the kit). */
+  rig(): { body: THREE.Group; head: THREE.Group; legL: THREE.Object3D; legR: THREE.Object3D; armL: THREE.Object3D; armR: THREE.Object3D } {
+    return { body: this.body, head: this.head, legL: this.legL, legR: this.legR, armL: this.armL, armR: this.armR };
+  }
+
   setColor(color: string) {
     this.shirt.color.set(color);
   }

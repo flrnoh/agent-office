@@ -11,13 +11,13 @@ import {
   SOCCER_ROOM,
   STAND,
   TEAM_COLOR,
-  clockText,
   type SoccerView,
 } from '../../../shared/soccer';
 import { BALL_R } from '../../../shared/soccer-ball';
 import type { Collider, Interactable } from '../office';
 import { mergeByMaterial, mesh, toon } from '../toon';
 import { box, canvasTexture, glow, FONT } from '../casino/parts';
+import { drawScoreboard, scoreboardKey } from '../../soccer/scoreboard'; // what the scoreboards say
 
 /*
  * Inside the soccer hall (flrnoh fork, see FORK.md "The soccer hall"): a place of its own, like the
@@ -124,64 +124,6 @@ function wallTexture(): THREE.CanvasTexture {
     g.fillStyle = '#2f8f47';
     g.fillRect(0, 206, 8, 10);
   });
-}
-
-/** Draws a scoreboard: RED n : m BLUE, the clock, and what's going on. */
-function drawBoard(g: CanvasRenderingContext2D, w: number, h: number, v: SoccerView | null, clockMs: number, flash: number) {
-  const goalFor = flash > 0 && v?.phase === 'goal' ? (v.kickoff === 'red' ? 'blue' : 'red') : null;
-  g.fillStyle = '#101418';
-  g.fillRect(0, 0, w, h);
-  if (goalFor && Math.floor(flash * 8) % 2 === 0) {
-    g.fillStyle = TEAM_COLOR[goalFor];
-    g.globalAlpha = 0.55;
-    g.fillRect(0, 0, w, h);
-    g.globalAlpha = 1;
-  }
-  g.strokeStyle = '#3b444f';
-  g.lineWidth = 10;
-  g.strokeRect(5, 5, w - 10, h - 10);
-  g.textBaseline = 'middle';
-  g.textAlign = 'center';
-  const score = v?.score ?? { red: 0, blue: 0 };
-  // Team names over their scores.
-  g.font = `900 ${h * 0.14}px ${FONT}`;
-  g.fillStyle = TEAM_COLOR.red;
-  g.fillText('RED', w * 0.2, h * 0.2);
-  g.fillStyle = TEAM_COLOR.blue;
-  g.fillText('BLUE', w * 0.8, h * 0.2);
-  // The score, in big amber digits.
-  g.font = `900 ${h * 0.5}px ${FONT}`;
-  g.shadowColor = '#ffb703';
-  g.shadowBlur = 16;
-  g.fillStyle = '#ffd166';
-  g.fillText(String(score.red), w * 0.2, h * 0.58);
-  g.fillText(String(score.blue), w * 0.8, h * 0.58);
-  g.fillText(':', w * 0.5, h * 0.52);
-  // The clock, top middle.
-  g.font = `800 ${h * 0.2}px ui-monospace, Menlo, monospace`;
-  g.shadowColor = '#ff4d4d';
-  g.fillStyle = '#ff6b6b';
-  g.fillText(clockText(clockMs), w * 0.5, h * 0.2);
-  g.shadowBlur = 0;
-  // What's happening, along the bottom.
-  const line = goalFor
-    ? '⚽ GOAL! ⚽'
-    : !v || v.phase === 'waiting'
-      ? v?.players.length ? 'WAITING FOR THE OTHER TEAM' : 'JOIN A TEAM AT THE HALFWAY LINE'
-      : v.phase === 'kickoff'
-        ? `KICK-OFF · ${v.kickoff === 'red' ? 'RED' : 'BLUE'}`
-        : v.phase === 'paused'
-          ? 'PAUSED · A TEAM IS EMPTY'
-          : v.phase === 'over'
-            ? v.winner === 'draw'
-              ? 'FULL TIME · DRAW'
-              : `FULL TIME · ${v.winner === 'red' ? 'RED' : 'BLUE'} WIN`
-            : v.phase === 'goal'
-              ? '⚽ GOAL! ⚽'
-              : `${v.players.filter((p) => p.team === 'red').length} v ${v.players.filter((p) => p.team === 'blue').length}`;
-  g.font = `800 ${h * 0.11}px ${FONT}`;
-  g.fillStyle = '#e9f5ec';
-  g.fillText(line, w * 0.5, h * 0.88);
 }
 
 /** The ball's panels: white with black pentagons. */
@@ -512,8 +454,8 @@ export function buildSoccerInterior(): SoccerInterior {
 
   // ---- The scoreboards over each end ------------------------------------------------------------
   const boardCanvas = document.createElement('canvas');
-  boardCanvas.width = 1024;
-  boardCanvas.height = 384;
+  boardCanvas.width = 1280;
+  boardCanvas.height = 480;
   const board2d = boardCanvas.getContext('2d')!;
   const boardTexture2 = new THREE.CanvasTexture(boardCanvas);
   boardTexture2.colorSpace = THREE.SRGBColorSpace;
@@ -531,10 +473,10 @@ export function buildSoccerInterior(): SoccerInterior {
   }
   let drawn = '';
   const setBoard = (view: SoccerView | null, clockMs: number, flash: number) => {
-    const key = `${view?.phase}|${view?.score.red}|${view?.score.blue}|${clockText(clockMs)}|${view?.players.length}|${view?.kickoff}|${view?.winner}|${flash > 0 ? Math.floor(flash * 8) % 2 : -1}`;
+    const key = scoreboardKey(view, clockMs, flash);
     if (key === drawn) return;
     drawn = key;
-    drawBoard(board2d, boardCanvas.width, boardCanvas.height, view, clockMs, flash);
+    drawScoreboard(board2d, boardCanvas.width, boardCanvas.height, view, clockMs, flash);
     boardTexture2.needsUpdate = true;
   };
   setBoard(null, 5 * 60_000, 0);

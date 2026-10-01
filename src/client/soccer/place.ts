@@ -25,6 +25,8 @@ import { buildSoccerInterior, type SoccerInterior } from '../world/soccer/interi
 import { h, toast } from '../ui/dom';
 import { isTyping } from '../player';
 import { BallView } from './ball';
+import { SoccerShow } from './show'; // stats, replays, kits and moves
+import type { Person } from '../world/character';
 import './soccer.css';
 
 /*
@@ -75,6 +77,10 @@ export interface SoccerHost {
   placeAt(at: Spot): void;
   sound(kind: SoccerSoundKind, at: { x: number; y: number; z: number }, strength: number): void;
   confetti(x: number, y: number, z: number): void;
+  /** Someone's Person (you too), for their kit and moves (show.ts). */
+  person?(id: string): Person | undefined;
+  /** The view's camera, for the replay (show.ts). */
+  camera?: THREE.Camera;
 }
 
 const FROM_KEY = 'agent-office.soccer.from';
@@ -102,8 +108,11 @@ export class SoccerPlace {
   private meter: HTMLElement | null = null;
   private light = new THREE.Color('#fbfff6');
   private floorLight = new THREE.Color('#5f7a66');
+  /** The stats, the replay, the kits and the moves (show.ts). */
+  private show: SoccerShow;
 
   constructor(private host: SoccerHost) {
+    this.show = new SoccerShow(host); // first, so its keys (Tab, skipping a replay) come before kicking's
     // Kicking: captured before the player's own handlers, only while you play in here.
     window.addEventListener('pointerdown', (e) => this.pointerDown(e), true);
     window.addEventListener('pointerup', (e) => this.pointerUp(e), true);
@@ -118,6 +127,7 @@ export class SoccerPlace {
       this.room = buildSoccerInterior();
       this.room.group.visible = false;
       this.host.scene.add(this.room.group);
+      this.show.setRoom(this.room);
     }
     return this.room;
   }
@@ -133,6 +143,11 @@ export class SoccerPlace {
   /** Whether you play (on a team, in the hall). */
   playing(): boolean {
     return this.active && !!this.team;
+  }
+
+  /** A goal's replay is on screen (main.ts keeps the first-person hands out of it). */
+  get replaying(): boolean {
+    return this.show.replaying;
   }
 
   // ---- In and out -----------------------------------------------------------------------------------
@@ -213,6 +228,7 @@ export class SoccerPlace {
       this.charge = null;
       this.clearBibs();
     }
+    this.show.setActive(inside);
     this.showHud(inside);
   }
 
@@ -360,6 +376,7 @@ export class SoccerPlace {
 
   onMessage(msg: ServerMsg) {
     if (msg.t !== 'soccer' && msg.t !== 'soccer.ball') return;
+    this.show.onMessage(msg as SoccerServerMsg); // stats, replays, moves
     const m = msg as SoccerServerMsg;
     if (m.t === 'soccer.ball') {
       this.ball.snapshot(m.b);
@@ -472,11 +489,7 @@ export class SoccerPlace {
 
   private bibFor(team: Team): THREE.Group {
     const g = new THREE.Group();
-    const cloth = new THREE.MeshToonMaterial({ color: TEAM_COLOR[team] });
-    const bib = new THREE.Mesh(new THREE.CapsuleGeometry(0.278, 0.26, 4, 12), cloth);
-    bib.position.y = 0.72;
-    bib.scale.set(1, 1, 0.97);
-    g.add(bib);
+    // The shirt's the kit's (show.ts, kit.ts): here just the ring under their feet.
     const ringMat = new THREE.MeshBasicMaterial({ color: TEAM_COLOR[team], transparent: true, opacity: 0.85, depthWrite: false });
     ringMat.toneMapped = false;
     ringMat.userData.outlineParameters = { visible: false };
@@ -527,6 +540,7 @@ export class SoccerPlace {
     const since = performance.now() - this.goalAt;
     this.room.setBoard(this.view, this.clock(), since < 3000 ? 1 - since / 3000 : 0);
     this.room.update(t, dt);
+    this.show.update(dt, this.view, this.ball, this.clock()); // kits, moves, the replay (after the ball's placed)
     this.syncBibs();
     this.renderHud();
     // On the pitch without a team (back after a reload, say): over the boards you go.
