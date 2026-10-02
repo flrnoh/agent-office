@@ -63,6 +63,15 @@ function kino(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: 'kino.play' 
   const floor = ctx.floorOf(c); // the cinema's Saal 2 (kino.ts)
   kinoMessage(floor && ctx.kinos.of(floor), msg, { id: c.id, who: c.peer.name, office: ctx.maps.pick() === OFFICE_MAP, toFloor: (m) => floor && ctx.toFloor(floor, m), warn: (t) => ctx.warn(c, t) });
 }
+
+function tank(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `tank.${string}` }>) {
+  const floor = ctx.floorOf(c); // the petrol station and its car wash (tankstelle.ts)
+  if (!floor) return;
+  const res = ctx.forecourts.message(floor.id, { id: c.id, inCar: floor.garage.seatOf(c.id)?.car, x: c.peer.x, z: c.peer.z }, msg, floor.garage.state());
+  if ('refused' in res) return ctx.warn(c, res.refused);
+  ctx.toFloor(floor, res.ok);
+}
+
 function rig(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `rig.${string}` }>) {
   const floor = ctx.floorOf(c);
   rigMessage(ctx.rigs, msg, {
@@ -125,6 +134,8 @@ export const forkHandlers = {
     const used = toyUse(msg, c.peer.drink, c.id);
     if (used) ctx.toNeighbors(c, used);
   },
+  'tank.fill': tank,
+  'tank.wash': tank,
   'rig.play': rig,
   'rig.leave': rig,
   'rig.frame': rig,
@@ -172,5 +183,6 @@ export const rigView: ViewPieces['rig'] = (ctx, floor) => ctx.rigs.view(floor?.i
 export const tvView: ViewPieces['tv'] = (_ctx, floor) => floor?.tv.state();
 export const boatsView: ViewPieces['boats'] = (ctx, floor) => ctx.marinas.view(floor?.id);
 export const kinoView: ViewPieces['kino'] = (ctx, floor) => ctx.kinos.view(floor);
+export const tankView: ViewPieces['tankstelle'] = (ctx, floor) => ctx.forecourts.view(floor?.id);
 export const noView = () => undefined;
 export const bungeeView: ViewPieces['bungee'] = (ctx) => ctx.bungeeRope.state();
