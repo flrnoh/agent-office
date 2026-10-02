@@ -1,15 +1,17 @@
 import './settings.css';
 import type { Net } from '../net';
-import { store, type Settings, type ViewMode } from '../state';
+import type { OfficeSound } from '../sound';
+import { store, type NeedsYouSound, type Settings, type ViewMode } from '../state';
 import { askNotifyPermission, notifyPermission, type DesktopNotifier } from '../notify';
 import type { ThemePick, WebhookKind } from '../../shared/protocol';
 import { THEME_PICKS } from '../../shared/theme';
 import { mapChoices } from '../../shared/maps';
-import { DOG_NAME_MAX, cleanDogName } from '../../shared/dog';
+import { dogSetting } from './settings-dog';
 import { h, openModal, timeAgo } from './dom';
 import { agentFields, choiceLabel, officeChoice } from './provider';
 import { openPromptEditor, rewrittenPrompts } from './prompts';
-import { onOffRow } from './onoff'; // fork
+import { outsideSetting } from './settings-sky';
+import { choiceRow } from './settings-rows';
 
 const VIEWS: [ViewMode, string, string][] = [
   ['first', '👀 First person', 'See through your own eyes. Click the office to look around with the mouse and click things to use them. Esc frees the mouse.'],
@@ -47,7 +49,7 @@ const setting = (title: string, scope: Scope | null, ...body: Node[]) =>
 let lastPane: SettingsPane = 'you';
 
 /** `outside` describes the sky over the office (see describeSky), once the server has said. `first` opens on that category instead of the last one. */
-export function openSettings(net: Net, settings: Settings, onChange: (s: Settings) => void, onCharacter: () => void, previewSound: () => void, notifier: DesktopNotifier, onSignOut: () => void, outside?: { now: string; live: boolean }, first?: SettingsPane) {
+export function openSettings(net: Net, settings: Settings, onChange: (s: Settings) => void, onCharacter: () => void, sound: Pick<OfficeSound, 'ding' | 'needsYou'>, notifier: DesktopNotifier, onSignOut: () => void, outside?: { now: string; live: boolean }, first?: SettingsPane) {
   const seg = h('div.seg', { role: 'radiogroup', 'aria-label': 'Camera view' });
   const note = h('p.setting-note');
   const paint = () => {
@@ -106,45 +108,26 @@ export function openSettings(net: Net, settings: Settings, onChange: (s: Setting
     });
     return row;
   };
-  const soundRow = volumeRow('Office sounds volume', 'volume', 'muted', previewSound);
+  const soundRow = volumeRow('Office sounds volume', 'volume', 'muted', () => sound.ding('done'));
 
-  // Voice chat: an open mic, or muted until you hold V.
-  const talkRow = h('div.seg', { role: 'radiogroup', 'aria-label': 'Voice chat' });
-  const paintTalk = () => {
-    talkRow.replaceChildren(
-      ...(
-        [
-          [false, '🎙️ Open mic'],
-          [true, '✋ Push to talk'],
-        ] as const
-      ).map(([ptt, label]) =>
-        h(
-          'button.btn',
-          {
-            type: 'button',
-            role: 'radio',
-            'aria-checked': String(settings.pushToTalk === ptt),
-            class: settings.pushToTalk === ptt ? 'on' : '',
-            onclick: () => {
-              if (settings.pushToTalk === ptt) return;
-              settings = { ...settings, pushToTalk: ptt };
-              onChange(settings);
-              paintTalk();
-            },
-          },
-          label,
-        ),
-      ),
-    );
+  /** Changes some of your own settings, and has the office take them up. */
+  const change = (some: Partial<Settings>) => {
+    settings = { ...settings, ...some };
+    onChange(settings);
   };
-  paintTalk();
+  // Voice chat: an open mic, or muted until you hold V.
+  const talkRow = choiceRow('Voice chat', [[false, '🎙️ Open mic'], [true, '✋ Push to talk']], () => settings.pushToTalk, (pushToTalk) => change({ pushToTalk }));
   const musicRow = volumeRow('Jukebox volume', 'music', 'musicMuted');
   const speakersRow = volumeRow('Speakers volume', 'speakers', 'speakersMuted'); // flrnoh fork (speakers.ts)
 
   // The swish of the book's pages at the bookshelf, and (fork) the sounds of the city: on or off.
-  const toggle = (key: 'pageTurns' | 'citySounds') => (on: boolean) => onChange((settings = { ...settings, [key]: on }));
-  const pagesRow = onOffRow('Page turns at the bookshelf', '📖 On', () => settings.pageTurns, toggle('pageTurns'));
-  const cityRow = onOffRow('Stadtgeräusche', '🏙️ On', () => settings.citySounds, toggle('citySounds'));
+  const pagesRow = choiceRow('Page turns at the bookshelf', [[true, '📖 On'], [false, 'Off']], () => settings.pageTurns, (pageTurns) => change({ pageTurns }));
+  const cityRow = choiceRow('Stadtgeräusche', [[true, '🏙️ On'], [false, 'Off']], () => settings.citySounds, (citySounds) => change({ citySounds }));
+  // The alarm when a worker stops to ask you something; picking one plays it.
+  const alarmRow = choiceRow<NeedsYouSound>('When a worker needs you', [['once', '🔔 Ring once'], ['remind', '🔁 Keep reminding me'], ['off', '🔕 Off']], () => settings.needsYouSound, (needsYouSound) => {
+    change({ needsYouSound });
+    if (needsYouSound !== 'off') sound.needsYou();
+  });
 
   // The building's holiday theme, for everyone.
   const themeRow = h('div.seg', { role: 'radiogroup', 'aria-label': 'Holiday theme' });
@@ -270,7 +253,7 @@ export function openSettings(net: Net, settings: Settings, onChange: (s: Setting
         ? 'This browser can’t show notifications from the office here. They need https or localhost (an SSH tunnel counts).'
         : perm === 'denied'
           ? 'Your browser blocks notifications from the office. Allow them in the site settings (the icon left of the address), then open this again.'
-          : 'When a worker needs input or finishes while you’re in another tab or app, you get a notification. Click it to jump to that worker’s terminal. The tab title counts the workers waiting on someone either way.';
+          : 'When a worker needs you or finishes while you’re in another tab or app, you get a notification. Click it to go straight to that worker: you’re put at its desk with its terminal open. The tab title counts the workers waiting on someone either way.';
   };
   paintNotify();
 
@@ -452,30 +435,11 @@ export function openSettings(net: Net, settings: Settings, onChange: (s: Setting
   });
   dirDefault.addEventListener('click', () => net.send({ t: 'floor.projectsDir', dir: '' }));
 
-  // The dog on this floor, named for everyone here.
-  const dogInput = h('input', { type: 'text', maxlength: DOG_NAME_MAX, 'aria-label': 'The dog’s name', spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
-  const dogSave = h('button.btn.primary', { type: 'button' }, 'Rename');
-  const dogNote = h('p.setting-note');
-  const dogSection = setting('Office dog', 'floor', h('div.webhook', {}, dogInput, dogSave), dogNote);
-  const paintDog = () => {
-    const dog = store.dog;
-    dogSection.classList.toggle('hidden', !dog);
-    if (!dog) return;
-    dogInput.placeholder = dog.name;
-    dogNote.textContent = `${dog.name} lives on this floor. When a worker needs input, ${dog.name} runs to its desk and barks. Walk up and press E to pet it. A new name is for everyone on this floor.`;
-  };
-  paintDog();
-  const renameDog = () => {
-    const name = cleanDogName(dogInput.value);
-    if (!name) return dogInput.focus();
-    net.send({ t: 'dog.name', name });
-    dogInput.value = '';
-  };
-  dogSave.addEventListener('click', renameDog);
-  dogInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') renameDog();
-  });
+  // The dog on this floor: its name, breed and coat, for everyone here (see settings-dog.ts).
+  const { section: dogSection, paint: paintDog } = dogSetting(net, (body) => setting('Office dog', 'floor', ...body));
 
+  // What the sky's doing, and which clock it keeps (see settings-sky.ts).
+  const sky = outside && outsideSetting(net, outside, (body) => setting('Outside', 'office', ...body));
   const account = store.me.account;
   const signOut = h('button.btn', { type: 'button' }, '🚪 Sign out');
   signOut.addEventListener('click', onSignOut);
@@ -487,7 +451,8 @@ export function openSettings(net: Net, settings: Settings, onChange: (s: Setting
       setting('Signed in', null, h('div.volume', {}, signOut), h('p.setting-note', {}, account ? `As ${account.name}, with your own account (${account.role}).` : 'With the shared office password.')),
     ],
     sound: [
-      setting('Office sounds', 'you', soundRow, h('p.setting-note', {}, 'Workers typing, footsteps, the coffee machine, birds and rain outside, the dog, and the ding when a worker is done. Voice chat isn’t affected.')),
+      setting('Office sounds', 'you', soundRow, h('p.setting-note', {}, 'Workers typing, footsteps, the coffee machine, birds and rain outside, the dog, the ding when a worker is done and the alarm when one needs you. Voice chat isn’t affected.')),
+      setting('When a worker needs you', 'you', alarmRow, h('p.setting-note', {}, 'An alarm the moment a worker stops to ask you something or wants a permission. Keep reminding me rings it again, softly, every 30 seconds until someone opens that worker’s terminal. It’s as loud as the office sounds are.')),
       setting('Page turns at the bookshelf', 'you', pagesRow, h('p.setting-note', {}, 'A soft swish each time the book in your hands turns a page, as you open a doc or scroll through one. The 🔈 at the top of the bookshelf turns it off too.')),
       setting('Stadtgeräusche', 'you', cityRow, h('p.setting-note', {}, 'The city round the office: the road and the cars going by, birds in the trees, people by the shops, the church bells on the hour, a siren far off. Quieter and muffled behind glass.')),
       setting('Jukebox', 'you', musicRow, h('p.setting-note', {}, 'The jukebox in the lounge. Everyone on the floor hears the same song, louder the closer they are to it; this is how loud it is for you alone.')),
@@ -501,16 +466,7 @@ export function openSettings(net: Net, settings: Settings, onChange: (s: Setting
     building: [
       setting('Map', 'office', mapRow, mapNote, mapBad),
       setting('Holiday theme', 'office', themeRow, themeNote),
-      ...(outside
-        ? [
-            setting(
-              'Outside',
-              'office',
-              h('p.outside-now', {}, outside.now),
-              h('p.setting-note', {}, outside.live ? 'Everyone sees the same sky: a whole day and night every hour, and the live weather where it is.' : 'Everyone sees the same sky: a whole day and night every hour, and weather that comes and goes. Start the office with --city to use a real city’s forecast.'),
-            ),
-          ]
-        : []),
+      ...(sky ? [sky.section] : []),
       dogSection,
       setting('Workspace folder', 'office', dirRow, dirActions, dirNote),
     ],
@@ -570,6 +526,7 @@ export function openSettings(net: Net, settings: Settings, onChange: (s: Setting
       offNotify();
       offDog();
       offTheme();
+      sky?.off();
       offMap();
       offLeave();
       offLimit.forEach((off) => off());

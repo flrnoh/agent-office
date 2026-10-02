@@ -1,7 +1,7 @@
 /**
  * Office sounds, synthesized with Web Audio so there are no audio files to ship: the room's air and a
  * humming fridge, workers typing while they work, footsteps, the coffee machine, birds outside the
- * windows by day and crickets at night, rain and thunder, the odd rustle or phone, the gong, the dog
+ * windows by day and crickets at night, rain and thunder, the odd rustle, the gong, the dog
  * barking, and the dings when a worker needs you. And the lounge jukebox, whose tunes are in music.ts,
  * and up on the roof, the wind, the city far below and the DJ's drum and bass (../dnb.ts).
  *
@@ -16,7 +16,7 @@
 import type { GongWhy } from '../../shared/protocol';
 import type { CarKind } from '../../shared/garage'; // flrnoh fork
 import type { RaceEvent } from '../../shared/racing'; // flrnoh fork
-import { birdsong, deskPhones, Fridge, nightCrickets, startRoomTone, startWind } from './ambience';
+import { birdsong, Fridge, nightCrickets, startRoomTone, startWind } from './ambience';
 import { ding } from './alerts';
 import { arcade } from '../features/cabinet/sound';
 import { ball, type BallSound } from '../features/basketball/sound';
@@ -30,8 +30,9 @@ import { cellDoor, thud } from '../features/workers/sound';
 import { golf, type GolfSound } from '../features/golf/sound';
 import { gong } from '../features/gong/sound';
 import { Jukebox, type JukeboxPlay } from '../features/jukebox/sound';
+import { needsYou } from '../features/needsyou/sound';
 import type { Pos } from './places';
-import { pageTurn, paper, step, stepAt } from './steps';
+import { Footsteps, pageTurn, paper } from './steps';
 import { toss, type TossSound } from '../features/bargames/sound';
 import { fidgeting, Typing } from './typing';
 import { Rain, thunder } from './weather';
@@ -75,12 +76,12 @@ export class OfficeSound {
   );
   private readonly dj = new Dj(this.a);
   private readonly typing = new Typing(this.a);
+  private readonly feet = new Footsteps(this.a);
   private readonly motors = new Motors(this.a);
   private readonly fridge = new Fridge(this.a);
   private readonly rain = new Rain(this.a);
   private readonly birds = birdsong(this.a);
   private readonly crickets = nightCrickets(this.a);
-  private readonly phones = deskPhones(this.a);
   private readonly fidgets = fidgeting(this.a, this.typing);
   private readonly spa = new GymSpa(this.a); // fork
   private readonly bungeeAir = new BungeeWind(this.a); // fork
@@ -105,7 +106,6 @@ export class OfficeSound {
     this.a.every((now) => this.birds.tick(now));
     this.a.every((now) => this.crickets.tick(now));
     this.a.every((now) => this.rain.tickRain(now));
-    this.a.every((now) => this.phones.tick(now));
     this.a.every((now) => this.fidgets.tick(now));
     this.a.every((now) => this.city.tick(now)); // fork
   }
@@ -126,7 +126,6 @@ export class OfficeSound {
     const now = ctx.currentTime;
     this.birds.start(now);
     this.crickets.start(now);
-    this.phones.start(now);
     this.fidgets.start(now);
   }
 
@@ -191,8 +190,14 @@ export class OfficeSound {
     this.typing.removeTypist(id);
   }
 
-  step(kind: 'walk' | 'land' = 'walk') {
-    step(this.a, kind);
+  /** One of your own footsteps, with your feet at `feet`: `pace` is 0 at a walk, 1 at a run. */
+  step(feet: Pos, pace = 0) {
+    this.feet.step(feet, pace);
+  }
+
+  /** Landing a jump, `hard` from 0 (a hop) to 1 (off the loft). */
+  land(feet: Pos, hard = 0.5) {
+    this.feet.land(feet, hard);
   }
 
   paper() {
@@ -203,8 +208,9 @@ export class OfficeSound {
     pageTurn(this.a);
   }
 
-  stepAt(x: number, z: number, y = 0) {
-    stepAt(this.a, x, z, y);
+  /** Someone else's footstep, on the office floor unless `y` says where else. */
+  stepAt(x: number, z: number, y = 0, pace = 0) {
+    this.feet.stepAt({ x, y, z }, pace);
   }
 
   // ---- The ladder, the fire poles and the dungeon (features/climbing, features/workers) ------------
@@ -303,6 +309,11 @@ export class OfficeSound {
 
   ding(kind: 'done' | 'needs_input') {
     ding(this.a, kind);
+  }
+
+  /** The alarm for a worker that needs you, or (`again`) the soft reminder while it still does. */
+  needsYou(again = false) {
+    needsYou(this.a, again);
   }
 
   // ---- The rooftop bar (features/bar) -------------------------------------------------------------

@@ -9,6 +9,7 @@ import { forkRoutes } from './fork.js'; // flrnoh fork
 import { githubRoutes } from './github.js';
 import { pageRoutes } from './pages.js';
 import { searchRoutes } from './search.js';
+import { serviceRoutes } from './services.js';
 
 export const routes: readonly Route[] = [
   // Anyone.
@@ -27,8 +28,7 @@ export const routes: readonly Route[] = [
   pageRoutes.favicon,
   // Signed in.
   authRoutes.whoami,
-  agentRoutes.openCodeModels,
-  agentRoutes.grokModels,
+  agentRoutes.models,
   forkRoutes.radio, // flrnoh fork: the jukebox's radio
   fileRoutes.image,
   fileRoutes.whiteboardFile,
@@ -36,6 +36,7 @@ export const routes: readonly Route[] = [
   fileRoutes.changedFile,
   fileRoutes.docs,
   searchRoutes.search,
+  serviceRoutes.forwards,
   githubRoutes.github,
   pageRoutes.office,
   pageRoutes.lite,

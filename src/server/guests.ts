@@ -44,7 +44,7 @@ const QUIET = [
 const TEAM_ONLY = [
   'accounts.cancel', 'accounts.invite', 'accounts.revoke', 'accounts.role', 'accounts.shared',
   'carry', 'changes.commit', 'changes.diff', 'changes.discard', 'changes.pr',
-  'decor.add', 'decor.remove', 'decor.update', 'desk.label', 'dog.name',
+  'decor.add', 'decor.remove', 'decor.update', 'desk.label', 'dog.name', 'dog.breed', 'dog.coat', 'sky.clock',
   'floor.add', 'floor.cancel', 'floor.expand', 'floor.order', 'floor.projectsDir', 'floor.remove', 'floor.shrink',
   'gh.close', 'gh.comment', 'gh.labels', 'gh.merge', 'jukebox.speakers', 'leaveOnMerge.set',
   'machine.limit', 'map.set', 'meeting.clear', 'meeting.start', 'meeting.stop',

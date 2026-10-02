@@ -3,7 +3,7 @@
 // it, src/client/world/hall/interior.ts), the server (which lets you sit on its seats only in there)
 // and the tests (which keep it all off the courts and their run-out, COURT_MARGIN).
 //
-// Only types come from layout.ts here: layout.ts puts HALL_SEATING into SEATING.
+// Only types come from layout.ts here: layout.ts puts HALL_SEATING into SEATING (via fork-seating.ts).
 
 import type { SeatDef } from './layout.js';
 import { COURTS, COURT, COURT_MARGIN, GALLERY, HALL_DOOR_INSIDE, HALL_ROOM } from './hall.js';

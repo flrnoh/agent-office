@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import type { GhIssue, GhPull, GhState, QueueState, QueueTask, ServiceInfo, WorkerInfo } from '../../../shared/protocol';
 import { store, workerForPull } from '../../state';
-import { isInProgress } from '../../inprogress'; // flrnoh fork
 
 export const NOTE_COLORS = ['#fff7b0', '#ffd6e0', '#caffbf', '#bde0fe', '#ffe5b4'];
 export const PINS = ['#ef476f', '#118ab2', '#06d6a0', '#ffd166'];
@@ -97,8 +96,7 @@ export class BoardTexture {
       g.fillStyle = rnd() > 0.5 ? 'rgba(120,70,30,.18)' : 'rgba(255,240,210,.18)';
       g.fillRect(rnd() * W, rnd() * H, 3, 3);
     }
-    // Issues someone is on leave the wall board, so nobody hands the same one out twice (see inprogress.ts). PRs always show.
-    const open = (state.items as (GhIssue | GhPull)[]).filter((i) => i.state === 'OPEN' && !(this.kind === 'issues' && isInProgress(i as GhIssue)));
+    const open = (state.items as (GhIssue | GhPull)[]).filter((i) => i.state === 'OPEN');
     if (!open.length) {
       const note = state.error ? `⚠️ ${state.error}` : state.loading && !state.fetchedAt ? 'Loading…' : this.kind === 'issues' ? 'No open issues 🎉' : 'No open PRs';
       g.font = '800 40px Nunito, ui-rounded, system-ui, sans-serif';
