@@ -30,6 +30,7 @@ export const routes: readonly Route[] = [
   agentRoutes.openCodeModels,
   agentRoutes.grokModels,
   forkRoutes.radio, // flrnoh fork: the jukebox's radio
+  forkRoutes.spotify, // flrnoh fork: which Spotify app to sign in with
   fileRoutes.image,
   fileRoutes.whiteboardFile,
   fileRoutes.termDrop,

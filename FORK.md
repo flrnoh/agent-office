@@ -733,6 +733,19 @@ With the town round the office (*One city round the office*) and the loop past t
   - `src/client/state/persist.ts`: `HudPanel` `map`, on in `HUD_DEFAULTS`. `src/client/ui/menu.ts`: its row in `PANELS` and `PANEL_EL`.
   - `src/client/main.ts`: `installMinimap(ctx)`. `src/client/ui/help.ts`: two rows. `docs/features.md`, `docs/controls.md`.
 
+### Spotify
+
+Each person's own Spotify in the office, through the Web Playback SDK (Florian wanted "volle Steuerung", Premium). The office only knows which Spotify app to sign in with: its Client ID (`<office>/.agent-office/spotify.json` `{"clientId"}` or `SPOTIFY_CLIENT_ID`, read on each `GET /api/spotify`, session auth, guests allowed). The page signs in with PKCE in a popup to `accounts.spotify.com/authorize`, which comes back to `/spotify-callback.html` (a static page in `src/client/public/`); that page hands code and state over a `BroadcastChannel('spotify-auth')` (not `window.opener`, which Spotify's sign-in can cut) and closes, and the page swaps the code for tokens at `accounts.spotify.com/api/token` and keeps them in `localStorage` (`spotify-auth`), refreshing them as they run out. Then it loads `sdk.scdn.co/spotify-player.js` and connects as a device "Agent Office · <name>" (on page load too, once signed in, so the phone can hand over). The window (U, 🎧 in the ☰ menu's Together section, on the top bar with the song while it plays): set-up steps when there's no Client ID, connect, then now playing (cover, seek bar, ⏮⏯⏭, volume), 📲 bring here (`PUT /me/player`), search (`/search` tracks, playlists, albums), your playlists (`/me/playlists`) and liked songs (`/me/tracks`); click plays it on this device (`PUT /me/player/play?device_id`). Trouble in words: no Premium (`account_error`, `PREMIUM_REQUIRED`), not on the app's user list (403), signed out (401), no playback in this browser. While it plays, the office's music is off for you (`sound.setMusicVolume(music, true)`; a switch in the window, `spotify-prefs` in `localStorage` with the volume). Spotify's audio is DRM-protected, so it can't go through the office's Web Audio (no speakers, no rooms). Nothing on the wire between pages; nobody else hears it. Development-mode apps: up to 5 allow-listed users, the owner with Premium; `localhost` isn't a valid redirect (use `127.0.0.1`).
+
+- Own files:
+  - `src/server/spotify.ts` (`readSpotifyClientId`), `src/client/public/spotify-callback.html`.
+  - `src/client/features/spotify/index.ts` (`installSpotify`, `spotifyAction`, the ducking, U; `window.__spotify`), `auth.ts` (PKCE, tokens), `player.ts` (`OfficePlayer`, the SDK, the Web API calls), `ui.ts` (`openSpotify`), `ui.css`.
+  - `tests/spotify.test.ts`.
+- Hooks in upstream files:
+  - `src/server/http/routes/fork.ts` (`spotify`) and its line in `routes/index.ts`; `src/server/guests.ts` (`/api/spotify` for guests), `tests/guests.test.ts`.
+  - `src/client/features/hud/index.ts`: `spotifyAction` in the actions. `src/client/main.ts`: `installSpotify(ctx)`. `src/client/ui/help.ts`: a row.
+  - `docs/features.md`, `docs/controls.md`, `docs/self-hosting.md`.
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.

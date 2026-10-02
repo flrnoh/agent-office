@@ -80,5 +80,7 @@ export function guestMayFetch(p: string, url: URL, onAWall: (imageUrl: string) =
   if (p === '/api/image') return onAWall(url.searchParams.get('url') ?? '');
   // The jukebox's radio: a built-in station, or the stream on a floor's jukebox (the handler checks it's that one).
   if (p === '/api/radio') return radioRequestShape(url.searchParams);
+  // Spotify: which app to sign in with; each plays from their own account (spotify.ts).
+  if (p === '/api/spotify') return true;
   return false;
 }
