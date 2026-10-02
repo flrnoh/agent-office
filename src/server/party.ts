@@ -83,6 +83,7 @@ const PARTY_SEES = [
   'bowling.lights', 'bowling.shoes', 'bowling.house', // fork: the bowling centre's lights and rental shoes
   'mg', 'mg.putt', // fork: the bowling centre's mini golf
   'bowl.lanes', 'bowl.lane', 'bowl.roll', 'bowl.board', 'bowl.stats', 'bowl.over', // fork: the bowling centre's lanes and league
+  'instr.state', 'instr.note', 'instr.jam', 'instr.tones', // fork: the Schallwerk's instruments
 ] as const satisfies readonly T[];
 
 /** The work, the machine and the office's settings: never sent to a party guest. */
