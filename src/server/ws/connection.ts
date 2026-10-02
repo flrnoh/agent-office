@@ -14,6 +14,7 @@ import { features } from './handlers/index.js';
 import { mapNews } from './handlers/settings.js';
 import { backInPlace, enteredPlace, isPlace, placeView } from '../fork/office.js'; // flrnoh fork
 import { partyGate } from '../party.js';
+import { settleLook } from '../fork/looks.js'; // flrnoh fork
 
 /**
  * Someone came in: where they arrive and who they are, the welcome with everything they see, and
@@ -62,6 +63,7 @@ export function onConnection(ctx: Ctx, ws: WebSocket, url: URL, session: Session
   const mapWas = maps.pick();
   if (maps.reload()) mapNews(ctx, mapWas);
   partyGate(ws, () => client.party); // fork: all a party guest gets goes through party.ts
+  settleLook(ctx, client, true); // fork: an account's look from any browser, the smoking jacket an admin's alone
   clients.set(id, client);
   if (account) accounts.seen(account.id);
   ws.on('pong', () => (client.isAlive = true));
