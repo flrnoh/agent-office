@@ -56,7 +56,9 @@ export type ForkClientMsg =
   | { t: 'rig.frame'; frame: RigFrame }
   | { t: 'rig.finish'; result: RigResult }
   /** Floors in any order (admins only): the built floors' ids, bottom floor first. */
-  | { t: 'floor.order'; ids: string[] };
+  | { t: 'floor.order'; ids: string[] }
+  /** Furnish a floor in an interior of shared/interiors.ts (admins only), or with null the way its place in the stack does. */
+  | { t: 'floor.interior'; id: string; interior: string | null };
 
 export type ForkServerMsg =
   | CasinoServerMsg

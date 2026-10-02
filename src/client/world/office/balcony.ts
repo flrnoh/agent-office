@@ -253,6 +253,7 @@ export const balcony: Fixture = (site) => {
   const night = site.get('night');
   // The furnished one's furniture: built once, in the bottom floor's frame, and turned onto each storey's.
   const furniture = new THREE.Group();
+  furniture.userData.outdoors = true; // fork: no interior recolors it (world/office/interior/)
   site.group.add(furniture);
   const cols: Collider[] = [];
   const its: Interactable[] = [];

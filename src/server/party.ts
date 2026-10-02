@@ -139,6 +139,7 @@ export function partyFloorInfo(f: FloorInfo): FloorInfo {
     name: f.name,
     dir: '',
     palette: f.palette,
+    ...(f.interior ? { interior: f.interior } : {}), // fork: how it's furnished is seen from the elevator anyway
     ...(f.cloning ? { cloning: true } : {}),
     ...(f.local ? { local: true } : {}),
     addedBy: '',

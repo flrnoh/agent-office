@@ -7,6 +7,7 @@ import { store } from '../state';
 import { h, openModal, timeAgo, toast, type Modal } from './dom';
 import { confirmDialog } from './prompt';
 import { floorOrder } from './floor-order';
+import { interiorLabel, interiorPicker, picking } from './floor-interior'; // flrnoh fork: each storey its own interior
 
 // The elevator's panel: a button for every floor (every project), and "add a project", which clones
 // one of the repositories the office's gh login can see and makes it a new floor. The first time
@@ -140,7 +141,7 @@ export function openElevator(opts: ElevatorOptions): void {
         'span.floor-text',
         {},
         h('span.floor-name', {}, f.name, here ? h('span.here-tag', {}, 'you are here') : mine ? h('span.here-tag', {}, 'your floor') : null),
-        h('span.floor-sub', {}, [f.repo ?? f.dir, f.cloning ? f.clone?.detail : ''].filter(Boolean).join(' · ')),
+        h('span.floor-sub', {}, [f.cloning ? '' : interiorLabel(f, i), f.repo ?? f.dir, f.cloning ? f.clone?.detail : ''].filter(Boolean).join(' · ')), // fork: its interior first
         f.cloning ? cloneBar(f.clone) : null,
       ),
       h('span.floor-stats', {}, ...stats.flatMap((s, j) => (j ? [' ', s] : [s]))),
@@ -165,7 +166,7 @@ export function openElevator(opts: ElevatorOptions): void {
     if (!store.me.admin) return btn;
     const off = h('button.btn.floor-off', { type: 'button', title: `Take ${f.name} off the building`, 'aria-label': `Remove ${f.name}` }, '🗑');
     off.addEventListener('click', () => confirmRemove(f));
-    return order.row(h('div.floor-row', {}, btn, off), f);
+    return order.row(h('div.floor-row', {}, btn, h('span.floor-tools', {}, interiorPicker(net, f, i), off)), f); // fork: the interior list
   };
 
   const confirmRemove = (f: FloorInfo) => {
@@ -217,7 +218,7 @@ export function openElevator(opts: ElevatorOptions): void {
   };
 
   const renderFloors = () => {
-    if (order.dragging()) return;
+    if (order.dragging() || picking(floorsEl, () => renderFloors())) return; // fork: not while an interior list is open
     const floors = store.floors;
     const built = floors.some((f) => !f.cloning);
     // Top floor first, the way an elevator's buttons stack, with the roof over them, floor 1 and then the garage at the bottom.

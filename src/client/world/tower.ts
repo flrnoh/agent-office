@@ -419,5 +419,6 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
 /** The rest of the building, above and below this floor. */
 export const tower: Fixture = (site) => {
   const built = buildTower(site.colliders, site.get('night'));
+  built.group.userData.outdoors = true; // fork: no interior recolors it (world/office/interior/)
   return { group: built.group, setLevel: (index, count, wings) => built.set(index, count, wings) };
 };

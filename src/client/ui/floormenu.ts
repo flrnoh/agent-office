@@ -4,6 +4,7 @@ import { ROOF, ROOF_NAME } from '../../shared/rooftop';
 import type { FloorInfo } from '../../shared/protocol';
 import { store } from '../state';
 import { h } from './dom';
+import { interiorLabel } from './floor-interior'; // flrnoh fork: each storey its own interior
 
 // The floor list that drops down from the project in the corner: every floor of the building, top
 // floor first. Picking one takes you straight there, to the same spot in the office you're standing
@@ -52,7 +53,7 @@ export function toggleFloorMenu(anchor: HTMLElement, opts: FloorMenuOptions): vo
       'button.floor-item',
       { type: 'button', role: 'menuitem', class: isHere ? 'here' : '', disabled: isHere || f.cloning, title: isHere ? "You're on this floor" : f.cloning ? 'Still being cloned' : opts.indoors() ? `Go to ${f.name}, right where you're standing` : `Go to ${f.name}, in its elevator` },
       h('span.floor-no', { style: `background:${p.trim}` }, String(i + 1)),
-      h('span.floor-text', {}, h('span.floor-name', {}, f.name), h('span.floor-sub', {}, where || (f.repo ?? f.dir))),
+      h('span.floor-text', {}, h('span.floor-name', {}, f.name), h('span.floor-sub', {}, [where || (f.repo ?? f.dir), f.cloning ? '' : interiorLabel(f, i)].filter(Boolean).join(' · '))), // fork: its interior
       h('span.floor-stats', {}, ...stats),
     );
     btn.addEventListener('click', () => {

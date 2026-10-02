@@ -1,0 +1,9 @@
+/* Each storey its own interior (flrnoh fork, see FORK.md): the interior list beside a floor in the elevator. */
+.elevator .floor-tools { display: flex; gap: 6px; align-items: stretch; }
+.elevator .floor-interior { width: 190px; padding: 0 8px; border: 3px solid var(--ink); border-radius: 12px; background: #fffaf3; color: var(--ink); font: 800 13px/1.2 Nunito, ui-rounded, system-ui, sans-serif; cursor: pointer; }
+.elevator .floor-interior:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.elevator .floor-style { white-space: nowrap; }
+@media (max-width: 560px) {
+  .elevator .floor-tools { flex-direction: column; }
+  .elevator .floor-interior { max-width: 120px; min-height: 34px; }
+}

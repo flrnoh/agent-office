@@ -65,6 +65,8 @@ export interface World {
   setBeanbags(out: Set<string>): Collider[];
   /** Paints it in a floor's colors, so each project looks like itself. */
   setLook(p: FloorPalette): void;
+  /** Fork: furnishes it in the interior an admin picked for the floor, or with none the floor's own (shared/interiors.ts); only the office has interiors. */
+  setInterior?(picked: string | null | undefined): void;
   setProjectName(name: string): void;
   /** Animates it; doors open for anyone in `people` who comes up to them. */
   update(t: number, dt: number, people: Iterable<{ x: number; y: number; z: number }>): void;
@@ -119,6 +121,7 @@ export function officeWorld(office: Office, upstairs: () => boolean, wing: () =>
     room: { wall: WALL_T, enclosed: false },
     setBeanbags: (out) => office.setBeanbags(out),
     setLook: (p) => office.setLook(p),
+    setInterior: (picked) => office.interior.setPicked(picked), // fork
     setProjectName: (name) => office.setProjectName(name),
     update: (t, dt, people) => office.update(t, dt, people),
   };
