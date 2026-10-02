@@ -99,7 +99,8 @@ export function installInstruments(ctx: Ctx, deps: InstrumentsDeps) {
     const spot = SPOT_BY_ID.get(spotId);
     if (!spot || spot.kind !== note.kind) return;
     const delay = Math.max(0, due - performance.now());
-    const e = here ? engine() : null;
+    // Sounded only where it's heard (a rehearsal room's notes cost nothing out in the hall); a key let go of always, so nothing hangs on.
+    const e = here && (isRelease(note) || heardIn(myPos().x, myPos().z, spot.room).gain > 0) ? engine() : null;
     if (e) e.play(spot, toneAt(spot), note, e.ctx.currentTime + delay / 1000);
     const show = () => {
       if (here && heardIn(myPos().x, myPos().z, spot.room).gain > 0) stats.audible++;
@@ -181,6 +182,7 @@ export function installInstruments(ctx: Ctx, deps: InstrumentsDeps) {
     const st = musician.station;
     if (!st) return;
     musician.stop();
+    engine()?.silence(st.spot.id);
     ctx.player.rig = null;
     ctx.player.eyeDrop = 0;
     overlay.show(null);
@@ -236,6 +238,8 @@ export function installInstruments(ctx: Ctx, deps: InstrumentsDeps) {
 
   // ---- What the office says --------------------------------------------------------------------------
   ctx.messages.on('instr.state', (msg) => {
+    // Put down: whatever it still rang with stops (a stroke of the hand on the strings).
+    for (const spot of Object.keys(players)) if (!msg.players[spot]) engine()?.silence(spot);
     players = msg.players;
     const mine = Object.keys(players).find((s) => players[s] === me());
     if (musician.station && musician.station.spot.id !== mine) {

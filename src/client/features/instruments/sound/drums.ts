@@ -16,10 +16,13 @@ export class DrumKit {
   private readonly metal: AudioBuffer;
   /** The open hat ringing on each kit (by its output), to choke. */
   private openHat = new WeakMap<AudioNode, GainNode>();
+  /** The kick's touch of saturation (a miked kick through the desk). */
+  private readonly kickCurve = new Float32Array(new ArrayBuffer(1024 * 4));
 
   constructor(private readonly ctx: BaseAudioContext) {
     this.noise = noiseBuffer(ctx, 2);
     this.metal = metalBuffer(ctx);
+    for (let i = 0; i < 1024; i++) this.kickCurve[i] = Math.tanh(((i / 1023) * 2 - 1) * 1.8) / Math.tanh(1.8);
   }
 
   /** Plays `piece` into `out` at `t`, `vel` 0..1. */
@@ -86,14 +89,8 @@ export class DrumKit {
     const o = this.osc('sine', 165 + v * 40, t, 0.9, body);
     o.frequency.exponentialRampToValueAtTime(62, t + 0.035);
     o.frequency.exponentialRampToValueAtTime(46, t + 0.32);
-    // A touch of saturation, as a miked kick through the desk has.
     const sat = ctx.createWaveShaper();
-    const curve = new Float32Array(new ArrayBuffer(1024 * 4));
-    for (let i = 0; i < 1024; i++) {
-      const x = (i / 1023) * 2 - 1;
-      curve[i] = Math.tanh(x * 1.8) / Math.tanh(1.8);
-    }
-    sat.curve = curve;
+    sat.curve = this.kickCurve;
     body.connect(sat).connect(out);
     // The beater on the head: a click and a slap.
     const click = hit(ctx, t, 0.35 * v * v + 0.05, 0.0004, 0.004);

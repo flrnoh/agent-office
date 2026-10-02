@@ -321,7 +321,7 @@ export function buildStage(): StageBuilt {
     [[-7.5, 7.2], [-8.5, 8.0], [-9.2, 8.3]],
     [[-7.2, 7.4], [-5, 9.6], [-2, 10.4], [box.x - 0.2, box.z - 0.1]],
   ] as [number, number][][])
-    group.add(cable(pts, H, wire));
+    still.add(cable(pts, H, wire));
   // Gaffer tape holding the long runs down.
   const gaffer = toon('#3a3a40');
   for (const [x, z, r] of [

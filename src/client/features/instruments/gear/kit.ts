@@ -51,8 +51,9 @@ export const KIT_AT: Record<DrumPiece | 'throne', THREE.Vector3> = {
 const MOVING = ['crash', 'ride', 'hatTop', 'beater', 'snare', 'tomHi', 'tomMid', 'tomLow', 'kickDrum'] as const;
 export type KitPart = (typeof MOVING)[number];
 
-/** A drum: shell, both heads, hoops, lugs, rods; axis along y, batter head up (+y). */
+/** A drum: shell, both heads, hoops, lugs, rods (one mesh); axis along y, batter head up (+y). */
 function drum(r: number, depth: number, shell: THREE.Material, head: THREE.Material, lugs: number): THREE.Group {
+  const out = new THREE.Group();
   const g = new THREE.Group();
   g.add(mesh(new THREE.CylinderGeometry(r, r, depth, 32, 1, true), shell));
   const top = mesh(new THREE.CircleGeometry(r * 0.985, 32), toon('#efeadf'));
@@ -79,7 +80,8 @@ function drum(r: number, depth: number, shell: THREE.Material, head: THREE.Mater
     g.add(l);
     for (const s of [1, -1]) g.add(mesh(rod, toon(CHROME), x, (s * depth) / 4, z, false));
   }
-  return g;
+  out.add(mergeByColor(g));
+  return out;
 }
 
 /** A cymbal: a shallow cone with its bell, on its own (its stand's tilt is the caller's). */
@@ -97,7 +99,9 @@ function cymbal(r: number, mat: THREE.Material): THREE.Group {
   const ring = mesh(new THREE.RingGeometry(r * 0.55, r * 0.62, 40), toon('#f0cf74'), 0, -r * 0.035 + 0.001, 0, false);
   ring.rotation.x = -Math.PI / 2;
   g.add(ring);
-  return g;
+  const out = new THREE.Group();
+  out.add(mergeByColor(g));
+  return out;
 }
 
 /** A tripod stand: legs from `y0` (where the legs meet the tube), the tube up to `top`. */
@@ -137,7 +141,7 @@ function headTexture(f: KitFinish): THREE.CanvasTexture {
   g.fillStyle = f.ink;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.font = `900 ${f.logo.length > 8 ? 30 : 40}px "Arial Black", Impact, sans-serif`;
+  g.font = `900 ${f.logo.length > 8 ? 25 : 40}px "Arial Black", Impact, sans-serif`;
   g.fillText(f.logo, 128, 112);
   g.font = '700 16px Arial, sans-serif';
   g.fillText('★ ROCK ★', 128, 146);

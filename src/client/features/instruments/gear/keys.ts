@@ -86,8 +86,8 @@ export function keyboard(color: string, top: number, stand: boolean): KeyboardMo
   const place = (p: number, k: number) => {
     const s = slot.get(p)!;
     // Down at the front, pivoting at the back.
-    q.setFromAxisAngle(axis, k * 0.07);
-    m.compose(new THREE.Vector3(s.x, s.y - k * 0.006, s.z), q, one);
+    q.setFromAxisAngle(axis, k * 0.1);
+    m.compose(new THREE.Vector3(s.x, s.y - k * 0.009, s.z), q, one);
     s.mesh.setMatrixAt(s.i, m);
     s.mesh.instanceMatrix.needsUpdate = true;
   };

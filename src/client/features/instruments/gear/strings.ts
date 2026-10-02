@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mergeByColor, mesh, toon } from '../../../world/toon';
+import { mergeByColor, mergeByMaterial, mesh, toon } from '../../../world/toon';
 
 // ---- Guitars and basses (flrnoh fork, see FORK.md "The instruments") ---------------------------------
 // Solid-body electrics in real sizes: a double-cutaway body (its front in a finish of its own, a
@@ -175,6 +175,7 @@ function build(bass: boolean, finish: StringFinish): THREE.Group {
   // The strings, nut to bridge.
   const strMat = new THREE.MeshBasicMaterial({ color: '#e9eef5' });
   strMat.userData.outlineParameters = { visible: false };
+  const strs = new THREE.Group();
   for (let i = 0; i < strings; i++) {
     const k = i / (strings - 1) - 0.5;
     const xa = k * (w1 - 0.012);
@@ -183,8 +184,12 @@ function build(bass: boolean, finish: StringFinish): THREE.Group {
     const str = new THREE.Mesh(new THREE.BoxGeometry(bass ? 0.0018 : 0.001, len, bass ? 0.0018 : 0.001), strMat);
     str.position.set((xa + xb) / 2, (nut + bridgeY) / 2, top + 0.014);
     str.rotation.z = Math.atan2(xa - xb, len);
-    g.add(str);
+    strs.add(str);
   }
+  // All the strings one mesh (their material keeps them out of the outline pass).
+  const merged = mergeByMaterial(strs);
+  merged.traverse((o) => ((o as THREE.Mesh).castShadow = false));
+  g.add(merged);
   g.add(mergeByColor(still));
   return g;
 }
