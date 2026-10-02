@@ -259,11 +259,13 @@ export const LOT_PLANS: readonly LotPlan[] = LOTS.map(lotPlan);
 
 /**
  * Where each quarter of the city starts its round of kinds, so neighbouring quarters don't match and
- * every kind gets at least five shops in three quarters or more (tests/shops.test.ts). Picked by trying
+ * every kind gets at least four shops in three quarters or more (tests/shops.test.ts). Picked by trying
  * every set of starts for the 24 kinds dealt now (25 less the supermarket, which takes whole sides)
- * and keeping the one whose rarest kind has the most shops; with more or fewer kinds, pick again.
+ * and keeping the one whose rarest kind has the most shops (and the fewest kinds that rare); with more
+ * or fewer kinds, or blocks, pick again. (The bowling centre's block east of the office took its
+ * buildings' shops away: about 118 dealt shops for 24 kinds, so four is the most every kind can have.)
  */
-const QUARTER_START: Record<string, number> = { '1-1': 0, '-1-1': 3, '11': 21, '-11': 23 };
+const QUARTER_START: Record<string, number> = { '1-1': 0, '-1-1': 6, '11': 20, '-11': 23 };
 
 /** Which quarter of the city round the office (x, z) is in. */
 export const quarterOf = (x: number, z: number) => `${Math.sign(x)}${Math.sign(z - 27)}`;

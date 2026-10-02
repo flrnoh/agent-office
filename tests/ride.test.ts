@@ -21,7 +21,7 @@ test('the three new kinds are in the city, every one in several quarters', () =>
   for (const id of ['fahrrad', 'zoo', 'waschsalon'] as const) {
     assert.ok(SHOP_KINDS.some((k) => k.id === id), id);
     const list = SHOPS.filter((s) => s.kind === id);
-    assert.ok(list.length >= 5, `${id}: ${list.length}`);
+    assert.ok(list.length >= 4, `${id}: ${list.length}`);
     assert.ok(new Set(list.map((s) => `${Math.sign(s.ox)}${Math.sign(s.oz - 27)}`)).size >= 3, id);
   }
 });

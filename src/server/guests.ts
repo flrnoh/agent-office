@@ -32,6 +32,7 @@ const GUEST = [
   'trolley.set', // fork: the supermarket's shopping trolley
   'bike.ride', 'bike.bell', // fork: bikes from the city's bike shop
   'tank.fill', 'tank.wash', // fork: the petrol station and its car wash
+  'bowling.lights', 'bowling.shoes', // fork: the bowling centre's cosmic switch and rental shoes
   'mg.look', 'mg.take', 'mg.return', 'mg.group', 'mg.putt', 'mg.pickup', // fork: the bowling centre's mini golf
 ] as const satisfies readonly ClientMsg['t'][];
 
