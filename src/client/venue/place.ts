@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { VENUE, VENUE_ENTRY, VENUE_NAME, VENUE_ROOM, VENUE_STREET_SPOT, ZONES, type VenueMode } from '../../shared/venue';
+import { VENUE, VENUE_ENTRY, VENUE_NAME, VENUE_ROOM, VENUE_STREET_SPOT, ZONES, venueRoomAt, type VenueMode } from '../../shared/venue';
+import { muffleFor } from '../../shared/proberaum';
 import { BAR_MENU, FOTOBOX_SPOT, MERCH_BY_ID, MODE_LIGHTS, RIDER_MENU, type MerchId, type VenueFx, type VenueHouseServerMsg, type VenueLights, type VenueWear } from '../../shared/venue-house';
 import type { ClientMsg, FloorInfo, ServerMsg } from '../../shared/protocol';
 import type { Drink } from '../../shared/rooftop';
@@ -21,6 +22,7 @@ import type { VenueSoundKind } from './sound';
 import { venueHint, type HintParts } from './hints';
 import { hireStaff, tendStaff, type VenueStaff } from './staff';
 import { VenueSofas } from './seats';
+import './gigbill'; // the show's gig calendar on the letter board, the LED wall and the façade's posters
 
 /*
  * The Schallwerk as a place on this page (flrnoh fork, see FORK.md "The Schallwerk"), like the
@@ -506,7 +508,7 @@ export class VenuePlace {
   private fire(fx: VenueFx, at: number, fresh: boolean) {
     this.fired[fx] = at;
     this.room?.fire(fx, at);
-    if (fresh && this.active) this.host.sound(fx);
+    if (fresh && this.active && this.heard() > 0.5) this.host.sound(fx); // (not through a rehearsal room's walls)
   }
 
   // ---- Every frame ------------------------------------------------------------------------------------
@@ -525,8 +527,16 @@ export class VenuePlace {
     const p = this.host.player.pos;
     const foyer = p.z < ZONES.foyer.maxZ + 2 ? 1 : Math.max(0, 1 - (p.z - ZONES.foyer.maxZ - 2) / 6);
     const bar = Math.max(0, 1 - Math.hypot(p.x - 21, Math.max(0, Math.abs(p.z + 2.5) - 5)) / 8);
-    this.host.ambience(Math.min(1, 0.3 + people.length * 0.07), foyer, bar);
+    // In a rehearsal room the hall's crowd and bar are kept out (shared/proberaum.ts muffleFor).
+    const kept = this.heard();
+    this.host.ambience(Math.min(1, 0.3 + people.length * 0.07) * kept, foyer * kept, bar * kept);
     for (const part of this.parts) part.update?.(t, dt);
+  }
+
+  /** How much of the hall you hear where you stand: all of it, or what gets through a rehearsal room's walls. */
+  private heard(): number {
+    const p = this.host.player.pos;
+    return muffleFor(venueRoomAt(p.x, p.z), 'hall').gain;
   }
 
   /** The coats handed in, on the rails in their owners' colours. */

@@ -39,7 +39,8 @@ import { SOCCER_ARRIVAL, backInSoccer, soccerView } from '../soccer/place.js';
 import { BOWLING_ARRIVAL, BowlingHouse, backInBowling, bowlingView } from '../bowling/place.js';
 import { Minigolf } from '../bowling/minigolf.js';
 import { VENUE_ARRIVAL, VenueHouse, backInVenue, venueView } from '../venue/place.js';
-import { startVenueShow, stopVenueShow } from '../ws/handlers/venueshow.js'; // the Schallwerk's show
+import { showOf, startVenueShow, stopVenueShow } from '../ws/handlers/venueshow.js'; // the Schallwerk's show
+import { gigStarted } from '../ws/handlers/venue.js'; // a gig starting switches the Schallwerk to its kind
 
 /** Made last, once upstream's stages are all there (see server.ts). */
 export interface Fork {
@@ -228,6 +229,7 @@ export function startFork(ctx: Ctx) {
   ctx.turn.start();
   ctx.minigolf.start();
   startVenueShow(ctx); // the Schallwerk's gig calendar: a gig starting
+  showOf(ctx).onGigStart = (gig) => gigStarted(ctx, gig); // … turns the house into a concert or a club
   // The office has heard the DJ set that's on (or couldn't): the roof's lights go by its beats.
   ctx.djBooth.onBeats = () => ctx.toRoof({ t: 'dj', state: ctx.djBooth.state() });
 }

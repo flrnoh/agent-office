@@ -245,3 +245,14 @@ test('where you are in there, in words', () => {
   assert.equal(venueWhereabouts(-20, 0, 13), '🎙️ im Studio');
   assert.equal(venueWhereabouts(1, 0, -7.5), '🎛️ am Mischpult');
 });
+
+test('a gig starting turns the house into its kind, whatever the light desk’s cooldown', () => {
+  let now = 50_000;
+  const house = new VenueHouse({ now: () => now });
+  const ann = { id: 'a', owner: 'name:Ann', name: 'Ann', inside: true };
+  house.message(ann, { t: 'venue.mode', mode: 'club' });
+  now += 100;
+  assert.deepEqual(house.gigStarts('konzert', 'Kernel Panik'), { t: 'venue.mode', mode: 'konzert', lights: MODE_LIGHTS.konzert, by: 'Kernel Panik' });
+  assert.equal(house.gigStarts('konzert', 'Again'), null, 'already a concert');
+  assert.equal(house.current, 'konzert');
+});

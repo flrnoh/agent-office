@@ -7,7 +7,7 @@ import { bulb, type NightParts } from '../outside';
 import { mergeByMaterial, mesh, toon, toonUnique } from '../toon';
 import { box, canvasTexture, glow } from '../casino/parts';
 import { BOLD, SW, brickTexture, corrugatedTexture, drawLetterBoard, litWindowTexture, neonWord, posterTexture, softDot } from './signs';
-import { billLines, onVenueBill } from './bill';
+import { billLines, billPosters, onVenueBill } from './bill';
 import { buildYard } from './exterior-yard';
 
 /*
@@ -399,16 +399,36 @@ export function buildVenueExterior(group: THREE.Group, colliders: Collider[], in
   }
 
   // ---- Lit poster cases either side of the entrance -------------------------------------------
-  [-1, 1].forEach((side) => {
-    for (let k = 0; k < 2; k++) {
+  // The house's own posters until the gig calendar has some (bill.ts billPosters: then theirs, soonest nearest the doors).
+  const cases: { mat: THREE.MeshToonMaterial; own: THREE.Texture; gig: THREE.CanvasTexture | null }[] = [];
+  for (const k of [0, 1]) {
+    for (const side of [-1, 1]) {
       const x = DX + side * (PORTAL.w / 2 + 0.95 + k * 1.75);
       parts.add(mesh(box(1.5, 2.06, 0.14), steel, x, G + 1.95, FRONT - 0.08));
       const tex = posterTexture(side < 0 ? k : 2 + k);
       const m = new THREE.MeshToonMaterial({ map: tex, gradientMap, emissive: new THREE.Color('#ffffff'), emissiveMap: tex });
       night.bulbs.push({ mat: m, day: 0.4 });
       root.add(mesh(new THREE.PlaneGeometry(1.3, 1.84).rotateY(Math.PI), m, x, G + 1.95, FRONT - 0.16, false));
+      cases.push({ mat: m, own: tex, gig: null });
     }
-  });
+  }
+  const hangPosters = () => {
+    const posters = billPosters();
+    cases.forEach((c, i) => {
+      c.gig?.dispose();
+      c.gig = null;
+      const p = posters[i % Math.max(1, posters.length)];
+      if (p) {
+        c.gig = new THREE.CanvasTexture(p);
+        c.gig.colorSpace = THREE.SRGBColorSpace;
+      }
+      c.mat.map = c.gig ?? c.own;
+      c.mat.emissiveMap = c.mat.map;
+      c.mat.needsUpdate = true;
+    });
+  };
+  hangPosters();
+  onVenueBill(hangPosters);
 
   // ---- Gooseneck lanterns over the front's windows, their light on the brick and the pavement ----
   {

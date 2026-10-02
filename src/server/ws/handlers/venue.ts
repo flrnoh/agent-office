@@ -1,7 +1,7 @@
 // flrnoh fork (see FORK.md "The Schallwerk"): the house's messages (concert or club, the light desk,
 // the effects, the announcements, the stamp, the cloakroom, the merch; server/venue/place.ts keeps
 // them). A shirt, a stamp and a coat ticket are seen everywhere, so their news goes to the whole office.
-import { VENUE } from '../../../shared/venue.js';
+import { VENUE, type VenueMode } from '../../../shared/venue.js';
 import type { VenueHouseClientMsg } from '../../../shared/venue-house.js';
 import type { Ctx } from '../../office/context.js';
 import type { Client } from '../../office/client.js';
@@ -18,6 +18,12 @@ function house(ctx: Ctx, c: Client, msg: VenueHouseClientMsg) {
   if ('warn' in reply) return ctx.warn(c, reply.warn);
   if ('everyone' in reply) return ctx.broadcast(reply.everyone);
   ctx.toVenue(reply.inside);
+}
+
+/** A gig starting switches the house to its kind (wired in fork/office.ts startFork: the show's onGigStart). */
+export function gigStarted(ctx: Ctx, gig: { kind: VenueMode; title: string }) {
+  const m = ctx.venue.gigStarts(gig.kind, gig.title);
+  if (m) ctx.broadcast(m);
 }
 
 export const venueHandlers = {

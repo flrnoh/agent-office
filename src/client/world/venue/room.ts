@@ -107,35 +107,29 @@ export function buildVenueShell(): VenueShell {
   solid(true, R.minX - T, R.maxX + T, R.maxZ + T / 2, T);
   solid(false, R.minZ, R.maxZ, R.minX - T / 2, T);
   solid(false, R.minZ, R.maxZ, R.maxX + T / 2, T);
-  face(true, WING_X + WT / 2, -dHalf, R.minZ, 1, 0, H, 'raw');
+  face(true, WING_X, -dHalf, R.minZ, 1, 0, H, 'raw');
   face(true, dHalf, R.maxX, R.minZ, 1, 0, H, 'raw');
   face(true, -dHalf, dHalf, R.minZ, 1, 3.1, H, 'raw');
-  face(true, R.minX, WING_X - WT / 2, R.minZ, 1, 0, H, 'grey');
+  face(true, R.minX, WING_X - WT, R.minZ, 1, 0, H, 'grey');
   // East: the foyer's end raw, the hall's painted below, backstage grey.
   face(false, R.minZ, ZONES.foyer.maxZ, R.maxX, -1, 0, H, 'raw');
   face(false, ZONES.foyer.maxZ, BACK_WALL.z0, R.maxX, -1, 0, H, 'hall');
   face(false, BACK_WALL.z1, R.maxZ, R.maxX, -1, 0, H, 'grey');
-  face(true, WING_X + WT / 2, R.maxX, R.maxZ, -1, 0, H, 'grey');
+  face(true, WING_X, R.maxX, R.maxZ, -1, 0, H, 'grey');
   // The wing's own outer walls (its rooms' insides are the rehearsal wing's).
-  face(true, R.minX, WING_X - WT / 2, R.maxZ, -1, 0, H, 'grey');
+  face(true, R.minX, WING_X - WT, R.maxZ, -1, 0, H, 'grey');
   face(false, R.minZ, R.maxZ, R.minX, 1, 0, H, 'grey');
 
-  // The wall to the rehearsal wing, with its door into the foyer and the artists' door into backstage.
+  // The wall to the rehearsal wing is the wing's (features/proberaum/shell.ts: x -11.2..-11, its door into
+  // the foyer and the artists' door into backstage); on the hall's side it gets the house's brick: the
+  // foyer's raw, the hall's painted, backstage grey.
   const gaps = [
     { z: WING_DOOR.z, w: WING_DOOR.width, h: 2.6 },
     { z: BACKSTAGE_DOOR.z, w: BACKSTAGE_DOOR.width, h: 2.4 },
   ].sort((a, b) => a.z - b.z);
-  let from = R.minZ;
-  for (const g of gaps) {
-    solid(false, from, g.z - g.w / 2, WING_X, WT);
-    solid(false, g.z - g.w / 2, g.z + g.w / 2, WING_X, WT, g.h, H);
-    from = g.z + g.w / 2;
-  }
-  solid(false, from, R.maxZ, WING_X, WT);
-  // Its faces on the hall's side: the foyer's raw, the hall's painted, backstage grey; and the wing's side grey.
-  const hallSide = WING_X + WT / 2;
+  const hallSide = WING_X;
   const segs: [number, number, number][] = [];
-  from = R.minZ;
+  let from = R.minZ;
   for (const g of gaps) {
     segs.push([from, g.z - g.w / 2, 0], [g.z - g.w / 2, g.z + g.w / 2, g.h]);
     from = g.z + g.w / 2;
@@ -148,13 +142,13 @@ export function buildVenueShell(): VenueShell {
       [Math.max(a, BACK_WALL.z1), b, 'grey'],
     ];
     for (const [p, q, look] of parts3) if (q - p > 0.01) face(false, p, q, hallSide, 1, y0, H, look);
-    face(false, a, b, WING_X - WT / 2, -1, y0, H, 'grey');
   }
-  // Steel door frames in both openings.
+  // A steel frame round the artists' door (the wing frames its own door into the foyer).
   const frameMat = toon('#2b2d33');
-  for (const g of gaps) {
-    for (const s of [-1, 1]) parts.add(mesh(box(WT + 0.08, g.h, 0.08), frameMat, WING_X, g.h / 2, g.z + s * (g.w / 2 + 0.02)));
-    parts.add(mesh(box(WT + 0.08, 0.1, g.w + 0.12), frameMat, WING_X, g.h, g.z));
+  {
+    const g = gaps.find((d) => d.z === BACKSTAGE_DOOR.z)!;
+    for (const s of [-1, 1]) parts.add(mesh(box(WT + 0.08, g.h, 0.08), frameMat, WING_X - WT / 2, g.h / 2, g.z + s * (g.w / 2 + 0.02)));
+    parts.add(mesh(box(WT + 0.08, 0.1, g.w + 0.12), frameMat, WING_X - WT / 2, g.h, g.z));
   }
 
   // The hall's back wall behind the stage, with the band's opening over the stairs' landing.
@@ -374,7 +368,6 @@ export function buildVenueShell(): VenueShell {
   });
   const exitSign = glow(exitTex);
   for (const [x, y, z, rot] of [
-    [hallSide + 0.03, 2.95, WING_DOOR.z, Math.PI / 2],
     [hallSide + 0.03, 2.75, BACKSTAGE_DOOR.z, Math.PI / 2],
     [R.maxX - 0.03, 3.8, LOADING_DOOR.z, -Math.PI / 2],
     [VENUE_DOOR_INSIDE.x + 2.4, 3.1, R.minZ + 0.03, 0],
@@ -396,9 +389,6 @@ export function buildVenueShell(): VenueShell {
       g.font = `34px ${BOLD}`;
       g.fillText(sub, 26, 102, 470);
     });
-  const wingSign = mesh(new THREE.PlaneGeometry(1.9, 0.48), new THREE.MeshToonMaterial({ map: label('PROBERÄUME · STUDIO', '→ Proberaum 1–3 · Studio · Backstage'), gradientMap }), hallSide + 0.02, 3.3, WING_DOOR.z, false);
-  wingSign.rotation.y = Math.PI / 2;
-  group.add(wingSign);
   const crewSign = mesh(new THREE.PlaneGeometry(1.5, 0.38), new THREE.MeshToonMaterial({ map: label('BACKSTAGE', 'Nur Crew & Bands'), gradientMap }), hallSide + 0.02, 3.0, BACKSTAGE_DOOR.z, false);
   crewSign.rotation.y = Math.PI / 2;
   group.add(crewSign);

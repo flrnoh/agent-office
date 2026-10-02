@@ -192,6 +192,20 @@ export class VenueHouse {
     return null;
   }
 
+  /**
+   * A gig in the calendar starts (server/venue/show.ts onGigStart): the house turns into what it is,
+   * whatever the light desk's cooldown says. What to tell everyone, or null when it already is.
+   */
+  gigStarts(mode: VenueMode, title: string): VenueHouseServerMsg | null {
+    if (!isMode(mode) || mode === this.mode) return null;
+    this.mode = mode;
+    this.lights = { ...MODE_LIGHTS[mode] };
+    this.modeAt = this.now();
+    this.lightsAt = this.modeAt;
+    this.changed();
+    return { t: 'venue.mode', mode, lights: { ...this.lights }, by: title.slice(0, 40) };
+  }
+
   /** The lowest free cloakroom number, the same each time for the same person's hash where it's free. */
   private freeTag(owner: string): number | null {
     const taken = new Set([...this.kept.values()].map((k) => k.coat).filter((n): n is number => !!n));

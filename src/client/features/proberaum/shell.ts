@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CORRIDOR_FLOOR, DOOR_HEIGHT, LOBBY, STUDIO_GLASS, WING_CEILING, WING_EAST_WALL, WING_WALL, doorOf } from '../../../shared/proberaum-layout';
 import { REHEARSAL_ROOMS, WING_DOOR, ZONES, type RehearsalRoom } from '../../../shared/venue';
+import { BACKSTAGE_DOOR } from '../../../shared/venue-house'; // fork: the building's artists' door
 import { mesh, toon } from '../../world/toon';
 import type { Collider } from '../../world/types';
 import { ceilingTiles, checkerTexture, rubberTexture, wallTexture } from './paint';
@@ -63,11 +64,18 @@ export function buildShell(): Shell {
   const d0 = WING_DOOR.z - WING_DOOR.width / 2;
   const d1 = WING_DOOR.z + WING_DOOR.width / 2;
   wall(E.minX, E.maxX, ZONES.wing.minZ, d0, 0, E.height, outside);
-  wall(E.minX, E.maxX, d1, ZONES.wing.maxZ, 0, E.height, outside);
+  // fork (the building, FORK.md "The Schallwerk"): the artists' door from the corridor into backstage.
+  const b0 = BACKSTAGE_DOOR.z - BACKSTAGE_DOOR.width / 2;
+  const b1 = BACKSTAGE_DOOR.z + BACKSTAGE_DOOR.width / 2;
+  wall(E.minX, E.maxX, d1, b0, 0, E.height, outside);
+  wall(E.minX, E.maxX, b1, ZONES.wing.maxZ, 0, E.height, outside);
+  wall(E.minX, E.maxX, b0, b1, 2.4, E.height, outside, false);
   wall(E.minX, E.maxX, d0, d1, doorTop, E.height, outside, false);
   // Its inner face: paint up to the ceiling.
   deco.add(planeX(E.minX - 0.005, ZONES.wing.minZ, d0, 0, H, -1, wallTexture('#d9d4c7', 3), d0 - ZONES.wing.minZ));
-  deco.add(planeX(E.minX - 0.005, d1, ZONES.wing.maxZ, 0, H, -1, wallTexture('#d9d4c7', 4), ZONES.wing.maxZ - d1));
+  deco.add(planeX(E.minX - 0.005, d1, b0, 0, H, -1, wallTexture('#d9d4c7', 4), b0 - d1));
+  deco.add(planeX(E.minX - 0.005, b1, ZONES.wing.maxZ, 0, H, -1, wallTexture('#d9d4c7', 5), ZONES.wing.maxZ - b1));
+  deco.add(planeX(E.minX - 0.005, b0, b1, 2.4, H, -1, wallTexture('#d9d4c7', 6), b1 - b0));
   // The way in: a steel frame, PROBERÄUME · STUDIO over it on the foyer's side, the exit sign inside.
   for (const z of [d0 - 0.05, d1 + 0.05]) deco.add(box(0.26, doorTop, 0.1, '#3d4148', (E.minX + E.maxX) / 2, 0, z));
   deco.add(box(0.26, 0.12, WING_DOOR.width + 0.2, '#3d4148', (E.minX + E.maxX) / 2, doorTop - 0.06, WING_DOOR.z));
