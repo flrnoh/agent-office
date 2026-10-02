@@ -25,11 +25,12 @@ import { modalOpen, toast } from '../../ui/dom';
 import { openInkStudio, type InkWork } from '../../ui/inkstudio';
 import { Person } from '../../world/character';
 import { setFogShop, setShopLights } from '../../world/fogbox';
-import type { Interactable } from '../../world/types';
+import type { InteractKind, Interactable } from '../../world/types';
 import type { Booze } from '../bar/booze';
 import type { Caffeine } from '../coffee/caffeine';
 import { at, buildInterior, interiorLight, yawOf, type Interior } from './interior';
 import { toyBox } from './toys';
+import { wearShops } from './wear'; // the boutique and the optician
 import { FOOD_KIND_OF, shopFood } from './food'; // food round 2: the parlour, the sushi belt, the supermarket
 import { openCrate, openHeadphones, openReading, openShopMenu } from './ui';
 import type { CafeItem } from '../../../shared/cafe';
@@ -58,6 +59,8 @@ export interface ShopsDeps {
   target(): Interactable | null;
   /** In a place across the street (the casino, the gym, a hall). */
   inPlace(): boolean;
+  /** The Spielhalle's and the Post's own counters (features/funshops): whether it took E there. */
+  special(s: Shop): boolean;
 }
 
 /** How near (m, from the camera) a shop's inside is built, how many at most, and how far before it goes. */
@@ -71,7 +74,8 @@ interface Open {
   items: Interactable[];
 }
 
-const KIND_OF: Record<Station['at'], Interactable['kind']> = { counter: 'shopcounter', chair: 'shopchair', crate: 'shopcrate', listen: 'shoplisten', shelf: 'shopshelf', ...FOOD_KIND_OF };
+// The Spielhalle's and the Post's (cabinet, claw, booth, pobox) are defined in features/funshops; the boutique's and the optician's (rack, cubicle, glasses) in wear.ts.
+const KIND_OF: Record<Station['at'], InteractKind> = { counter: 'shopcounter', chair: 'shopchair', crate: 'shopcrate', listen: 'shoplisten', shelf: 'shopshelf', cabinet: 'shopcabinet', claw: 'shopclaw', booth: 'shopbooth', pobox: 'shoppobox', rack: 'shoprack', cubicle: 'shopcubicle', glasses: 'shopglasses', ...FOOD_KIND_OF };
 
 export function installShops(ctx: Ctx, deps: ShopsDeps) {
   const open = new Map<number, Open>();
@@ -207,6 +211,8 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
     const c = stationAt(s, shopRoom(s).stations[0]);
     return { x: c.x, y: ctx.player.street + 1.2, z: c.z };
   };
+
+  const wear = wearShops(ctx, { keeperOf, counterAt, showMyProfile: deps.showMyProfile });
 
   /** Over the counter and into your hand, with whatever it does to you after. */
   function serve(s: Shop, d: Drink) {
@@ -353,6 +359,8 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
   function counter(s: Shop) {
     if (food.counter(s)) return; // the parlour's picker, the sushi belt, the supermarket's checkout
     const k = SHOP_KIND_BY_ID.get(s.kind)!;
+    if (s.kind === 'boutique' || s.kind === 'optiker') return wear.counter(s);
+    if (deps.special(s)) return;
     if (s.kind === 'friseur' || s.kind === 'tattoo') {
       const chair = shopRoom(s).stations.find((t) => t.at === 'chair');
       return chair ? sitIn(s, chair) : s.kind === 'tattoo' ? inkStudio(s) : barber(s);
@@ -465,6 +473,8 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
       if (t) sitIn(SHOPS[i], t);
     },
     listen: (i: number) => listen(SHOPS[i]),
+    /** The keeper behind shop `i`'s counter, while its inside is built. */
+    keeper: keeperOf,
     toys,
     food,
   };

@@ -7,6 +7,8 @@ import { Person } from '../world/character';
 import { toonUnique } from '../world/toon';
 import { h, openModal } from './dom';
 import { beardPicker, marksNote } from './lookpick'; // flrnoh fork: beard, tattoos, piercings
+import { outfitRows } from './wardrobe'; // flrnoh fork: clothes, hats, glasses
+import { withOutfit } from '../../shared/avatar'; // flrnoh fork
 
 /** A turntable with your character on it, drawn with its own small renderer. */
 export class Preview { // export: flrnoh fork (barber.ts, inkstudio.ts)
@@ -161,6 +163,7 @@ export function openCharacter(first: boolean, onSave: (p: Profile) => void) {
   const hairRow = h('div.swatches', { role: 'radiogroup', 'aria-label': 'Hair color' });
   const shirtRow = h('div.swatches', { role: 'radiogroup', 'aria-label': 'Shirt color' });
   const beard = beardPicker(() => pick.look.beard ?? 0, (i) => change({ beard: i })); // flrnoh fork
+  const outfit = outfitRows(['top', 'legs', 'hat', 'specs'], () => pick, (o) => ((pick.look = withOutfit(pick.look, o)), change({})), false); // flrnoh fork: the boutique's and the optician's, here too
 
   const swatch = (color: string, label: string, on: boolean, choose: () => void) =>
     h('button.swatch', { type: 'button', role: 'radio', 'aria-checked': String(on), style: `background:${color}`, class: on ? 'sel' : '', 'aria-label': label, title: label, onclick: choose });
@@ -185,6 +188,7 @@ export function openCharacter(first: boolean, onSave: (p: Profile) => void) {
     hairRow.replaceChildren(...HAIR_COLORS.map((c, i) => swatch(c, HAIR_COLOR_NAMES[i], i === hair, () => change({ hair: i }))));
     shirtRow.replaceChildren(...AVATAR_COLORS.map((c) => swatch(c, `Shirt ${c}`, c === pick.color, () => change({}, c))));
     beard.paint(); // flrnoh fork
+    for (const r of outfit) r.paint(); // flrnoh fork
   };
   paint();
 
@@ -216,6 +220,7 @@ export function openCharacter(first: boolean, onSave: (p: Profile) => void) {
         ...[h('label', {}, 'Beard'), beard.el, marksNote(pick.look)], // flrnoh fork
         h('label', {}, 'Shirt'),
         shirtRow,
+        ...outfit.flatMap((r) => [h('label', {}, r.label), r.el]), // flrnoh fork
       ),
     ),
     h('footer', {}, surprise, h('span.grow'), save),

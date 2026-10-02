@@ -6,6 +6,7 @@
  * your speakers.
  */
 import { sunPosition, skyTime } from '../../../shared/sun';
+import { skyHour } from '../../../shared/shopfronts'; // fork: shop hours
 import type { Ctx } from '../../core/context';
 import { store } from '../../state';
 
@@ -39,6 +40,10 @@ export function drivePassersby(ctx: Ctx): () => void {
       if (!sky) return 1;
       const { el } = sunPosition(skyTime(ms, sky.utcOffset), sky.lat, sky.lon);
       return daylight(el);
+    },
+    hourAt(ms: number) {
+      // Before the server has said: midday, every shop open.
+      return store.sky ? skyHour(ms, store.sky.utcOffset) : 12;
     },
   };
   return () => {

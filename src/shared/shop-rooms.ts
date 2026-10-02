@@ -32,6 +32,21 @@ export type PieceKind =
   | 'recordcrate'
   | 'listening'
   | 'stool'
+  // The Spielhalle and the Post (shared/funshops.ts).
+  | 'arcadecab'
+  | 'claw'
+  | 'photobooth'
+  | 'pushers'
+  | 'poboxes'
+  | 'parcels'
+  | 'letterbox'
+  // The boutique and the optician (wearRoom, below).
+  | 'rack'
+  | 'cubicle'
+  | 'cubiclewall'
+  | 'standmirror'
+  | 'glasswall'
+  | 'eyechart'
   | FoodPieceKind;
 
 /** Something in a shop: a box in its frame (u0..u1 along, v0..v1 in), `h` tall; `solid` ones you bump into. */
@@ -48,7 +63,7 @@ export interface Piece {
   dv: number;
 }
 
-export type StationKind = 'counter' | 'chair' | 'crate' | 'listen' | 'shelf' | FoodStationKind;
+export type StationKind = 'counter' | 'chair' | 'crate' | 'listen' | 'shelf' | 'cabinet' | 'claw' | 'booth' | 'pobox' | 'rack' | 'cubicle' | 'glasses' | FoodStationKind;
 
 /** Where E does something: where you stand (u, v), how near you must be, and (a chair) where you sit. */
 export interface Station {
@@ -89,7 +104,7 @@ function layRoom(s: Shop): Room {
   };
   const k: ShopKindId = s.kind;
   // The counter along the back, away from the door; the keeper behind it, you in front.
-  const long = k === 'bar' ? 5 : k === 'friseur' || k === 'tattoo' ? 1.8 : 3.2;
+  const long = k === 'bar' ? 5 : k === 'friseur' || k === 'tattoo' ? 1.8 : k === 'boutique' || k === 'optiker' ? 2.2 : 3.2;
   const c0 = P + 0.5;
   const c1 = Math.max(c0 + 1.4, Math.min(c0 + long, L - 3.1));
   const mid = (c0 + c1) / 2;
@@ -208,8 +223,84 @@ function layRoom(s: Shop): Room {
       doorSide('shelf', 2.0, 0.4);
       break;
     }
+    case 'spielhalle': {
+      // Cabinets in a row along the wall away from the door, facing in; the claw machine and the photo
+      // booth along the door's wall (the booth open toward the room, a curtain across it); a coin pusher in the middle.
+      let n = 0;
+      for (let v = T + 0.75; v + 0.8 <= D - 2.4 && n < 4; v += 0.95, n++) {
+        put('arcadecab', P, P + 0.8, v, v + 0.8, 1.93, true, 1, 0);
+        stations.push({ at: 'cabinet', n, u: P + 1.3, v: v + 0.4, r: 1.3 });
+      }
+      put('claw', L - P - 1.0, L - P, T + 1.7, T + 2.6, 2.1, true, -1, 0);
+      stations.push({ at: 'claw', n: 0, u: L - P - 1.55, v: T + 2.15, r: 1.4 });
+      put('photobooth', L - P - 1.25, L - P, T + 2.8, T + 4.15, 2.25, false, -1, 0);
+      stations.push({ at: 'booth', n: 0, u: L - P - 0.7, v: T + 3.475, r: 1.2 });
+      if (roomy) put('pushers', mu - 0.45, mu + 0.45, mv - 0.35, mv + 0.35, 1.5, true, 0, -1);
+      break;
+    }
+    case 'post': {
+      // PO boxes along the wall away from the door, parcels stacked on the door's side and by the counter, the yellow letterbox by the door.
+      away('poboxes', 2.2, 0.4);
+      stations.push({ at: 'pobox', n: 0, u: P + 1.0, v: (T + 0.7 + D - 2.4) / 2, r: 1.6 });
+      put('parcels', L - P - 0.8, L - P, T + 1.7, Math.min(T + 3.4, D - 1.5), 1.1);
+      put('letterbox', L - P - 0.5, L - P - 0.05, Math.min(T + 3.6, D - 1.4), Math.min(T + 4.0, D - 1.0), 1.25, true, -1, 0);
+      if (roomy) put('hightable', mu - 0.35, mu + 0.35, mv - 0.35, mv + 0.35, 1.1);
+      break;
+    }
+    case 'boutique':
+    case 'optiker':
+      wearRoom(k, { put, stations, L, D, P, T, c1, m, roomy, mu, mv });
+      break;
   }
   return { pieces, stations, keeper, spot };
+}
+
+type Put = (what: PieceKind, u0: number, u1: number, v0: number, v1: number, h: number, solid?: boolean, du?: number, dv?: number) => void;
+
+/** How deep a changing cubicle is (along u, from the wall away from the door) and how wide (along v). */
+export const CUBICLE_DEEP = 1.2;
+export const CUBICLE_WIDE = 1.3;
+
+/**
+ * The boutique and the optician (FORK.md "Shops to walk into"): the boutique's changing cubicles
+ * along the wall away from the door (their curtains to the room, short of the way across in front of
+ * the counter), a rail of clothes along the door's wall and a rack in the middle, a tall mirror on the
+ * back wall; the optician's wall of glasses away from the door, the eye chart on the door's wall, a
+ * table of frames in the middle.
+ */
+function wearRoom(k: ShopKindId, o: { put: Put; stations: Station[]; L: number; D: number; P: number; T: number; c1: number; m: { u0: number; u1: number; v0: number; v1: number }; roomy: boolean; mu: number; mv: number }) {
+  const { put, stations, L, D, P, T, c1, m } = o;
+  if (k === 'boutique') {
+    const v0 = T + 0.7;
+    const n = Math.max(1, Math.min(2, Math.floor((D - 3.1 - v0) / CUBICLE_WIDE)));
+    for (let i = 0; i < n; i++) {
+      const a = v0 + i * CUBICLE_WIDE;
+      const b = a + CUBICLE_WIDE;
+      put('cubicle', P, P + CUBICLE_DEEP, a, b, 2.1, false, 1, 0);
+      if (i === 0) put('cubiclewall', P, P + CUBICLE_DEEP, a, a + 0.05, 2.1, true, 0, 1);
+      put('cubiclewall', P, P + CUBICLE_DEEP, b - 0.05, b, 2.1, true, 0, -1);
+      stations.push({ at: 'cubicle', n: i, u: P + 0.62, v: (a + b) / 2, r: 1.1 });
+    }
+    put('rack', L - P - 0.5, L - P, T + 1.7, D - 1.4, 1.75, true, -1, 0);
+    stations.push({ at: 'rack', n: 0, u: L - P - 1.05, v: (T + 1.7 + D - 1.4) / 2, r: 1.5 });
+    // In the middle, toward the door, clear of the way out of the cubicles.
+    if (o.roomy && m.u1 - (m.u0 + 1.0) > 0.5) {
+      const u0 = Math.max(m.u0 + 1.0, o.mu - 0.2);
+      const len = Math.min(1.6, m.v1 - m.v0);
+      put('rack', u0, u0 + 0.45, o.mv - len / 2, o.mv + len / 2, 1.6, true, -1, 0);
+      stations.push({ at: 'rack', n: 1, u: u0 + 0.95, v: o.mv, r: 1.4 });
+    }
+    if (c1 + 1.6 < L - P - 0.6) put('standmirror', c1 + 0.8, c1 + 1.6, D - P - 0.06, D - P, 1.95, false, 0, -1);
+    return;
+  }
+  put('glasswall', P, P + 0.3, T + 0.7, D - 2.4, 2.3, true, 1, 0);
+  stations.push({ at: 'glasses', n: 0, u: P + 0.95, v: (T + 0.7 + D - 2.4) / 2, r: 1.6 });
+  put('eyechart', L - P - 0.06, L - P, T + 2.0, T + 2.8, 2.1, false, -1, 0);
+  if (o.roomy) {
+    put('display', o.mu - 0.45, o.mu + 0.45, o.mv - 0.35, o.mv + 0.35, 0.9);
+    stations.push({ at: 'glasses', n: 1, u: o.mu, v: o.mv - 0.85, r: 1.3 });
+  }
+  if (c1 + 1.4 < L - P - 0.6) put('standmirror', c1 + 0.6, c1 + 1.3, D - P - 0.06, D - P, 1.95, false, 0, -1);
 }
 
 /** Turns a laid-out room round for a shop whose door is at its -u end. */

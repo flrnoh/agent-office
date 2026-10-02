@@ -136,7 +136,7 @@ export class Person {
     const skin = (this.skin = toonUnique(SKIN_TONES[look.skin]));
     this.hairMat = toonUnique(HAIR_COLORS[look.hair]);
     this.hairMat.side = THREE.DoubleSide;
-    const pants = toon('#3d405b');
+    const pants = toonUnique('#3d405b'); // toonUnique: flrnoh fork (the outfit colors it)
     const ink = toon('#1d1d1d');
 
     this.root.add(this.body);
@@ -222,7 +222,7 @@ export class Person {
 
     this.rig = { root: this.root, body: this.body, head: this.head, armL: this.armL, armR: this.armR, legL: this.legL, legR: this.legR };
     this.setLabel(name, false);
-    this.marks = new Marks({ head, left: this.armR, right: this.armL, skin, shirt: this.shirt }, look); // flrnoh fork: armR is their left
+    this.marks = new Marks({ head, left: this.armR, right: this.armL, skin, shirt: this.shirt, body: this.body, pants, hair: this.hair }, look); // flrnoh fork: armR is their left
   }
 
   /** Fork: the body and limbs, for a pose laid over the frame's after update (soccer/kit.ts: kicks, celebrations, dives, the kit). */
@@ -266,7 +266,7 @@ export class Person {
     this.skin.color.set(SKIN_TONES[this.look.skin]);
     if (this.costume === 'halloween') this.skin.color.lerp(UNDEAD_SKIN, 0.7);
     const style = HAIR_STYLES[this.look.style];
-    this.hair.visible = !this.costume || !(style === 'Spiky' || style === 'Bun' || style === 'Curly');
+    this.hair.visible = (!this.costume || !(style === 'Spiky' || style === 'Bun' || style === 'Curly')) && this.marks.hairShows(this.look); // hairShows: flrnoh fork
   }
 
   /** Hair is a set of shapes on the head (see styleHair). */

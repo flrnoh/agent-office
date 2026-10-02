@@ -40,7 +40,7 @@ export interface Post {
   r: number;
 }
 
-export type SpotKind = 'bench' | 'bus' | 'stop' | 'window' | 'door';
+export type SpotKind = 'bench' | 'bus' | 'stop' | 'window' | 'door' | 'cafe';
 
 /**
  * Somewhere by a walk to go to: a seat on a bench or in a bus stop, a place to stand and wait for the
@@ -57,6 +57,10 @@ export interface Spot {
   /** How far apart two people side by side are here (a bench's two seats). */
   spread: number;
   inside?: { x: number; z: number };
+  /** A door's or a café table's shop (by its place in SHOPS): nobody goes there while it's shut (shared/shopfronts.ts). */
+  shop?: number;
+  /** A café table (shared/shop-outside.ts adds those): where someone alone sits, the two of a pair `spread` either side of `x, z`. */
+  solo?: [number, number];
 }
 
 export interface Walk {
@@ -305,6 +309,7 @@ function furnish() {
         yaw: Math.atan2(-n[0], -n[1]),
         spread: 0.42,
         inside: kind === 'door' ? { x: fx - n[0] * 0.9, z: fz - n[1] * 0.9 } : undefined,
+        shop: kind === 'door' ? shop.i : undefined,
       });
     }
   }

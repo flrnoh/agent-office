@@ -1,6 +1,7 @@
 import { FLOOR, ROAD, WALL_T } from './layout.js';
 import { STREET_END, onLoop } from './scenic.js';
 import { onCityStreet } from './city.js'; // fork: the city's streets
+import { onBaumarktLot } from './baumarkt.js'; // fork: the Baumarkt's car park
 import { onTankstelle } from './tankstelle.js'; // fork: the petrol station's forecourt and driveways
 import { BULLI_DRIVE, BULLI_HEIGHT, BULLI_HIPS, BULLI_SEATS } from './bulli.js';
 
@@ -204,7 +205,7 @@ export function carPoint(p: { x: number; z: number; rotY: number }, lx: number, 
 
 /** Whether (x, z) is somewhere a car can be: the garage, the lots, the street, the loop or (fork) the city's streets and the petrol station. */
 export function paved(x: number, z: number): boolean {
-  return PAVEMENT.some((b) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) || onLoop(x, z) || onCityStreet(x, z) || onTankstelle(x, z);
+  return PAVEMENT.some((b) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) || onLoop(x, z) || onCityStreet(x, z) || onTankstelle(x, z) || onBaumarktLot(x, z);
 }
 
 /** Whether the whole car is on the pavement: its corners, and halfway along each side. */

@@ -32,6 +32,8 @@ export interface PeopleClock {
   rain: number;
   /** How light it is at `ms` on the office's clock, 0 at night … 1 by day. */
   dayAt(ms: number): number;
+  /** Fork: the hour of the office's day at `ms` (shared/shopfronts.ts), so nobody walks into a shut shop. */
+  hourAt?(ms: number): number;
 }
 
 export interface Passersby {
@@ -256,7 +258,8 @@ export function buildPassersby(): Passersby {
       let l = locals.get(slot.id);
       const { epoch, start } = epochOf(slot, t);
       if (!l || l.epoch !== epoch) {
-        const plan = planFor(slot, epoch, clamp(clock.dayAt(start * 1000), 0, 1));
+        const hourAt = clock.hourAt;
+        const plan = planFor(slot, epoch, clamp(clock.dayAt(start * 1000), 0, 1), hourAt && ((sec) => hourAt(sec * 1000)));
         l = { epoch, plan, who: plan && whoOf(plan), lag: 0, members: [member(), member(), member()], chatIn: 1 + Math.random() * 3 };
         locals.set(slot.id, l);
       }

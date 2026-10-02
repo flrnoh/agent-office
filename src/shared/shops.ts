@@ -34,7 +34,7 @@ const DOOR_IN = 1.6;
 export const SILL = 0.55;
 export const WINDOW_TOP = 3.05;
 
-export type ShopKindId = 'baeckerei' | 'cafe' | 'pizza' | 'apotheke' | 'blumen' | 'buchladen' | 'kiosk' | 'bar' | 'spaeti' | 'friseur' | 'tattoo' | 'doener' | 'spielzeug' | 'platten' | 'eisdiele' | 'sushi' | 'metzgerei' | 'supermarkt';
+export type ShopKindId = 'baeckerei' | 'cafe' | 'pizza' | 'apotheke' | 'blumen' | 'buchladen' | 'kiosk' | 'bar' | 'spaeti' | 'friseur' | 'tattoo' | 'doener' | 'spielzeug' | 'platten' | 'spielhalle' | 'post' | 'boutique' | 'optiker' | 'eisdiele' | 'sushi' | 'metzgerei' | 'supermarkt';
 
 export interface ShopKind {
   id: ShopKindId;
@@ -78,6 +78,11 @@ export const SHOP_KINDS: readonly ShopKind[] = [
   { id: 'doener', sign: 'DÖNER KEBAB', name: 'Döner', emoji: '🥙', verb: 'bestellen', frame: '#b5121b', awning: ['#ffcc00', '#d62828'], signBg: '#ffcc00', ink: '#b5121b', goods: ['#c47a3a', '#7cb518', '#e63946'], wall: '#fff3b0', floor: '#9c6644', keeper: { name: 'Mehmet', shirt: '#ffffff', skin: 4, hair: 0, style: 0 } },
   { id: 'spielzeug', sign: 'SPIELZEUG', name: 'Spielzeugladen', emoji: '🧸', verb: 'ein Spielzeug aussuchen', frame: '#3a86ff', awning: ['#ffbe0b', '#fb5607'], signBg: '#ffbe0b', ink: '#8338ec', goods: ['#ff006e', '#3a86ff', '#ffbe0b', '#06d6a0'], wall: '#fff8e1', floor: '#8ecae6', keeper: { name: 'Opa Sepp', shirt: '#e63946', skin: 0, hair: 5, style: 0 } },
   { id: 'platten', sign: 'PLATTEN', name: 'Plattenladen', emoji: '💿', verb: 'eine Platte kaufen', frame: '#2b2d42', awning: ['#ef233c', '#edf2f4'], signBg: '#edf2f4', ink: '#2b2d42', goods: ['#ef233c', '#8d99ae', '#ffb703', '#2b2d42'], wall: '#d6ccc2', floor: '#3d405b', keeper: { name: 'Didi', shirt: '#2b2d42', skin: 2, hair: 1, style: 4 } },
+  // flrnoh fork, "fun shops": the arcade with its claw machine and photo booth, and the post office (shared/funshops.ts).
+  { id: 'spielhalle', sign: 'SPIELHALLE', name: 'Spielhalle', emoji: '🕹️', verb: 'Snacks holen', frame: '#0b0b1a', awning: ['#14002e', '#ff00aa'], signBg: '#0b0b1a', ink: '#00f0ff', neon: true, goods: ['#ff00aa', '#00f0ff', '#ffe600', '#7cff00'], wall: '#1a1033', floor: '#120a24', keeper: { name: 'Kevin', shirt: '#ff00aa', skin: 2, hair: 3, style: 4 } },
+  { id: 'post', sign: 'POST', name: 'Post & Paketshop', emoji: '📮', verb: 'eine Postkarte schreiben', frame: '#1d1d1b', awning: ['#ffcc00', '#ffcc00'], signBg: '#ffcc00', ink: '#1d1d1b', goods: ['#c8a165', '#ffcc00', '#e9d8a6'], wall: '#fffbe6', floor: '#9a9a90', keeper: { name: 'Frau Wimmer', shirt: '#ffcc00', skin: 0, hair: 2, style: 1 } },
+  { id: 'boutique', sign: 'KLAMOTTEN', name: 'Boutique', emoji: '👗', verb: 'Klamotten anprobieren', frame: '#f4f1ea', awning: ['#2b2d42', '#f4f1ea'], signBg: '#2b2d42', ink: '#f4acb7', goods: ['#f4acb7', '#4f86f7', '#ffd166', '#2b2d42', '#06d6a0'], wall: '#fbf7f2', floor: '#c8b6a6', keeper: { name: 'Vanessa', shirt: '#2b2d42', skin: 2, hair: 3, style: 5 } },
+  { id: 'optiker', sign: 'OPTIK', name: 'Optiker', emoji: '👓', verb: 'Brillen aufsetzen', frame: '#1d3557', awning: ['#1d3557', '#a8dadc'], signBg: '#f1faee', ink: '#1d3557', goods: ['#1d3557', '#9b2226', '#d4af37', '#111111'], wall: '#f1faee', floor: '#a8dadc', keeper: { name: 'Herr Scharf', shirt: '#ffffff', skin: 0, hair: 5, style: 0 } },
   // Food round 2 (shared/shop-rooms-food.ts furnishes them, features/shops/food.ts is what E does).
   { id: 'eisdiele', sign: 'EISCAFÉ VENEZIA', name: 'Eisdiele', emoji: '🍨', verb: 'Eis aussuchen', frame: '#0081a7', awning: ['#f07167', '#fdfcdc'], signBg: '#fdfcdc', ink: '#0081a7', goods: ['#f07167', '#fed9b7', '#00afb9', '#fdfcdc', '#7f4f24'], wall: '#fdfcdc', floor: '#e9d8a6', keeper: { name: 'Gianni', shirt: '#ffffff', skin: 3, hair: 1, style: 0 } },
   { id: 'sushi', sign: 'SUSHI 回転', name: 'Sushi-Bar', emoji: '🍣', verb: 'Teller nehmen', frame: '#1d1d1d', awning: ['#c1121f', '#fdf0d5'], signBg: '#1d1d1d', ink: '#fdf0d5', neon: true, goods: ['#f4845f', '#fdf0d5', '#2d6a4f', '#c1121f'], wall: '#efe6d8', floor: '#6b4f3a', keeper: { name: 'Kenji', shirt: '#fdf0d5', skin: 2, hair: 0, style: 0 } },
@@ -249,7 +254,7 @@ export function shopRect(s: Pick<Shop, 'ox' | 'oz' | 'ux' | 'uz' | 'nx' | 'nz'>,
 export const LOT_PLANS: readonly LotPlan[] = LOTS.map(lotPlan);
 
 /** Where each quarter of the city starts its round of kinds, so neighbouring quarters don't match. */
-const QUARTER_START: Record<string, number> = { '1-1': 0, '-1-1': 4, '11': 9, '-11': 13 };
+const QUARTER_START: Record<string, number> = { '1-1': 0, '-1-1': 5, '11': 10, '-11': 16 };
 
 /** Which quarter of the city round the office (x, z) is in. */
 export const quarterOf = (x: number, z: number) => `${Math.sign(x)}${Math.sign(z - 27)}`;
