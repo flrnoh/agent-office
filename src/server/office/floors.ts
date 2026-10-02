@@ -18,7 +18,7 @@ export function floorHelpers(ctx: Ctx): FloorHelpers {
     return undefined;
   };
   const floorInfos = (): FloorInfo[] => [
-    ...[...ctx.floors.values()].map((f) => ({ ...f.info(), ...(ctx.building.isLocal(f.id) ? { local: true } : {}), ...(ctx.interiors.of(f.id) ? { interior: ctx.interiors.of(f.id) } : {}) })), // fork: interior
+    ...[...ctx.floors.values()].map((f) => ({ ...f.info(), ...(ctx.building.isLocal(f.id) ? { local: true } : {}), ...(ctx.interiors?.of(f.id) ? { interior: ctx.interiors.of(f.id) } : {}) })), // fork: interior (none yet while the floors open, before the fork's made: server.ts)
     ...ctx.building.pending().map((d) => ({ id: d.id, name: d.name, repo: d.repo, dir: d.dir, palette: d.palette, addedBy: d.addedBy, addedAt: d.addedAt, cloning: true, clone: ctx.building.cloneProgress(d.id), workers: 0, busy: 0, waiting: 0, people: 0, wing: 0 })),
   ];
   // The elevator's counts change with every worker update; tell everyone at most a few times a second.
