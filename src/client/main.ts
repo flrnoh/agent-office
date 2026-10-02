@@ -66,6 +66,7 @@ import { installBeach } from './features/beach';
 import { installBossDesk } from './features/bossdesk';
 import { installBungee } from './features/bungee';
 import { installTown } from './features/town'; // flrnoh fork: the city round the office
+import { installKino } from './features/kino'; // flrnoh fork: the cinema
 import { installDjSets } from './features/djset';
 import { installDoorbell } from './features/doorbell';
 import { installFogbox } from './features/fogbox';
@@ -205,6 +206,7 @@ installFrontDoor(ctx, core, parts);
 installSpeakers(ctx, { officeWing: () => parts.worlds.officeWing() });
 installFogbox(ctx, { officeWing: () => parts.worlds.officeWing() });
 parts.beach = installBeach(ctx, parts, { booze: () => parts.bar.booze, reach, standUp, stopWalking });
+(window as any).__kino = installKino(ctx, parts, { booze: () => parts.bar.booze, reach, showSettings: (pane) => parts.hud.showSettings(pane) }); // fork: the cinema
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);

@@ -14,6 +14,7 @@ import type { RigView } from '../rig.js'; // flrnoh fork
 import type { CraftState } from '../boats.js'; // flrnoh fork: the jetty's boats
 import type { TableSeat } from '../tablegames/tables.js'; // flrnoh fork
 import type { TvState } from '../tv.js'; // flrnoh fork
+import type { KinoScreenState } from '../kino.js'; // flrnoh fork: the cinema
 import type { AgentProvider } from './agents.js';
 import type { GhIssue, GhPull, GhState } from './github.js';
 import type { MeetingState } from './meetings.js';
@@ -138,6 +139,8 @@ export interface FloorView {
   tv?: TvState;
   /** On a floor: the jetskis and the motorboat at the beach's jetty, and who's in them (flrnoh fork, see shared/boats.ts). */
   boats?: CraftState[];
+  /** On a floor: what's on in the cinema's Saal 2, if anything (flrnoh fork, see shared/kino.ts). */
+  kino?: KinoScreenState;
   /** Up on the roof: who's at the table games (flrnoh fork, see shared/tablegames). */
   tables?: TableSeat[];
   /** Who's on the bungee rope, and the day's jumps (flrnoh fork, see shared/bungee.ts), in every view: the jump's seen from below too. */

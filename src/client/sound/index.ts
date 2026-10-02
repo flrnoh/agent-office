@@ -38,6 +38,7 @@ import { Rain, thunder } from './weather';
 // flrnoh fork (see FORK.md): the fork's own sounds, a recipe file each.
 import { bulliHorn } from './bulli';
 import { beach, Outboards, type BeachSound, type Outboard } from '../features/beach/sound';
+import { kino, type KinoSound } from '../features/kino/sound'; // fork: the cinema
 import { bungee, BungeeWind } from './bungee';
 import { casino, type CasinoSound } from './casino';
 import { doorbell } from './doorbell';
@@ -375,6 +376,11 @@ export class OfficeSound {
   /** A day at the beach: splashes, strokes, the kiosk's bell and fryer, a gull, the boats' horns (features/beach/sound.ts). */
   beach(kind: BeachSound, at: Pos, strength = 1) {
     beach(this.a, kind, at, strength);
+  }
+
+  /** The cinema: the popcorn machine, the counter's bell, the gong before a film (features/kino/sound.ts). */
+  kino(kind: KinoSound, at: Pos) {
+    kino(this.a, kind, at);
   }
 
   /** The boats' outboards running now, every frame (an empty list lets them die away). */

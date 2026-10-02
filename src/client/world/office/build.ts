@@ -31,6 +31,7 @@ import { loft } from './loft';
 import type { Fixture, Gives, Site } from './fixture';
 import { casinoOut, gymOut, hallOut, rig, soccerOut } from './fork'; // flrnoh fork
 import { town } from '../town'; // flrnoh fork: the city round the office
+import { kino } from '../kino'; // flrnoh fork: the cinema
 
 // The office floor, put together from its fixtures (see fixture.ts): the room and its walls, the desks
 // and everything else in it, the balcony, the loft and the meeting room under it, the back office, and
@@ -48,7 +49,7 @@ function floorPlan() {
     storeyWalls, // fork: upstream's `walls`, a storey at a time
     balcony,
     tee,
-    ...downstairs(cars, street, town, casinoOut, gymOut, hallOut, soccerOut, green, scenic), // fork: town, casinoOut … soccerOut
+    ...downstairs(cars, street, town, kino, casinoOut, gymOut, hallOut, soccerOut, green, scenic), // fork: town, kino, casinoOut … soccerOut
     plug,
     tower,
     desks,
