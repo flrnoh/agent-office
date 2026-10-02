@@ -5,6 +5,8 @@ import { INTERIORS, interiorFor, type InteriorStyle } from '../../../../shared/i
 import { DESKS, EXIT_DOOR, PLANTS, WALL_HEIGHT } from '../../../../shared/layout';
 import { storeyPlan, type StoreyPlan } from '../../../../shared/storey';
 import { tubePortals } from '../../../../shared/coaster';
+import { tubeBoxes } from '../../../../shared/coaster-keepout';
+import { clearOf } from './clear';
 import { toon } from '../../toon';
 import type { Fixture } from '../fixture';
 import { decor, type Decor } from './decor';
@@ -170,6 +172,8 @@ export const interior: Fixture<'interior'> = (site) => {
     const accent = plan.accent?.wall ?? 'west';
     group.add(wallFinish(s, accent, holes));
     const d = decor(s, { deskIds: DESKS.map((k) => k.id), accent }, pendants.at);
+    // flrnoh fork: round DER BRECHER's tube under the ground floor's ceiling, whatever the interior.
+    if (tubePortals(index).length) for (const g of [d.room, ownLamps]) clearOf(g, tubeBoxes());
     group.add(d.room);
     for (const { id, obj } of d.desks) site.desks.get(id)?.group.add(obj);
     const rects = d.signs.map((g) => site.wall(g.wall, g.u, g.y, g.w, g.h));

@@ -150,3 +150,63 @@ test('coaster messages: only from the roof, and guests and party guests ride too
   for (const t of ['coaster.board', 'coaster.leave', 'coaster.hands']) assert.ok(GUEST_MSGS.has(t), t);
   assert.ok(PARTY_SEES_MSGS.has('coaster'));
 });
+
+test('coaster: a floor added or taken off while it is out brings it straight back, laid for the new height', () => {
+  let storeys = 3;
+  let now = 1_000_000;
+  const timers: { at: number; fn: () => void }[] = [];
+  const sent: CoasterState[] = [];
+  const c = new Coaster({
+    now: () => now,
+    changed: (s) => sent.push(s),
+    storeys: () => storeys,
+    typists: () => [],
+    later: (fn, ms) => {
+      const t = { at: now + ms, fn };
+      timers.push(t);
+      return () => {
+        const i = timers.indexOf(t);
+        if (i >= 0) timers.splice(i, 1);
+      };
+    },
+  });
+  const advance = (ms: number) => {
+    const until = now + ms;
+    for (;;) {
+      timers.sort((a, b) => a.at - b.at);
+      const next = timers[0];
+      if (!next || next.at > until) break;
+      timers.shift();
+      now = next.at;
+      next.fn();
+    }
+    now = until;
+  };
+  c.board({ id: 'ann', owner: 'name:ann', name: 'ann', color: '#fff' });
+  advance(COUNTDOWN_MS + 10_000);
+  assert.equal(c.state().phase, 'ride');
+  assert.equal(c.state().storeys, 3);
+  // Unchanged: it keeps going.
+  advance(2000);
+  assert.equal(c.state().phase, 'ride');
+  // A floor's added: within a fifth of a second it's back, nobody in it, laid for four, and says which ride it stopped.
+  storeys = 4;
+  advance(250);
+  const s = c.state();
+  assert.equal(s.phase, 'load');
+  assert.equal(s.storeys, 4);
+  assert.equal(s.halted, s.ride);
+  assert.ok(s.seats.every((x) => !x));
+  assert.equal(c.records.get('name:ann')!.rides, 1, 'it counts as a ride');
+  // Straight away when the office says the floors changed, without waiting for the check.
+  c.board({ id: 'bob', owner: 'name:bob', name: 'bob', color: '#fff' });
+  assert.equal(c.state().halted, 0, 'a new ride starts unhalted');
+  advance(COUNTDOWN_MS + 1000);
+  storeys = 2;
+  c.checkHeight();
+  assert.equal(c.state().phase, 'load');
+  assert.equal(c.state().storeys, 2);
+  // And no timer left over to end a ride that isn't running.
+  advance(200_000);
+  assert.equal(c.state().phase, 'load');
+});

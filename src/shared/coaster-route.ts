@@ -68,6 +68,8 @@ export const STEP = 0.2;
 /** How fast the chain lifts and the station's tires push (m/s). */
 export const CHAIN_V = 3.8;
 export const VLIFT_V = 3.4;
+/** …and on a tall tower, how fast it may go. */
+const VLIFT_MAX = 9;
 /** The most the drop's trims let through, and what the booster launches the train into the loop at. */
 const DROP_V = 16.8;
 const TURN_V = 12.5;
@@ -316,8 +318,8 @@ function spiralPath(from: number, to: number, r0: number, r1: number, exp: numbe
   return { pts, ahead: u, up: v };
 }
 
-/** The building's height the route's laid for: whole storeys, 1 to 12. */
-export const routeStoreys = (n: number) => Math.max(1, Math.min(12, Math.round(Number.isFinite(n) ? n : 1)));
+/** The building's height the route's laid for: whole storeys, one at least (no top: the drop and the vertical lift just get longer). */
+export const routeStoreys = (n: number) => Math.max(1, Math.round(Number.isFinite(n) ? n : 1));
 
 /** How high the lift hill's crest is over the deck: 9 m, or higher on a low building, so the drop's straight down for DROP_MIN at least. */
 export function crestOf(storeys: number): number {
@@ -408,9 +410,16 @@ export function coasterRoute(storeys: number): Route {
   t.zone('trim', vFrom - 3, vFrom + 1, 7.5);
   t.pitch(VLIFT_R, 90);
   const top = Math.max(1.9, t.p.y + 3.9);
-  t.twisted(Math.max(0.2, top - OVER_R - t.p.y), -90);
+  // On a tall tower the lift runs faster (up to VLIFT_MAX, a dozen seconds or so up), lets go a few
+  // metres short of the top so the train slows by itself, and the slow chain takes it over the top.
+  const climb = Math.max(0.2, top - OVER_R - t.p.y);
+  const fast = Math.min(VLIFT_MAX, Math.max(VLIFT_V, climb / 13));
+  t.twisted(climb, -90);
+  const coast = fast > VLIFT_V ? (fast * fast - VLIFT_V * VLIFT_V) / (2 * 9.81) : 0;
+  const slowFrom = t.u - coast;
   t.pitch(OVER_R, -90, { x: 1, z: 0 });
-  t.zone('chain', vFrom + 1, t.u - 1.5, VLIFT_V);
+  if (coast > 0) t.zone('chain', vFrom + 1, slowFrom - 0.01, fast);
+  t.zone('chain', coast > 0 ? slowFrom : vFrom + 1, t.u - 1.5, VLIFT_V);
   t.mark('vlift');
   // Down the brake run and into the station.
   const brakes = t.u;

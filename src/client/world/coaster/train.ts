@@ -108,7 +108,6 @@ export function buildTrain(night: NightParts): TrainView {
         car.add(p);
       }
     }
-    car.traverse((o) => (o.raycast = () => {}));
     group.add(car);
     cars.push(car);
   }

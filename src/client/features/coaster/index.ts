@@ -78,7 +78,7 @@ export function installCoaster(ctx: Ctx, deps: CoasterFeatureDeps): CoasterRide 
     use: (it, k) => coaster.use(it, k),
   });
   ctx.interactions.define('coasterphoto', {
-    reach: 2.4,
+    reach: 3.5,
     hint: () => coaster.hint(hintTitle, key, aside, 'coasterphoto'),
     use: (it, k) => coaster.use(it, k),
   });

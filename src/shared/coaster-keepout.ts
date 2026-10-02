@@ -15,6 +15,8 @@ import { HALL_BOX } from './hall.js';
 import { SOCCER_BOX } from './soccer.js';
 import { GOLF_HOLE } from './layout.js';
 import { routeStoreys } from './coaster-route.js';
+import { coasterTrack, poseAt } from './coaster-track.js';
+import { TUBE_RADIUS, TUBE_UP } from './coaster.js';
 import { BOWLING_BOX } from './bowling.js';
 import { DIVE, POOL_DECK, SLIDE } from './roofpool.js';
 import { ROOF_BAR, STAGE } from './layout.js';
@@ -194,3 +196,44 @@ export function overlaps(a: Box3, b: Box3, pad = 0): boolean {
 export function inBox(b: Box3, x: number, y: number, z: number, pad = 0): boolean {
   return x > b.minX - pad && x < b.maxX + pad && y > b.minY - pad && y < b.maxY + pad && z > b.minZ - pad && z < b.maxZ + pad;
 }
+
+let tubeCache: Box3[] | null = null;
+
+/**
+ * DER BRECHER's glass tube through the ground floor, as boxes in that floor's frame (its floor at y 0):
+ * one round each ring of it every half metre, the tube's own radius and a hand's breadth more. What
+ * hangs from the ceiling or runs along it there (an interior's decor and lamps, world/office/interior/)
+ * goes round them. The same however tall the building is (the tube's always under the ground floor's
+ * ceiling), so worked out once.
+ */
+export function tubeBoxes(): Box3[] {
+  if (tubeCache) return tubeCache;
+  const track = coasterTrack(2);
+  const { ground } = levels(2);
+  const tun = track.zones.find((z) => z.kind === 'tunnel')!;
+  const R = TUBE_RADIUS + 0.12;
+  const out: Box3[] = [];
+  const ring = (s: number) => {
+    const p = poseAt(track, s);
+    const cx = p.x + p.n[0] * TUBE_UP;
+    const cy = p.y + p.n[1] * TUBE_UP - ground;
+    const cz = p.z + p.n[2] * TUBE_UP;
+    // The ring lies square to the track: its reach along each axis is R times how far the ring's plane spans it.
+    const span = (k: number) => R * Math.sqrt(Math.max(0, 1 - p.t[k] * p.t[k])) + 0.05;
+    return box('tube', cx - span(0), cx + span(0), cy - span(1), cy + span(1), cz - span(2), cz + span(2));
+  };
+  // A box round each half metre of it, from one ring to the next.
+  for (let s = tun.from; s < tun.to; s += 0.5) {
+    const a = ring(s);
+    const c = ring(Math.min(tun.to, s + 0.5));
+    const b = box('tube', Math.min(a.minX, c.minX), Math.max(a.maxX, c.maxX), Math.min(a.minY, c.minY), Math.max(a.maxY, c.maxY), Math.min(a.minZ, c.minZ), Math.max(a.maxZ, c.maxZ));
+    // Only where it's in the room.
+    if (b.maxX < FLOOR.minX - 0.5 || b.minX > FLOOR.maxX + 0.5 || b.maxZ < FLOOR.minZ - 0.5 || b.minZ > FLOOR.maxZ + 0.5) continue;
+    out.push(b);
+  }
+  tubeCache = out;
+  return out;
+}
+
+/** Whether a box (in the ground floor's frame) runs into the tube. */
+export const hitsTube = (b: Omit<Box3, 'name'>) => tubeBoxes().some((t) => b.minX < t.maxX && b.maxX > t.minX && b.minY < t.maxY && b.maxY > t.minY && b.minZ < t.maxZ && b.maxZ > t.minZ);

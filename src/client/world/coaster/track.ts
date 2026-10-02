@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { HEART } from '../../../shared/coaster-route';
+import { TUBE_RADIUS, TUBE_UP } from '../../../shared/coaster';
 import type { CoasterTrack } from '../../../shared/coaster-track';
 import { canvasTexture } from '../texture';
 import { toon } from '../toon';
@@ -16,7 +17,7 @@ import { all, along, ribbon, tube, type Span } from './sweep';
 export const RAIL = { b: 0.55, n: -HEART, r: 0.07 } as const;
 export const SPINE = { n: -HEART - 0.45, r: 0.18 } as const;
 /** The tube through the ground floor: round, a little above the heartline. */
-export const TUBE = { n: 0.1, r: 1.32 } as const;
+export const TUBE = { n: TUBE_UP, r: TUBE_RADIUS } as const;
 
 export interface TrackView {
   group: THREE.Group;

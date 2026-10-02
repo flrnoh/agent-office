@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COASTER_NAME } from '../../shared/coaster';
+import { COASTER_NAME, type CoasterLeader } from '../../shared/coaster';
 import { h, openModal } from '../ui/dom';
 
 // DER BRECHER's ride photo (flrnoh fork, see FORK.md "Der Brecher"). At the bottom of the first drop a
@@ -79,8 +79,8 @@ export function showOnMonitor(photo: RidePhoto, monitor: { canvas: HTMLCanvasEle
   monitor.texture.needsUpdate = true;
 }
 
-/** The photo big, with a button to save it (✕ or Esc back to the roof). */
-export function openPhoto(photo: RidePhoto | null) {
+/** The photo big, with a button to save it, and the leaderboard under it (✕ or Esc back to the roof). */
+export function openPhoto(photo: RidePhoto | null, leaders: CoasterLeader[] = [], rides = 0) {
   const close = h('button.btn.close', { type: 'button', 'aria-label': 'Close' }, '✕');
   const body = h('div.body', { style: 'display:flex;flex-direction:column;gap:12px;align-items:center' });
   if (photo) {
@@ -88,6 +88,13 @@ export function openPhoto(photo: RidePhoto | null) {
     const save = h('a.btn.primary', { download: `der-brecher-fahrt-${photo.ride}.jpg`, href: img.getAttribute('src')! }, '💾 Foto speichern');
     body.append(img, h('div', { style: 'opacity:.8' }, photo.names.join(' · ') || 'Leerfahrt'), save);
   } else body.append(h('p', { style: 'margin:24px 8px;max-width:420px;text-align:center' }, 'Noch kein Foto hier. Unten am ersten Drop blitzt es: fahr mit (oder schau zu, hier oben auf dem Dach), dann hängt es auf dem Monitor.'));
+  const rows = leaders.map((l, i) => h('tr', {}, h('td', {}, `${i + 1}. ${l.name}`), h('td', { style: 'text-align:right' }, String(l.rides)), h('td', { style: 'text-align:right' }, `${l.hands.toFixed(1)} s`)));
+  body.append(
+    h('h3', { style: 'margin:8px 0 0' }, `🏆 Bestenliste · ${rides} Fahrt${rides === 1 ? '' : 'en'} bisher`),
+    leaders.length
+      ? h('table', { style: 'min-width:min(80vw,420px);border-spacing:12px 4px' }, h('tr', {}, h('th', { style: 'text-align:left' }, 'Wer'), h('th', {}, 'Fahrten'), h('th', {}, '🙌 Hände oben')), ...rows)
+      : h('p', {}, 'Noch niemand gefahren.'),
+  );
   const el = h('div.modal', { role: 'dialog', 'aria-label': 'Ride photo', style: 'max-width:min(92vw,1020px)' }, h('header', {}, h('h2', {}, `📸 ${COASTER_NAME} · Fahrtfoto`), close), body);
   const modal = openModal(el, { doing: '📸 looking at the ride photo' });
   close.addEventListener('click', () => modal.close());

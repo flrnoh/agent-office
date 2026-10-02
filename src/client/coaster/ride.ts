@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { NO_COASTER, SEATS, STATION, carOffset, seatCar, seatSide, SEAT_SIDE, type CoasterState } from '../../shared/coaster';
-import { HEART } from '../../shared/coaster-route';
+import { HEART, routeStoreys } from '../../shared/coaster-route';
 import { coasterSupports } from '../../shared/coaster-supports';
 import { DS, coasterTrack, poseAt, sAtTime, speedAt, type CoasterTrack, type TrackPose } from '../../shared/coaster-track';
 import type { ClientMsg, FloorInfo, ServerMsg } from '../../shared/protocol';
@@ -146,15 +146,19 @@ export class CoasterRide {
   private setState(s: CoasterState) {
     const was = this.state;
     this.state = s;
+    if (s.halted && s.halted !== was.halted && was.phase === 'ride') this.d.toast('🎢 Der Turm hat sich verändert: DER BRECHER ist sicher zurück in der Station');
     if (s.phase !== 'ride' && was.phase === 'ride') this.tunnel.undress();
     this.station.setLeaders(s.leaders, s.rides);
   }
 
-  /** The track for the building as it is (the train's ride as it went), built when that changes. */
+  /**
+   * The track for the building as it is, built when that changes. A ride's laid for the height it went
+   * at, which is the building's as long as it's out (else the office brings it straight back: see update).
+   */
   private ensure(): Built {
-    const n = this.state.phase === 'ride' ? this.state.storeys : this.d.storeys();
+    const n = this.d.storeys();
     const b = this.built;
-    if (b && b.storeys === Math.max(1, Math.min(12, Math.round(n)))) return b;
+    if (b && b.storeys === routeStoreys(n)) return b;
     if (b) {
       this.group.remove(b.view.group, b.supports.group);
       b.view.dispose();
@@ -181,7 +185,7 @@ export class CoasterRide {
   /** E at the station: in (anywhere free), or out again before it goes. */
   use(target: Interactable, key: string) {
     if (key !== 'E') return;
-    if (target.kind === 'coasterphoto') return openPhoto(this.photo);
+    if (target.kind === 'coasterphoto') return openPhoto(this.photo, this.state.leaders, this.state.rides);
     if (target.kind !== 'coaster') return;
     if (this.seat >= 0) {
       if (this.state.phase !== 'ride') this.d.send({ t: 'coaster.leave' });
@@ -201,7 +205,7 @@ export class CoasterRide {
 
   /** The hint at the station. */
   hint(title: (t: string) => HTMLElement, key: (k: string, label: string) => HTMLElement, aside: (t: string) => HTMLElement, kind: string): { k: string; parts: (HTMLElement | string)[] } {
-    if (kind === 'coasterphoto') return { k: 'photo', parts: [title('📸 Fahrtfoto'), aside(this.photo ? `Fahrt #${this.photo.ride}` : 'noch keins'), key('E', 'Ansehen')] };
+    if (kind === 'coasterphoto') return { k: `photo|${this.photo?.ride}`, parts: [title('📸 Fahrtfoto & Bestenliste'), aside(this.photo ? `Fahrt #${this.photo.ride}` : 'noch kein Foto'), key('E', 'Ansehen')] };
     const s = this.state;
     const free = s.seats.filter((x) => !x).length;
     if (this.seat >= 0 && s.phase !== 'ride') return { k: `in|${s.phase}`, parts: [title('🎢 DER BRECHER'), aside(s.phase === 'count' ? `Abfahrt in ${this.countdown()} s` : 'gleich geht’s los'), key('E', 'Aussteigen')] };
@@ -258,7 +262,10 @@ export class CoasterRide {
     const s0 = this.state;
     const now = this.d.officeNow();
     const since = (now - s0.at) / 1000;
-    const going = s0.phase === 'ride' && since > 0 && since < tr.duration;
+    // A floor came or went while it's out: the office brings it straight back (server/coaster.ts); till
+    // it says so, it waits in the station here rather than running round a track that's no longer the tower's.
+    const fits = s0.phase !== 'ride' || routeStoreys(this.d.storeys()) === s0.storeys;
+    const going = s0.phase === 'ride' && fits && since > 0 && since < tr.duration;
     const s = going ? sAtTime(tr, since) : 0;
     const v = going ? speedAt(tr, s) : 0;
     const bars = s0.phase === 'ride' ? (since < tr.duration - 1.2 ? 1 : 1 - smooth((since - tr.duration + 1.2) / 1.2)) : s0.phase === 'count' ? smooth(1 - (s0.at - now - 300) / 1500) : 0;

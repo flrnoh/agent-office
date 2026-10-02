@@ -121,7 +121,9 @@ export class Coaster {
   private seats: (Seat | null)[] = Array(SEATS).fill(null);
   private ride = 0;
   private typists: CoasterTypist[] = [];
+  private halted = 0;
   private timer: (() => void) | null = null;
+  private watch: (() => void) | null = null;
   readonly records: CoasterRecords;
   private now: () => number;
 
@@ -143,6 +145,7 @@ export class Coaster {
       ride: this.ride,
       leaders: this.records.leaders(),
       typists: this.phase === 'ride' ? this.typists : [],
+      halted: this.halted,
     };
   }
 
@@ -161,6 +164,7 @@ export class Coaster {
     this.seats[at] = { id: p.id, owner: p.owner, name: p.name.slice(0, 32), color: p.color.slice(0, 16), hands: false, up: null, held: 0, lastHands: 0 };
     if (this.phase === 'load') {
       this.phase = 'count';
+      this.halted = 0;
       this.at = this.now() + COUNTDOWN_MS;
       this.schedule(() => this.dispatch(), COUNTDOWN_MS);
     }
@@ -216,7 +220,33 @@ export class Coaster {
     this.typists = this.d.typists().slice(0, 40);
     this.ride += 1;
     this.schedule(() => this.back(), rideDuration(this.storeys) * 1000);
+    this.watchHeight();
     this.d.changed(this.state());
+  }
+
+  /**
+   * While it's out, the building mustn't change height under it: a floor added or taken off moves the
+   * roof, the station, the drop and the tube, and the train would run through the tower. So it's
+   * brought straight back into the station (a ride for everyone in it), laid for the new height.
+   */
+  private watchHeight() {
+    this.watch?.();
+    this.watch = this.later(() => {
+      this.watch = null;
+      if (this.phase !== 'ride') return;
+      if (routeStoreys(this.d.storeys()) !== this.storeys) {
+        this.halted = this.ride;
+        this.back();
+      } else this.watchHeight();
+    }, 200);
+  }
+
+  /** Whether the building is still the height the ride was laid for (it's checked every 200 ms while it's out). */
+  checkHeight() {
+    if (this.phase === 'ride' && routeStoreys(this.d.storeys()) !== this.storeys) {
+      this.halted = this.ride;
+      this.back();
+    }
   }
 
   /** Back in the station: everyone gets it on their record, and out. */
@@ -228,19 +258,28 @@ export class Coaster {
     this.seats = Array(SEATS).fill(null);
     this.phase = 'load';
     this.at = now;
+    this.storeys = routeStoreys(this.d.storeys());
     this.typists = [];
-    this.timer = null;
+    this.cancel();
+    this.watch?.();
+    this.watch = null;
     this.d.changed(this.state());
+  }
+
+  private later(fn: () => void, ms: number): () => void {
+    const later =
+      this.d.later ??
+      ((f: () => void, t: number) => {
+        const h = setTimeout(f, t);
+        h.unref?.();
+        return () => clearTimeout(h);
+      });
+    return later(fn, ms);
   }
 
   private schedule(fn: () => void, ms: number) {
     this.cancel();
-    const later = this.d.later ?? ((f: () => void, t: number) => {
-      const h = setTimeout(f, t);
-      h.unref?.();
-      return () => clearTimeout(h);
-    });
-    this.timer = later(fn, ms);
+    this.timer = this.later(fn, ms);
   }
 
   private cancel() {
@@ -250,6 +289,8 @@ export class Coaster {
 
   stop() {
     this.cancel();
+    this.watch?.();
+    this.watch = null;
   }
 }
 

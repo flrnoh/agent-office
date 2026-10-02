@@ -48,6 +48,9 @@ export const TUBE_PORTALS: readonly Opening[] = [
   { wall: 'south', u: TUBE_X, width: 3.1, y0: 3.75, y1: WALL_HEIGHT },
   { wall: 'north', u: TUBE_OUT_X, width: 3.1, y0: 3.75, y1: WALL_HEIGHT },
 ];
+/** The tube's radius and how far its axis is over the heartline. */
+export const TUBE_RADIUS = 1.32;
+export const TUBE_UP = 0.1;
 export const tubePortals = (index: number): readonly Opening[] => (index === 0 ? TUBE_PORTALS : []);
 
 /** The gap in the roof's north railing (rooftop/world.ts leaves it open). */
@@ -116,9 +119,15 @@ export interface CoasterState {
   ride: number;
   leaders: CoasterLeader[];
   typists: CoasterTypist[];
+  /**
+   * The ride the train was brought back from early (0 for none): a floor came or went while it was out,
+   * so the track it was on no longer fits the tower (the drop, the tube, the station all move). It's back
+   * in the station at once, laid for the new height, rather than running a ride through the building.
+   */
+  halted: number;
 }
 
-export const NO_COASTER: CoasterState = { phase: 'load', at: 0, storeys: 1, seats: Array(SEATS).fill(null), rides: 0, ride: 0, leaders: [], typists: [] };
+export const NO_COASTER: CoasterState = { phase: 'load', at: 0, storeys: 1, seats: Array(SEATS).fill(null), rides: 0, ride: 0, leaders: [], typists: [], halted: 0 };
 
 export type CoasterClientMsg =
   /** Get in at the station (any free seat, or `seat` if it's free), while the train's in. */

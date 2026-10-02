@@ -9,7 +9,7 @@ import { ANCHOR, BODY, bungeePlan, bungeePose } from '../src/shared/bungee.js';
 import { FLOOR, WALL_HEIGHT, WALL_T, roofDrop } from '../src/shared/layout.js';
 import { storeyPlan } from '../src/shared/storey.js';
 
-const STOREYS = [1, 2, 3, 4, 5, 6, 7, 8];
+const STOREYS = Array.from({ length: 20 }, (_, i) => i + 1);
 
 /**
  * Where the train and its riders reach round the track, across it (along B) and up from the heartline
@@ -52,7 +52,7 @@ function* envelope(storeys: number): Generator<{ s: number; x: number; y: number
 test('coaster track: a closed, smooth circuit with an upright frame in the station, for every height', () => {
   for (const N of STOREYS) {
     const t = coasterTrack(N);
-    assert.ok(t.length > 200 && t.length < 400, `N${N}: ${t.length} m`);
+    assert.ok(t.length > 200 && t.length < 700, `N${N}: ${t.length} m`);
     let worst = 0;
     for (let i = 0; i < t.n; i++) {
       const j = (i + 1) % t.n;
@@ -106,10 +106,10 @@ test('coaster ride: the riders feel no more than 5 g, no less than -1.5 g, littl
       if (s > 2 && s < t.length - 2) assert.ok(t.speed[i] > 0.8, `${at}: ${t.speed[i]} m/s`);
       assert.ok(t.speed[i] < 22, `${at}: ${t.speed[i]} m/s`);
     }
-    assert.ok(t.duration > 40 && t.duration < 90, `N${N}: ${t.duration} s`);
+    assert.ok(t.duration > 40 && t.duration < 100, `N${N}: ${t.duration} s`);
   }
   // Taller buildings, longer rides.
-  for (let N = 2; N <= 8; N++) assert.ok(rideDuration(N) >= rideDuration(N - 1) - 0.5);
+  for (let N = 2; N <= 20; N++) assert.ok(rideDuration(N) >= rideDuration(N - 1) - 0.5);
 });
 
 test('coaster ride: where the train is follows from the time since it went, the same everywhere', () => {
@@ -232,5 +232,72 @@ test('coaster keep-outs: the bungee box holds every jump, and the balconies are 
     const balconies = outsideKeepouts(N).filter((k) => k.name.startsWith('balcony'));
     const expected = Array.from({ length: N }, (_, k) => storeyPlan(k).balconies.length).reduce((a, b) => a + b, 0);
     assert.equal(balconies.length, expected);
+  }
+});
+
+test('coaster tube: its keep-out holds the whole tube, for every height', async () => {
+  const { tubeBoxes } = await import('../src/shared/coaster-keepout.js');
+  const boxes = tubeBoxes();
+  for (const N of STOREYS) {
+    const { ground } = levels(N);
+    for (const p of envelope(N)) {
+      if (!p.tube || p.x < FLOOR.minX || p.x > FLOOR.maxX || p.z < FLOOR.minZ || p.z > FLOOR.maxZ) continue;
+      assert.ok(
+        boxes.some((b) => inBox(b, p.x, p.y - ground, p.z, 0.02)),
+        `N${N}: the tube at ${p.s} m (${p.x.toFixed(2)}, ${(p.y - ground).toFixed(2)}, ${p.z.toFixed(2)}) is outside its keep-out`,
+      );
+    }
+  }
+});
+
+test('coaster tube: every interior’s decor and lamps go round it on the ground floor', async () => {
+  const THREE = await import('three');
+  const { INTERIORS } = await import('../src/shared/interiors.js');
+  const { tubeBoxes } = await import('../src/shared/coaster-keepout.js');
+  const { DESKS, WALL_HEIGHT: H } = await import('../src/shared/layout.js');
+  const g = globalThis as unknown as { document?: unknown };
+  const had = g.document;
+  g.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => new Proxy({}, { get: (_t, k) => (k === 'measureText' ? () => ({ width: 10 }) : () => {}) }) }) };
+  try {
+    const { decor } = await import('../src/client/world/office/interior/decor.js');
+    const { lamp } = await import('../src/client/world/office/interior/lamps.js');
+    const { clearOf } = await import('../src/client/world/office/interior/clear.js');
+    // Where the room's lamps hang (world/office/room.ts), 4.05 up.
+    const AT = [
+      [-10.5, -4],
+      [-1.5, -4],
+      [-10.5, 4],
+      [-1.5, 4],
+      [13, 0],
+    ] as const;
+    const boxes = tubeBoxes();
+    for (const style of INTERIORS) {
+      for (const accent of ['north', 'south', 'east', 'west'] as const) {
+        const d = decor(style, { deskIds: DESKS.map((k) => k.id), accent }, AT);
+        const lamps = new THREE.Group();
+        if (style.lamp !== 'cone')
+          AT.forEach(([x, z], i) => {
+            const l = lamp(style.lamp, H - 4.05, i);
+            l.position.set(x, 4.05, z);
+            lamps.add(l);
+          });
+        const long = () => d.room.children.filter((c) => { const sz = new THREE.Box3().setFromObject(c).getSize(new THREE.Vector3()); return Math.max(sz.x, sz.z) > 3; }).length;
+        const before = long();
+        for (const grp of [d.room, lamps]) clearOf(grp, boxes);
+        for (const grp of [d.room, lamps]) {
+          grp.updateMatrixWorld(true);
+          grp.traverse((o) => {
+            if (!(o as THREE.Mesh).isMesh) return;
+            const b = new THREE.Box3().setFromObject(o);
+            const hit = boxes.find((t) => b.min.x < t.maxX - 1e-6 && b.max.x > t.minX + 1e-6 && b.min.y < t.maxY - 1e-6 && b.max.y > t.minY + 1e-6 && b.min.z < t.maxZ - 1e-6 && b.max.z > t.minZ + 1e-6);
+            assert.ok(!hit, `${style.id} (${accent} accent): something at ${b.min.x.toFixed(2)}..${b.max.x.toFixed(2)}, ${b.min.y.toFixed(2)}..${b.max.y.toFixed(2)}, ${b.min.z.toFixed(2)}..${b.max.z.toFixed(2)} runs into the tube`);
+          });
+        }
+        // Cut round it, not taken down wholesale: a long beam carries on either side.
+        assert.ok(long() >= before, `${style.id}: ${before} long pieces, ${long()} left`);
+      }
+    }
+  } finally {
+    g.document = had;
   }
 });

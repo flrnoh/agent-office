@@ -26,6 +26,7 @@ export function floorHelpers(ctx: Ctx): FloorHelpers {
   let floorsSent = '';
   let floorsTimer: NodeJS.Timeout | undefined;
   const floorsChanged = () => {
+    (ctx as Partial<Pick<Ctx, 'coaster'>>).coaster?.checkHeight(); // flrnoh fork: DER BRECHER back in its station if a floor came or went under it
     floorsTimer ??= setTimeout(() => {
       floorsTimer = undefined;
       const list = floorInfos();
