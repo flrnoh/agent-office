@@ -53,6 +53,7 @@ import { djSetVolume, tvVolume } from './screens';
 import { soccer, type SoccerSound } from './soccer';
 import { SoccerMurmur, soccerCrowd, type SoccerCrowdSound } from './soccercrowd';
 import { tableGame, type TableGameSound } from './tablegames';
+import { StationLoops, tankstelle, type StationNoise, type TankSound } from '../features/tankstelle/sound';
 
 // What the rest of the client imports from here.
 export type { Hall, Listener } from './core';
@@ -80,6 +81,7 @@ export class OfficeSound {
   private readonly bungeeAir = new BungeeWind(this.a); // fork
   private readonly outboards = new Outboards(this.a); // fork
   private readonly headset = new Headphones(this.a); // fork
+  private readonly station = new StationLoops(this.a); // fork
   /** A stream that won't play here. */
   onMusicError?: (text: string) => void;
   /** Fork: a stream the browser won't start before you click (autoplay rules). */
@@ -398,6 +400,16 @@ export class OfficeSound {
   /** The boats' outboards running now, every frame (an empty list lets them die away). */
   setOutboards(list: Outboard[]) {
     this.outboards.set(list);
+  }
+
+  /** The petrol station: the nozzle, the pump's cut-off, the shop's till, the wash's chime (features/tankstelle/sound.ts). */
+  tankstelle(kind: TankSound, at: Pos) {
+    tankstelle(this.a, kind, at);
+  }
+
+  /** The station's pumps and car wash running now, every frame. */
+  setStation(noise: StationNoise) {
+    this.station.set(noise);
   }
 
   casino(kind: CasinoSound) {

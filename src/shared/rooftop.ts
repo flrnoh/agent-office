@@ -9,6 +9,7 @@ import { CAFE_ITEMS, type CafeGlass, type CafeItemId } from './cafe.js'; // fork
 import { KIOSK_ITEMS, type KioskGlass, type KioskItemId } from './kiosk.js'; // fork: the beach kiosk
 import { KINO_SNACKS, type KinoGlass, type KinoSnackId } from './kino-snacks.js'; // fork: the cinema's counter
 import { SHOP_ITEMS, type ShopGlass, type ShopItemId } from './shopwares.js'; // fork: the city's shops
+import { TANK_ITEMS, type TankGlass, type TankItemId } from './tankshop.js'; // fork: the petrol station's shop
 
 /**
  * Where you are while you're on the roof (a peer's `floor`, and `floor.go`'s). It can never be a
@@ -18,9 +19,9 @@ export const ROOF = '@roof';
 export const ROOF_NAME = 'Rooftop bar';
 
 /** What a drink comes in: a pint, a wine glass, a martini glass, a tall glass or a shot glass. */
-export type Glass = 'pint' | 'wine' | 'martini' | 'highball' | 'shot' | FridgeGlass | CafeGlass | KioskGlass | KinoGlass | ShopGlass;
+export type Glass = 'pint' | 'wine' | 'martini' | 'highball' | 'shot' | FridgeGlass | CafeGlass | KioskGlass | KinoGlass | ShopGlass | TankGlass;
 
-export type DrinkId = 'beer' | 'wine' | 'martini' | 'maitai' | 'shot' | 'mojito' | 'water' | FridgeItemId | CafeItemId | KioskItemId | KinoSnackId | ShopItemId;
+export type DrinkId = 'beer' | 'wine' | 'martini' | 'maitai' | 'shot' | 'mojito' | 'water' | FridgeItemId | CafeItemId | KioskItemId | KinoSnackId | ShopItemId | TankItemId;
 
 export interface Drink {
   id: DrinkId;
@@ -49,7 +50,7 @@ export const DRINKS: readonly Drink[] = [
 ];
 
 /** The bar's drinks, and (fork) what comes out of the kitchen fridge. */
-export const DRINK_BY_ID = new Map<DrinkId, Drink>([...DRINKS, ...FRIDGE_ITEMS, ...CAFE_ITEMS, ...KIOSK_ITEMS, ...KINO_SNACKS, ...SHOP_ITEMS].map((d) => [d.id, d]));
+export const DRINK_BY_ID = new Map<DrinkId, Drink>([...DRINKS, ...FRIDGE_ITEMS, ...CAFE_ITEMS, ...KIOSK_ITEMS, ...KINO_SNACKS, ...SHOP_ITEMS, ...TANK_ITEMS].map((d) => [d.id, d]));
 
 export function isDrink(v: unknown): v is DrinkId {
   return typeof v === 'string' && DRINK_BY_ID.has(v as DrinkId);

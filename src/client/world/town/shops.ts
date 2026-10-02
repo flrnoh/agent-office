@@ -204,7 +204,8 @@ export function buildShops(group: THREE.Group, night: NightParts): TownShops {
       for (const [a, b] of spans) {
         if (b - a < 0.01) continue;
         const frame = { ox: f.ax, oz: f.az, ux: f.ux, uz: f.uz, nx: f.nx, nz: f.nz };
-        frames.box(shopRect(frame, a, b, 0, 0.1), G, G + SHOP_H, wall);
+        // A hair proud of the face, so a corner shop's own side wall behind it never flickers through.
+        frames.box(shopRect(frame, a, b, -0.02, 0.1), G, G + SHOP_H, wall);
         frames.box(shopRect(frame, a, b, -0.1, 0.02), G, G + 0.25, plinth);
       }
     }
