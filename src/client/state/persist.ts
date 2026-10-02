@@ -41,6 +41,10 @@ export type HudPanel = 'workers' | 'people' | 'spend' | 'limits' | 'chat' | 'flo
 /** Out of the way by default: only the chat shows until you turn the rest on. */
 export const HUD_DEFAULTS: Record<HudPanel, boolean> = { workers: false, people: false, spend: false, limits: false, chat: true, floor: false, map: true };
 
+/** How the office rings when a worker needs you: not at all, once, or again and again until someone's at its terminal. */
+export const NEEDS_YOU_SOUNDS = ['off', 'once', 'remind'] as const;
+export type NeedsYouSound = (typeof NEEDS_YOU_SOUNDS)[number];
+
 export interface Settings {
   view: ViewMode;
   /** Office sounds, 0–1. */
@@ -60,6 +64,8 @@ export interface Settings {
   pushToTalk: boolean;
   /** Desktop notifications when a worker needs input or finishes while you're in another tab (once the browser allows them). */
   notify: boolean;
+  /** The alarm when a worker stops to ask you something: not at all, once, or again every half minute until someone's at its terminal. */
+  needsYouSound: NeedsYouSound;
   /** Which panels show on screen. */
   hud: Record<HudPanel, boolean>;
   /** The ☰ menu's actions you pinned to the top bar, by id. */
@@ -126,7 +132,7 @@ export function rememberSpot(s: Spot) {
 }
 
 export function loadSettings(): Settings {
-  const s: Settings = { view: 'first', volume: 0.7, muted: false, music: 0.5, musicMuted: false, speakers: 0.4, speakersMuted: false, pageTurns: true, citySounds: true, pushToTalk: false, notify: true, hud: { ...HUD_DEFAULTS }, pins: [] };
+  const s: Settings = { view: 'first', volume: 0.7, muted: false, music: 0.5, musicMuted: false, speakers: 0.4, speakersMuted: false, pageTurns: true, citySounds: true, pushToTalk: false, notify: true, needsYouSound: 'once', hud: { ...HUD_DEFAULTS }, pins: [] };
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null');
     if (saved?.view === 'first' || saved?.view === 'third') s.view = saved.view;
@@ -140,6 +146,7 @@ export function loadSettings(): Settings {
     if (typeof saved?.citySounds === 'boolean') s.citySounds = saved.citySounds; // fork
     if (typeof saved?.pushToTalk === 'boolean') s.pushToTalk = saved.pushToTalk;
     if (typeof saved?.notify === 'boolean') s.notify = saved.notify;
+    if (NEEDS_YOU_SOUNDS.includes(saved?.needsYouSound)) s.needsYouSound = saved.needsYouSound;
     for (const k of Object.keys(s.hud) as HudPanel[]) if (typeof saved?.hud?.[k] === 'boolean') s.hud[k] = saved.hud[k];
     if (Array.isArray(saved?.pins)) s.pins = saved.pins.filter((p: unknown): p is string => typeof p === 'string').slice(0, 30);
   } catch {

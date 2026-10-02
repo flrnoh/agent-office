@@ -3,7 +3,7 @@ import { HAIR_COLORS, HAIR_STYLES, METAL_COLORS, hairShows, marksKey, piercingKi
 import { mesh, toonUnique } from '../toon';
 import { beardParts } from './person-beard';
 import { tattooMaterial } from './tattoo-art';
-import { Outfit } from './person-outfit';
+import { Outfit } from './person-clothes';
 
 // flrnoh fork (see FORK.md "Beards, tattoos and piercings"): what a Person wears on their skin. A beard
 // (person-beard.ts) in the hair's color, tattoos as decals hugging an arm, a hand or the neck (the
@@ -21,7 +21,7 @@ export interface MarkParts {
   /** The person's own skin and shirt, for a bared arm and its rolled-up sleeve. */
   skin: THREE.Material;
   shirt: THREE.Material;
-  /** For the outfit (person-outfit.ts): the body the torso's on, and the trousers. */
+  /** For the outfit (person-clothes.ts): the body the torso's on, and the trousers. */
   body: THREE.Object3D;
   pants: THREE.MeshToonMaterial;
   /** The hair, hidden from the start under a hat it would poke through (later, person.ts' dress asks hairShows). */

@@ -344,7 +344,7 @@ export function buildStreet(group: THREE.Group, colliders: Collider[], night: Ni
   for (const x of [-37, -22, -4, 1.5, 26, 46, 62, 82]) streetLamp(lamps, night, glass, colliders, x, 31.8, -1); // fork: -37 (was -34), clear of the casino's doors; 46 (was 36), of the padel hall's; 1.5 (was 8), of the soccer hall's sign; 62 and 82 either side of the gym
   group.add(mergeByMaterial(lamps));
 
-  // (fork: the neighbours that stood here are the city's buildings now, world/city.ts)
+  // (fork: the neighbours that stood here are the city's buildings now, world/city.ts; they're solid there, world/town/buildings.ts)
 
   // Puffy clouds, too far off for the fog to hide.
   const cloud = night.clouds;

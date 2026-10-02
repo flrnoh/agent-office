@@ -2,9 +2,7 @@
 // Units are meters; +y is up. The office floor spans FLOOR.minX..maxX / minZ..maxZ at y = 0,
 // upstairs over a garage whose floor is level with the street (STREET_Y).
 
-import { RIG, RIG_SEAT } from './rig.js'; // flrnoh fork: the racing rig
-import { HALL_SEATING } from './hall-building.js'; // flrnoh fork: the padel hall
-import { GYM_SEATING } from './gym-rooms.js'; // flrnoh fork: the gym's benches, loungers and stools
+import { FORK_SEATING } from './fork-seating.js'; // flrnoh fork: the racing rig, the padel hall's and the gym's seats
 
 export const FLOOR = { minX: -18, maxX: 18, minZ: -13, maxZ: 13 } as const;
 /** How high the ceiling is: a meter over the loft's roof (LOFT.y + LOFT.height), all the way across the room. */
@@ -184,19 +182,25 @@ export const STAIRS = { fromX: 3, toX: LOFT.minX, minZ: 11.2, maxZ: FLOOR.maxZ, 
  * north wall, facing the lounge.
  */
 export const MEETING_ROOM = { minX: LOFT.minX + 0.15, maxX: FLOOR.maxX, minZ: LOFT.minZ + 0.15, maxZ: FLOOR.maxZ, height: LOFT.y - 0.25, door: { x0: 10, x1: 11.4 } } as const;
-export const MEETING_TABLE = { x: 13.7, z: 10.55, width: 3.6, depth: 1.2, height: 0.76 } as const;
+export const MEETING_TABLE = { x: 13.7, z: 10.5, width: 4.2, depth: 1.7, height: 0.76 } as const;
+/**
+ * A laptop at the meeting table: its size next to the model's, and how far toward its chair it lies
+ * from the place (x, z) it's at. With the place this far in from the table's edge, two open laptops
+ * facing each other across the table have room between the backs of their lids.
+ */
+export const MEETING_LAPTOP = { scale: 1, z: 0.07, in: 0.45 } as const;
 /**
  * The chairs round the meeting table, in the order a meeting fills them: the head of the table at its
- * west end (whoever leads or writes the meeting up), then two down each side. (x, z) is where the
- * laptop sits on the table; the chair is out from it the way a desk's is (deskSeat).
+ * west end (whoever leads or writes the meeting up), then two down each side. (x, z) is its place at
+ * the table, where its laptop goes (MEETING_LAPTOP); the chair is out from it the way a desk's is (deskSeat).
  */
 export const MEETING_SEATS: DeskDef[] = (
   [
-    [MEETING_TABLE.x - MEETING_TABLE.width / 2 + 0.35, MEETING_TABLE.z, -Math.PI / 2],
-    [MEETING_TABLE.x - 0.6, MEETING_TABLE.z - MEETING_TABLE.depth / 2 + 0.35, Math.PI],
-    [MEETING_TABLE.x - 0.6, MEETING_TABLE.z + MEETING_TABLE.depth / 2 - 0.35, 0],
-    [MEETING_TABLE.x + 1.1, MEETING_TABLE.z - MEETING_TABLE.depth / 2 + 0.35, Math.PI],
-    [MEETING_TABLE.x + 1.1, MEETING_TABLE.z + MEETING_TABLE.depth / 2 - 0.35, 0],
+    [MEETING_TABLE.x - MEETING_TABLE.width / 2 + MEETING_LAPTOP.in, MEETING_TABLE.z, -Math.PI / 2],
+    [MEETING_TABLE.x - 0.65, MEETING_TABLE.z - MEETING_TABLE.depth / 2 + MEETING_LAPTOP.in, Math.PI],
+    [MEETING_TABLE.x - 0.65, MEETING_TABLE.z + MEETING_TABLE.depth / 2 - MEETING_LAPTOP.in, 0],
+    [MEETING_TABLE.x + 1.15, MEETING_TABLE.z - MEETING_TABLE.depth / 2 + MEETING_LAPTOP.in, Math.PI],
+    [MEETING_TABLE.x + 1.15, MEETING_TABLE.z + MEETING_TABLE.depth / 2 - MEETING_LAPTOP.in, 0],
   ] as const
 ).map(([x, z, rotY], i) => ({ id: `meeting-${i + 1}`, x, z, rotY, label: i === 0 ? 'Head of the table' : `Meeting chair ${i + 1}`, room: true }));
 /** The board on the meeting room's back (south) wall that shows the meeting's output file as it's written. */
@@ -472,8 +476,6 @@ export const SEATING: SeatDef[] = [
   // Beanbags either side of the lounge, turned to the TV.
   { id: 'lounge-beanbag-1', label: '🫘 Beanbag', x: 12.5, y: 0, z: 3.5, rotY: Math.atan2(TV.x - 12.5, TV.z - 3.5), places: [0], hips: 0.42, depth: -0.1, out: 1.2 },
   { id: 'lounge-beanbag-2', label: '🫘 Beanbag', x: 14.5, y: 0, z: -3.4, rotY: Math.atan2(TV.x - 14.5, TV.z + 3.4), places: [0], hips: 0.42, depth: -0.1, out: 1.2 },
-  // Fork: the racing rig's bucket seat (shared/rig.ts), low down, facing its screen; you get out behind it.
-  { id: RIG_SEAT, label: '🏎️ Racing rig', x: RIG.x, y: 0, z: RIG.seatZ, rotY: 0, places: [0], hips: 0.36, depth: 0.02, out: -0.95 },
   // Up in the boss office: the couch against the east wall, and the chair at the big desk, facing the glass.
   { id: 'loft-couch', label: '🛋️ Couch', x: LOFT.maxX - 0.65, y: LOFT.y, z: (LOFT.minZ + LOFT.maxZ) / 2, rotY: -Math.PI / 2, places: [-0.5, 0.5], hips: 0.5, depth: -0.05, out: 0.9 },
   { id: 'boss-chair', label: "🪑 Boss's chair", x: (LOFT.minX + LOFT.maxX) / 2 + 0.5, y: LOFT.y, z: (LOFT.minZ + LOFT.maxZ) / 2 + 0.7, rotY: Math.PI, places: [0], hips: 0.62, depth: -0.05, out: -0.8, game: true },
@@ -489,8 +491,7 @@ export const SEATING: SeatDef[] = [
   { id: 'roof-sofa-3', label: '🛋️ Sofa', x: FIRE_PIT.x + 2.9, y: 0, z: FIRE_PIT.z + 0.4, rotY: -Math.PI / 2, places: [-0.6, 0.6], hips: 0.5, depth: -0.05, out: 0.8, roof: true },
   // …and sun loungers facing out over the city.
   ...LOUNGERS.map((x, i) => ({ id: `roof-lounger-${i + 1}`, label: '🏖️ Lounger', x, y: 0, z: FLOOR.maxZ - 1.5, rotY: 0, places: [0], hips: 0.42, depth: -0.2, out: -1, roof: true })),
-  ...HALL_SEATING, // fork: the padel hall's stand, bench and café chairs (shared/hall-building.ts)
-  ...GYM_SEATING, // fork: the gym's sauna and steam benches, loungers, stools (shared/gym-rooms.ts)
+  ...FORK_SEATING, // fork: the racing rig, the padel hall's and the gym's seats (shared/fork-seating.ts)
 ];
 export const SEATING_BY_ID = new Map(SEATING.map((s) => [s.id, s]));
 
