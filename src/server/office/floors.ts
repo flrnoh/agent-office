@@ -6,6 +6,7 @@ import { ROOF } from '../../shared/rooftop.js';
 import { HALL } from '../../shared/hall.js'; // flrnoh fork
 import { SOCCER } from '../../shared/soccer.js';
 import { BOWLING } from '../../shared/bowling.js';
+import { VENUE } from '../../shared/venue.js';
 import type { FloorInfo, ServerMsg } from '../../shared/protocol.js';
 import type { Ctx, FloorHelpers, FloorsOpen } from './context.js';
 import { SLOW_CLIENT_BYTES, type Client } from './client.js';
@@ -51,7 +52,7 @@ export function floorHelpers(ctx: Ctx): FloorHelpers {
     floorsSent = JSON.stringify(list);
     ctx.broadcast({ t: 'floors', floors: list });
     for (const c of ctx.clients.values()) {
-      if (c.peer.floor === floor.id || (!next && (c.peer.floor === ROOF || c.peer.floor === HALL || c.peer.floor === SOCCER || c.peer.floor === BOWLING))) { // fork: nor a padel (or soccer) hall, nor the bowling centre
+      if (c.peer.floor === floor.id || (!next && (c.peer.floor === ROOF || c.peer.floor === HALL || c.peer.floor === SOCCER || c.peer.floor === BOWLING || c.peer.floor === VENUE))) { // fork: nor a padel (or soccer) hall, nor the bowling centre, nor the Schallwerk
         if (next) ctx.goToFloor(c, next);
         else ctx.toLobby(c);
         ctx.sendTo(c, { t: 'toast', text: next ? `🛗 ${who} took ${name} off the building, so you rode the elevator to ${next.def.name}` : `🛗 ${who} took ${name}, the last floor, off the building`, level: 'warn' });

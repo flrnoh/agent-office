@@ -22,6 +22,7 @@ import { funshopHandlers } from './funshops.js';
 import { coasterHandlers, coasterHooks } from './coaster.js';
 import { karaokeHandlers } from './karaoke.js';
 import { bowlingHandlers } from './bowling.js';
+import { venueHandlers } from './venue.js';
 import { rideMessage } from '../../fork/ride.js';
 import { voiceRangeMessage } from '../../fork/voicerange.js';
 import { here } from './common.js';
@@ -175,6 +176,7 @@ export const forkHandlers = {
   ...coasterHandlers, // DER BRECHER, the roller coaster round the tower
   ...karaokeHandlers, // the bowling centre's karaoke bar (karaoke.ts)
   ...bowlingHandlers, // the bowling centre's cosmic switch and rental shoes
+  ...venueHandlers, // the Schallwerk's house: concert or club, the light desk, stamp, cloakroom, merch (venue.ts)
   'bike.ride': rideMessage, // a bike from the city's bike shop (fork/ride.ts)
   'bike.bell': rideMessage,
   'voice.range': voiceRangeMessage, // how far your voice carries (fork/voicerange.ts)

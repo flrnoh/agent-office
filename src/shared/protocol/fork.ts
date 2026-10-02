@@ -22,6 +22,7 @@ import type { CoasterClientMsg, CoasterServerMsg } from '../coaster.js';
 import type { KaraokeClientMsg, KaraokeServerMsg } from '../karaoke.js';
 import type { BowlingHouseClientMsg, BowlingHouseServerMsg } from '../bowling-house.js';
 import type { VoiceRangeClientMsg, VoiceRangeServerMsg } from '../voicerange.js';
+import type { VenueHouseClientMsg, VenueHouseServerMsg } from '../venue-house.js';
 
 export type ForkClientMsg =
   | CasinoClientMsg // the casino (shared/casino.ts)
@@ -40,6 +41,7 @@ export type ForkClientMsg =
   | CoasterClientMsg // DER BRECHER, the roller coaster round the tower (shared/coaster.ts)
   | KaraokeClientMsg // the bowling centre's karaoke bar (shared/karaoke.ts)
   | BowlingHouseClientMsg // the bowling centre's cosmic switch and rental shoes (shared/bowling-house.ts)
+  | VenueHouseClientMsg // the Schallwerk's house: concert or club, the light desk, stamp, cloakroom, merch (shared/venue-house.ts)
   | VoiceRangeClientMsg // how far your voice carries (shared/voicerange.ts)
   /** Put a YouTube, SoundCloud or Mixcloud set on at the DJ booth, for everyone on the roof (see shared/djset.ts). */
   | { t: 'dj.play'; url: string }
@@ -89,6 +91,7 @@ export type ForkServerMsg =
   | CoasterServerMsg
   | KaraokeServerMsg // the bowling centre's karaoke bar
   | BowlingHouseServerMsg
+  | VenueHouseServerMsg // the Schallwerk's house
   | VoiceRangeServerMsg // how far someone's voice carries
   /** The DJ set on the roof changed (sent to everyone up there). */
   | { t: 'dj'; state: DjSetState }

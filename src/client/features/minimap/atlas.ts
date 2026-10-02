@@ -16,6 +16,8 @@ import { CREEK, FARM, FOOTHILLS, LAKE, LIGHTHOUSE, LOOP, LOOP_HALF, MOUNTAINS, S
 import { SHOPS, SHOP_KIND_BY_ID } from '../../../shared/shops';
 import { SOCCER_BOX } from '../../../shared/soccer';
 import { BOWLING_BOX, BOWLING_DOOR } from '../../../shared/bowling';
+import { VENUE_BOX, VENUE_DOOR } from '../../../shared/venue';
+import { BEER_GARDEN, DOCK, TOUR_BUS } from '../../../shared/venue-house';
 import { CANOPY } from '../../../shared/tankstelle';
 import { OFFICE_RECT } from './pois';
 import { coasterTrack, poseAt } from '../../../shared/coaster-track'; // fork: DER BRECHER
@@ -183,6 +185,12 @@ function draw(g: CanvasRenderingContext2D, px: (x: number) => number, pz: (z: nu
   rect(landmarkBox('bowling'), COLORS.walk);
   rect(BOWLING_BOX, '#2a9d8f', COLORS.ink, 2);
   rect({ minX: BOWLING_DOOR.x - 6, maxX: BOWLING_DOOR.x + 6, minZ: BOWLING_BOX.maxZ - 3, maxZ: BOWLING_BOX.maxZ + 1 }, '#e63946', COLORS.ink, 1);
+  // The Schallwerk across the street: the brick hall, its marquee, the beer garden, the tour bus, the dock.
+  rect(VENUE_BOX, '#8a3b26', COLORS.ink, 2);
+  rect({ minX: VENUE_DOOR.x - 6.5, maxX: VENUE_DOOR.x + 6.5, minZ: VENUE_BOX.minZ - 2.7, maxZ: VENUE_BOX.minZ }, '#ff2d3d', COLORS.ink, 1);
+  rect(BEER_GARDEN, '#b9b09e');
+  rect(TOUR_BUS, '#1b1c21', COLORS.ink, 1);
+  rect(DOCK, '#8b857c', COLORS.ink, 1);
 
   // The streets: the city's, the office's (and the lots by the garage), and the loop.
   for (const s of STREETS) rect(stretchRect(s), COLORS.road);
