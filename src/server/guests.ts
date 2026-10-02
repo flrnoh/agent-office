@@ -38,6 +38,8 @@ const GUEST = [
   'bowling.lights', 'bowling.shoes', // fork: the bowling centre's cosmic switch and rental shoes
   'mg.look', 'mg.take', 'mg.return', 'mg.group', 'mg.putt', 'mg.pickup', // fork: the bowling centre's mini golf
   'bowl.look', 'bowl.join', 'bowl.leave', 'bowl.ball', 'bowl.new', 'bowl.skip', 'bowl.throw', 'bowl.stats', // fork: the bowling centre's lanes and league
+  'show.hello', 'show.act', 'show.surf', 'show.ball', 'show.wod', 'gig.list', // fork: the Schallwerk's crowd and its programme
+  'venuedj.take', 'venuedj.leave', 'venuedj.play', 'venuedj.stop', 'venuedj.tap', 'venuedj.house', 'venuedj.fx', // fork: the Schallwerk's DJ booth
 ] as const satisfies readonly ClientMsg['t'][];
 
 /** What a guest's page sends on its own (resizing a terminal it watches, polling boards): dropped without a word. */
@@ -54,6 +56,7 @@ const TEAM_ONLY = [
   'floor.add', 'floor.cancel', 'floor.expand', 'floor.interior', 'floor.order', 'floor.projectsDir', 'floor.remove', 'floor.shrink',
   'gh.close', 'gh.comment', 'gh.labels', 'gh.merge', 'jukebox.speakers', 'leaveOnMerge.set',
   'dj.volume', // fork: the party's volume on the roof is the host's
+  'gig.save', 'gig.delete', // fork: the Schallwerk's gig calendar is the team's
   'machine.limit', 'map.set', 'meeting.clear', 'meeting.start', 'meeting.stop',
   'notify.test', 'notify.webhook', 'prompts.agent', 'prompts.set', 'queue.add',
   'queue.clear', 'queue.limit', 'queue.move', 'queue.remove', 'queue.retry',
@@ -88,5 +91,6 @@ export function guestMayFetch(p: string, url: URL, onAWall: (imageUrl: string) =
   // The jukebox's radio: a built-in station, or the stream on a floor's jukebox (the handler checks it's that one).
   if (p === '/api/radio') return radioRequestShape(url.searchParams);
   if (p === '/api/dj/beats') return true; // fork: the roof's lights, to the DJ set that's on
+  if (p === '/api/venue/beats') return true; // fork: the Schallwerk's lights and crowd, to its DJ set
   return false;
 }
