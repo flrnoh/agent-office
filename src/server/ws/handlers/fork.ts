@@ -24,6 +24,7 @@ import { karaokeHandlers } from './karaoke.js';
 import { bowlingHandlers } from './bowling.js';
 import { rideMessage } from '../../fork/ride.js';
 import { voiceRangeMessage } from '../../fork/voicerange.js';
+import { danceLeft, danceMessage } from '../../fork/dance.js';
 import { here } from './common.js';
 import { jukeboxChanged } from './jukebox.js';
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
@@ -178,6 +179,7 @@ export const forkHandlers = {
   'bike.ride': rideMessage, // a bike from the city's bike shop (fork/ride.ts)
   'bike.bell': rideMessage,
   'voice.range': voiceRangeMessage, // how far your voice carries (fork/voicerange.ts)
+  'dance.set': danceMessage, // dancing on the roof (fork/dance.ts)
   'tank.fill': tank,
   'tank.wash': tank,
   'trolley.set'(ctx, c, msg) {
@@ -220,6 +222,7 @@ export const forkHooks: FeatureHooks = {
     if (c.peer.floor === HALL) leftCourt(ctx, c.id); // out of the padel hall, off its courts
     ctx.soccer.leave(c.id); // out of the soccer hall, off its pitch
     if (c.peer.floor === ROOF) offRope(ctx, c.id); // and off the bungee rope
+    if (c.peer.floor === ROOF) danceLeft(ctx, c); // and off the dance floor
     rigLeft(ctx, c); // the racing rig
     boatLeft(ctx, c, was?.id); // out of a boat at the beach
     baumarktLeft(ctx, c, was?.id); // off the Baumarkt's forklift, trolleys and tools

@@ -48,14 +48,16 @@ export function installRooftop(ctx: Ctx, deps: RooftopDeps) {
   store.on('floors', syncRoof);
   /** How far into the DJ's set it is, on the office's clock, so everyone up there hears the same bar. */
   const djAt = () => djTime(store.officeNow());
+  /** Fork: what the roof moves to now, the set that's on or the house DJ (features/dance dances to it too). */
+  const frame = () => deps.setFrame?.() ?? djFrame(djAt());
   ctx.ticks.add('env', ({ dt, t }) => {
     if (ctx.upTop() && roof) {
       // Everything up there moves to the DJ's set; strobes flash the whole roof as a drop lands.
-      const strobe = roof.update(t, dt, deps.setFrame?.() ?? djFrame(djAt()), { dark: ctx.sky.lampsOn, motion: !ctx.reduceMotion.matches }); // fork: setFrame
+      const strobe = roof.update(t, dt, frame(), { dark: ctx.sky.lampsOn, motion: !ctx.reduceMotion.matches }); // fork: frame
       deps.ambient.intensity += strobe * 1.5;
       deps.hemi.intensity += strobe * 0.8;
     }
   });
 
-  return { roof: () => roof, theRoof, roofFloors, syncRoof, djAt };
+  return { roof: () => roof, theRoof, roofFloors, syncRoof, djAt, frame }; // frame: fork
 }

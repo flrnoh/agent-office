@@ -5,6 +5,7 @@ import type { BarGame } from '../bargames.js';
 import type { EmoteId } from '../emotes.js';
 import type { DrinkId } from '../rooftop.js';
 import type { BikeKind } from '../ride.js'; // flrnoh fork
+import type { DanceId } from '../dance.js'; // flrnoh fork
 import type { Me } from './accounts.js';
 import type { FloorInfo, FloorView, ProjectsDirState } from './floors.js';
 import type { LeaveOnMergeState, MachineState, MapState, NotifyState, PromptsState, SkyState, ThemeState, UpgradeState } from './settings.js';
@@ -46,6 +47,8 @@ export interface PeerInfo {
   bike?: BikeKind;
   /** flrnoh fork: how far their voice carries, in meters (shared/voicerange.ts); none is the default. */
   voiceRange?: number;
+  /** flrnoh fork: dancing on the roof, this move (shared/dance.ts). */
+  dance?: DanceId;
   /** Signed in with their own account, so `name` is theirs and nobody else can take it. */
   account?: boolean;
   /** The floor they're on (see FloorInfo); none while the building has no floors yet. */
