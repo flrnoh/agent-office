@@ -143,7 +143,7 @@ export function bellStrikes(hour: number): number {
  * `prev` and `now` (Unix ms): how many strikes, or 0. A jump of more than `maxGap` ms (the tab was
  * hidden, the page just opened) rings nothing, so the bells never strike late.
  */
-export function bellDue(prev: number, now: number, utcOffset: number, maxGap = 5000): number {
+export function bellDue(prev: number, now: number, utcOffset: number, maxGap = 10_000): number {
   if (now <= prev || now - prev > maxGap) return 0;
   const a = skyHour(prev, utcOffset);
   const b = skyHour(now, utcOffset);
@@ -178,7 +178,7 @@ export function siren(n: number): { n: number; at: number; bearing: number; dist
 }
 
 /** The siren that starts between `prev` and `now` (Unix ms of the office's clock), if one does and the jump's small. */
-export function sirenDue(prev: number, now: number, maxGap = 5000): ReturnType<typeof siren> | null {
+export function sirenDue(prev: number, now: number, maxGap = 10_000): ReturnType<typeof siren> | null {
   if (now <= prev || now - prev > maxGap) return null;
   const n = Math.round(now / SIREN_EVERY);
   for (const k of [n - 1, n, n + 1]) {
