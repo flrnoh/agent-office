@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { NotifyState, WebhookKind, WorkerInfo, WorkerStatus } from '../shared/protocol.js';
 import { alertDetail } from '../shared/status.js';
+import { OFFICE_NAME } from '../shared/brand.js'; // flrnoh fork
 
 /** A worker has to stay put this long before the channel hears about it, so a flicker never posts. */
 const SETTLE_MS = 5_000;
@@ -166,7 +167,7 @@ export class Webhook {
       body = { text: `*${slackEscape(msg.title)}*${msg.detail ? `\n>${slackEscape(msg.detail)}` : ''}` };
     } else if (kind === 'discord') {
       // No @everyone or role pings, whatever a worker's text says.
-      body = { content: `**${msg.title}**${msg.detail ? `\n> ${msg.detail}` : ''}`, username: 'Agent Office', allowed_mentions: { parse: [] } };
+      body = { content: `**${msg.title}**${msg.detail ? `\n> ${msg.detail}` : ''}`, username: OFFICE_NAME, allowed_mentions: { parse: [] } };
     } else {
       const w = msg.worker;
       body = {

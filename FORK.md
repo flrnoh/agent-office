@@ -33,6 +33,13 @@ Upstream split its hub files (`server.ts`, `main.ts`, `protocol.ts`, `sound.ts`,
 
 ## This fork's changes
 
+### Flogge Office
+
+Wherever people see the office's name it's **Flogge Office** (FLOGGE OFFICE on signs and banners), not Agent Office: the browser tab, the sign-in, join and password pages, the loading screen, the top-left name, the elevator's welcome, invites, the workers' service pages, the webhook's poster, pull requests' footers, the setup's welcome in the terminal, the Spielhalle's motif, the soccer hall's LED boards and the OFFICE GP billboards. The program keeps its name (`agent-office`, its commands, folders and settings), and so do the workers' prompts and tools (`office-queue`, `office-workers`).
+
+- `src/shared/brand.ts`: `OFFICE_NAME`, `OFFICE_SIGN`.
+- Hooks in upstream files: `src/client/{index,login,join,claim,lite}.html` (the name in place), `src/client/shared/title.ts`, `src/client/core/arrival.ts`, `src/client/ui/elevator.ts`, `src/client/ui/team.ts`, `src/server/relay.ts`, `src/server/webhook.ts`, `src/server/workers/pr.ts`, `src/server/setup.ts`. Fork files: `src/client/features/funshops/motifs.ts`, `src/client/world/soccer/matchday.ts`, `src/shared/racing.ts`. A sync bringing a new "Agent Office" somewhere people see it: use `OFFICE_NAME` there.
+
 ### No Halloween
 
 The building never dresses up for Halloween: the calendar (`auto`) only puts up Christmas in December, ⚙️ Settings doesn't offer Halloween, and a `theme.json` still saying `halloween` shows nothing. Upstream's Halloween models and costumes stay in the code, unused, so syncs don't conflict.

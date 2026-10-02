@@ -4,6 +4,7 @@ import type { Net } from '../net';
 import { store } from '../state';
 import { h, openModal } from './dom';
 import { confirmDialog } from './prompt';
+import { OFFICE_NAME } from '../../shared/brand'; // flrnoh fork
 
 export type Os = 'mac' | 'linux' | 'windows';
 export const OS_LABEL: Record<Os, string> = { mac: 'macOS', linux: 'Linux', windows: 'Windows' };
@@ -28,7 +29,7 @@ export function tunnelCommand(t: TeamState, os: Os): string {
 function inviteMessage(t: TeamState, os: Os): string {
   const project = store.project?.name ?? 'our';
   return [
-    `You're invited to the ${project} Agent Office. Run this in a terminal (${OS_LABEL[os]}):`,
+    `You're invited to ${project} at ${OFFICE_NAME}. Run this in a terminal (${OS_LABEL[os]}):`,
     '',
     tunnelCommand(t, os),
     '',
@@ -44,7 +45,7 @@ function inviteMessage(t: TeamState, os: Os): string {
 function tailnetMessage(t: TeamState): string {
   const project = store.project?.name ?? 'our';
   return [
-    `You're invited to the ${project} Agent Office: https://${t.tailnet}`,
+    `You're invited to ${project} at ${OFFICE_NAME}: https://${t.tailnet}`,
     '',
     "It's on our Tailscale network. If you aren't on it yet: install Tailscale (https://tailscale.com/download), sign in, and accept the invite I send you from Tailscale. Then open the link and sign in with the office password, or the account link you get from me.",
   ].join('\n');

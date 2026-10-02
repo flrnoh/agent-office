@@ -1,4 +1,5 @@
 import { POSTCARD_MOTIFS, seeded, type MotifId } from '../../../shared/funshops';
+import { OFFICE_SIGN } from '../../../shared/brand';
 
 // flrnoh fork (see FORK.md "Shops to walk into"): the fronts of the Post's postcards, the city drawn
 // on a canvas: the skyline at night, the cinema, the park, the beach, the office, the arcade's neon.
@@ -133,7 +134,7 @@ export function drawMotif(g: CanvasRenderingContext2D, id: MotifId) {
       g.fillStyle = '#e63946';
       g.font = 'bold 18px system-ui, sans-serif';
       g.textAlign = 'center';
-      g.fillText('AGENT OFFICE', 240, 34);
+      g.fillText(OFFICE_SIGN, 240, 34);
       break;
     case 'spielhalle':
       sky(g, '#0b0b1a', '#1a1033');
