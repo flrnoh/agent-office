@@ -297,8 +297,9 @@ export const CREEK: [number, number][] = [
 
 /** The farm by the road out of town to the east: the barn, the silo, the windmill, and its fields. */
 export const FARM = {
-  barn: { x: 96, z: 58, rotY: -0.25 },
-  silo: { x: 110, z: 50 },
+  // fork: barn, silo and pasture moved east for the Schallwerk (shared/venue.ts VENUE_BOX x 89..137), and so the cows aren't in the gym any more
+  barn: { x: 150, z: 58, rotY: -0.25 },
+  silo: { x: 162, z: 64 },
   windmill: { x: 128, z: -6 },
   fields: [
     { minX: 58, maxX: 132, minZ: 70, maxZ: 104 },
@@ -306,7 +307,7 @@ export const FARM = {
     { minX: 92, maxX: 150, minZ: -40, maxZ: 14 },
   ],
   /** The fenced field the cows are in, by the barn. */
-  pasture: { minX: 48, maxX: 86, minZ: 38, maxZ: 62 },
+  pasture: { minX: 138, maxX: 166, minZ: 74, maxZ: 100 },
 } as const;
 
 /**

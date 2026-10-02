@@ -8,6 +8,7 @@ import { GYM, GYM_ENTRY } from '../../shared/gym.js';
 import { HALL } from '../../shared/hall.js';
 import { SOCCER } from '../../shared/soccer.js';
 import { BOWLING } from '../../shared/bowling.js';
+import { VENUE, VENUE_ENTRY } from '../../shared/venue.js';
 import type { Ctx } from '../office/context.js';
 import type { Client } from '../office/client.js';
 import type { Spot } from '../office/input.js';
@@ -68,6 +69,8 @@ export interface Fork {
   toHall(m: ServerMsg, except?: string, droppable?: boolean): void;
   /** To everyone in the bowling centre (its lanes, karaoke and mini golf all talk to the whole room). */
   toBowling(m: ServerMsg, except?: string, droppable?: boolean): void;
+  /** To everyone in the Schallwerk (its instruments, rehearsal rooms and show sort out among themselves who hears what). */
+  toVenue(m: ServerMsg, except?: string, droppable?: boolean): void;
   /** Tells a floor who's at its racing rig now. */
   rigChanged(floorId: string): void;
   /** A picture hanging on some floor's wall: the one thing a guest may fetch through the image proxy. */
@@ -77,7 +80,7 @@ export interface Fork {
 }
 
 /** The places across the street: like the roof, places of their own with none of a floor's things. */
-export const PLACES = [CASINO, GYM, HALL, SOCCER, BOWLING] as const;
+export const PLACES = [CASINO, GYM, HALL, SOCCER, BOWLING, VENUE] as const;
 export const isPlace = (floor: unknown): floor is (typeof PLACES)[number] => (PLACES as readonly unknown[]).includes(floor);
 
 /** Who someone is to the fork's keepers (the casino's wallets, the gym, the postcards). */
@@ -156,6 +159,7 @@ export function createFork(ctx: Ctx): Fork {
     toRoof: to(ROOF),
     toHall: to(HALL),
     toBowling: to(BOWLING),
+    toVenue: to(VENUE),
     rigChanged: (floorId) => {
       const f = floors.get(floorId);
       if (f) ctx.toFloor(f, { t: 'rig', state: rigs.state(floorId) });
@@ -182,6 +186,7 @@ const ENTRY: Record<(typeof PLACES)[number], Spot> = {
   [HALL]: HALL_ARRIVAL,
   [SOCCER]: SOCCER_ARRIVAL,
   [BOWLING]: BOWLING_ARRIVAL,
+  [VENUE]: { x: VENUE_ENTRY.x, y: 0, z: VENUE_ENTRY.z, rotY: VENUE_ENTRY.rotY },
 };
 
 /** Into one of the places once they're in: the casino, the gym and the soccer hall keep a list of who's there. */
