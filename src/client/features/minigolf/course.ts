@@ -288,7 +288,10 @@ export function buildHole(def: HoleDef): HoleView {
   const mat = new THREE.PlaneGeometry(0.5, 0.36);
   mat.rotateX(-Math.PI / 2);
   mat.translate(def.tee.x, teeY + 0.003, def.tee.z + 0.03);
-  still.add(mat, unlit(color.clone().multiplyScalar(1.6).getStyle()));
+  // Its own mesh: on the first hole the crosshair finds the tee by it (index.ts).
+  const teeMat = new THREE.Mesh(mat, unlit(color.clone().multiplyScalar(1.6).getStyle()));
+  teeMat.name = 'minigolf-tee';
+  group.add(teeMat);
   still.add(stripGeo(def.tee.x - 0.25, def.tee.z - 0.15, def.tee.x + 0.25, def.tee.z - 0.15, teeY + 0.005, 0.02), unlit('#ffffff'));
   still.build(group);
   const sign = holeSign(def);

@@ -78,6 +78,7 @@ export class Putter {
     g.translate(0, 0, 0.5);
     this.guide = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.55, depthWrite: false }));
     this.guide.visible = false;
+    this.guide.raycast = () => {}; // the crosshair goes through it
     window.addEventListener('keydown', (e) => this.key(e, true));
     window.addEventListener('keyup', (e) => this.key(e, false));
     window.addEventListener('blur', () => this.stage === 'charge' && this.cancel());

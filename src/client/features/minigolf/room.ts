@@ -3,7 +3,7 @@ import { BOWLING_ROOM, ZONES } from '../../../shared/bowling';
 import { MG_BOARD, MG_DOOR, MG_ROOM, MG_STAND, MG_WALL } from '../../../shared/minigolf';
 import { mesh, toon } from '../../world/toon';
 import type { Collider } from '../../world/types';
-import { BAKED, Batch, dotTexture, halo, stripGeo, unlit } from './look';
+import { BAKED, Batch, dotTexture, halo, noPick, stripGeo, unlit } from './look';
 import { NEON, carpetTexture, muralTexture, rng, signTexture } from './paint';
 
 /*
@@ -17,6 +17,9 @@ import { NEON, carpetTexture, muralTexture, rng, signTexture } from './paint';
 export interface MinigolfRoom {
   group: THREE.Group;
   colliders: Collider[];
+  /** What the crosshair finds for the stand and the board (index.ts tags them with what E does there). */
+  stand: THREE.Object3D;
+  boardFace: THREE.Object3D;
   /** The scorecard board's canvas and texture (board.ts draws on it). */
   board: { canvas: HTMLCanvasElement; texture: THREE.CanvasTexture };
   /** Every frame: the curtain sways (harder with someone near the door), the tubes hum. */
@@ -148,7 +151,7 @@ export function buildRoom(): MinigolfRoom {
     const m = new THREE.Mesh(g, unlit(NEON[i % NEON.length], { transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
     m.position.set(MG_DOOR.x0 + 0.08 + (i / (strips - 1)) * (MG_DOOR.x1 - MG_DOOR.x0 - 0.16), MG_DOOR.height - 0.02, sz);
     m.userData.phase = r() * Math.PI * 2;
-    curtain.push(m);
+    curtain.push(noPick(m));
     group.add(m);
   }
 
@@ -186,11 +189,14 @@ export function buildRoom(): MinigolfRoom {
       stand.baked(ball, NEON[(i * 2 + k) % NEON.length], 1);
     }
   }
-  stand.build(group);
+  const standGroup = new THREE.Group();
+  standGroup.name = 'minigolf-stand';
+  stand.build(standGroup);
+  group.add(standGroup);
   const standSign = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.36), new THREE.MeshBasicMaterial({ map: signTexture([{ text: 'Schläger & Bälle', color: '#fffb00', size: 64 }], 512, 132), transparent: true }));
   standSign.position.set(s.x, 2.3, R.maxZ - 0.02);
   standSign.rotation.y = Math.PI;
-  group.add(standSign);
+  standGroup.add(standSign);
   colliders.push({ minX: s.x - s.width / 2, maxX: s.x + s.width / 2, minZ: s.z - s.depth / 2, maxZ: R.maxZ, top: 1 });
 
   // The scorecard board, framed in neon, on the south wall.
@@ -204,7 +210,10 @@ export function buildRoom(): MinigolfRoom {
   const board = new THREE.Mesh(new THREE.PlaneGeometry(b.width, b.height), new THREE.MeshBasicMaterial({ map: texture }));
   board.position.set(b.x, b.y + b.height / 2, b.z - 0.02);
   board.rotation.y = Math.PI;
-  group.add(board);
+  const boardGroup = new THREE.Group();
+  boardGroup.name = 'minigolf-board';
+  boardGroup.add(board);
+  group.add(boardGroup);
   const frame = new Batch();
   const fz = b.z - 0.025;
   const corners: [number, number][] = [
@@ -222,7 +231,7 @@ export function buildRoom(): MinigolfRoom {
     bar.translate((ax + bx2) / 2, (ay + by) / 2, fz);
     frame.add(bar, unlit('#00e5ff'));
   }
-  frame.build(group);
+  frame.build(boardGroup);
 
   // The corner to sit in (north-west, past the last hole): benches with glowing edges, a jellyfish lamp.
   const lounge = new Batch();
@@ -248,6 +257,7 @@ export function buildRoom(): MinigolfRoom {
   jelly.add(bell);
   const glowBall = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTexture(), color: '#ff2bd6', transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false }));
   glowBall.scale.set(2, 2, 1);
+  noPick(glowBall);
   jelly.add(glowBall);
   const tentacles: THREE.Mesh[] = [];
   for (let i = 0; i < 9; i++) {
@@ -276,6 +286,8 @@ export function buildRoom(): MinigolfRoom {
     group,
     colliders,
     board: { canvas, texture },
+    stand: standGroup,
+    boardFace: boardGroup,
     update(t, near) {
       const busy = near((MG_DOOR.x0 + MG_DOOR.x1) / 2, Z.maxZ, 1.6);
       for (const m of curtain) {

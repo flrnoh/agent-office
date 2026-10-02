@@ -3,7 +3,7 @@ import { BRIDGE, BUMPERS, PLANET, TOWER, VOLCANO } from '../../../shared/minigol
 import { BALL_R, heightAt, loopPoint, sailAngle, slideAt, spinAngle, type Loop } from '../../../shared/minigolf-physics';
 import type { Collider } from '../../world/types';
 import type { HoleView } from './course';
-import { Batch, dotTexture, halo, stripGeo, unlit } from './look';
+import { Batch, dotTexture, halo, noPick, stripGeo, unlit } from './look';
 import { NEON, rng } from './paint';
 
 /*
@@ -166,7 +166,7 @@ export function buildObstacles(holes: HoleView[]): Obstacles {
         const glowBox = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.8), halo('#ff7a00', 0.4));
         glowBox.rotation.x = -Math.PI / 2;
         glowBox.position.set(0, -v.def.base + 0.06, -4.4);
-        pit.add(glowBox);
+        pit.add(noPick(glowBox));
         v.group.add(pit);
         ticks.push((t) => (lava.offset.set(Math.sin(t * 0.3) * 0.05, t * 0.04)));
         // Chevrons up the ramp.
@@ -194,7 +194,7 @@ export function buildObstacles(holes: HoleView[]): Obstacles {
         planet.add(ring);
         const ringGlow = new THREE.Mesh(new THREE.RingGeometry(R * 1.22, R * 1.65, 64), halo('#ff2bd6', 0.18));
         ringGlow.rotation.copy(ring.rotation);
-        planet.add(ringGlow);
+        planet.add(noPick(ringGlow));
         v.group.add(planet);
         ticks.push((t) => {
           sphere.rotation.y = t * 0.12;
@@ -261,7 +261,7 @@ export function buildObstacles(holes: HoleView[]): Obstacles {
         const steam = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTexture(), color: '#ff5a00', transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
         steam.position.set(VOLCANO.x, 0.75, VOLCANO.z);
         steam.scale.set(1.4, 1.4, 1);
-        v.group.add(steam);
+        v.group.add(noPick(steam));
         ticks.push((t) => {
           const k = 0.5 + 0.5 * Math.sin(t * 1.3);
           steam.material.opacity = 0.3 + 0.25 * k;
@@ -279,12 +279,12 @@ export function buildObstacles(holes: HoleView[]): Obstacles {
         const sea = new THREE.Mesh(new THREE.PlaneGeometry(1.0, from - to), halo('#00e5ff', 0.22));
         sea.rotation.x = -Math.PI / 2;
         sea.position.set(0, -0.05, (from + to) / 2);
-        v.group.add(sea);
+        v.group.add(noPick(sea));
         const jellies: THREE.Sprite[] = [];
         for (let i = 0; i < 3; i++) {
           const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTexture(), color: NEON[[1, 5, 2][i]], transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
           s.scale.setScalar(0.14);
-          v.group.add(s);
+          v.group.add(noPick(s));
           jellies.push(s);
         }
         const bridge = v.moving.get('bridge');

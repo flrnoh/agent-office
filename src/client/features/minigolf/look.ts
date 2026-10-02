@@ -119,6 +119,15 @@ export function placed(geo: THREE.BufferGeometry, x: number, y: number, z: numbe
   return geo.applyMatrix4(m);
 }
 
+/** Light laid over things (halos, glows, a ball's sprite): the crosshair goes straight through it. */
+export function noPick<T extends THREE.Object3D>(o: T): T {
+  o.raycast = () => {};
+  return o;
+}
+
+/** Whether a material is only a glow (added on top, writing no depth): never in the crosshair's way. */
+const isGlow = (m: THREE.Material) => m.blending === THREE.AdditiveBlending || (m.transparent && !m.depthWrite);
+
 /** Collects pieces by material and makes one mesh of each lot. */
 export class Batch {
   private lots = new Map<THREE.Material, THREE.BufferGeometry[]>();
@@ -150,6 +159,7 @@ export class Batch {
       if (!merged) continue;
       const m = new THREE.Mesh(merged, mat);
       m.renderOrder = renderOrder;
+      if (isGlow(mat)) noPick(m);
       m.matrixAutoUpdate = false;
       m.updateMatrix();
       into.add(m);

@@ -3,7 +3,7 @@ import { MG_COLORS, clockSec, type MgShot, type MgView } from '../../../shared/m
 import { HOLES, toRoom, type HoleDef } from '../../../shared/minigolf-holes';
 import { BALL_R, putt, settled, step, support, type Ball, type BallEvent } from '../../../shared/minigolf-physics';
 import { feltAt } from './course';
-import { dotTexture } from './look';
+import { dotTexture, noPick } from './look';
 
 /*
  * Everyone's balls in the mini golf room (flrnoh fork, see FORK.md "Black-light mini golf"): lying
@@ -100,6 +100,9 @@ export class Balls {
     tg.setDrawRange(0, 0);
     const trail = new THREE.Line(tg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     trail.frustumCulled = false;
+    noPick(mesh);
+    noPick(glow);
+    noPick(trail);
     this.group.add(mesh, glow, trail);
     return { mesh, glow, trail, trailPts, trailN: 0, color };
   }

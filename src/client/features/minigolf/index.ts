@@ -162,7 +162,17 @@ export function installMinigolf(ctx: Ctx, deps: MinigolfDeps) {
     group.add(putter.guide);
     room.group.add(group);
     room.colliders.push(...r.colliders, ...obstacles.colliders);
-    room.interactables.push(...spots());
+    const all = spots();
+    room.interactables.push(...all);
+    // In first person E is what's under the crosshair: the stand, the board, a hole's felt, rails and
+    // obstacles (over your ball), the first tee's mat. Glows and balls let the crosshair through (look.ts noPick).
+    const tag = (o: THREE.Object3D, it: Interactable | undefined) => it && o.traverse((x) => (x.userData.interact = it));
+    tag(r.stand, all.find((it) => it.mg?.what === 'stand'));
+    tag(r.boardFace, all.find((it) => it.mg?.what === 'board'));
+    for (const v of holes) {
+      tag(v.group, all.find((it) => it.mg?.what === 'lane' && it.mg.hole === v.def.n));
+      if (v.def.n === 1) tag(v.group.getObjectByName('minigolf-tee')!, all.find((it) => it.mg?.what === 'tee'));
+    }
     built = { room: r, group, holes, obstacles, balls };
     if (view) balls.set(view);
     boardDirty = true;
@@ -220,7 +230,9 @@ export function installMinigolf(ctx: Ctx, deps: MinigolfDeps) {
       return true;
     }
     const fresh = p.hole === 0 || (p.hole === 1 && p.strokes === 0 && p.card.every((n) => n === null));
-    if (spot.what === 'tee' && fresh && !p.group) {
+    // At the first hole with no round going: a round for everyone with a putter there (or a new one after
+    // a finished round); alone, straight over the ball to play freely.
+    if (spot.hole === 1 && fresh && !p.group && (p.hole === 0 || nearTee() > 1)) {
       ctx.net.send({ t: 'mg.group' });
       return true;
     }
@@ -254,9 +266,10 @@ export function installMinigolf(ctx: Ctx, deps: MinigolfDeps) {
     const others = here.length ? aside(`hier: ${here.slice(0, 3).join(', ')}${here.length > 3 ? ' …' : ''}`) : '';
     if (!p) return { k: `lane|${def.n}|none|${here.join()}`, parts: [title, others, aside('Schläger & Bälle am Eingang')] };
     const fresh = p.hole === 0 || (p.hole === 1 && p.strokes === 0 && p.card.every((n) => n === null));
-    if (spot.what === 'tee' && fresh && !p.group) {
+    if (def.n === 1 && fresh && !p.group) {
       const near = nearTee();
-      return { k: `tee|${near}`, parts: [title, key('E', near > 1 ? `Runde mit allen hier (${near})` : 'Runde starten'), aside(near > 1 ? 'ihr wechselt euch ab' : 'allein – oder warte auf Freunde')] };
+      if (p.hole === 0 || near > 1) return { k: `tee|${near}|${p.hole}`, parts: [title, key('E', near > 1 ? `Runde mit allen hier (${near})` : 'Neue Runde'), aside(near > 1 ? 'ihr wechselt euch ab' : 'allein – oder warte auf Freunde')] };
+      return { k: 'tee|solo', parts: [title, key('E', 'Zum Ball'), aside('allein spielen – Freunde mit Schläger hier? Dann gemeinsam')] };
     }
     if (p.hole !== def.n) return { k: `lane|${def.n}|other|${p.hole}|${here.join()}`, parts: [title, others, aside(p.hole ? `dein Ball: Bahn ${p.hole}` : `${standing(view, p.id)} – Runde fertig`)] };
     const t = turn();
@@ -289,7 +302,7 @@ export function installMinigolf(ctx: Ctx, deps: MinigolfDeps) {
     },
   });
   ctx.interactions.define('minigolf', {
-    reach: 3,
+    reach: 3.4,
     hint: (it) => hint(it) ?? { k: '', parts: [] },
     use: (it, k) => void use(it, k),
   });
