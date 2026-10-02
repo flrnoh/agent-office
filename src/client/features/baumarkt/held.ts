@@ -228,7 +228,7 @@ export function heldThings(ctx: Ctx, deps: HeldDeps) {
       mineSwing = swing;
       // Low in your right hand, its business end ahead; the hammer swings down in front of you.
       const paint = paintOf(view.item) >= 0;
-      view.holder.position.set(0.27 + (Math.random() - 0.5) * buzz, (paint ? -0.27 : -0.21) + (Math.random() - 0.5) * buzz, -0.56);
+      view.holder.position.set(0.19 + (Math.random() - 0.5) * buzz, (paint ? -0.2 : -0.12) + (Math.random() - 0.5) * buzz, -0.52);
       view.holder.rotation.set(0.05 - swing * 1.1, -0.12, 0);
       view.holder.scale.setScalar(0.6);
     }

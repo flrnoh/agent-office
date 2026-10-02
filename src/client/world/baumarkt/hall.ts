@@ -139,20 +139,22 @@ export function buildHall(group: THREE.Group, colliders: Collider[], night: Nigh
       g.fillRect(0, 0, W, H);
       g.fillStyle = ORANGE;
       g.fillRect(0, H * 0.78, W, H * 0.22);
-      // A hammer for the logo.
+      // The name, and a hammer before it for the logo, the two of them in the middle.
+      g.font = `900 ${H * 0.5}px Nunito, ui-rounded, system-ui, sans-serif`;
+      const name = Math.min(g.measureText('HAMMER & CO').width, W - H * 1.4);
+      const x0 = (W - name - H * 0.85) / 2;
       g.save();
-      g.translate(H * 0.4, H * 0.4);
+      g.translate(x0 + H * 0.3, H * 0.42);
       g.rotate(-0.6);
       g.fillStyle = '#7a4b2a';
-      g.fillRect(-H * 0.04, -H * 0.05, H * 0.08, H * 0.4);
+      g.fillRect(-H * 0.04, -H * 0.05, H * 0.08, H * 0.36);
       g.fillStyle = BLUE;
-      g.fillRect(-H * 0.17, -H * 0.16, H * 0.34, H * 0.13);
+      g.fillRect(-H * 0.16, -H * 0.15, H * 0.32, H * 0.12);
       g.restore();
-      g.font = `900 ${H * 0.5}px Nunito, ui-rounded, system-ui, sans-serif`;
       g.fillStyle = BLUE;
       g.textAlign = 'left';
       g.textBaseline = 'middle';
-      g.fillText('HAMMER & CO', H * 0.85, H * 0.4, W - H * 0.95);
+      g.fillText('HAMMER & CO', x0 + H * 0.85, H * 0.4, name);
       g.font = `900 ${H * 0.16}px Nunito, ui-rounded, system-ui, sans-serif`;
       g.fillStyle = '#ffffff';
       g.textAlign = 'center';
