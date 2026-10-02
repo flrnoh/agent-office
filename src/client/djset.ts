@@ -1,4 +1,4 @@
-import { DJ_SET_SITES, djSetTitle, sameDjSet, type DjSet } from '../shared/djset';
+import { DJ_SET_SITES, djSetTitle, sameDjSet, type DjSet, type DjSetState } from '../shared/djset';
 import { EmbedPlayer, embedFrame, loadScript, youtubeDeck, type Deck, type DeckEvents, type EmbedHooks, type EmbedPhase } from './embeds';
 
 /*
@@ -158,6 +158,22 @@ export class DjSetPlayer extends EmbedPlayer<DjSet> {
   /** Whether you're up on the roof. */
   setUp(up: boolean) {
     this.setOn(up);
+  }
+
+  /** What's on, with how the office hearing it is going and any tempo tapped for it. */
+  override current(): DjSetState {
+    return super.current() as DjSetState;
+  }
+
+  /** Where the set's own player is in it, in seconds, when it says (for the lights, see features/djset/frame.ts). */
+  heardAt(): Promise<number | undefined> {
+    return this.phase() === 'playing' && this.deck ? this.deck.position().catch(() => undefined) : Promise.resolve(undefined);
+  }
+
+  /** Where everyone is in the set, in seconds, by the office's clock. */
+  expectedAt(now: number): number {
+    const s = this.current();
+    return s.set ? s.set.start + Math.max(0, now - s.startedAt) / 1000 : 0;
   }
 
   /** Whether the house DJ keeps quiet: while a set is on and this page hasn't given up on it. */

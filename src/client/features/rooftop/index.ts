@@ -8,7 +8,7 @@ import { roofDrop } from '../../../shared/layout';
 import type { Ctx } from '../../core/context';
 import { builtFloors, floorWings } from '../../core/floors';
 import { noOutline } from '../../core/outline';
-import { djFrame, djTime } from '../../dnb';
+import { djFrame, djTime, type DjFrame } from '../../dnb';
 import { store } from '../../state';
 import { buildRooftop, type Rooftop } from './world';
 
@@ -16,6 +16,8 @@ export interface RooftopDeps {
   /** The office's lights, which the roof's strobes flash as a drop lands. */
   ambient: THREE.AmbientLight;
   hemi: THREE.HemisphereLight;
+  /** Fork: the DJ set someone put on, when one plays (features/djset/frame.ts); else the house DJ's. */
+  setFrame?: () => DjFrame | null;
 }
 
 export function installRooftop(ctx: Ctx, deps: RooftopDeps) {
@@ -49,7 +51,7 @@ export function installRooftop(ctx: Ctx, deps: RooftopDeps) {
   ctx.ticks.add('env', ({ dt, t }) => {
     if (ctx.upTop() && roof) {
       // Everything up there moves to the DJ's set; strobes flash the whole roof as a drop lands.
-      const strobe = roof.update(t, dt, djFrame(djAt()), { dark: ctx.sky.lampsOn, motion: !ctx.reduceMotion.matches });
+      const strobe = roof.update(t, dt, deps.setFrame?.() ?? djFrame(djAt()), { dark: ctx.sky.lampsOn, motion: !ctx.reduceMotion.matches }); // fork: setFrame
       deps.ambient.intensity += strobe * 1.5;
       deps.hemi.intensity += strobe * 0.8;
     }

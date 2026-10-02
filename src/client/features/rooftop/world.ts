@@ -3,6 +3,8 @@ import { AXE_LANE } from '../../../shared/bargames';
 import { DANCE_FLOOR, DJ_BOOTH, ELEVATOR, ELEVATOR_FRONT, FIRE_PIT, FLOOR, ROOF_BAR, ROOF_TABLES, SEATING_BY_ID, STAGE, WALL_HEIGHT, WALL_T } from '../../../shared/layout';
 import type { DjFrame } from '../../dnb';
 import { buildBarGames, type BarGamesView } from '../bargames/world';
+import { Dj } from './dancer'; // fork: the DJ's moves
+import { buildLedWall, type WallInfo } from './ledwall'; // fork: the LED wall's visuals
 import { buildRoofTables, type RoofTablesView } from '../../tablegames/models'; // fork: games on the roof
 import { BUNGEE } from '../../../shared/bungee'; // fork: bungee off the roof
 import { buildBungeeJetty, type BungeeJetty } from '../../world/bungee'; // fork: bungee off the roof
@@ -12,7 +14,7 @@ import { buildElevator, type Elevator } from '../../world/elevator';
 import type { Collider, Interactable } from '../../world/types';
 import { bulb, type NightParts } from '../../world/outside';
 import { canvasTexture } from '../../world/texture';
-import { mergeByMaterial, mesh, roundedBox, toon, toonUnique } from '../../world/toon';
+import { mergeByMaterial, mesh, roundedBox, toon } from '../../world/toon';
 
 // The rooftop bar, on top of the building (see shared/rooftop.ts): a deck with a glass railing round
 // it and the city all around, the elevator's housing where you arrive, a DJ on a stage under a rig
@@ -162,85 +164,7 @@ function boxCollider(x: number, z: number, w: number, d: number, rotY: number, t
   return { minX: x - hw, maxX: x + hw, minZ: z - hd, maxZ: z + hd, top };
 }
 
-// ---- The DJ ----------------------------------------------------------------------------------------
-
-/** The DJ: headphones on, cap on backwards, sunglasses at night, moving to the music. Faces +z. */
-class Dj {
-  readonly root = new THREE.Group();
-  private body = new THREE.Group();
-  private head = new THREE.Group();
-  /** Arms on the -x and +x sides (their right and left, facing +z). */
-  private armR: THREE.Group;
-  private armL: THREE.Group;
-
-  constructor() {
-    const skin = toon('#8d5524');
-    const shirt = toonUnique('#1d1d1d');
-    const pants = toon('#3d405b');
-    const ink = toon('#111111');
-    this.root.add(this.body);
-    this.body.add(mesh(new THREE.CapsuleGeometry(0.26, 0.28, 6, 12), shirt, 0, 0.72, 0));
-    // A print on the front of the tee.
-    this.body.add(mesh(new THREE.CircleGeometry(0.1, 16), toon('#06d6a0'), 0, 0.78, 0.262, false));
-    const head = this.head;
-    head.position.y = 1.32;
-    head.add(mesh(new THREE.SphereGeometry(0.34, 20, 16), skin));
-    // The cap, on backwards.
-    const capMat = toon('#ef476f');
-    const cap = mesh(new THREE.SphereGeometry(0.36, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), capMat, 0, 0.04, 0);
-    head.add(cap);
-    head.add(mesh(new THREE.BoxGeometry(0.3, 0.03, 0.22), capMat, 0, 0.06, -0.4));
-    // Sunglasses.
-    head.add(mesh(new THREE.BoxGeometry(0.44, 0.09, 0.05), ink, 0, 0.04, 0.31, false));
-    const smile = mesh(new THREE.TorusGeometry(0.06, 0.015, 6, 12, Math.PI), ink, 0, -0.1, 0.31, false);
-    smile.rotation.z = Math.PI;
-    head.add(smile);
-    // Headphones: a band over the cap and a cup on each ear.
-    const band = mesh(new THREE.TorusGeometry(0.39, 0.035, 8, 24, Math.PI), ink, 0, 0.02, 0, false);
-    head.add(band);
-    for (const s of [-1, 1]) {
-      const cup = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.09, 16), toon('#3d405b'), s * 0.36, 0.02, 0, false);
-      cup.rotation.z = Math.PI / 2;
-      head.add(cup);
-    }
-    this.body.add(head);
-    const limb = (len: number, r: number, mat: THREE.Material, x: number, y: number) => {
-      const pivot = new THREE.Group();
-      pivot.position.set(x, y, 0);
-      pivot.add(mesh(new THREE.CapsuleGeometry(r, len, 4, 8), mat, 0, -len / 2 - r / 2, 0));
-      this.body.add(pivot);
-      return pivot;
-    };
-    limb(0.22, 0.1, pants, -0.12, 0.42);
-    limb(0.22, 0.1, pants, 0.12, 0.42);
-    this.armR = limb(0.24, 0.08, shirt, -0.33, 0.9);
-    this.armL = limb(0.24, 0.08, shirt, 0.33, 0.9);
-    for (const arm of [this.armR, this.armL]) arm.add(mesh(new THREE.SphereGeometry(0.085, 12, 10), skin, 0, -0.38, 0));
-  }
-
-  update(t: number, f: DjFrame, motion: boolean) {
-    const e = f.energy;
-    const phase = f.beats % 1;
-    const m = motion ? 1 : 0.3;
-    // Bouncing on every beat, and nodding along.
-    this.body.position.y = -0.05 * e * m * Math.sin(phase * Math.PI);
-    this.head.rotation.x = 0.28 * m * (0.35 + 0.65 * e) * Math.max(0, Math.sin(phase * Math.PI * 2));
-    this.head.rotation.z = 0.06 * m * Math.sin(f.beats * Math.PI * 0.5);
-    // Their right hand's on the mixer, riding the faders.
-    this.armR.rotation.set(-1.15 + 0.05 * Math.sin(t * 7), 0, 0.25 + 0.06 * Math.sin(t * 3.1));
-    const fist = f.sinceDrop < 3.2 && motion;
-    if (fist) {
-      // The drop: a fist in the air, pumping on the beat.
-      this.armL.rotation.set(0, 0, 2.9 - 0.3 * Math.sin(phase * Math.PI));
-    } else if (f.part === 'build' || f.part === 'intro' || (f.part === 'breakdown' && f.beats % 16 < 8)) {
-      // One cup of the headphones held to their ear, listening for the next track.
-      this.armL.rotation.set(-0.2, 0, 2.55);
-    } else {
-      // Working the jog wheel.
-      this.armL.rotation.set(-1.2 + 0.08 * Math.sin(t * 11), 0, -0.2 + 0.12 * Math.sin(t * 5.3));
-    }
-  }
-}
+// ---- The DJ: features/rooftop/dancer.ts (fork) ----------------------------------------------------
 
 // ---- The rooftop --------------------------------------------------------------------------------
 
@@ -392,17 +316,14 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
     colliders.push({ minX: sx - 0.6, maxX: sx + 0.6, minZ: z - 0.45, maxZ: z + 0.45, top: 99 });
   }
 
-  // The LED wall behind the DJ.
-  const led = canvasTexture(512, 256);
-  const ledMat = new THREE.MeshBasicMaterial({ map: led });
-  ledMat.toneMapped = false;
-  const ledW = 8;
-  const ledH = 4;
-  group.add(mesh(new THREE.PlaneGeometry(ledW, ledH), ledMat, scx, STAGE.height + 0.35 + ledH / 2, STAGE.minZ + 0.2, false));
+  // The LED wall behind the DJ (fork: wider and taller, its visuals drawn on the GPU in ledwall.ts).
+  const ledW = 9.6;
+  const ledH = 4.6;
+  const wall = buildLedWall(ledW, ledH);
+  wall.mesh.position.set(scx, STAGE.height + 0.35 + ledH / 2, STAGE.minZ + 0.2);
+  group.add(wall.mesh);
   statics.add(mesh(new THREE.BoxGeometry(ledW + 0.3, ledH + 0.3, 0.25), toon('#1d1d1d'), scx, STAGE.height + 0.35 + ledH / 2, STAGE.minZ + 0.06));
   colliders.push({ minX: scx - ledW / 2, maxX: scx + ledW / 2, minZ: STAGE.minZ, maxZ: STAGE.minZ + 0.35, top: 99 });
-  const ledCtx = (led.image as HTMLCanvasElement).getContext('2d')!;
-  let ledAt = -1;
 
   // The rig: a truss tower either side of the stage and a beam across, with moving heads hanging off it.
   const truss = toon('#c9d1d9');
@@ -803,57 +724,6 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
   // ---- Moving it all to the music ---------------------------------------------------------------
   const tmp = new THREE.Color();
   const tmp2 = new THREE.Color();
-  /** `calm`: the slow washes whatever the set is doing, for anyone who'd rather nothing flashed. */
-  const drawLed = (f: DjFrame, t: number, calm: boolean) => {
-    const g = ledCtx;
-    const W = 512;
-    const H = 256;
-    g.globalAlpha = 1;
-    g.fillStyle = '#07060d';
-    g.fillRect(0, 0, W, H);
-    const base = f.hue * 360;
-    if (!calm && f.part === 'drop') {
-      // An equalizer, jumping with the kick.
-      const n = 24;
-      for (let i = 0; i < n; i++) {
-        const v = 0.25 + 0.75 * Math.abs(Math.sin(i * 1.7 + t * 4.3 + f.beats * 0.9)) * (0.55 + 0.45 * f.kick);
-        g.fillStyle = `hsl(${(base + i * 7) % 360}, 95%, 58%)`;
-        g.fillRect(i * (W / n) + 3, H - v * H, W / n - 6, v * H);
-      }
-      g.globalAlpha = 0.35 + 0.65 * f.snare;
-    } else if (!calm && f.part === 'build') {
-      // Stripes racing up, faster and faster, and a bar filling up to the drop.
-      const speed = 60 + 420 * f.rise;
-      for (let y = -40; y < H; y += 40) {
-        g.fillStyle = `hsla(${(base + y) % 360}, 90%, 55%, ${0.25 + 0.5 * f.rise})`;
-        g.fillRect(0, (y + ((t * speed) % 40) + H) % (H + 40) - 40, W, 14);
-      }
-      g.fillStyle = '#ffffff';
-      g.fillRect(40, H - 34, (W - 80) * f.rise, 12);
-      g.globalAlpha = 0.6 + 0.4 * f.beat;
-    } else {
-      // Slow washes of color.
-      for (let i = 0; i < 3; i++) {
-        const x = W / 2 + Math.sin(t * 0.4 + i * 2.1) * W * 0.35;
-        const y = H / 2 + Math.cos(t * 0.3 + i * 1.7) * H * 0.3;
-        const grad = g.createRadialGradient(x, y, 0, x, y, 170);
-        grad.addColorStop(0, `hsla(${(base + i * 60) % 360}, 90%, 55%, 0.8)`);
-        grad.addColorStop(1, 'hsla(0, 0%, 0%, 0)');
-        g.fillStyle = grad;
-        g.fillRect(0, 0, W, H);
-      }
-      g.globalAlpha = 0.85;
-    }
-    const words = f.part === 'drop' ? 'AGENT OFFICE' : f.part === 'build' ? 'GET READY' : 'DJ MERGE CONFLICT';
-    fitFont(g, words, 60, W - 40);
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillStyle = '#ffffff';
-    g.fillText(words, W / 2, H * 0.42);
-    g.globalAlpha = 1;
-    led.needsUpdate = true;
-  };
-
   return {
     group,
     colliders,
@@ -880,7 +750,7 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
       const show = 0.3 + 0.7 * dark;
       elevator.update(dt);
       games.update(dt, dark);
-      dj.update(t, f, motion);
+      dj.update(t, f, motion, dt);
 
       // The bartender drifts along the bar between customers, and comes over when someone orders.
       wander -= dt;
@@ -994,11 +864,7 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
       glows.visible = dark > 0.02;
       neonMat.opacity = 0.9 + 0.1 * Math.sin(t * 3);
       jog.color.copy(hue(tmp, f.hue + 0.6, 0.55));
-      // The LED wall redraws twenty times a second.
-      if (t - ledAt > 0.05) {
-        ledAt = t;
-        drawLed(f, t, !motion);
-      }
+      wall.update(f as DjFrame & WallInfo, t, !motion, dark);
       // Strobes: on each snare as the drop lands and through the build's last bar, a couple a second at most.
       if (!motion) return 0;
       if (drop && f.sinceDrop < 6) return f.snare;
