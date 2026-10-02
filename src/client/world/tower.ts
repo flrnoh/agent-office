@@ -187,7 +187,8 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
       const f = FACES[side];
       const g = new THREE.Group();
       const len = f.u1 - f.u0 + 2 * out;
-      g.add(mesh(new THREE.BoxGeometry(len, H, WALL_T + out), cornice, 0, top + H / 2, out / 2 - WALL_T / 2 - OFF, false));
+      // Its inside face a centimeter short of the floor's edge: the roof's curb stands there, over it.
+      g.add(mesh(new THREE.BoxGeometry(len, H, WALL_T + out - OFF), cornice, 0, top + H / 2, out / 2 - WALL_T / 2 - OFF / 2, false));
       g.add(mesh(new THREE.BoxGeometry(len, 0.08, 0.06), band, 0, top + 0.1, out - OFF + 0.03, false));
       parts.add(onFace(g, side, (f.u0 + f.u1) / 2));
     }
@@ -234,9 +235,9 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
       for (let a = 0; a <= len + 0.01; a += 2.4) box(0.06, 0.75, 0.06, steel, alongX ? x0 + a : ex, y + 0.425, alongX ? ez : z0 + a);
     }
 
-    // The elevator's housing, as tall as a floor, with a light on top.
+    // The elevator's housing, as tall as a floor, with a light on top: its back just inside the curb's outside.
     const hz = (B.minZ + ELEVATOR_FRONT) / 2;
-    box(ELEVATOR.width, WALL_HEIGHT, ELEVATOR_FRONT - B.minZ, steel, ELEVATOR.x, y, hz);
+    box(ELEVATOR.width, WALL_HEIGHT, ELEVATOR_FRONT - B.minZ - OFF, steel, ELEVATOR.x, y, hz + OFF / 2);
     box(ELEVATOR.width + 0.3, 0.3, ELEVATOR_FRONT - B.minZ + 0.2, steelDark, ELEVATOR.x, y + WALL_HEIGHT, hz + 0.05);
     parts.add(mesh(new THREE.SphereGeometry(0.12, 10, 8), beacon, ELEVATOR.x, y + WALL_HEIGHT + 0.4, hz, false));
 

@@ -150,10 +150,12 @@ export function buildShops(group: THREE.Group, night: NightParts): TownShops {
     const mx = mid.minX;
     const mz = mid.minZ;
     const yaw = Math.atan2(s.nx, s.nz);
-    const awGeo = new THREE.BoxGeometry(L - 0.6, 0.08, 1.4);
+    // A centimeter short of the shutter's box at either end (town/shopfronts.ts), so their ends aren't one plane.
+    const awL = L - 0.62;
+    const awGeo = new THREE.BoxGeometry(awL, 0.08, 1.4);
     // A stripe pair every 1.2 m, however long the front.
     const uv = awGeo.getAttribute('uv');
-    for (let q = 0; q < uv.count; q++) uv.setX(q, uv.getX(q) * ((L - 0.6) / 1.2));
+    for (let q = 0; q < uv.count; q++) uv.setX(q, uv.getX(q) * (awL / 1.2));
     const aw = mesh(awGeo, awningOf(k), 0, 0, 0, false);
     aw.position.set(mx + s.nx * 0.68, G + SHOP_H - 1.12, mz + s.nz * 0.68);
     aw.rotation.set(0, yaw, 0, 'YXZ');

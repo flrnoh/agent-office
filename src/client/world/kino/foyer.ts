@@ -53,14 +53,16 @@ export function buildFoyer(g: THREE.Group): Foyer {
   const wood = inside('#5b3a29');
   const brass = inside('#c9a227');
   const cream = inside('#efe3c8');
+  /** The wood and brass stand this far off the walls and clear of the corners: flush, their backs and ends would share the cream's planes and flicker. */
+  const IN = 0.01;
   // The back wall (the halls' front) has their doorways in it.
   const cuts = HALL_DOORS.map((d) => [d.z - d.w / 2 - 0.12, d.z + d.w / 2 + 0.12] as const).sort((a, b) => a[0] - b[0]);
   let from = z0;
   for (const [a, b] of [...cuts, [z1, z1] as const]) {
     if (a > from) {
       slab(g, cream, x0, x0 + 0.02, 0, FOYER.h, from, a);
-      slab(g, wood, x0, x0 + 0.06, 0, 1.2, from, a);
-      slab(g, brass, x0, x0 + 0.09, 1.2, 1.26, from, a);
+      slab(g, wood, x0 + IN, x0 + 0.06, 0, 1.2, Math.max(from, z0 + IN), Math.min(a, z1 - IN));
+      slab(g, brass, x0 + IN, x0 + 0.09, 1.2, 1.26, Math.max(from, z0 + IN), Math.min(a, z1 - IN));
     }
     if (b < z1) slab(g, cream, x0, x0 + 0.02, 2.6, FOYER.h, a, b);
     from = b;
@@ -68,8 +70,8 @@ export function buildFoyer(g: THREE.Group): Foyer {
   for (const z of [z0, z1]) {
     const s = z === z0 ? 1 : -1;
     slab(g, cream, x0, x1, 0, FOYER.h, z, z + s * 0.02);
-    slab(g, wood, x0, x1, 0, 1.2, z, z + s * 0.06);
-    slab(g, brass, x0, x1, 1.2, 1.26, z, z + s * 0.09);
+    slab(g, wood, x0 + IN, x1 - IN, 0, 1.2, z + s * IN, z + s * 0.06);
+    slab(g, brass, x0 + IN, x1 - IN, 1.2, 1.26, z + s * IN, z + s * 0.09);
   }
 
   // The front wall's inside, round the windows (z from–to either side, and over them).
@@ -79,8 +81,8 @@ export function buildFoyer(g: THREE.Group): Foyer {
   slab(g, cream, front, x1, 0, FOYER.h, z0, glazeZ0);
   slab(g, cream, front, x1, 0, FOYER.h, glazeZ1, z1);
   slab(g, cream, front, x1, 3.4, FOYER.h, glazeZ0, glazeZ1);
-  slab(g, wood, x1 - 0.06, x1, 0, 1.2, z0, glazeZ0);
-  slab(g, wood, x1 - 0.06, x1, 0, 1.2, glazeZ1, z1);
+  slab(g, wood, x1 - 0.06, x1 - IN, 0, 1.2, z0 + IN, glazeZ0);
+  slab(g, wood, x1 - 0.06, x1 - IN, 0, 1.2, glazeZ1, z1 - IN);
   // Nothing in here takes the sun's shadows: it's lit from its own ceiling.
   for (const c of g.children.slice(first)) c.traverse((o) => (o.receiveShadow = false));
 
@@ -125,11 +127,12 @@ export function buildFoyer(g: THREE.Group): Foyer {
   });
   plane(g, glowing('#ffffff', menu), (c.minX + c.maxX) / 2 - 0.6, 2.9, z0 + 0.04, 4.2, 1.58, 0);
 
-  // The popcorn machine on the counter: a red cart with a glass case, a kettle, a heap, kernels popping.
+  // The popcorn machine on the counter: a red cart with a glass case (sunk a centimetre into the cart
+  // and its lid), a kettle, a heap, kernels popping.
   const p = POPCORN;
   const glass = new THREE.MeshBasicMaterial({ color: '#fff8e1', transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide });
   slab(g, red, p.x - 0.4, p.x + 0.4, p.y, p.y + 0.25, p.z - 0.3, p.z + 0.3);
-  slab(g, glass, p.x - 0.38, p.x + 0.38, p.y + 0.25, p.y + 1.0, p.z - 0.28, p.z + 0.28);
+  slab(g, glass, p.x - 0.38, p.x + 0.38, p.y + 0.24, p.y + 1.01, p.z - 0.28, p.z + 0.28);
   slab(g, red, p.x - 0.42, p.x + 0.42, p.y + 1.0, p.y + 1.14, p.z - 0.32, p.z + 0.32);
   const popSign = sign(256, 64, (m) => {
     m.fillStyle = '#ffd23f';
@@ -161,7 +164,7 @@ export function buildFoyer(g: THREE.Group): Foyer {
   progTex.colorSpace = THREE.SRGBColorSpace;
   progTex.anisotropy = 8;
   const boardZ = (HALL_DOORS[0].z + HALL_DOORS[1].z) / 2;
-  slab(g, brass, x0, x0 + 0.08, 1.45, 4.35, boardZ - 2.6, boardZ + 2.6);
+  slab(g, brass, x0 + IN, x0 + 0.08, 1.45, 4.35, boardZ - 2.6, boardZ + 2.6);
   plane(g, glowing('#ffffff', progTex), x0 + 0.09, 2.9, boardZ, 5, 2.8, Math.PI / 2);
   for (const d of HALL_DOORS) {
     const t = canvasTexture(256, 64, (m) => {
@@ -176,7 +179,7 @@ export function buildFoyer(g: THREE.Group): Foyer {
   // Posters along the south wall, lit.
   const posters: THREE.MeshBasicMaterial[] = [];
   for (const x of [x0 + 2.2, x0 + 5.2, x0 + 8.2]) {
-    slab(g, brass, x - 0.85, x + 0.85, 0.95, 3.15, z1 - 0.12, z1);
+    slab(g, brass, x - 0.85, x + 0.85, 0.95, 3.15, z1 - 0.12, z1 - IN);
     const mat = glowing('#ffffff', posterTexture(0));
     plane(g, mat, x, 2.05, z1 - 0.13, 1.45, 2.05, Math.PI);
     posters.push(mat);

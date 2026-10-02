@@ -178,6 +178,8 @@ export function balconyDoor(o: Opening = BALCONY_DOOR): { group: THREE.Group; do
 
 /** Walls throw shade only this far up: any higher and a low sun's shadow would fill the room. */
 const SHADE_HEIGHT = 4.2;
+/** A baseboard running out to the building's corner stops this far short of its outside face, inside the wall across it. */
+const CORNER_IN = 0.01;
 
 /**
  * The four outside walls, built in pieces around their windows and doors. Each is painted inside in
@@ -220,8 +222,11 @@ export function buildWalls(group: THREE.Group, colliders: Collider[], openings: 
     // Baseboard and collider run between the doors.
     const run = (u0: number, u1: number) => {
       if (u1 - u0 < 0.001) return;
-      const p = at((u0 + u1) / 2, 0.125);
-      group.add(mesh(alongX ? box(u1 - u0, 0.25, T + 0.04) : box(T + 0.04, 0.25, u1 - u0), trimMat, p.x, p.y, p.z, false));
+      // The north and south walls' run on out to the corners: their baseboards stop just short.
+      const b0 = alongX ? Math.max(u0, FLOOR.minX - T + CORNER_IN) : u0;
+      const b1 = alongX ? Math.min(u1, FLOOR.maxX + T - CORNER_IN) : u1;
+      const p = at((b0 + b1) / 2, 0.125);
+      group.add(mesh(alongX ? box(b1 - b0, 0.25, T + 0.04) : box(T + 0.04, 0.25, b1 - b0), trimMat, p.x, p.y, p.z, false));
       block(u0, u1);
     };
     const block = (u0: number, u1: number, bottom?: number) =>
@@ -301,8 +306,10 @@ export function wallRun(into: THREE.Group, cols: Collider[], axis: 'x' | 'z', at
     u = o.u + o.width / 2;
   }
   piece(u, u1, 0, WALL_HEIGHT);
-  const len = u1 - u0;
-  const mid = (u0 + u1) / 2;
+  const b0 = u0 + (endsOut[0] ? CORNER_IN : 0);
+  const b1 = u1 - (endsOut[1] ? CORNER_IN : 0);
+  const len = b1 - b0;
+  const mid = (b0 + b1) / 2;
   into.add(mesh(axis === 'x' ? box(len, 0.25, T + 0.04) : box(T + 0.04, 0.25, len), looks.trim, axis === 'x' ? mid : at, 0.125, axis === 'x' ? at : mid, false));
   cols.push(axis === 'x' ? { minX: u0, maxX: u1, minZ: at - T / 2, maxZ: at + T / 2, top: 99 } : { minX: at - T / 2, maxX: at + T / 2, minZ: u0, maxZ: u1, top: 99 });
 }

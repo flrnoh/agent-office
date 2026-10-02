@@ -201,8 +201,8 @@ export function buildHallInterior(): HallInterior {
   deck.receiveShadow = true;
   group.add(deck);
   colliders.push({ minX: slabMinX, maxX: slabMaxX, minZ: GALLERY.minZ, maxZ: GALLERY.maxZ, bottom: GY - GALLERY_SLAB, top: GY });
-  // The edge beam, and the pillars under it.
-  parts.add(mesh(box(W, 0.45, 0.3), darkSteel, CX, GY - 0.45, GALLERY.maxZ - 0.15, false));
+  // The edge beam (a centimetre proud of the slab's edge), and the pillars under it.
+  parts.add(mesh(box(W, 0.45, 0.3), darkSteel, CX, GY - 0.45, GALLERY.maxZ - 0.14, false));
   for (const p of GALLERY_PILLARS) {
     parts.add(mesh(box(0.3, GY - 0.3, 0.3), darkSteel, p.x, (GY - 0.3) / 2, p.z));
     colliders.push({ minX: p.x - 0.15, maxX: p.x + 0.15, minZ: p.z - 0.15, maxZ: p.z + 0.15, bottom: 0, top: GY - 0.3 });
@@ -223,7 +223,8 @@ export function buildHallInterior(): HallInterior {
   for (let i = 1; i <= HALL_STAIRS.steps; i++) {
     const s = stairStep(i);
     parts.add(mesh(box(s.maxX - s.minX, s.top, s.maxZ - s.minZ), toon('#98a1ad'), (s.minX + s.maxX) / 2, s.top / 2, (s.minZ + s.maxZ) / 2, false));
-    parts.add(mesh(box(s.maxX - s.minX, 0.05, s.maxZ - s.minZ + 0.02), tread, (s.minX + s.maxX) / 2, s.top - 0.02, (s.minZ + s.maxZ) / 2, false));
+    // The tread overhangs its step a centimetre all round, and sits a centimetre proud of it (and of the gallery's deck, at the top).
+    parts.add(mesh(box(s.maxX - s.minX + 0.02, 0.05, s.maxZ - s.minZ + 0.02), tread, (s.minX + s.maxX) / 2, s.top - 0.015, (s.minZ + s.maxZ) / 2, false));
     colliders.push({ minX: s.minX, maxX: s.maxX, minZ: s.minZ, maxZ: s.maxZ, top: s.top });
   }
   // A glass balustrade down its open (west) side, a handrail along it.
@@ -377,7 +378,7 @@ export function buildHallInterior(): HallInterior {
   const caseMat = new THREE.MeshToonMaterial({ color: '#e6f4fb', transparent: true, opacity: 0.3, gradientMap, depthWrite: false });
   const cake = mesh(box(1.6, 0.55, 0.55), caseMat, cakeX, top + 0.275, cc.z, false);
   bar.add(cake);
-  bar.add(mesh(box(1.6, 0.03, 0.55), steel, cakeX, top + 0.28, cc.z, false));
+  bar.add(mesh(box(1.58, 0.03, 0.53), steel, cakeX, top + 0.28, cc.z, false)); // just inside the glass
   for (const [dx2, y, color, r] of [
     [-0.5, 0, '#f4dca0', 0.17],
     [0, 0, '#6b3e26', 0.16],
@@ -414,7 +415,7 @@ export function buildHallInterior(): HallInterior {
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText('☕ Café Netzroller', 320, 76);
-  })), cc.maxX - 1.6, GY + 3.2, R.minZ + 0.03, false);
+  })), cc.maxX - 1.6, GY + 3.2, R.minZ + 0.045, false); // in front of the menu board, which it overlaps
   group.add(cafeSign);
   const counter: Interactable = { kind: 'cafe', x: CAFE_ORDER.x, z: cc.z + 0.7, y: GY, radius: 2.6 };
   interactables.push(counter);

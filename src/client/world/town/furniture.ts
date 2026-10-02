@@ -60,7 +60,8 @@ export function buildFurniture(group: THREE.Group, colliders: Collider[]) {
     for (const side of [-1, 1]) {
       // The curb, from crossing to crossing, along the road's edge.
       const [cx, cz] = at((from + to) / 2, side * (h + 0.09));
-      parts.add(mesh(new THREE.BoxGeometry(s.alongX ? len : 0.18, CURB, s.alongX ? 0.18 : len), curb, cx, G - 0.02 + CURB / 2, cz, false));
+      // 2 cm wider than its 0.18, a centimeter proud of the road's edge and the sidewalk's, so a driveway or a slab ending there doesn't share its face.
+      parts.add(mesh(new THREE.BoxGeometry(s.alongX ? len : 0.2, CURB, s.alongX ? 0.2 : len), curb, cx, G - 0.02 + CURB / 2, cz, false));
     }
     if (!near) continue;
     // Bollards at both ends, where the sidewalk meets the crossing.
@@ -103,7 +104,7 @@ export function buildFurniture(group: THREE.Group, colliders: Collider[]) {
       // A bus stop: a glass shelter with a bench in it and the sign on a pole.
       for (const lx of [-1.4, 1.4]) lay(f, postGeo, steel, G + 1.3, lx, -0.6);
       lay(f, new THREE.BoxGeometry(3, 0.08, 1.5), steel, G + 2.62, 0, -0.1);
-      lay(f, new THREE.BoxGeometry(2.8, 2.2, 0.04), glass, G + 1.2, 0, -0.62);
+      lay(f, new THREE.BoxGeometry(2.8, 2.2, 0.03), glass, G + 1.2, 0, -0.62); // thinner than the posts, so its faces end inside them
       lay(f, seatGeo, wood, G + 0.45, 0, -0.3);
       lay(f, new THREE.CylinderGeometry(0.04, 0.04, 2.8, 6), steel, G + 1.4, 2.1, 0.5);
       lay(f, new THREE.CylinderGeometry(0.32, 0.32, 0.06, 16).rotateX(Math.PI / 2), yellow, G + 2.7, 2.1, 0.5);

@@ -19,9 +19,10 @@ export function buildDiveTower(): { group: THREE.Group; colliders: Collider[] } 
   const steel = toon('#d7dde3', { emissive: '#2a2f36' });
   const deck = POOL_DECK.top;
   const legZ = [d.minZ + 0.15, POOL_DECK.minZ + 0.65];
-  // Four legs on the deck, cross-braced, under the platform's back half.
+  // Four legs on the deck, cross-braced, under the platform's back half: up into it, their tops just under its.
+  const legTop = d.top - 0.01;
   for (const x of [d.minX + 0.15, d.maxX - 0.15]) {
-    for (const z of legZ) group.add(mesh(new THREE.BoxGeometry(0.22, d.top - deck, 0.22), white, x, (deck + d.top) / 2, z));
+    for (const z of legZ) group.add(mesh(new THREE.BoxGeometry(0.22, legTop - deck, 0.22), white, x, (deck + legTop) / 2, z));
     const brace = mesh(new THREE.BoxGeometry(0.06, Math.hypot(d.top - deck, legZ[1] - legZ[0]), 0.06), blue, x, (deck + d.top) / 2, (legZ[0] + legZ[1]) / 2, false);
     brace.rotation.x = Math.atan2(legZ[1] - legZ[0], d.top - deck);
     group.add(brace);

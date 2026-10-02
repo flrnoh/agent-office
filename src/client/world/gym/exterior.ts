@@ -161,16 +161,18 @@ export function buildGymExterior(group: THREE.Group, colliders: Collider[], inte
   const signW = 9.2;
   const signH = 2.4;
   const signY = G + H - 2.4;
-  const sign = mesh(new THREE.PlaneGeometry(signW, signH), glow(neonSign('FITNESS', '#a3e635', 896, 240, '#0f1a12')), DX, signY, FRONT - 0.36, false);
+  // The board stands proud of the mullions (front faces at FRONT - 0.36) so the sign never shares their plane.
+  const sign = mesh(new THREE.PlaneGeometry(signW, signH), glow(neonSign('FITNESS', '#a3e635', 896, 240, '#0f1a12')), DX, signY, FRONT - 0.42, false);
   sign.rotation.y = Math.PI;
   root.add(sign);
-  parts.add(mesh(box(signW + 0.5, signH + 0.5, 0.3), dark, DX, signY, FRONT - 0.18));
+  parts.add(mesh(box(signW + 0.5, signH + 0.5, 0.4), dark, DX, signY, FRONT - 0.2));
   const bulbs = chaser(signW + 0.2, signH + 0.2, 0.32, 0.07, ['#d9ffa8', '#a3e635', '#d9ffa8']);
-  bulbs.group.position.set(DX, signY, FRONT - 0.4);
+  bulbs.group.position.set(DX, signY, FRONT - 0.46);
   root.add(bulbs.group);
   const logo = glow(barbell());
   for (const x of [B.minX + 0.2, B.maxX - 0.2]) {
-    const b = mesh(new THREE.PlaneGeometry(1.6, 1.6), logo, x, G + H / 2 + 1.2, FRONT - 0.55, false);
+    // The logo sits above the blade's top end (G + H/2 + 1.8), not over it: both share one plane.
+    const b = mesh(new THREE.PlaneGeometry(1.3, 1.3), logo, x, G + H / 2 + 2.55, FRONT - 0.55, false);
     b.rotation.y = Math.PI;
     root.add(b);
     const blade = mesh(new THREE.PlaneGeometry(5.4, 1.2), glow(neonSign('GYM · 24/7', '#35e0d0', 512, 128, '#0f1a12')), x, G + H / 2 - 0.9, FRONT - 0.55, false);

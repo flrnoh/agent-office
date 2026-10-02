@@ -249,7 +249,8 @@ export function buildLanes(parent: THREE.Object3D): LanesBuilt {
   // The platform under it all, foul line to the back, and the approaches.
   const back = zOf(PIT_D + 0.9);
   // The approaches stand SURF high; past the foul line only a thin base, the lanes on their own beds, so the gutters dip between them.
-  const plat = mesh(new THREE.BoxGeometry(east - west, SURF, ZONES.lanes.maxZ - FOUL_LINE_Z), baseMat, (west + east) / 2, SURF / 2 - 0.001, (ZONES.lanes.maxZ + FOUL_LINE_Z) / 2, false);
+  // (A centimetre short either end, so its sides stay inside the end cappings rather than in their plane.)
+  const plat = mesh(new THREE.BoxGeometry(east - west - 0.02, SURF, ZONES.lanes.maxZ - FOUL_LINE_Z), baseMat, (west + east) / 2, SURF / 2 - 0.001, (ZONES.lanes.maxZ + FOUL_LINE_Z) / 2, false);
   plat.receiveShadow = true;
   group.add(plat);
   const base = mesh(new THREE.BoxGeometry(east - west, BASE, FOUL_LINE_Z - back), baseMat, (west + east) / 2, BASE / 2, (FOUL_LINE_Z + back) / 2, false);

@@ -126,7 +126,8 @@ export function buildStation(night: NightParts): StationView {
     group.add(p);
   }
   statics.add(mesh(new THREE.BoxGeometry(9.8, 2.0, 0.1), dark, cx, roofY + 1.2, (wallZ + farZ) / 2));
-  for (const x of [cx - 3.5, cx + 3.5]) statics.add(mesh(new THREE.BoxGeometry(0.1, 0.4, 0.1), steel, x, roofY + 0.2, (wallZ + farZ) / 2));
+  // Its posts a little thinner than the board they hold, so their faces don't fight its.
+  for (const x of [cx - 3.5, cx + 3.5]) statics.add(mesh(new THREE.BoxGeometry(0.1, 0.4, 0.08), steel, x, roofY + 0.2, (wallZ + farZ) / 2));
 
   // The entrance arch over the gap in the roof's railing.
   const archY = 2.7;

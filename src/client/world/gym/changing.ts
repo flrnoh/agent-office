@@ -71,7 +71,7 @@ export function buildChanging(p: GymParts): GymChanging {
   p.group.add(hinge);
   let open = 0;
   const sign = textPlane('🚿 Umkleide · Changing', { bg: '#0f1a12', color: '#f0f4f2', size: 34, border: '#a3e635' });
-  sign.position.set(GYM_BOX.minX - 0.02, 2.5, CHANGING_DOOR.z);
+  sign.position.set(GYM_BOX.minX - 0.035, 2.5, CHANGING_DOOR.z); // clear of the wall over the door (its face at -0.02)
   sign.rotation.y = -Math.PI / 2;
   sign.scale.setScalar(0.7);
   p.group.add(sign);

@@ -76,7 +76,7 @@ export function baumarktStaff(ctx: Ctx, deps: { onStreet(): boolean; group(): TH
   function apron(p: Person) {
     const g = new THREE.Group();
     g.add(box(0.46, 0.58, 0.03, new THREE.MeshToonMaterial({ color: ORANGE }), 0, 0.36, 0.25, false));
-    g.add(box(0.36, 0.04, 0.03, new THREE.MeshToonMaterial({ color: '#ffffff' }), 0, 0.84, 0.25, false));
+    g.add(box(0.36, 0.04, 0.03, new THREE.MeshToonMaterial({ color: '#ffffff' }), 0, 0.84, 0.26, false));
     p.wear(g, 'body');
   }
 

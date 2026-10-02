@@ -33,7 +33,7 @@ export function buildBookshelf(): BookshelfModel {
   const wood = toon('#9c6644');
   const woodDark = toon('#7f5539');
   const box = (w: number, h: number, d: number, mat: THREE.Material, x: number, y: number, z: number) => parts.add(mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z));
-  box(W, H, 0.03, woodDark, 0, H / 2, -D / 2 + 0.015);
+  box(W - 0.02, H, 0.03, woodDark, 0, H / 2, -D / 2 + 0.015); // its ends inside the sides, not flush with their outsides
   for (const sx of [-1, 1]) box(SIDE, H, D, wood, sx * (W / 2 - SIDE / 2), H / 2, 0);
   // A crown over the top and a kick board at the foot.
   box(W + 0.08, 0.07, D + 0.05, wood, 0, H + 0.035, 0.01);
