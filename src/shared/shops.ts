@@ -34,7 +34,7 @@ const DOOR_IN = 1.6;
 export const SILL = 0.55;
 export const WINDOW_TOP = 3.05;
 
-export type ShopKindId = 'baeckerei' | 'cafe' | 'pizza' | 'apotheke' | 'blumen' | 'buchladen' | 'kiosk' | 'bar' | 'spaeti' | 'friseur' | 'tattoo' | 'doener' | 'spielzeug' | 'platten' | 'spielhalle' | 'post' | 'boutique' | 'optiker' | 'eisdiele' | 'sushi' | 'metzgerei' | 'supermarkt';
+export type ShopKindId = 'baeckerei' | 'cafe' | 'pizza' | 'apotheke' | 'blumen' | 'buchladen' | 'kiosk' | 'bar' | 'spaeti' | 'friseur' | 'tattoo' | 'doener' | 'spielzeug' | 'platten' | 'spielhalle' | 'post' | 'boutique' | 'optiker' | 'eisdiele' | 'sushi' | 'metzgerei' | 'supermarkt' | 'fahrrad' | 'zoo' | 'waschsalon';
 
 export interface ShopKind {
   id: ShopKindId;
@@ -88,6 +88,10 @@ export const SHOP_KINDS: readonly ShopKind[] = [
   { id: 'sushi', sign: 'SUSHI 回転', name: 'Sushi-Bar', emoji: '🍣', verb: 'Teller nehmen', frame: '#1d1d1d', awning: ['#c1121f', '#fdf0d5'], signBg: '#1d1d1d', ink: '#fdf0d5', neon: true, goods: ['#f4845f', '#fdf0d5', '#2d6a4f', '#c1121f'], wall: '#efe6d8', floor: '#6b4f3a', keeper: { name: 'Kenji', shirt: '#fdf0d5', skin: 2, hair: 0, style: 0 } },
   { id: 'metzgerei', sign: 'METZGEREI', name: 'Metzgerei', emoji: '🥩', verb: 'bestellen', frame: '#9d0208', awning: ['#9d0208', '#ffffff'], signBg: '#ffffff', ink: '#9d0208', goods: ['#c9184a', '#ff8fa3', '#e9c46a', '#9c6644'], wall: '#f8f9fa', floor: '#adb5bd', keeper: { name: 'Herr Wimmer', shirt: '#ffffff', skin: 0, hair: 5, style: 0 } },
   { id: 'supermarkt', sign: 'SUPERMARKT', name: 'Supermarkt', emoji: '🛒', verb: 'bezahlen', frame: '#e63946', awning: ['#e63946', '#ffd60a'], signBg: '#ffd60a', ink: '#e63946', goods: ['#e63946', '#ffd60a', '#2a9d8f', '#f4a261', '#457b9d', '#ffffff'], wall: '#f8f9fa', floor: '#dee2e6', keeper: { name: 'Frau Schmid', shirt: '#e63946', skin: 1, hair: 2, style: 1 }, whole: true },
+  // Rentals, pets and laundry (features/ride, shared/ride.ts).
+  { id: 'fahrrad', sign: 'FAHRRÄDER', name: 'Fahrradladen', emoji: '🚲', verb: 'ein Rad leihen', frame: '#1d3557', awning: ['#2a9d8f', '#f1faee'], signBg: '#f1faee', ink: '#1d3557', goods: ['#e63946', '#1d3557', '#2a9d8f', '#ffb703'], wall: '#f1faee', floor: '#495057', keeper: { name: 'Toni', shirt: '#2a9d8f', skin: 2, hair: 2, style: 0 } },
+  { id: 'zoo', sign: 'ZOOHANDLUNG', name: 'Zoohandlung', emoji: '🐠', verb: 'ein Tier aussuchen', frame: '#2d6a4f', awning: ['#74c69d', '#fefae0'], signBg: '#fefae0', ink: '#2d6a4f', goods: ['#4cc9f0', '#f77f00', '#90be6d', '#ffd60a'], wall: '#e9f5db', floor: '#b5a58a', keeper: { name: 'Frau Wimmer', shirt: '#2d6a4f', skin: 0, hair: 3, style: 1 } },
+  { id: 'waschsalon', sign: 'WASCHSALON', name: 'Waschsalon', emoji: '🫧', verb: 'Waschpulver holen', frame: '#4361ee', awning: ['#4cc9f0', '#ffffff'], signBg: '#ffffff', ink: '#3a0ca3', neon: true, goods: ['#4cc9f0', '#ffffff', '#f72585'], wall: '#e0fbfc', floor: '#adb5bd', keeper: { name: 'Herr Pospischil', shirt: '#4361ee', skin: 1, hair: 5, style: 6 } },
 ];
 
 /** The kinds dealt round shop by shop (the others take a whole side of a building: see layShops). */
@@ -253,8 +257,13 @@ export function shopRect(s: Pick<Shop, 'ox' | 'oz' | 'ux' | 'uz' | 'nx' | 'nz'>,
 /** Every lot's plan, by its place in LOTS. */
 export const LOT_PLANS: readonly LotPlan[] = LOTS.map(lotPlan);
 
-/** Where each quarter of the city starts its round of kinds, so neighbouring quarters don't match. */
-const QUARTER_START: Record<string, number> = { '1-1': 0, '-1-1': 5, '11': 10, '-11': 16 };
+/**
+ * Where each quarter of the city starts its round of kinds, so neighbouring quarters don't match and
+ * every kind gets at least five shops in three quarters or more (tests/shops.test.ts). Picked by trying
+ * every set of starts for the 24 kinds dealt now (25 less the supermarket, which takes whole sides)
+ * and keeping the one whose rarest kind has the most shops; with more or fewer kinds, pick again.
+ */
+const QUARTER_START: Record<string, number> = { '1-1': 0, '-1-1': 3, '11': 21, '-11': 23 };
 
 /** Which quarter of the city round the office (x, z) is in. */
 export const quarterOf = (x: number, z: number) => `${Math.sign(x)}${Math.sign(z - 27)}`;

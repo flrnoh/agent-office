@@ -172,8 +172,8 @@ test('each kind has something to do: a counter, and the barber’s and the tatto
     if (s.kind === 'buchladen') assert.ok(at.has('shelf'));
   }
   assert.ok(SHOPS.some((s) => s.kind === 'platten' && shopRoom(s).stations.some((t) => t.at === 'crate')));
-  // The chairs, the boutique's racks and the optician's glasses are those shops' menus; the Post writes postcards; the supermarket's counter is its checkout.
-  for (const k of SHOP_KINDS) if (!['friseur', 'tattoo', 'boutique', 'optiker', 'post', 'supermarkt'].includes(k.id)) assert.ok(MENUS[k.id].length > 0, k.id);
+  // The chairs, the boutique's racks and the optician's glasses are those shops' menus; the Post writes postcards; the supermarket's counter is its checkout; the bike shop rents bikes.
+  for (const k of SHOP_KINDS) if (!['friseur', 'tattoo', 'boutique', 'optiker', 'post', 'supermarkt', 'fahrrad'].includes(k.id)) assert.ok(MENUS[k.id].length > 0, k.id);
 });
 
 test('a shop chair is a seat: its key goes both ways, on an office floor only', () => {

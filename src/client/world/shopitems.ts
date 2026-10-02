@@ -228,8 +228,49 @@ export function shopItem(d: Drink, S = 1): THREE.Group {
       for (let i = 0; i < 4; i++) box(0.042, 0.04, 0.002, toon(['#6c757d', '#868e96', '#5c636a', '#7d848b'][i]), 0, 0.03 + i * 0.047, 0.003);
       break;
     }
+    case 'fishbag': {
+      // A knotted plastic bag of water hanging from your fingers, a goldfish going round in it, the
+      // water sloshing as you go (it moves itself, wherever it's drawn).
+      cyl(0.006, 0.012, 0.03, label, 0.01, 8);
+      const bag = new THREE.Group();
+      g.add(bag);
+      const water = mesh(new THREE.SphereGeometry(0.07 * S, 14, 10), WATER, 0, -0.07 * S, 0, false);
+      water.scale.set(1, 1.15, 1);
+      bag.add(water);
+      const fish = new THREE.Group();
+      fish.position.y = -0.07 * S;
+      bag.add(fish);
+      const f = mesh(new THREE.SphereGeometry(0.018 * S, 8, 6), body, 0.03 * S, 0, 0, false);
+      f.scale.set(1.5, 1, 0.6);
+      fish.add(f);
+      fish.add(mesh(new THREE.ConeGeometry(0.012 * S, 0.02 * S, 4).rotateZ(Math.PI / 2), body, 0.055 * S, 0, 0, false));
+      water.onBeforeRender = () => {
+        const t = performance.now() / 1000;
+        bag.rotation.z = Math.sin(t * 3.1) * 0.18;
+        bag.rotation.x = Math.sin(t * 2.3 + 1) * 0.12;
+        fish.rotation.y = t * 1.8;
+      };
+      break;
+    }
+    case 'budgie':
+      // It sits on your shoulder (features/ride/riders.ts), not in your hand.
+      break;
+    case 'detergent':
+      box(0.08, 0.1, 0.05, body, 0, 0.05);
+      box(0.082, 0.03, 0.052, label, 0, 0.06);
+      break;
+    case 'sock': {
+      const leg = box(0.035, 0.12, 0.02, body, 0, 0.06);
+      leg.rotation.z = 0.1;
+      box(0.07, 0.03, 0.02, body, 0.025, 0.0);
+      box(0.036, 0.02, 0.022, label, 0, 0.11);
+      break;
+    }
     default:
       cyl(0.03, 0.03, 0.1, body, 0.05);
   }
   return g;
 }
+
+/** The goldfish bag's water: clear, a little blue (one for every bag). */
+const WATER = Object.assign(new THREE.MeshBasicMaterial({ color: '#bde0fe', transparent: true, opacity: 0.45, depthWrite: false }), { userData: { outlineParameters: { visible: false } } });

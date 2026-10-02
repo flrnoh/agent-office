@@ -61,6 +61,8 @@ export interface ShopsDeps {
   inPlace(): boolean;
   /** The Spielhalle's and the Post's own counters (features/funshops): whether it took E there. */
   special(s: Shop): boolean;
+  /** flrnoh fork: the bike shop's counter (features/ride), if it's that: whether it took it. */
+  rideCounter(s: Shop): boolean;
 }
 
 /** How near (m, from the camera) a shop's inside is built, how many at most, and how far before it goes. */
@@ -75,7 +77,7 @@ interface Open {
 }
 
 // The Spielhalle's and the Post's (cabinet, claw, booth, pobox) are defined in features/funshops; the boutique's and the optician's (rack, cubicle, glasses) in wear.ts.
-const KIND_OF: Record<Station['at'], InteractKind> = { counter: 'shopcounter', chair: 'shopchair', crate: 'shopcrate', listen: 'shoplisten', shelf: 'shopshelf', cabinet: 'shopcabinet', claw: 'shopclaw', booth: 'shopbooth', pobox: 'shoppobox', rack: 'shoprack', cubicle: 'shopcubicle', glasses: 'shopglasses', ...FOOD_KIND_OF };
+const KIND_OF: Record<Station['at'], InteractKind> = { counter: 'shopcounter', chair: 'shopchair', crate: 'shopcrate', listen: 'shoplisten', shelf: 'shopshelf', cabinet: 'shopcabinet', claw: 'shopclaw', booth: 'shopbooth', pobox: 'shoppobox', rack: 'shoprack', cubicle: 'shopcubicle', glasses: 'shopglasses', washer: 'shopwasher', vending: 'shopvending', ...FOOD_KIND_OF }; // washer, vending: features/ride
 
 export function installShops(ctx: Ctx, deps: ShopsDeps) {
   const open = new Map<number, Open>();
@@ -133,7 +135,7 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
     const c = ctx.camera.position;
     for (const [i, o] of open) {
       const p = shopPoint(o.int.shop, o.int.shop.len / 2, o.int.shop.depth / 2);
-      if (!keep.has(i) && (Math.hypot(p.x - c.x, p.z - c.z) > FAR || !onStreet() || open.size > MAX)) close(i);
+      if (!keep.has(i) && (Math.hypot(p.x - c.x, p.z - c.z) > FAR || !onStreet() || open.size >= MAX)) close(i); // at the most: make room for a nearer one
     }
     // One a go, so walking along a street never builds a whole row in one frame.
     const next = want.find((s) => !open.has(s.i));
@@ -329,6 +331,7 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
       ctx.me.sit(w.seat.hips);
       ctx.net.send({ t: 'sit', seat: key });
     }
+    if (s.kind === 'waschsalon') return toast('🪑 You sit and wait. The machines hum, somebody’s socks go round and round');
     if (s.kind === 'tattoo') inkStudio(s);
     else barber(s);
   }
@@ -361,6 +364,7 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
     const k = SHOP_KIND_BY_ID.get(s.kind)!;
     if (s.kind === 'boutique' || s.kind === 'optiker') return wear.counter(s);
     if (deps.special(s)) return;
+    if (deps.rideCounter(s)) return;
     if (s.kind === 'friseur' || s.kind === 'tattoo') {
       const chair = shopRoom(s).stations.find((t) => t.at === 'chair');
       return chair ? sitIn(s, chair) : s.kind === 'tattoo' ? inkStudio(s) : barber(s);
@@ -391,8 +395,9 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
       const k = label(it);
       if (!k) return { k: '', parts: [] };
       const sitting = ctx.player.seat?.key === shopSeatKey(it.shop ?? -1, stationOf(it)?.n ?? -1);
-      const what = k.id === 'tattoo' ? 'Tattoo, Piercing, Laser' : 'Haare, Farbe, Bart';
-      return { k: `chair|${it.shop}|${sitting}`, parts: [hintTitle(`${k.emoji} ${k.id === 'tattoo' ? 'Tattoo chair' : 'Barber chair'}`), aside(what), key('E', sitting ? 'Choose' : 'Sit down'), ...(sitting ? [key('W A S D', 'Get up')] : [])] };
+      const wait = k.id === 'waschsalon';
+      const what = wait ? 'sit and wait for your wash' : k.id === 'tattoo' ? 'Tattoo, Piercing, Laser' : 'Haare, Farbe, Bart';
+      return { k: `chair|${it.shop}|${sitting}`, parts: [hintTitle(`${k.emoji} ${wait ? 'Plastikstuhl' : k.id === 'tattoo' ? 'Tattoo chair' : 'Barber chair'}`), aside(what), ...(sitting && wait ? [] : [key('E', sitting ? 'Choose' : 'Sit down')]), ...(sitting ? [key('W A S D', 'Get up')] : [])] };
     },
     use: onE((it) => {
       const s = shopOf(it);

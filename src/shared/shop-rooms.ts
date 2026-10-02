@@ -1,4 +1,5 @@
 import { foodRoom, type FoodPieceKind, type FoodStationKind } from './shop-rooms-food.js'; // food round 2
+import { layRide, type RidePieceKind, type RideStationKind } from './shop-rooms-ride.js'; // bikes, pets, laundry
 import { FRONT_T, SHOP_H, SHOPS, WALL_T, lotSolids, shopLocal, shopPoint, shopRect, shopWalls, shopYaw, type Shop, type ShopKindId, type Solid } from './shops.js';
 
 // flrnoh fork (see FORK.md "Shops to walk into"): what's in each shop, in its frame (see shops.ts),
@@ -47,7 +48,8 @@ export type PieceKind =
   | 'standmirror'
   | 'glasswall'
   | 'eyechart'
-  | FoodPieceKind;
+  | FoodPieceKind
+  | RidePieceKind;
 
 /** Something in a shop: a box in its frame (u0..u1 along, v0..v1 in), `h` tall; `solid` ones you bump into. */
 export interface Piece {
@@ -63,7 +65,7 @@ export interface Piece {
   dv: number;
 }
 
-export type StationKind = 'counter' | 'chair' | 'crate' | 'listen' | 'shelf' | 'cabinet' | 'claw' | 'booth' | 'pobox' | 'rack' | 'cubicle' | 'glasses' | FoodStationKind;
+export type StationKind = 'counter' | 'chair' | 'crate' | 'listen' | 'shelf' | 'cabinet' | 'claw' | 'booth' | 'pobox' | 'rack' | 'cubicle' | 'glasses' | FoodStationKind | RideStationKind;
 
 /** Where E does something: where you stand (u, v), how near you must be, and (a chair) where you sit. */
 export interface Station {
@@ -76,6 +78,8 @@ export interface Station {
   seat?: { u: number; v: number; du: number; dv: number; hips: number };
   /** What E is aimed at, if not the usual box (features/shops/interior.ts): its middle and size along u and v. */
   aim?: { u: number; v: number; w: number; d: number };
+  /** What E is aimed at, if not the usual box over the station (a washing machine in a row of them): its middle, and how big. */
+  hit?: { u: number; v: number; w: number; h: number; d: number };
 }
 
 export interface Room {
@@ -123,7 +127,7 @@ function layRoom(s: Shop): Room {
   if (k === 'doener') put('menuboard', c0, c1, D - P - 0.05, D - P, 0.9, false);
   // The window display: low, along the front left of the door.
   const dispEnd = L - 2.5;
-  if (k !== 'tattoo' && k !== 'friseur' && k !== 'bar') put('display', P, dispEnd, T, T + 0.45, 0.55);
+  if (k !== 'tattoo' && k !== 'friseur' && k !== 'bar' && k !== 'waschsalon') put('display', P, dispEnd, T, T + 0.45, 0.55);
   // Along the wall away from the door, and along the door's (behind where the door swings open).
   const away = (what: PieceKind, h: number, deep = 0.55, solid = true) => put(what, P, P + deep, T + 0.7, D - 2.4, h, solid, 1, 0);
   const doorSide = (what: PieceKind, h: number, deep = 0.6) => put(what, L - P - deep, L - P, T + 1.7, D - 1.4, h, true, -1, 0);
@@ -251,6 +255,8 @@ function layRoom(s: Shop): Room {
     case 'optiker':
       wearRoom(k, { put, stations, L, D, P, T, c1, m, roomy, mu, mv });
       break;
+    default:
+      layRide(k, { L, D, P, T, c0, c1, mid, cv0, m, roomy, mu, mv, put, away, doorSide, stations });
   }
   return { pieces, stations, keeper, spot };
 }
@@ -309,7 +315,7 @@ function turned(s: Shop, r: Room): Room {
   const L = s.len;
   return {
     pieces: r.pieces.map((p) => ({ ...p, u0: L - p.u1, u1: L - p.u0, du: -p.du })),
-    stations: r.stations.map((t) => ({ ...t, u: L - t.u, seat: t.seat && { ...t.seat, u: L - t.seat.u, du: -t.seat.du }, aim: t.aim && { ...t.aim, u: L - t.aim.u } })),
+    stations: r.stations.map((t) => ({ ...t, u: L - t.u, seat: t.seat && { ...t.seat, u: L - t.seat.u, du: -t.seat.du }, aim: t.aim && { ...t.aim, u: L - t.aim.u }, hit: t.hit && { ...t.hit, u: L - t.hit.u } })),
     keeper: { ...r.keeper, u: L - r.keeper.u },
     spot: { ...r.spot, u: L - r.spot.u },
   };

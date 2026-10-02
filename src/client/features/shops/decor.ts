@@ -9,6 +9,7 @@ import { canvasTexture } from '../../world/texture';
 import { mesh, toon } from '../../world/toon';
 import { funDecor } from '../funshops/decor';
 import { wearDecor } from './decor-wear'; // the boutique and the optician
+import { rideDecor } from './decor-ride'; // bikes, pets, laundry
 
 // flrnoh fork (see FORK.md "Shops to walk into"): what only one kind of shop has, on top of its
 // counter and shelves (interior.ts): the café's espresso machine, the bar's taps, the pharmacy's
@@ -341,6 +342,7 @@ export function kindDecor(still: THREE.Group, live: THREE.Group, s: Shop, k: Sho
     }
     default:
       out.push(...funDecor(still, live, s, k, room)); // the Spielhalle and the Post (features/funshops)
+      out.push(...rideDecor(still, live, s, k, room, win));
   }
   void SHOP_H;
   return out;

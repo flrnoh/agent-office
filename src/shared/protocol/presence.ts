@@ -4,6 +4,7 @@ import type { Look } from '../avatar.js';
 import type { BarGame } from '../bargames.js';
 import type { EmoteId } from '../emotes.js';
 import type { DrinkId } from '../rooftop.js';
+import type { BikeKind } from '../ride.js'; // flrnoh fork
 import type { Me } from './accounts.js';
 import type { FloorInfo, FloorView, ProjectsDirState } from './floors.js';
 import type { LeaveOnMergeState, MachineState, MapState, NotifyState, PromptsState, SkyState, ThemeState, UpgradeState } from './settings.js';
@@ -41,6 +42,8 @@ export interface PeerInfo {
   carrying?: CarriedIssue;
   /** A drink from the rooftop bar in their hand. */
   drink?: DrinkId;
+  /** flrnoh fork: on a bike from the city's bike shop (shared/ride.ts). */
+  bike?: BikeKind;
   /** Signed in with their own account, so `name` is theirs and nobody else can take it. */
   account?: boolean;
   /** The floor they're on (see FloorInfo); none while the building has no floors yet. */
