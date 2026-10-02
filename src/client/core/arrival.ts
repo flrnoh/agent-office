@@ -25,6 +25,7 @@ import type { Ctx } from './context';
 import type { CoreState } from './ctx';
 import { builtFloors, pastTheWing } from './floors';
 import type { Parts } from './parts';
+import { OFFICE_NAME } from '../../shared/brand'; // flrnoh fork
 
 export type ArrivalParts = Pick<Parts, 'worlds' | 'place' | 'travel' | 'maps' | 'views' | 'cards' | 'hoops' | 'bar' | 'golf' | 'bargames' | 'cars' | 'focus' | 'places'>; // places: flrnoh fork
 
@@ -194,7 +195,7 @@ export function installArrival(ctx: Ctx, core: CoreState, parts: ArrivalParts) {
       return;
     }
     if (!p) {
-      $('project-name').textContent = '🏢 Agent Office';
+      $('project-name').textContent = `🏢 ${OFFICE_NAME}`;
       $('project-meta').textContent = store.floors.length ? '🛗 Take the elevator to a floor' : '🛗 No floors yet — add a project in the elevator';
       // Where to go next, so it shows even with the floor details turned off.
       $('project-meta').classList.add('lobby');

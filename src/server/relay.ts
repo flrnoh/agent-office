@@ -3,6 +3,7 @@ import net from 'node:net';
 import type { Duplex } from 'node:stream';
 import type { ServiceInfo } from '../shared/protocol.js';
 import { withoutOfficeCookies } from './auth.js';
+import { OFFICE_NAME } from '../shared/brand.js'; // flrnoh fork
 
 // Service tunnels: `ssh -L 5173:localhost:4600 office@box` lands on the office's own port, and the
 // browser's Host header (localhost:5173) says which worker server it's for. So teammates reach
@@ -94,7 +95,7 @@ function page(res: http.ServerResponse, status: number, title: string, body: str
     'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'",
     'x-frame-options': 'DENY',
   });
-  res.end(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} · Agent Office</title><style>${STYLE}</style></head><body><main><h1>${esc(title)}</h1>${body}</main>${script ? `<script>${script}</script>` : ''}</body></html>`);
+  res.end(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} · ${OFFICE_NAME}</title><style>${STYLE}</style></head><body><main><h1>${esc(title)}</h1>${body}</main>${script ? `<script>${script}</script>` : ''}</body></html>`);
 }
 
 /** Where the sign-in form below posts; the office answers it on service tunnels only. */

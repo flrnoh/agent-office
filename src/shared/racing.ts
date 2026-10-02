@@ -5,6 +5,7 @@
 //
 // Units: the road is SEG long per segment and 2 × ROAD_W wide; a car's `x` is across the road, -1 and
 // 1 being its edges, and `dist` is how far it has come from the start line (laps and all).
+import { OFFICE_SIGN } from './brand.js';
 
 /** One segment of road, this long. */
 export const SEG = 200;
@@ -74,7 +75,7 @@ export interface Track {
 }
 
 /** Words on the billboards along the way. */
-const BILLBOARDS = ['AGENT OFFICE', 'SHIP IT', 'LGTM', 'MERGE ME', 'NO BUGS', 'TESTS PASS', 'OFFICE GP', 'BREZN', 'SPEZI', 'PR #1'];
+const BILLBOARDS = [OFFICE_SIGN, 'SHIP IT', 'LGTM', 'MERGE ME', 'NO BUGS', 'TESTS PASS', 'OFFICE GP', 'BREZN', 'SPEZI', 'PR #1'];
 
 const easeIn = (a: number, b: number, p: number) => a + (b - a) * p * p;
 const easeInOut = (a: number, b: number, p: number) => a + (b - a) * (-Math.cos(p * Math.PI) / 2 + 0.5);

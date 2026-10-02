@@ -12,6 +12,7 @@ import { run } from './process.js';
 import type { OpenedPr, Worker, WorkerContext } from './types.js';
 import { truncate } from './util.js';
 import { originRepo } from './worktree.js';
+import { OFFICE_NAME } from '../../shared/brand.js'; // flrnoh fork
 
 const PR_TITLE_MAX = 72;
 const PR_TASK_MAX = 2500;
@@ -73,7 +74,7 @@ function draftPr(info: WorkerInfo, commits: string[], by: string, other?: { home
   parts.push(`## Commits\n\n${commits.map((c) => `- \`${c.slice(0, c.indexOf(' '))}\` ${c.slice(c.indexOf(' ') + 1)}`).join('\n')}`);
   if (closes && !other) parts.push(`Closes #${closes}`);
   else if (closes && other?.home) parts.push(`Part of ${other.home}#${closes}`);
-  parts.push(`_Opened from Agent Office by ${by} · ${info.name} at ${DESK_BY_ID.get(info.deskId)?.label ?? info.deskId}_`);
+  parts.push(`_Opened from ${OFFICE_NAME} by ${by} · ${info.name} at ${DESK_BY_ID.get(info.deskId)?.label ?? info.deskId}_`);
   return { title, body: parts.join('\n\n') };
 }
 
