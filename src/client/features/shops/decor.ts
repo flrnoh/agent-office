@@ -8,6 +8,7 @@ import { tattooMaterial } from '../../world/character/tattoo-art';
 import { canvasTexture } from '../../world/texture';
 import { mesh, toon } from '../../world/toon';
 import { funDecor } from '../funshops/decor';
+import { wearDecor } from './decor-wear'; // the boutique and the optician
 
 // flrnoh fork (see FORK.md "Shops to walk into"): what only one kind of shop has, on top of its
 // counter and shelves (interior.ts): the café's espresso machine, the bar's taps, the pharmacy's
@@ -110,6 +111,9 @@ export function kindDecor(still: THREE.Group, live: THREE.Group, s: Shop, k: Sho
   const mirrored = s.doorU < s.len / 2;
   const win = mirrored ? { u0: s.doorU + 1.0, u1: s.len - 0.4 } : { u0: 0.4, u1: s.doorU - 1.0 };
   switch (k.id) {
+    case 'boutique':
+    case 'optiker':
+      return wearDecor(still, live, s, k, room);
     case 'cafe': {
       // The espresso machine: chrome, two group heads, cups on top.
       const u = counter.u0 + 0.5;

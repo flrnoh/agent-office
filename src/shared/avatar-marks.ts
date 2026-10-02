@@ -7,6 +7,7 @@
 // default (no `beard: 0`, no empty lists), so an unchanged look stays byte for byte the same.
 
 import type { Look } from './avatar.js';
+import { outfitFromParams, outfitToParams, type LookOutfit } from './avatar-outfit.js';
 
 /** Beard styles, by index like HAIR_STYLES; 0 is none. The beard is the hair's color (HAIR_COLORS[look.hair]). */
 export const BEARD_STYLES = ['None', 'Stubble', 'Moustache', 'Goatee', 'Chin strap', 'Full beard', 'Viking', 'Mutton chops'];
@@ -180,17 +181,17 @@ export function randomMarks(): LookMarks {
 
 // ---- On the wire: the look rides along as URL parameters when the socket connects (net.ts). --------
 
-/** `beard=3`, `tat=anchor.forearm-l,rose.neck`, `pierce=nose-stud.gold,lobe-stud-l.silver`; only what there is. */
-export function marksToParams(m: LookMarks): Record<string, string> {
+/** `beard=3`, `tat=anchor.forearm-l,rose.neck`, `pierce=nose-stud.gold,lobe-stud-l.silver` and the outfit's; only what there is. */
+export function marksToParams(m: LookMarks & LookOutfit): Record<string, string> {
   const q: Record<string, string> = {};
   if (m.beard) q.beard = String(m.beard);
   if (m.tattoos?.length) q.tat = m.tattoos.map((t) => `${t.motif}.${t.spot}`).join(',');
   if (m.piercings?.length) q.pierce = m.piercings.map((p) => `${p.kind}.${p.metal}`).join(',');
-  return q;
+  return { ...q, ...outfitToParams(m) }; // and the outfit (avatar-outfit.ts)
 }
 
 /** marksToParams back, unchecked (sanitizeLook checks it): what's missing stays missing. */
-export function marksFromParams(q: { get(k: string): string | null }): LookMarks {
+export function marksFromParams(q: { get(k: string): string | null }): LookMarks & LookOutfit {
   const out: Record<string, unknown> = {};
   const beard = q.get('beard');
   if (beard) out.beard = Number(beard);
@@ -199,12 +200,16 @@ export function marksFromParams(q: { get(k: string): string | null }): LookMarks
   if (tat !== null) out.tattoos = pairs(tat).map(([motif, spot]) => ({ motif, spot }));
   const pierce = q.get('pierce');
   if (pierce !== null) out.piercings = pairs(pierce).map(([kind, metal]) => ({ kind, metal }));
-  return out as LookMarks;
+  return { ...(out as LookMarks), ...outfitFromParams(q) }; // and the outfit (avatar-outfit.ts)
 }
 
 // ---- For the barber's chair and the studio: a changed copy of a look, never the look itself. ------
 
-const shaped = (look: Look, marks: LookMarks): Look => sanitizeMarks(marks as Record<string, unknown>, {}, { skin: look.skin, hair: look.hair, style: look.style }) as Look;
+/** `look` (its outfit too) with `marks`' beard, tattoos and piercings in place of its own. */
+const shaped = (look: Look, marks: LookMarks): Look => {
+  const { beard: _b, tattoos: _t, piercings: _p, ...rest } = look;
+  return sanitizeMarks(marks as Record<string, unknown>, {}, rest) as Look;
+};
 
 /** With beard style `i` (0, or one that isn't one, shaves it off). */
 export function withBeard(look: Look, i: number): Look {

@@ -30,6 +30,7 @@ import type { Booze } from '../bar/booze';
 import type { Caffeine } from '../coffee/caffeine';
 import { at, buildInterior, interiorLight, yawOf, type Interior } from './interior';
 import { toyBox } from './toys';
+import { wearShops } from './wear'; // the boutique and the optician
 import { openCrate, openHeadphones, openReading, openShopMenu } from './ui';
 import type { CafeItem } from '../../../shared/cafe';
 
@@ -72,8 +73,8 @@ interface Open {
   items: Interactable[];
 }
 
-// The Spielhalle's and the Post's (cabinet, claw, booth, pobox) are defined in features/funshops.
-const KIND_OF: Record<Station['at'], InteractKind> = { counter: 'shopcounter', chair: 'shopchair', crate: 'shopcrate', listen: 'shoplisten', shelf: 'shopshelf', cabinet: 'shopcabinet', claw: 'shopclaw', booth: 'shopbooth', pobox: 'shoppobox' };
+// The Spielhalle's and the Post's (cabinet, claw, booth, pobox) are defined in features/funshops; the boutique's and the optician's (rack, cubicle, glasses) in wear.ts.
+const KIND_OF: Record<Station['at'], InteractKind> = { counter: 'shopcounter', chair: 'shopchair', crate: 'shopcrate', listen: 'shoplisten', shelf: 'shopshelf', cabinet: 'shopcabinet', claw: 'shopclaw', booth: 'shopbooth', pobox: 'shoppobox', rack: 'shoprack', cubicle: 'shopcubicle', glasses: 'shopglasses' };
 
 export function installShops(ctx: Ctx, deps: ShopsDeps) {
   const open = new Map<number, Open>();
@@ -208,6 +209,8 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
     const c = stationAt(s, shopRoom(s).stations[0]);
     return { x: c.x, y: ctx.player.street + 1.2, z: c.z };
   };
+
+  const wear = wearShops(ctx, { keeperOf, counterAt, showMyProfile: deps.showMyProfile });
 
   /** Over the counter and into your hand, with whatever it does to you after. */
   function serve(s: Shop, d: Drink) {
@@ -346,6 +349,7 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
   };
   function counter(s: Shop) {
     const k = SHOP_KIND_BY_ID.get(s.kind)!;
+    if (s.kind === 'boutique' || s.kind === 'optiker') return wear.counter(s);
     if (deps.special(s)) return;
     if (s.kind === 'friseur' || s.kind === 'tattoo') {
       const chair = shopRoom(s).stations.find((t) => t.at === 'chair');

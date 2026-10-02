@@ -33,7 +33,7 @@ const DOOR_IN = 1.6;
 export const SILL = 0.55;
 export const WINDOW_TOP = 3.05;
 
-export type ShopKindId = 'baeckerei' | 'cafe' | 'pizza' | 'apotheke' | 'blumen' | 'buchladen' | 'kiosk' | 'bar' | 'spaeti' | 'friseur' | 'tattoo' | 'doener' | 'spielzeug' | 'platten' | 'spielhalle' | 'post';
+export type ShopKindId = 'baeckerei' | 'cafe' | 'pizza' | 'apotheke' | 'blumen' | 'buchladen' | 'kiosk' | 'bar' | 'spaeti' | 'friseur' | 'tattoo' | 'doener' | 'spielzeug' | 'platten' | 'spielhalle' | 'post' | 'boutique' | 'optiker';
 
 export interface ShopKind {
   id: ShopKindId;
@@ -78,6 +78,8 @@ export const SHOP_KINDS: readonly ShopKind[] = [
   // flrnoh fork, "fun shops": the arcade with its claw machine and photo booth, and the post office (shared/funshops.ts).
   { id: 'spielhalle', sign: 'SPIELHALLE', name: 'Spielhalle', emoji: '🕹️', verb: 'Snacks holen', frame: '#0b0b1a', awning: ['#14002e', '#ff00aa'], signBg: '#0b0b1a', ink: '#00f0ff', neon: true, goods: ['#ff00aa', '#00f0ff', '#ffe600', '#7cff00'], wall: '#1a1033', floor: '#120a24', keeper: { name: 'Kevin', shirt: '#ff00aa', skin: 2, hair: 3, style: 4 } },
   { id: 'post', sign: 'POST', name: 'Post & Paketshop', emoji: '📮', verb: 'eine Postkarte schreiben', frame: '#1d1d1b', awning: ['#ffcc00', '#ffcc00'], signBg: '#ffcc00', ink: '#1d1d1b', goods: ['#c8a165', '#ffcc00', '#e9d8a6'], wall: '#fffbe6', floor: '#9a9a90', keeper: { name: 'Frau Wimmer', shirt: '#ffcc00', skin: 0, hair: 2, style: 1 } },
+  { id: 'boutique', sign: 'KLAMOTTEN', name: 'Boutique', emoji: '👗', verb: 'Klamotten anprobieren', frame: '#f4f1ea', awning: ['#2b2d42', '#f4f1ea'], signBg: '#2b2d42', ink: '#f4acb7', goods: ['#f4acb7', '#4f86f7', '#ffd166', '#2b2d42', '#06d6a0'], wall: '#fbf7f2', floor: '#c8b6a6', keeper: { name: 'Vanessa', shirt: '#2b2d42', skin: 2, hair: 3, style: 5 } },
+  { id: 'optiker', sign: 'OPTIK', name: 'Optiker', emoji: '👓', verb: 'Brillen aufsetzen', frame: '#1d3557', awning: ['#1d3557', '#a8dadc'], signBg: '#f1faee', ink: '#1d3557', goods: ['#1d3557', '#9b2226', '#d4af37', '#111111'], wall: '#f1faee', floor: '#a8dadc', keeper: { name: 'Herr Scharf', shirt: '#ffffff', skin: 0, hair: 5, style: 0 } },
 ];
 
 export const SHOP_KIND_BY_ID = new Map<ShopKindId, ShopKind>(SHOP_KINDS.map((k) => [k.id, k]));
