@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { HEART } from '../../../shared/coaster-route';
-import { TUBE_RADIUS, TUBE_UP } from '../../../shared/coaster';
+import { TUBE_RADIUS, TUBE_RING, TUBE_UP } from '../../../shared/coaster';
 import type { CoasterTrack } from '../../../shared/coaster-track';
 import { canvasTexture } from '../texture';
 import { toon } from '../toon';
@@ -179,7 +179,7 @@ export function buildTrack(track: CoasterTrack): TrackView {
   const rib = keep(new THREE.TorusGeometry(TUBE.r + 0.02, 0.035, 6, 28).translate(0, TUBE.n, 0));
   add(along(track, [tubeSpan], 2.2, 0, 0, rib, noOutline(toon('#d9dee5'))));
   // A rib at either end where it goes through the wall: the portals.
-  const portal = keep(new THREE.TorusGeometry(TUBE.r + 0.12, 0.13, 8, 28).translate(0, TUBE.n, 0));
+  const portal = keep(new THREE.TorusGeometry(TUBE.r + TUBE_RING / 2, TUBE_RING / 2, 8, 32).translate(0, TUBE.n, 0));
   add(along(track, [{ from: tunnel.from + 1.1, to: tunnel.from + 1.2 }, { from: track.marks.tunnelEnd - 0.05, to: track.marks.tunnelEnd + 0.05 }], 1, 0, 0, portal, noOutline(toon('#2b2d42'))));
 
   return {

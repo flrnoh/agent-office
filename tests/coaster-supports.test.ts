@@ -169,3 +169,31 @@ test('coaster photo camera: on its own slim post on the plaza, clear of everythi
     assert.deepEqual([...new Set(bad)], [], `${N} storeys`);
   }
 });
+
+test('coaster photo: taken from in front of the lens, nothing of the camera itself in the picture', async () => {
+  const THREE = await import('three');
+  const g = globalThis as unknown as { document?: unknown };
+  g.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => new Proxy({}, { get: (_t, k) => (k === 'measureText' ? () => ({ width: 10 }) : () => {}) }) }) };
+  const { buildSupports, PHOTO_CAMERA } = await import('../src/client/world/coaster/supports.js');
+  for (const N of [1, 3, 8, 20]) {
+    const sup = coasterSupports(coasterTrack(N));
+    const view = buildSupports(sup);
+    view.group.updateMatrixWorld(true);
+    const cam = view.group.getObjectByName(PHOTO_CAMERA);
+    assert.ok(cam, 'the photo camera is drawn, by its name (ride.ts hides it for the picture)');
+    const { shot, aim } = sup.photo;
+    const dir = new THREE.Vector3(aim[0] - shot[0], aim[1] - shot[1], aim[2] - shot[2]).normalize();
+    const from = new THREE.Vector3(...shot);
+    // Every bit of the camera behind where the picture's taken from (past the near plane, 0.1 m).
+    const v = new THREE.Vector3();
+    let ahead = -Infinity;
+    cam!.traverse((o) => {
+      const m = o as import('three').Mesh;
+      if (!m.isMesh) return;
+      const pos = m.geometry.getAttribute('position');
+      for (let i = 0; i < pos.count; i++) ahead = Math.max(ahead, v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld).sub(from).dot(dir));
+    });
+    assert.ok(ahead < -0.1, `${N}: the camera reaches ${ahead.toFixed(2)} m ahead of where the picture's taken`);
+    view.dispose();
+  }
+});

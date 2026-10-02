@@ -44,13 +44,23 @@ export const STATION = {
  */
 export const TUBE_X = 4.8;
 export const TUBE_OUT_X = -16;
+/**
+ * The tube's radius and how far its axis is over the heartline: room round every rider's head and
+ * raised hands (a good 0.25 m to the glass, in every seat) with the spine still inside; the rails run
+ * TUBE_RAILS over the ground floor's floor, low enough that the tube and the ring round it where it goes
+ * through a wall (TUBE_RING out from the glass) stay under the ceiling, and high enough to clear the stairs.
+ */
+export const TUBE_RADIUS = 1.58;
+export const TUBE_UP = 0.17;
+export const TUBE_RING = 0.1;
+export const TUBE_RAILS = 4.17;
+/** The holes, the ring round the tube and a little more each side, down to under it. */
+const PORTAL_W = 2 * (TUBE_RADIUS + TUBE_RING) + 0.28;
+const PORTAL_Y0 = 3.3;
 export const TUBE_PORTALS: readonly Opening[] = [
-  { wall: 'south', u: TUBE_X, width: 3.1, y0: 3.75, y1: WALL_HEIGHT },
-  { wall: 'north', u: TUBE_OUT_X, width: 3.1, y0: 3.75, y1: WALL_HEIGHT },
+  { wall: 'south', u: TUBE_X, width: PORTAL_W, y0: PORTAL_Y0, y1: WALL_HEIGHT },
+  { wall: 'north', u: TUBE_OUT_X, width: PORTAL_W, y0: PORTAL_Y0, y1: WALL_HEIGHT },
 ];
-/** The tube's radius and how far its axis is over the heartline. */
-export const TUBE_RADIUS = 1.32;
-export const TUBE_UP = 0.1;
 export const tubePortals = (index: number): readonly Opening[] => (index === 0 ? TUBE_PORTALS : []);
 
 /** The gap in the roof's north railing (rooftop/world.ts leaves it open). */

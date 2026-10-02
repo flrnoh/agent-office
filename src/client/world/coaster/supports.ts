@@ -85,10 +85,13 @@ const OUT: Record<Side, THREE.Vector3> = {
   east: new THREE.Vector3(1, 0, 0),
 };
 
+/** The name of the photo camera's group (the photo's taken with it hidden). */
+export const PHOTO_CAMERA = 'coaster-photo-camera';
+
 /** The ride photo's camera on top of its post: a housing aimed at the train, its lens, the flash over it. */
 function photoCamera(pm: PhotoMount, noOutline: <M extends THREE.Material>(m: M) => M): THREE.Group {
   const g = new THREE.Group();
-  g.name = 'coaster-photo-camera';
+  g.name = PHOTO_CAMERA;
   g.position.set(...pm.cam);
   // Turned toward the train (yaw, then pitched down at it).
   const d = new THREE.Vector3(pm.aim[0] - pm.cam[0], pm.aim[1] - pm.cam[1], pm.aim[2] - pm.cam[2]);
