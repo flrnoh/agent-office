@@ -14,7 +14,7 @@
 //   behind the building, over the top and down the brake run into the station.
 
 import { roofDrop } from './layout.js';
-import { STATION, TUBE_OUT_X, TUBE_X } from './coaster.js';
+import { STATION, TUBE_OUT_X, TUBE_RAILS, TUBE_X } from './coaster.js';
 
 export interface V3 {
   x: number;
@@ -338,7 +338,7 @@ export function coasterRoute(storeys: number): Route {
   // The route is the heartline (where the riders' middles are, HEART over the rails): the track's
   // banked round it, so the riders stay put and the rails swing out.
   const low = S + 7.3 + HEART; // the drop's bottom, the U-turn, the loop: the track's underside 5.5 m and more over the road
-  const tube = ground + 4.6 + HEART; // the rails in the ground floor's tube 4.6 up, its ceiling 6.8
+  const tube = ground + TUBE_RAILS + HEART; // the rails in the ground floor's tube TUBE_RAILS up, its ceiling 6.8
   const y0 = STATION.trackY + HEART;
   const t = new Turtle({ x: STATION.stopX, y: y0, z: STATION.trackZ }, { x: 1, y: 0, z: 0 });
 

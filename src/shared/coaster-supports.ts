@@ -50,6 +50,8 @@ export interface PhotoMount {
   post: Column;
   cam: P3;
   aim: P3;
+  /** Where the picture's taken from: just in front of the lens, so nothing of the camera's in it. */
+  shot: P3;
   /** Where along the track the front car is when it fires. */
   s: number;
 }
@@ -64,6 +66,8 @@ export interface Supports {
 /** The photo camera's post on the plaza's edge (x, z), just in from the sidewalk, and the train it waits for (the middle of it at x). */
 const PHOTO_POST = [-15, 19.75] as const;
 const PHOTO_AT_X = -9.6;
+/** How far ahead of the camera's middle the picture's taken from (its lens reaches 0.32 out). */
+export const PHOTO_AHEAD = 0.55;
 
 /** The ride photo's mount: a post up to just over the pull-out, the camera on top looking down the track at the train. */
 export function photoMount(track: CoasterTrack): PhotoMount {
@@ -74,7 +78,10 @@ export function photoMount(track: CoasterTrack): PhotoMount {
   const off = (k: number) => Math.abs(poseAt(track, k + carOffset(0)).x - PHOTO_AT_X);
   for (let k = track.marks.photo - 6; k < track.marks.photo + 14; k += 0.25) if (off(k) < off(s)) s = k;
   const mid = poseAt(track, s + carOffset(1));
-  return { post: { x, z, y0: levels(track.storeys).street, y1: cam[1] - 0.22, w: 0.16 }, cam, aim: [mid.x, mid.y + 0.4, mid.z], s };
+  const aim: P3 = [mid.x, mid.y + 0.4, mid.z];
+  const d = Math.hypot(aim[0] - cam[0], aim[1] - cam[1], aim[2] - cam[2]);
+  const shot: P3 = [0, 1, 2].map((k) => cam[k] + ((aim[k] - cam[k]) / d) * PHOTO_AHEAD) as P3;
+  return { post: { x, z, y0: levels(track.storeys).street, y1: cam[1] - 0.22, w: 0.16 }, cam, aim, shot, s };
 }
 
 /** How far below the heartline the track's spine is, and the bottom of it. */
