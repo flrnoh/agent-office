@@ -54,6 +54,8 @@ export interface Settings {
   speakersMuted: boolean;
   /** The swish of a page turning as you read at the bookshelf. */
   pageTurns: boolean;
+  /** flrnoh fork: the city round the office, heard (features/citysound): the road, birds, the church's bells. */
+  citySounds: boolean;
   /** Voice chat starts muted and V is held down to talk, instead of an open mic. */
   pushToTalk: boolean;
   /** Desktop notifications when a worker needs input or finishes while you're in another tab (once the browser allows them). */
@@ -124,7 +126,7 @@ export function rememberSpot(s: Spot) {
 }
 
 export function loadSettings(): Settings {
-  const s: Settings = { view: 'first', volume: 0.7, muted: false, music: 0.5, musicMuted: false, speakers: 0.4, speakersMuted: false, pageTurns: true, pushToTalk: false, notify: true, hud: { ...HUD_DEFAULTS }, pins: [] };
+  const s: Settings = { view: 'first', volume: 0.7, muted: false, music: 0.5, musicMuted: false, speakers: 0.4, speakersMuted: false, pageTurns: true, citySounds: true, pushToTalk: false, notify: true, hud: { ...HUD_DEFAULTS }, pins: [] };
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null');
     if (saved?.view === 'first' || saved?.view === 'third') s.view = saved.view;
@@ -135,6 +137,7 @@ export function loadSettings(): Settings {
     if (typeof saved?.speakers === 'number' && Number.isFinite(saved.speakers)) s.speakers = Math.max(0, Math.min(1, saved.speakers));
     if (typeof saved?.speakersMuted === 'boolean') s.speakersMuted = saved.speakersMuted;
     if (typeof saved?.pageTurns === 'boolean') s.pageTurns = saved.pageTurns;
+    if (typeof saved?.citySounds === 'boolean') s.citySounds = saved.citySounds; // fork
     if (typeof saved?.pushToTalk === 'boolean') s.pushToTalk = saved.pushToTalk;
     if (typeof saved?.notify === 'boolean') s.notify = saved.notify;
     for (const k of Object.keys(s.hud) as HudPanel[]) if (typeof saved?.hud?.[k] === 'boolean') s.hud[k] = saved.hud[k];

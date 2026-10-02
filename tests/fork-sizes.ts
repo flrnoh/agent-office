@@ -7,7 +7,6 @@ export const FORK_CEILINGS: Readonly<Record<string, number>> = {
   'src/client/features/rooftop/world.ts': 1010,
   'src/client/world/sky.ts': 971,
   'src/client/world/character/person.ts': 742,
-  'src/client/ui/settings.ts': 610,
   'src/client/world/holiday.ts': 697, // shorter than upstream's ceiling: the desk presents went to world/deskgifts.ts
   // The fork's own files.
   'src/client/world/soccer/props.ts': 1020,

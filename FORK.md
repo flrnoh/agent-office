@@ -687,6 +687,24 @@ Two kinds appended to `SHOP_KINDS` and dealt round the city like the rest (`test
   - `src/shared/protocol/presence.ts`: `PeerInfo.bike`. `src/shared/protocol/fork.ts`: `RideClientMsg`, `RideServerMsg`. `src/server/ws/handlers/fork.ts`: `bike.ride`, `bike.bell`. `src/server/guests.ts`, `src/server/party.ts`: the same, sorted.
   - `src/client/sound/index.ts`: `ride()`. `src/client/main.ts`: `installRide(...)`, `rideCounter` for `installShops`, `__office.bikes`; `src/client/core/parts.ts`: `ride`. `src/client/ui/help.ts`, `docs/features.md`, `docs/controls.md`: words. `tests/shops.test.ts`: the bike shop has no menu.
 
+### Sounds of the city
+
+The city round the office (*One city round the office*) can be heard: the road's rumble (brown noise and a tyre hiss), as loud as how near the nearest street is (counting how high up you are) and how many of the city's cars are about, faint from the floors and the roof, quieter and muffled (a 650 Hz low-pass) behind glass, nothing 90 m from any street; a whoosh with a falling band as a city car passes within 9 m; birds in the parks' and streets' trees within 40 m by day, crickets under them on warm dry nights (`summerish`: over 14 °C by the forecast, else May to September), neither in the rain nor behind glass (the office's windows keep their own); the murmur of people by the shops (three formant voices swelling and fading, `density` from the passers-by), a café's cups clinking; the rain on the shops' awnings, a patter and drops. A church with a bell tower on a park 80–200 m from the office (the nearest with a clear patch of grass: (-45, -110), on block (-1, -2), the tower toward the office) strikes the hours of the office's sky (a day an hour, so every 2.5 minutes), the hour's count on a twelve-hour clock, quiet from 22:00 to 7:00; a siren (a two-tone Martinshorn) goes by 220–380 m off every 10–20 minutes of the office's clock (`siren(n)`: n × 15 min ± 2.5 min, hashed, its bearing and way round too), rising over eight seconds and fading. Bells and sirens are on `store.officeNow`, the same moment for everyone, and never late: a jump of more than 5 s (a hidden tab, the page opening) rings nothing. Everything goes out on one bus of its own into the ambience bus, so it follows the office sounds' volume and mute and goes quiet when the tab is hidden; the **Stadtgeräusche** setting (on by default) fades it out. No wire traffic. `window.__citySound()` gives the levels, the loops' gains, the muffle's cut-off and the counts of what's played, for checks from the console.
+
+- Own files:
+  - `src/shared/citysound.ts`: `streetDistance`, `roadLevel`, `murmurLevel`, `awningLevel`, `nearestDoor`, `TREES`/`treesNear`, `summerish`; the bells (`bellStrikes`, `bellDue`) and the sirens (`siren`, `sirenDue`).
+  - `src/shared/church.ts`: `CHURCH` (which park, where on it, which way, the tower, the bells, the nave's and tower's boxes), laid out clear of the park's and the streets' trees.
+  - `src/client/world/church/index.ts`: the church (nave, gable roof, windows, tower with louvres, spire, cross), the `church` fixture in the outlook, with its colliders.
+  - `src/client/sound/city.ts` (`CitySound`: the loops, the whoosh, birds, crickets, cups, awning drops; `probe()`), `src/client/sound/citybells.ts` (`bells`, `siren`).
+  - `src/client/features/citysound/index.ts`: `installCitySound`: each frame (`env`) where the street is from where you are (on the roof `-roofDrop`), the city cars' middles (read from `office.town.traffic`, `world/town/traffic.ts` is untouched), in a shop or not, warm or not; the bells and sirens on the office clock; `window.__citySound`.
+  - `src/client/ui/onoff.ts`: an on/off pair of buttons (the bookshelf's page turns use it too).
+  - `tests/citysound.test.ts`.
+- Hooks in upstream files:
+  - `src/client/sound/index.ts`: `city` (`CitySound`) ticked with the rest, `setCity`, `cityLevels`, `cityBell`, `citySiren` in the fork's section.
+  - `src/client/state/persist.ts`: `Settings.citySounds` (default on). `src/client/ui/settings.ts`: the page-turns row is an `onOffRow` now, and the Stadtgeräusche row beside it (the file dropped to 586 lines, so it's off the ceilings in `tests/size.test.ts` and `tests/fork-sizes.ts`). `tests/client-store.test.ts`: the default.
+  - `src/client/world/office/build.ts`: `church` in the floor plan's `downstairs`. `src/client/main.ts`: `installCitySound(...)`.
+  - `src/client/ui/help.ts`: a row. `docs/features.md`: "Sounds of the city".
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.

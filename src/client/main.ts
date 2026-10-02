@@ -68,6 +68,7 @@ import { installTankstelle } from './features/tankstelle'; // flrnoh fork: the p
 import { installBossDesk } from './features/bossdesk';
 import { installBungee } from './features/bungee';
 import { installTown } from './features/town'; // flrnoh fork: the city round the office
+import { installCitySound } from './features/citysound'; // flrnoh fork: the sounds of the city
 import { installKino } from './features/kino'; // flrnoh fork: the cinema
 import { installShops } from './features/shops'; // flrnoh fork: the city's shops, to walk into
 import { installShopFronts } from './features/shopfronts'; // flrnoh fork: the shops from outside
@@ -205,6 +206,7 @@ parts.rig = installRig(ctx, { freePlace: (seat) => parts.seating.freePlace(seat)
 parts.tables = installTableGames(ctx, { roof: parts.rooftop.roof });
 parts.bungee = installBungee(ctx, { roof: parts.rooftop.roof, roofFloors: parts.rooftop.roofFloors, bodyOf: (id) => personOf(id)?.root });
 installTown(ctx, { roof: parts.rooftop.roof, roofFloors: parts.rooftop.roofFloors, bodies: () => [...parts.peers.remotes.values()].map((r) => r.person.root) }); // fork
+installCitySound(ctx, { roofFloors: parts.rooftop.roofFloors }); // fork
 parts.places = installPlaces(ctx, core, parts, { served: (d) => parts.fridge.serveFromCafe(d) });
 parts.guests = installGuests(ctx, { openWorkerTerminal: (id) => parts.waiting.openWorkerTerminal(id) });
 installDoorbell(ctx);
