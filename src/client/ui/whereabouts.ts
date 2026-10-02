@@ -30,7 +30,7 @@ export function whereabouts(p: PeerInfo, car?: { car: number; seat: CarSeat }, p
   if (car && def?.kind === 'bulli') return `🚐 ${car.seat === 'driver' ? 'driving' : 'riding in'} ${def.name}`; // flrnoh fork
   if (def) return `🏎️ ${car.seat === 'driver' ? 'driving' : 'riding in'} the ${def.name}`;
   if (p.smoking) return '🚬 on a smoke break';
-  if (p.golfing) return '🏌️ teeing off';
+  if (p.golfing) return p.floor === BOWLING ? '⛳ putting in the black-light mini golf' : '🏌️ teeing off'; // fork: the mini golf borrows the golf pose
   if (p.throwing) return p.throwing === 'darts' ? '🎯 playing darts' : '🪓 throwing axes';
   const office = plan.style === 'office' || p.floor === ROOF;
   const place = p.seat ? (office ? seatAt(p.seat) : seatOn(plan, p.seat)) : undefined;

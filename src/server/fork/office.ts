@@ -35,6 +35,7 @@ import { tvTitleLookup } from '../tv.js';
 import { HALL_ARRIVAL, backInHall, hallView } from '../hall.js';
 import { SOCCER_ARRIVAL, backInSoccer, soccerView } from '../soccer/place.js';
 import { BOWLING_ARRIVAL, BowlingHouse, backInBowling, bowlingView } from '../bowling/place.js';
+import { Minigolf } from '../bowling/minigolf.js';
 
 /** Made last, once upstream's stages are all there (see server.ts). */
 export interface Fork {
@@ -58,6 +59,7 @@ export interface Fork {
   radio: RadioProxy; // radio stations on the jukebox
   karaoke: Karaoke; // the bowling centre's karaoke bar (bowling/karaoke.ts)
   bowling: BowlingHouse; // the bowling centre's lights (cosmic bowling) and rental shoes
+  minigolf: Minigolf; // the bowling centre's black-light mini golf (bowling/minigolf.ts)
   /** To everyone up on the roof (or everyone but `except`). */
   toRoof(m: ServerMsg, except?: string, droppable?: boolean): void;
   /** To everyone in the padel hall. */
@@ -129,6 +131,19 @@ export function createFork(ctx: Ctx): Fork {
       lookup: tvTitleLookup,
     }),
     bowling: new BowlingHouse(),
+    minigolf: new Minigolf({
+      now: () => Date.now(),
+      where: (id) => {
+        const c = clients.get(id);
+        return c && c.peer.floor === BOWLING ? { x: c.peer.x, z: c.peer.z } : null;
+      },
+      send: (id, m) => {
+        const c = clients.get(id);
+        if (c) ctx.sendTo(c, m);
+      },
+      toAll: (m) => to(BOWLING)(m),
+      dataDir: cfg.dataDir, // the records (minigolf.json)
+    }),
     toRoof: to(ROOF),
     toHall: to(HALL),
     toBowling: to(BOWLING),
@@ -190,6 +205,7 @@ export const roofExtras = (ctx: Ctx): Partial<FloorView> => ({ dj: ctx.djBooth.s
 
 export function startFork(ctx: Ctx) {
   ctx.turn.start();
+  ctx.minigolf.start();
 }
 
 export function stopFork(ctx: Ctx) {
@@ -199,4 +215,5 @@ export function stopFork(ctx: Ctx) {
   ctx.gym.stop();
   ctx.turn.stop();
   ctx.forecourts.stop();
+  ctx.minigolf.stop();
 }

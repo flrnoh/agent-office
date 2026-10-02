@@ -79,6 +79,7 @@ const PARTY_SEES = [
   'tankstelle', // fork: the petrol station and its car wash
   'karaoke', 'karaoke.cheer', 'karaoke.rated', // fork: the bowling centre's karaoke bar
   'bowling.lights', 'bowling.shoes', 'bowling.house', // fork: the bowling centre's lights and rental shoes
+  'mg', 'mg.putt', // fork: the bowling centre's mini golf
 ] as const satisfies readonly T[];
 
 /** The work, the machine and the office's settings: never sent to a party guest. */

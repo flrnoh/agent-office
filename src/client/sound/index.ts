@@ -61,6 +61,7 @@ import { CitySound, type CityScene } from './city'; // fork: the sounds of the c
 import { bells, siren, type SirenPass } from './citybells';
 import { KaraokeSound } from '../features/karaoke/sound'; // fork: the bowling centre's karaoke bar
 import { BowlingAmbience, bowlingSound, type BowlingSound } from '../bowling/sound'; // fork: the bowling centre
+import { minigolf, MinigolfLoops, type MinigolfSound } from '../features/minigolf/sound'; // fork: the bowling centre's mini golf
 
 // What the rest of the client imports from here.
 export type { Hall, Listener } from './core';
@@ -535,5 +536,16 @@ export class OfficeSound {
   /** Every frame in the bowling centre: its murmur, far-off balls, muzak, and (0..1) cosmic bowling's pulse. */
   setBowling(level: number, cosmic: number) {
     this.bowlingAir.set(level, cosmic);
+  }
+
+  /** fork: the bowling centre's black-light mini golf (features/minigolf/sound.ts): a putt, a rail, a bumper, the cup, a fanfare. */
+  minigolf(kind: MinigolfSound, at?: Pos, strength = 0.5) {
+    minigolf(this.a, kind, at, strength);
+  }
+
+  private readonly minigolfLoops = new MinigolfLoops(this.a);
+  /** fork: the mini golf room's spacey pad (`ambient` 0–1) and the felt under a rolling ball, every frame near it; they fade without a call. */
+  setMinigolf(ambient: number, roll: number, rollAt: Pos | null, rollSpeed: number) {
+    this.minigolfLoops.set(ambient, roll, rollAt, rollSpeed);
   }
 }

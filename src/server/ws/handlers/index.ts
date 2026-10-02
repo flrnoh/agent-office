@@ -25,6 +25,7 @@ import { jailView, workerHandlers, workerHooks, workersView } from './workers.js
 import { baumarktView, trolleysView, boatsView, bungeeView, forkHandlers, forkHooks, kinoView, noView, rigView, tankView, tvView } from './fork.js'; // flrnoh fork
 import { karaokeHooks } from './karaoke.js'; // flrnoh fork: the bowling centre's karaoke bar
 import { bowlingHooks } from './bowling.js'; // flrnoh fork: the bowling centre's rental shoes go back
+import { minigolfHandlers, minigolfHooks } from './minigolf.js'; // flrnoh fork: the bowling centre's mini golf
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
 
 /** Each domain's handlers put together, in alphabetical order. */
@@ -51,13 +52,14 @@ export const handlers: HandlerMap<ClientMsg> = {
   ...usageHandlers,
   ...whiteboardHandlers,
   ...workerHandlers,
+  ...minigolfHandlers, // flrnoh fork: the bowling centre's mini golf
 };
 
 /**
  * The features that keep something per person on a floor, in the order they let go of it when
  * someone leaves the floor or the office (see FeatureHooks): the order the office has always done it in.
  */
-export const features: readonly FeatureHooks[] = [forkHooks, workerHooks, changesHooks, whiteboardHooks, ballHooks, carHooks, cabinetHooks, bowlingHooks, karaokeHooks]; // forkHooks, bowlingHooks, karaokeHooks: flrnoh fork
+export const features: readonly FeatureHooks[] = [forkHooks, workerHooks, changesHooks, whiteboardHooks, ballHooks, carHooks, cabinetHooks, bowlingHooks, karaokeHooks, minigolfHooks]; // forkHooks, bowlingHooks, karaokeHooks, minigolfHooks: flrnoh fork
 
 /** What someone arriving on a floor is sent (see office/views.ts): a piece from each feature, in the order it has always gone out. */
 export const views: ViewPieces = {
