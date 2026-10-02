@@ -5,6 +5,7 @@ import { analyse, FeatureStream, RATE } from '../src/server/djbeats/analyse.js';
 import { BEAT_PARTS, beatTimes, fromBase64, isDjBeats, type DjBeats } from '../src/shared/djbeats.js';
 import { BeatsError } from '../src/server/djbeats/fetch.js';
 import { GUEST_MSGS, TEAM_ONLY_MSGS } from '../src/server/guests.js';
+import { partyDrive, partyEmbed, partyFalloff, partyLift } from '../src/client/sound/party.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -207,6 +208,24 @@ test("the roof's frame follows the heard set: the beat, the parts, the drop land
   assert.ok(g.beat > 0.99 && g.bpm === 120);
 });
 
+test("past 100%: louder into a limiter, lifted to what the speakers take, carrying across the terrace", () => {
+  assert.equal(partyDrive(0.5), 0.25);
+  assert.equal(partyDrive(2), 4);
+  // Normal up to 100%: nothing lifted, the same fall-off as ever.
+  assert.equal(partyLift(1, 0.25), 1);
+  assert.deepEqual(partyFalloff(1), { ref: 7, rolloff: 0.8 });
+  // Disco at the usual music volume (50%, so a gain of 0.25): lifted, but peaks stay under full scale.
+  const lift = partyLift(2, 0.25);
+  assert.ok(lift > 3 && lift * 0.25 <= 0.95);
+  // Someone who turned their music right up isn't lifted past what their speakers take; muted stays muted.
+  assert.equal(partyLift(2, 1), 1);
+  assert.equal(partyLift(2, 0), 1);
+  assert.ok(partyFalloff(2).rolloff < 0.25 && partyFalloff(2).ref > 7);
+  // A set in an embedded player: at Disco nearly full volume right across the terrace.
+  assert.ok(0.25 * partyEmbed(2, 0.25) > 0.9);
+  assert.equal(partyEmbed(0.5, 0.25), 0.25);
+});
+
 test("the party's volume: the team sets it from anywhere, for everyone on the roof, and it's kept", () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'ao-djvolume-'));
   try {
@@ -223,6 +242,11 @@ test("the party's volume: the team sets it from anywhere, for everyone on the ro
     djMessage(booth, { t: 'dj.volume', volume: 7 }, hooks);
     djMessage(booth, { t: 'dj.volume', volume: Number.NaN }, hooks);
     assert.equal(sent.length, 1);
+    // Up to Disco (2), not past it.
+    djMessage(booth, { t: 'dj.volume', volume: 2 }, hooks);
+    assert.equal(booth.state().volume, 2);
+    djMessage(booth, { t: 'dj.volume', volume: 2.5 }, hooks);
+    assert.equal(booth.state().volume, 2);
     djMessage(booth, { t: 'dj.volume', volume: 0 }, hooks);
     assert.equal(booth.state().volume, 0);
     // After a restart, still silent.
