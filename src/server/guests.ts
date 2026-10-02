@@ -1,5 +1,6 @@
 import type { ClientMsg } from '../shared/protocol.js';
 import { radioRequestShape } from './radio.js';
+import { PROBE_CLIENT_MSGS } from '../shared/proberaum.js'; // flrnoh fork: the Schallwerk's rehearsal wing
 
 /*
  * The guest role (flrnoh fork, see FORK.md): guests walk around, chat, talk, play and watch the
@@ -41,6 +42,7 @@ const GUEST = [
   'show.hello', 'show.act', 'show.surf', 'show.ball', 'show.wod', 'gig.list', // fork: the Schallwerk's crowd and its programme
   'venuedj.take', 'venuedj.leave', 'venuedj.play', 'venuedj.stop', 'venuedj.tap', 'venuedj.house', 'venuedj.fx', // fork: the Schallwerk's DJ booth
   'instr.hello', 'instr.take', 'instr.leave', 'instr.note', 'instr.jam', 'instr.tone', // fork: the Schallwerk's instruments
+  ...PROBE_CLIENT_MSGS, // fork: the Schallwerk's rehearsal wing (booking, doors, the recorders: play, open to guests)
 ] as const satisfies readonly ClientMsg['t'][];
 
 /** What a guest's page sends on its own (resizing a terminal it watches, polling boards): dropped without a word. */

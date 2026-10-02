@@ -30,6 +30,7 @@ import { minigolfHandlers, minigolfHooks } from './minigolf.js'; // flrnoh fork:
 import { bowlingGameHandlers, bowlingGameHooks } from './bowlinggame.js'; // flrnoh fork: the bowling centre's lanes
 import { venueShowHandlers, venueShowHooks } from './venueshow.js'; // flrnoh fork: the Schallwerk's show
 import { instrumentsHandlers, instrumentsHooks } from './instruments.js'; // flrnoh fork: the Schallwerk's instruments
+import { proberaumHandlers, proberaumHooks } from './proberaum.js'; // flrnoh fork: the Schallwerk's rehearsal wing
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
 
 /** Each domain's handlers put together, in alphabetical order. */
@@ -60,13 +61,14 @@ export const handlers: HandlerMap<ClientMsg> = {
   ...bowlingGameHandlers, // flrnoh fork: the bowling centre's lanes and league
   ...venueShowHandlers, // flrnoh fork: the Schallwerk's crowd, DJ booth and gigs
   ...instrumentsHandlers, // flrnoh fork: the Schallwerk's instruments
+  ...proberaumHandlers, // flrnoh fork: the Schallwerk's rehearsal wing
 };
 
 /**
  * The features that keep something per person on a floor, in the order they let go of it when
  * someone leaves the floor or the office (see FeatureHooks): the order the office has always done it in.
  */
-export const features: readonly FeatureHooks[] = [forkHooks, workerHooks, changesHooks, whiteboardHooks, ballHooks, carHooks, cabinetHooks, bowlingHooks, bowlingGameHooks, karaokeHooks, minigolfHooks, venueShowHooks, instrumentsHooks]; // forkHooks, the bowling centre's (house, lanes, karaoke, mini golf), the Schallwerk's parts: flrnoh fork
+export const features: readonly FeatureHooks[] = [forkHooks, workerHooks, changesHooks, whiteboardHooks, ballHooks, carHooks, cabinetHooks, bowlingHooks, bowlingGameHooks, karaokeHooks, minigolfHooks, venueShowHooks, instrumentsHooks, proberaumHooks]; // forkHooks, the bowling centre's (house, lanes, karaoke, mini golf), the Schallwerk's parts: flrnoh fork
 
 /** What someone arriving on a floor is sent (see office/views.ts): a piece from each feature, in the order it has always gone out. */
 export const views: ViewPieces = {
