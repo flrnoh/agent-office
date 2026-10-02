@@ -5,7 +5,7 @@
  * out. Everyone up there sees who's swimming from where they are, posed as in the sea, with a splash as
  * they go in; the floats drift where the office's clock says, the same on every page.
  */
-import { POOL, POOL_DECK, inPoolAt, overPool } from '../../../shared/roofpool';
+import { POOL, POOL_DECK, SLIDE, inPoolAt, overPool, slideAt, slidingAt } from '../../../shared/roofpool';
 import type { Ctx } from '../../core/context';
 import { aside, hintTitle, key } from '../../core/hint';
 import { store } from '../../state';
@@ -13,7 +13,8 @@ import { h } from '../../ui/dom';
 import type { Person } from '../../world/character';
 import type { Interactable } from '../../world/types';
 import { SeaFx } from '../beach/fx';
-import { seaPose } from '../beach/poses';
+import { ridePose, seaPose } from '../beach/poses';
+import { SlideRide } from './slide';
 import type { Rooftop } from '../rooftop/world';
 import { PoolSwim } from './swim';
 import { buildRoofPool, type RoofPool } from './world';
@@ -21,6 +22,7 @@ import { buildRoofPool, type RoofPool } from './world';
 declare module '../../world/types' {
   interface InteractKinds {
     pool: true;
+    slide: true;
   }
 }
 
@@ -49,9 +51,14 @@ export function installRoofPool(ctx: Ctx, deps: RoofPoolDeps) {
       on = roof;
       pool = buildRoofPool(ctx.office.night);
       roof.group.add(pool.group);
+      roof.pickables.push(pool.group); // what the pointer's ray looks at up here
       roof.colliders.push(...pool.colliders);
       const it: Interactable = { kind: 'pool', x: (POOL.minX + POOL.maxX) / 2, z: (POOL.minZ + POOL.maxZ) / 2, y: POOL_DECK.top, radius: 4.2 };
-      roof.interactables.push(it);
+      const ladder: Interactable = { kind: 'slide', x: SLIDE.foot.x, z: SLIDE.foot.z, y: POOL_DECK.top, radius: 1.3 };
+      roof.interactables.push(ladder, it);
+      // Looking at the water or the slide is looking at them (the pointer's ray: input/pointer.ts).
+      pool.surface.userData.interact = it;
+      pool.tower.userData.interact = ladder;
     }
     return pool;
   };
@@ -65,6 +72,33 @@ export function installRoofPool(ctx: Ctx, deps: RoofPoolDeps) {
       ctx.sound.beach('ladder', { x: ctx.player.pos.x, y: POOL_DECK.top, z: ctx.player.pos.z });
       ctx.hint.invalidate();
     },
+  });
+
+  // The water slide: E at the foot of its ladder, up and down into the pool.
+  const ride = new SlideRide(ctx.player, {
+    whoosh: () => ctx.sound.beach('ladder', { x: SLIDE.x, y: SLIDE.top, z: SLIDE.z }),
+    splashDown: () => {
+      swim.enter(1);
+      splash(ctx.player.pos.x, ctx.player.pos.z, 1);
+      ctx.hint.invalidate();
+    },
+  });
+  ctx.interactions.define('slide', {
+    reach: 1.8,
+    hint: () => (ride.active || swim.active ? { k: '', parts: [] } : { k: 'slide', parts: [hintTitle('🛝 Water slide'), aside('Once round and into the pool'), key('E', 'Climb up and slide')] }),
+    use: (_it, k) => {
+      if (k === 'E' && !ride.active && !swim.active) ride.start();
+    },
+  });
+  ctx.activities.add({
+    id: 'slide',
+    active: () => ride.active,
+    stop: (why) => {
+      if (why !== 'walk' && why !== 'errand') ride.stop();
+    },
+    key: () => true,
+    hint: (el) => ctx.hint.draw(el, `slide|${ride.phase}`, () => [h('span.title', {}, ride.phase === 'climb' ? '🪜 Up the ladder' : '🛝 Wheee!'), aside('into the pool')]),
+    hidesHands: true,
   });
 
   // E on the deck: a cannonball into the middle of it.
@@ -118,10 +152,11 @@ export function installRoofPool(ctx: Ctx, deps: RoofPoolDeps) {
     const p = ctx.player;
     if (!ctx.upTop()) {
       if (swim.active) swim.leave();
+      if (ride.active) ride.stop();
       return;
     }
     placed();
-    if (swim.active) return;
+    if (swim.active || ride.active) return;
     if (p.rig || p.seat) {
       peak = p.pos.y;
       return;
@@ -160,16 +195,41 @@ export function installRoofPool(ctx: Ctx, deps: RoofPoolDeps) {
     person.setWorkout((b, _dt, t) => seaPose(b, 1.25, st.moving, t, st.phase));
   };
 
+  /** Who's sat in the slide's tube on the way down, posed sitting with their arms up. */
+  const sitting = new Map<string, Person>();
+  const sit = (id: string, person: Person, on: boolean) => {
+    const cur = sitting.get(id);
+    if (!on) {
+      if (cur) {
+        cur.setWorkout(null);
+        sitting.delete(id);
+      }
+      return;
+    }
+    if (cur === person) return;
+    cur?.setWorkout(null);
+    sitting.set(id, person);
+    person.setWorkout((b) => {
+      ridePose(b, 0.12, false, false, 0);
+      b.armR.rotation.set(-2.9, 0, -0.3);
+      b.armL.rotation.set(-2.9, 0, 0.3);
+    });
+  };
+
   ctx.ticks.add('others', ({ dt }) => {
     const up = ctx.upTop();
     const now = store.officeNow() / 1000;
-    if (up && pool) pool.update(now, ctx.sky.lampsOn);
+    // The floats keep clear of you swimming, and of where you'll come down off the slide.
+    const clear = swim.active ? ctx.player.pos : ride.active ? slideAt(1) : null;
+    if (up && pool) pool.update(now, ctx.sky.lampsOn, clear);
     pose('', ctx.me, up && swim.active, ctx.player.moving);
+    sit('', ctx.me, up && ride.active && ride.phase === 'slide');
     const remotes = deps.remotes();
     for (const [id, r] of remotes) {
       const p = store.peers.get(id);
       const wet = !!p && up && inPoolAt(p.x, p.y, p.z);
       pose(id, r.person, wet, !!p?.moving);
+      sit(id, r.person, !!p && up && !wet && slidingAt(p.x, p.y, p.z));
       if (!p || !up) continue;
       // A splash as they go in from up on the deck; rings round them while they swim.
       const last = was.get(id) ?? { y: p.y, wet, ringT: 0 };
@@ -182,6 +242,7 @@ export function installRoofPool(ctx: Ctx, deps: RoofPoolDeps) {
       was.set(id, { y: p.y, wet, ringT: last.ringT });
     }
     for (const id of [...posed.keys()]) if (id && !remotes.has(id)) posed.delete(id);
+    for (const id of [...sitting.keys()]) if (id && !remotes.has(id)) sitting.delete(id);
     for (const id of [...was.keys()]) if (!remotes.has(id)) was.delete(id);
   });
 

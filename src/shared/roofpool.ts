@@ -58,7 +58,10 @@ export function climbOutAt(x: number, z: number): { x: number; z: number } {
     { d: z - p.minZ, at: { x, z: p.minZ - 0.45 } },
     { d: p.maxZ - z, at: { x, z: p.maxZ + 0.45 } },
   ];
-  return ways.reduce((a, b) => (b.d < a.d ? b : a)).at;
+  // Not up where the water slide runs low over the deck, or into its tower.
+  const free = (at: { x: number; z: number }) =>
+    !(at.x > SLIDE_ZONE.minX && at.x < SLIDE.x + SLIDE.half + 0.1 && at.z > SLIDE_ZONE.minZ && at.z < SLIDE_ZONE.maxZ);
+  return [...ways].sort((a, b) => a.d - b.d).find((w) => free(w.at))!.at;
 }
 
 /** Whether a swimmer at (x, z) is near enough a wall to climb out. */
@@ -77,4 +80,56 @@ export function floatAt(i: number, t: number): { x: number; z: number; turn: num
   const w = 0.05 + i * 0.013;
   const a = t * w + i * 1.7;
   return { x: cx + Math.cos(a) * rx * (0.55 + 0.4 * Math.sin(i + t * 0.02)), z: cz + Math.sin(a * 1.3) * rz * 0.8, turn: a * 0.6 + i };
+}
+
+// ---- The water slide (flrnoh fork, see FORK.md "Pool party on the roof") ---------------------------
+
+/**
+ * The slide's tower on the deck's south-east corner, its platform `top` up, its ladder up its north
+ * face from the deck's east side (you stand at `foot` to climb), and the tube from the platform once
+ * round the tower and down into the water, as points along its bottom (the first leaving the platform,
+ * the last in the water).
+ */
+export const SLIDE = {
+  x: 10.2,
+  z: -3.8,
+  half: 0.4,
+  top: 3.6,
+  foot: { x: 10.2, z: -4.75 },
+  path: [
+    [10.2, 3.6, -3.8],
+    [10.2, 3.5, -4.55],
+    [10.8, 3.3, -4.4],
+    [11.05, 3.05, -3.8],
+    [10.8, 2.85, -3.2],
+    [10.2, 2.65, -2.95],
+    [9.6, 2.4, -3.2],
+    [9.35, 2.05, -3.8],
+    [9.1, 1.65, -4.5],
+    [8.5, 1.2, -5.1],
+    [7.6, 0.9, -5.6],
+  ] as readonly (readonly [number, number, number])[],
+} as const;
+
+/** Where the slide runs low over the deck: nobody stands there (its colliders keep them off). */
+export const SLIDE_ZONE = { minX: 8.6, maxX: SLIDE.x - SLIDE.half, minZ: POOL.maxZ, maxZ: POOL_DECK.maxZ } as const;
+
+/** A point `s` (0 the platform … 1 the water) along the slide, straight between its points. */
+export function slideAt(s: number): { x: number; y: number; z: number } {
+  const pts = SLIDE.path;
+  const f = Math.max(0, Math.min(1, s)) * (pts.length - 1);
+  const i = Math.min(pts.length - 2, Math.floor(f));
+  const k = f - i;
+  const [a, b] = [pts[i], pts[i + 1]];
+  return { x: a[0] + (b[0] - a[0]) * k, y: a[1] + (b[1] - a[1]) * k, z: a[2] + (b[2] - a[2]) * k };
+}
+
+/** Whether someone with their feet at (x, y, z) is on the way down the slide (not on its platform). */
+export function slidingAt(x: number, y: number, z: number): boolean {
+  if (y < POOL.surface + 0.15 || y > SLIDE.top - 0.05) return false;
+  for (let s = 0.05; s <= 1; s += 0.025) {
+    const p = slideAt(s);
+    if (Math.abs(p.y - y) < 0.5 && Math.hypot(p.x - x, p.z - z) < 0.55) return true;
+  }
+  return false;
 }
