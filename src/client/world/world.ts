@@ -67,6 +67,8 @@ export interface World {
   setLook(p: FloorPalette): void;
   /** Fork: furnishes it in the interior an admin picked for the floor, or with none the floor's own (shared/interiors.ts); only the office has interiors. */
   setInterior?(picked: string | null | undefined): void;
+  /** Fork: the interiors picked for the building's floors, bottom one first, for its outside (world/facade/). */
+  setBuilding?(picks: readonly (string | null | undefined)[]): void;
   setProjectName(name: string): void;
   /** Animates it; doors open for anyone in `people` who comes up to them. */
   update(t: number, dt: number, people: Iterable<{ x: number; y: number; z: number }>): void;
@@ -122,6 +124,7 @@ export function officeWorld(office: Office, upstairs: () => boolean, wing: () =>
     setBeanbags: (out) => office.setBeanbags(out),
     setLook: (p) => office.setLook(p),
     setInterior: (picked) => office.interior.setPicked(picked), // fork
+    setBuilding: (picks) => office.facade.setPicks(picks), // fork
     setProjectName: (name) => office.setProjectName(name),
     update: (t, dt, people) => office.update(t, dt, people),
   };

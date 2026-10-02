@@ -21,8 +21,8 @@ export const PALETTE = {
   plantDark: '#3f8f45',
   pot: '#e76f51',
   ink: '#2b2d42',
-  /** The building's outside paint. */
-  exterior: '#e07a5f',
+  /** The building's outside paint (flrnoh fork: anthracite, for the facade's colors to stand out on; see world/facade/). */
+  exterior: '#30344a',
 };
 
 /** Window glass: faintly blue and see-through. */

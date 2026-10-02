@@ -558,6 +558,17 @@ The storeys were cut their own way (above); now each is furnished its own way to
   - Client: `src/client/world/office/build.ts` (`interior` last on the plan, `setLook` goes through it), `room.ts` (the rugs are holders, `rugs` and `pendants` handles), `ground.ts`, `balcony.ts`, `src/client/world/tower.ts` (`userData.outdoors`), `src/client/world/world.ts` (`World.setInterior`), `src/client/core/maps.ts` (paints the floor's pick with its palette), `src/client/ui/elevator.ts` (the list and the label), `src/client/ui/floormenu.ts` (the label).
   - Docs: `docs/features.md` (the floors, the tower).
 
+### A facade for creatives
+
+The building's outside says what goes on inside (`src/client/world/facade/`, the `facade` fixture, right after the tower on the floor's plan). The walls are anthracite now (`PALETTE.exterior`, the tower's paint), and over them, for every storey, the one you're on included:
+
+- **Murals** across the north, east and west walls, a storey's stretch of wall one painting (`mural.ts`, canvases 56 px a meter, painted once): the agent robot with a giant pencil (IDEAS), a rocket (SHIP IT!), a light bulb (MAKE STUFF), rainbow waves round a `</>`; the storeys and walls take turns, cut round the windows, doors and the exit door. They're not merged (mergeByMaterial drops uvs).
+- **Rainbow fins** down the street side between the windows, balcony doors and decks, each storey's colors one on from the one below's, with a lit front edge that makes the street side a rainbow at night.
+- **A band round each storey** at its floor in its interior's accent color (shared/interiors.ts, the picks come in through `World.setBuilding` from the elevator list), its top flush with the floor, and a line of light under it in that interior's glow: from the street you see how each floor is furnished.
+- **Landmarks** (`landmarks.ts`): FLOGGE OFFICE in lit letters on the cornice along the street side, a neon blade on the south-west corner spelling CREATE a letter at a time, a giant light bulb having an idea on an arm off the north-west corner at the top, a paper plane bobbing on a wire by the street side, a pencil as long as a car stuck point first in the east wall, and lights up the four corners and round the top going round the rainbow. Paint drips off the top of the street side (never over a window).
+- Nothing has a collider; it's all outside the walls. Tests: `tests/facade.test.ts` (fins clear of every storey's openings and decks, bands under the floor, drips clear of windows).
+- Hooks in upstream files: `src/client/world/office/build.ts` (`facade` on the plan), `materials.ts` (`PALETTE.exterior`), `src/client/world/tower.ts` (its paint), `src/client/world/world.ts` (`World.setBuilding`), `src/client/core/maps.ts` (sends the picks on `floors`).
+
 ### A day at the beach
 
 Sunset Beach on the scenic loop west of town is for playing; guests and party guests too.
