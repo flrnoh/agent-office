@@ -39,7 +39,7 @@ export const HELP_ROWS: readonly (readonly [string, string])[] = [
   ['🧸', 'A toy from the toy shop in your hand: click (or E with nothing else to use) to play: the yo-yo, soap bubbles, the squeaky duck, a paper plane that glides off, a water pistol (a splash, nothing more), the teddy for a hug. A book or the paper: E to read it'],
   ['💿', 'In the record shop, E at a crate digs through the records (take one along), E at the listening station puts the headphones on: only you hear it, ✕, Esc or E takes them off'],
   // flrnoh fork: the Spielhalle and the Post (features/funshops).
-  ['🕹️', 'The Spielhalle (neon sign): E at a cabinet plays BLOCKFALL just for you. E at the claw machine (Greifautomat): arrows or W A S D move the claw, Space drops it before the clock runs out; if it holds, the plush is yours to carry. Everyone near sees the claw go'],
+  ['👾', 'The Spielhalle (neon sign): E at a cabinet plays BLOCKFALL just for you. E at the claw machine (Greifautomat): arrows or W A S D move the claw, Space drops it before the clock runs out; if it holds, the plush is yours to carry. Everyone near sees the claw go'],
   ['📸', 'The Spielhalle’s photo booth: E steps in, the curtain closes, pick a pose (the emotes) before each of four shots, and out comes a photo strip: download it as a PNG, and it’s in your hand too'],
   ['📮', 'The Post (yellow sign): E at the counter writes a postcard: a picture of the city on the front, a few lines on the back, to anyone in the office. They get it as a toast and a card at once if they’re in, else next time. Ten a day. E at the PO boxes looks for cards for you'],
   // flrnoh fork: the petrol station (features/tankstelle).
