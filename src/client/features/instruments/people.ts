@@ -104,7 +104,7 @@ export function playPose(p: Playing): (b: Bones, dt: number, t: number) => void 
       return;
     }
     // The mic: right hand up at the mouth, nodding with the voice.
-    b.armR.rotation.set(-2.35, 0, 0.42);
+    b.armR.rotation.set(-2.05, 0, 0.32);
     b.armL.rotation.set(-0.15, 0, 0.12);
     b.head.rotation.x = -0.05 + p.voice * 0.25;
   };
@@ -144,11 +144,11 @@ export class Players {
     const guitar = (bass: boolean, finish: StringFinish) => {
       const g = new THREE.Group();
       const m = stringed(bass, finish);
-      m.scale.setScalar(0.55);
-      m.position.set(0.1, -0.42, -0.42);
-      m.rotation.set(-1.15, 0, 1.25);
+      m.scale.setScalar(0.4);
+      m.position.set(0.13, -0.215, -0.4);
+      m.rotation.set(-1.05, 0, 1.3);
       g.add(m);
-      const pick = mesh(new THREE.SphereGeometry(0.03, 10, 8), toon('#f0c9a5'), 0.16, -0.3, -0.36, false);
+      const pick = mesh(new THREE.SphereGeometry(0.026, 10, 8), toon('#f0c9a5'), 0.16, -0.14, -0.36, false);
       g.add(pick);
       this.fpPick[bass ? 'bass' : 'guitar'] = pick;
       return g;
@@ -205,7 +205,7 @@ export class Players {
       this.fpSticks[1].rotation.x = -1.25 + stroke(now - mine.playing.hitR) * 0.45;
     }
     const pick = kind === 'guitar' || kind === 'bass' ? this.fpPick[kind] : undefined;
-    if (mine && pick) pick.position.y = -0.3 - stroke(performance.now() / 1000 - mine.playing.hitR) * 0.05 * mine.playing.dir;
+    if (mine && pick) pick.position.y = -0.14 - stroke(performance.now() / 1000 - mine.playing.hitR) * 0.05 * mine.playing.dir;
   }
 
   private drop(h: Held) {

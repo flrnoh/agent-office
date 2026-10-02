@@ -129,26 +129,32 @@ export function micModel(): THREE.Group {
   return g;
 }
 
-/** A mic stand for whoever stands at the origin: round base, the tube, a boom out toward their mouth, the mic in its clip. */
-export function micStand(mouth = 1.36): { group: THREE.Group; mic: THREE.Object3D } {
+/**
+ * A mic stand for whoever stands at the origin: round base and tube a step ahead, the boom reaching
+ * back toward their mouth (`mouth` high; a character's face sticks out 0.34 m), the mic in its clip.
+ */
+export function micStand(mouth = 1.24): { group: THREE.Group; mic: THREE.Object3D } {
   const group = new THREE.Group();
   const still = new THREE.Group();
   const mat = toon('#1d1d22');
-  const z = 0.42;
-  still.add(mesh(new THREE.CylinderGeometry(0.15, 0.16, 0.025, 20), mat, 0, 0.012, z + 0.12));
-  still.add(mesh(new THREE.CylinderGeometry(0.011, 0.013, mouth - 0.24, 8), mat, 0, (mouth - 0.24) / 2, z + 0.12));
-  still.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.04, 8), mat, 0, mouth - 0.26, z + 0.12));
+  const foot = 0.68;
+  const top = mouth - 0.1;
+  still.add(mesh(new THREE.CylinderGeometry(0.15, 0.16, 0.025, 20), mat, 0, 0.012, foot));
+  still.add(mesh(new THREE.CylinderGeometry(0.011, 0.013, top, 8), mat, 0, top / 2, foot));
+  still.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.05, 8), mat, 0, top, foot));
   // The boom, from the top of the tube up and back toward the singer.
-  const boom = mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.3, 6), mat, 0, mouth - 0.18, z - 0.0);
-  boom.rotation.x = -0.95;
+  const from = new THREE.Vector3(0, top, foot);
+  const to = new THREE.Vector3(0, mouth - 0.02, 0.5);
+  const boom = mesh(new THREE.CylinderGeometry(0.007, 0.007, from.distanceTo(to), 6), mat, 0, (from.y + to.y) / 2, (from.z + to.z) / 2);
+  boom.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize());
   still.add(boom);
   // The cable down the tube.
-  still.add(mesh(new THREE.CylinderGeometry(0.004, 0.004, mouth - 0.3, 5), toon('#0b0b0d'), 0.016, (mouth - 0.3) / 2 + 0.02, z + 0.125, false));
+  still.add(mesh(new THREE.CylinderGeometry(0.004, 0.004, top - 0.05, 5), toon('#0b0b0d'), 0.016, top / 2, foot + 0.005, false));
   group.add(mergeByColor(still));
   const mic = micModel();
   mic.name = 'mic';
-  mic.position.set(0, mouth - 0.14, z - 0.12);
-  mic.rotation.x = -1.05; // its grille toward the singer's mouth
+  mic.position.set(0, mouth - 0.04, 0.52);
+  mic.rotation.x = -1.25; // its grille toward the singer's mouth
   group.add(mic);
   return { group, mic };
 }

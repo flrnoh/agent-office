@@ -189,7 +189,7 @@ function build(bass: boolean, finish: StringFinish): THREE.Group {
   return g;
 }
 
-/** An A-frame guitar stand: the neck rests in its yoke at `neckY`, the body on its padded arms. */
+/** A guitar stand: a tripod, the upright with the yoke the neck rests in at `neckY`, the padded cradle the body sits on. */
 export function guitarStand(neckY: number): THREE.Group {
   const key = `stand|${neckY.toFixed(2)}`;
   let t = templates.get(key);
@@ -197,20 +197,26 @@ export function guitarStand(neckY: number): THREE.Group {
     t = new THREE.Group();
     const still = new THREE.Group();
     const mat = toon('#1d1d22');
-    // The upright, leaning back a little, and its yoke.
-    const up = mesh(new THREE.CylinderGeometry(0.01, 0.012, neckY, 8), mat, 0, neckY / 2, -0.09);
-    up.rotation.x = 0.12;
-    still.add(up);
-    still.add(mesh(new THREE.TorusGeometry(0.03, 0.008, 6, 12, Math.PI), toon('#2b2b30'), 0, neckY + 0.01, -0.04).rotateX(Math.PI));
-    // Two legs back, the cradle's two arms forward.
-    for (const s of [-1, 1]) {
-      const leg = mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.36, 6), mat, s * 0.1, 0.1, -0.18);
-      leg.rotation.set(-0.5, 0, s * 0.45);
+    const foam = toon('#8a1d23');
+    // The tripod: three legs out from the foot of the upright, rubber feet.
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 + Math.PI / 2;
+      const leg = mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.2, 6), mat, Math.cos(a) * 0.09, 0.05, -0.08 + Math.sin(a) * 0.09);
+      leg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(-Math.cos(a), 0.45, -Math.sin(a)).normalize());
       still.add(leg);
-      const arm = mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.22, 6), mat, s * 0.09, 0.07, 0.04);
-      arm.rotation.set(1.25, 0, s * 0.5);
+      still.add(mesh(new THREE.SphereGeometry(0.014, 6, 4), toon('#0b0b0d'), Math.cos(a) * 0.18, 0.01, -0.08 + Math.sin(a) * 0.18, false));
+    }
+    // The upright, leaning back a touch, and the yoke on top.
+    const up = mesh(new THREE.CylinderGeometry(0.01, 0.012, neckY - 0.08, 8), mat, 0, (neckY + 0.08) / 2, -0.08);
+    still.add(up);
+    still.add(mesh(new THREE.TorusGeometry(0.028, 0.008, 6, 12, Math.PI), foam, 0, neckY + 0.02, -0.08).rotateX(Math.PI));
+    // The cradle: a bar across in front, two padded arms turned up at its ends.
+    still.add(mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.1, 6), mat, 0, 0.16, -0.03).rotateX(Math.PI / 2));
+    still.add(mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.28, 6), mat, 0, 0.16, 0.02).rotateZ(Math.PI / 2));
+    for (const s of [-1, 1]) {
+      const arm = mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.07, 8), foam, s * 0.13, 0.185, 0.03);
+      arm.rotation.x = -0.3;
       still.add(arm);
-      still.add(mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.06, 8), toon('#8a1d23'), s * 0.12, 0.09, 0.12).rotateX(Math.PI / 2));
     }
     t.add(mergeByColor(still));
     templates.set(key, t);

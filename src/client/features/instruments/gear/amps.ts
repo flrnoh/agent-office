@@ -173,6 +173,10 @@ export function combo(bass: boolean): THREE.Group {
     knobs(still, bass ? 6 : 7, -w / 2 + 0.08, w / 2 - 0.12, h - 0.045, d / 2 + 0.01, bass ? '#d6d9de' : '#141318', 0.012);
     g.add(mesh(new THREE.SphereGeometry(0.009, 8, 6), toon(bass ? '#5aa8ff' : '#ff3b3b', { emissive: bass ? '#1e5fd0' : '#c01010' }), w / 2 - 0.05, h - 0.045, d / 2 + 0.008, false));
     still.add(mesh(new THREE.BoxGeometry(0.16, 0.02, 0.04), toon('#0b0b0e'), 0, h + 0.012, 0, false));
+    // The back: a guitar combo's open below its panel, the speakers' magnets in there; a bass's closed with its port.
+    still.add(mesh(new THREE.BoxGeometry(w - 0.06, bass ? h - 0.2 : h * 0.4, 0.01), toon(bass ? '#26272d' : '#08080a'), 0, bass ? h / 2 - 0.04 : h * 0.3, -d / 2 - 0.004, false));
+    for (const x of bass ? [0] : [-w / 4, w / 4]) still.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 14).rotateX(Math.PI / 2), toon('#5b5f68'), x, bass ? h * 0.4 : h * 0.3, -d / 2 + 0.03, false));
+    still.add(mesh(new THREE.BoxGeometry(w - 0.06, 0.012, 0.012), toon('#3a3b42'), 0, h - 0.13, -d / 2 - 0.004, false));
     const plate = logo(bass ? 'BASSWERK' : 'Donner', 0.14, 0.04, '#f4efe2', '#0d0c10', bass ? '900 64px Arial, sans-serif' : undefined);
     plate.position.set(-w / 2 + 0.12, 0.12, d / 2 + 0.006);
     g.add(plate);

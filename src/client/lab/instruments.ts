@@ -3,7 +3,8 @@
 // http://localhost:5173/lab/instruments.html), and for hearing them (`audio=`). The stage, the
 // stations and the players' poses are the feature's own (features/instruments).
 // Query params:
-//   view=stage|wide|kit|backline|guitar|keys|mics|room|room2|top   where the camera is
+//   view=stage|wide|kit|backline|guitar|keys|mics|room|room2|top|steps   where the camera is
+//   view=fp-drums|fp-guitar|fp-bass|fp-keys|fp-mic   your own eyes playing that stage instrument (with your hands' view)
 //   play=1                                  people at the instruments, mid-song
 //   audio=guitar|clean|lead|drums|bass|band|keys-piano|keys-epiano|keys-organ|keys-lead|keys-pad
 //                                           renders that take offline instead (see instruments-audio.ts)
@@ -68,9 +69,15 @@ function draw() {
     }
   }
 
-  // Players, mid-song.
-  const players = new Players(new THREE.Scene());
-  if (play) {
+  // Players, mid-song; your own instrument in your hands' view in first person.
+  const hands = new THREE.Scene();
+  const handsSun = new THREE.DirectionalLight('#fff1d6', 2);
+  handsSun.position.set(-0.6, 1.4, 0.9);
+  hands.add(new THREE.HemisphereLight('#fff5e6', '#c9a27a', 1.5), new THREE.AmbientLight('#ffffff', 0.5), handsSun);
+  const handsCam = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.01, 5);
+  const players = new Players(hands);
+  const fp = view.startsWith('fp-') ? `stage-${view.slice(3).replace('guitar', 'guitar1').replace('mic', 'mic1')}` : null;
+  if (play || view.startsWith('fp-')) {
     const cast: [string, string, string][] = [
       ['stage-drums', 'Flo', '#e05a3a'],
       ['stage-guitar1', 'Ann', '#3a8ee0'],
@@ -82,7 +89,7 @@ function draw() {
     ];
     const holders = new Map<string, Parameters<Players['update']>[0] extends Map<string, infer V> ? V : never>();
     const now = performance.now() / 1000;
-    for (const [id, name, color] of cast) {
+    for (const [id, name, color] of cast.filter(([id]) => id !== fp)) {
       const st = stations.find((s) => s.spot.id === id)!;
       const person = new Person(name, color, lookFromSeed(name));
       person.root.position.set(st.spot.x, st.floorY, st.spot.z);
@@ -99,7 +106,16 @@ function draw() {
       } else strike(playing, 52, null, now - 0.03);
       if (st.keys) for (const p of [60, 64, 67, 48]) st.keys.press(p, true);
     }
-    players.update(holders, '', false);
+    if (fp) {
+      // You at the instrument: no body of your own drawn, your hands' view instead.
+      const st = stations.find((s) => s.spot.id === fp)!;
+      const playing = newPlaying(st.spot.kind);
+      strike(playing, DRUM_PIECES.snare, st.spot.kind === 'drums' ? 'snare' : null, now - 0.02);
+      holders.set('me', { person: new Person('me', '#fff', lookFromSeed('me')), kind: st.spot.kind, playing, finish: undefined });
+      if (st.held) st.held.visible = false;
+      if (st.keys) for (const p of [60, 64, 67]) st.keys.press(p, true);
+    }
+    players.update(holders, 'me', !!fp);
     for (const h of holders.values()) h.person.update(1 / 60, 1, false, false);
   }
   for (let i = 0; i < 6; i++) for (const s of stations) {
@@ -125,6 +141,21 @@ function draw() {
   const [p, l] = cams[view] ?? cams.stage;
   camera.position.set(p[0], p[1], p[2]);
   camera.lookAt(l[0], l[1], l[2]);
+  if (fp) {
+    // Where the office puts your eyes playing it (features/instruments/index.ts startPlaying).
+    const st = stations.find((s) => s.spot.id === fp)!;
+    const kind = st.spot.kind;
+    camera.fov = 70;
+    camera.updateProjectionMatrix();
+    camera.position.set(st.spot.x, st.floorY + 1.4 - (kind === 'drums' ? 0.1 : 0), st.spot.z);
+    camera.rotation.order = 'YXZ';
+    camera.rotation.set(kind === 'drums' ? -0.42 : kind === 'keys' ? -0.55 : kind === 'mic' ? -0.12 : -0.3, st.spot.rotY - Math.PI, 0);
+  }
   render();
+  if (fp) {
+    renderer.autoClear = false;
+    renderer.clearDepth();
+    renderer.render(hands, handsCam);
+  }
   ready({ view, triangles: renderer.info.render.triangles, calls: renderer.info.render.calls, stations: stations.length, colliders: built.colliders.length + stations.reduce((n, s) => n + s.colliders.length, 0), spots: INSTRUMENT_SPOTS.length, zone: ZONES.stage });
 }

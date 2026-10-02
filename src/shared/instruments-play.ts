@@ -176,5 +176,5 @@ export const KEYS_KEYS: Readonly<Record<string, number>> = {
 /** The keyboard's octave: the bottom row's C (C3 to start with), and how far it shifts. */
 export const KEYS_OCTAVE = { start: 48, min: 24, max: 72 } as const;
 
-/** Which keys stop playing, by instrument: Esc always; E too, but on the keyboard, where E is a note. */
-export const leaveKeys = (kind: InstrumentKind): readonly string[] => (kind === 'keys' ? ['Escape'] : ['Escape', 'KeyE']);
+/** Which keys stop playing, by instrument: Esc always; E too, but on the keyboard, where E is a note (Backspace there instead). */
+export const leaveKeys = (kind: InstrumentKind): readonly string[] => (kind === 'keys' ? ['Escape', 'Backspace'] : ['Escape', 'KeyE']);

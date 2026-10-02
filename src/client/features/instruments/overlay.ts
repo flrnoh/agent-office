@@ -1,6 +1,6 @@
 import type { InstrumentKind, VenueRoomId } from '../../../shared/venue';
 import { KIND_NAMES, ROOM_NAMES, TONE_NAMES, type Jam, type Tone } from '../../../shared/instruments';
-import { GROOVES, NOTE_NAMES, chordOf } from '../../../shared/instruments-play';
+import { GROOVES, KEYS_KEYS, LEAD_HOME, NOTE_NAMES, chordOf, leadPitch } from '../../../shared/instruments-play';
 import { h } from '../../ui/dom';
 import './overlay.css';
 
@@ -30,7 +30,7 @@ export interface OverlayState {
 // ---- Keycap labels ---------------------------------------------------------------------------------------
 
 const GERMAN: Record<string, string> = { KeyZ: 'Y', KeyY: 'Z', Semicolon: 'Ö', Quote: 'Ä', BracketLeft: 'Ü', BracketRight: '+', Slash: '-', Equal: '´', Minus: 'ß' };
-const NAMED: Record<string, string> = { Space: 'Leer', Escape: 'Esc', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Comma: ',', Period: '.', ShiftLeft: '⇧' };
+const NAMED: Record<string, string> = { Space: 'Leer', Escape: 'Esc', Backspace: '⌫', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Comma: ',', Period: '.', ShiftLeft: '⇧' };
 let layout: Map<string, string> | null = null;
 let layoutAsked = false;
 /** The label on a key's cap, as this keyboard has it. */
@@ -53,9 +53,29 @@ const cap = (code: string) => h('span.ins-cap', { 'data-code': code }, capLabel(
 const row = (codes: string[], label: string) => h('div.ins-row', {}, h('span.ins-caps', {}, ...codes.map(cap)), h('span.ins-what', {}, label));
 const span = (from: string, to: string, label: string) => h('div.ins-row', {}, h('span.ins-caps', {}, cap(from), h('span.ins-dots', {}, '…'), cap(to)), h('span.ins-what', {}, label));
 
+const UPPER = /^(?:Key[QWERTYUIOP]|Digit|Bracket|Equal)/;
+const isBlackSemi = (s: number) => [1, 3, 6, 8, 10].includes(s % 12);
+
+/** A little piano for one row of the typing keyboard: its white keys with their caps, the black ones over them. */
+function piano(upper: boolean): HTMLElement {
+  const keys = Object.entries(KEYS_KEYS)
+    .filter(([c]) => UPPER.test(c) === upper)
+    .sort((a, b) => a[1] - b[1]);
+  const whites = keys.filter(([, s]) => !isBlackSemi(s));
+  const el = h('div.ins-piano', { style: `--n:${whites.length}` });
+  whites.forEach(([code, s]) => el.append(h('span.ins-cap.ins-wk', { 'data-code': code, title: NOTE_NAMES[s % 12] }, capLabel(code))));
+  for (const [code, s] of keys) {
+    if (!isBlackSemi(s)) continue;
+    // Between the white key below it and the next.
+    const i = whites.findIndex(([, w]) => w === s - 1);
+    el.append(h('span.ins-cap.ins-bk', { 'data-code': code, style: `--i:${i + 1}` }, capLabel(code)));
+  }
+  return el;
+}
+
 /** The map of each instrument (what doesn't change while you play). */
 function keyMap(kind: InstrumentKind): HTMLElement[] {
-  const leave = row(kind === 'keys' ? ['Escape'] : ['KeyE', 'Escape'], kind === 'mic' ? 'Mikro zurück' : 'Aufhören');
+  const leave = row(kind === 'keys' ? ['Escape', 'Backspace'] : ['KeyE', 'Escape'], kind === 'mic' ? 'Mikro zurück' : 'Aufhören');
   if (kind === 'drums')
     return [
       row(['Space', 'KeyV'], 'Bassdrum'),
@@ -80,7 +100,6 @@ function keyMap(kind: InstrumentKind): HTMLElement[] {
     return [
       span('Digit1', 'Digit8', kind === 'bass' ? 'Grundton der Akkorde' : 'Akkord anschlagen'),
       ...(kind === 'guitar' ? [row(['Space'], 'Abschlag'), row(['KeyB'], 'Aufschlag')] : []),
-      span('KeyA', 'Quote', 'Pentatonik'),
       span('KeyQ', 'KeyP', 'eine Oktave höher (ohne E)'),
       row(['ShiftLeft'], 'Abdämpfen (Palm Mute)'),
       ...(kind === 'guitar' ? [row(['KeyV'], 'Verzerrer an/aus'), row(['KeyC'], 'Powerchords / volle Akkorde')] : []),
@@ -90,8 +109,10 @@ function keyMap(kind: InstrumentKind): HTMLElement[] {
     ];
   if (kind === 'keys')
     return [
-      span('KeyZ', 'Slash', 'untere Oktave (S D G H J … schwarz)'),
-      span('KeyQ', 'BracketRight', 'obere Oktave (2 3 5 6 7 … schwarz)'),
+      h('div.ins-what', {}, 'obere Oktave'),
+      piano(true),
+      h('div.ins-what', {}, 'untere Oktave'),
+      piano(false),
       row(['Space'], 'Haltepedal'),
       row(['ShiftLeft'], 'laut'),
       row(['ArrowLeft', 'ArrowRight'], 'Oktave'),
@@ -106,6 +127,8 @@ export class Overlay {
   private kind: InstrumentKind | null = null;
   private status = h('div.ins-status');
   private chords = h('div.ins-chords');
+  /** The lead row's notes in the room's key (guitar and bass). */
+  private lead = h('div.ins-lead');
   private beats = h('div.ins-beats', {}, ...[1, 2, 3, 4].map(() => h('span')));
   private caps: HTMLElement[] = [];
   private shown = '';
@@ -123,7 +146,7 @@ export class Overlay {
     const where = kind === 'mic' ? (room === 'hall' ? 'auf der Bühne' : `im ${ROOM_NAMES[room]}`) : ROOM_NAMES[room];
     this.el.className = `ins-panel ins-${kind}`;
     const map = h('div.ins-map', {}, ...keyMap(kind));
-    this.el.replaceChildren(h('div.ins-head', {}, h('span.ins-title', {}, `${KIND_NAMES[kind]} · ${where}`), x), this.beats, this.status, this.chords, map);
+    this.el.replaceChildren(h('div.ins-head', {}, h('span.ins-title', {}, `${KIND_NAMES[kind]} · ${where}`), x), this.beats, this.status, this.chords, this.lead, map);
     this.caps = [...this.el.querySelectorAll<HTMLElement>('.ins-cap')];
   }
 
@@ -147,7 +170,17 @@ export class Overlay {
     if (key === this.shown) return;
     this.shown = key;
     this.status.textContent = s.kind === 'mic' ? `${s.room === 'hall' ? 'Alle im Saal hören dich' : `Nur ${ROOM_NAMES[s.room]} hört dich`} · ${text}` : text;
-    if (!chordKey) return void this.chords.replaceChildren();
+    if (!chordKey) {
+      this.chords.replaceChildren();
+      this.lead.replaceChildren();
+      return;
+    }
+    const kind = s.kind as 'guitar' | 'bass';
+    this.lead.replaceChildren(
+      h('div.ins-what', {}, 'Pentatonik'),
+      h('div.ins-strip', {}, ...LEAD_HOME.map((code) => h('span.ins-note', {}, cap(code), h('small', {}, NOTE_NAMES[(leadPitch(kind, code, s.jam.key, s.jam.minor) ?? 0) % 12])))),
+    );
+    this.caps = [...this.el.querySelectorAll<HTMLElement>('.ins-cap')];
     this.chords.replaceChildren(...[0, 1, 2, 3, 4, 5, 6, 7].map((slot) => h(`span.ins-chord${slot === s.chord ? '.on' : ''}`, {}, h('b', {}, String(slot + 1)), chordOf(s.jam.key, s.jam.minor, slot).name)));
   }
 }

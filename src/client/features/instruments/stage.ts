@@ -279,15 +279,16 @@ export function buildStage(): StageBuilt {
   place(upper.group, -7.5, 7.6 - 0.56, Math.PI);
   for (const dx of [-0.4, 0.4]) still.add(mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.32, 6), toon('#1d1d22'), -7.5 + dx, H + 0.99, 7.6 - 0.58));
   // Wedges: at the three mics, the bass, the keys, and one beside the drummer.
+  // The singers' beside their mic stands, turned in at them.
   for (const [x, z, r] of [
-    [-3.5, 4.3, 0],
-    [2.5, 4.3, 0],
-    [8.5, 4.3, 0],
+    [-4.15, 4.32, 0.45],
+    [1.85, 4.32, 0.45],
+    [7.85, 4.32, 0.45],
     [5.5, 6.75, 0],
     [-7.5, 6.5, 0],
   ] as const) {
     place(wedge(), x, z, r);
-    colliders.push({ minX: x - 0.3, maxX: x + 0.3, minZ: z - 0.22, maxZ: z + 0.28, top: H + 0.34 });
+    colliders.push({ minX: x - 0.3, maxX: x + 0.3, minZ: z - 0.25, maxZ: z + 0.28, top: H + 0.34 });
   }
   place(wedge(), 4.25, 8.7, -Math.PI / 2, H + D.h);
   // Side-fills on both wings, facing across the stage.

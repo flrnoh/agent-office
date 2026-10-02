@@ -130,7 +130,11 @@ export function installInstruments(ctx: Ctx, deps: InstrumentsDeps) {
       stats.played++;
       hear(st.spot.id, n, me(), due);
       const delay = due ? due - performance.now() : 0;
-      const out = () => send({ t: 'instr.note', spot: st.spot.id, note: n });
+      const out = () => {
+        send({ t: 'instr.note', spot: st.spot.id, note: n });
+        // The office doesn't echo it back: this page's own listeners (the studio's recorder) get it here, as everyone else's do.
+        ctx.messages.dispatch({ t: 'instr.note', id: me(), spot: st.spot.id, note: n });
+      };
       if (delay > 8) setTimeout(out, delay);
       else out();
     },
@@ -403,6 +407,8 @@ export function installInstruments(ctx: Ctx, deps: InstrumentsDeps) {
     players: () => players,
     jams: () => jams,
     playing: () => musician.station?.spot.id ?? null,
+    /** Whether the instruments' sound is up (audio started). */
+    audio: () => engine()?.ctx.state ?? 'off',
     /** Who's on your PA (your room and their ids), and whether you are (a stage mic). */
     pa: () => ({ on: paKey, self: ctx.voice.selfOnPa }),
     /** Takes `spot` as E at it would. */

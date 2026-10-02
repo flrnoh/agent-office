@@ -19,7 +19,7 @@ export interface Station {
   group: THREE.Group;
   interactable: Interactable;
   colliders: Collider[];
-  /** The guitar or bass on its stand, or the mic in its clip: gone while someone plays it. */
+  /** The guitar or bass on its stand: gone while someone plays it (it's on them). */
   held?: THREE.Object3D;
   /** The kit's moving parts. */
   kit?: KitLook;
@@ -38,7 +38,7 @@ const KEYS_COLOR: Record<string, string> = { 'stage-keys': '#c8202c', 'probe1-ke
 export const stringFinishOf = (id: string): StringFinish | undefined => GUITAR_FINISH[id] ?? BASS_FINISH[id];
 
 /** Where on a guitar stand the guitar's middle is, and the stand's yoke. */
-const ON_STAND = { y: 0.36, tilt: -0.16, yoke: 0.86 };
+const ON_STAND = { y: 0.4, tilt: -0.1, yoke: 0.86 };
 
 /** How high you stand at `spot` (the stage's drummer sits up on the drum riser). */
 export const floorOf = (spot: InstrumentSpot) => spot.y + (spot.id === 'stage-drums' ? DRUM_RISER.h : 0);
@@ -81,13 +81,13 @@ export function buildStation(spot: InstrumentSpot): Station {
   } else if (spot.kind === 'guitar' || spot.kind === 'bass') {
     const bass = spot.kind === 'bass';
     const st = guitarStand(ON_STAND.yoke + (bass ? 0.1 : 0));
-    // On your right, a step ahead, turned toward you.
+    // On your right, a step ahead, turned out toward the room (the hall, on the stage).
     st.position.set(-0.62, 0, 0.42);
-    st.rotation.y = Math.PI - 0.5;
+    st.rotation.y = -0.4;
     group.add(st);
     const inst = stringed(bass, (bass ? BASS_FINISH : GUITAR_FINISH)[spot.id] ?? 'black');
     inst.position.set(-0.62 - 0.01, ON_STAND.y + (bass ? 0.04 : 0), 0.42 - 0.02);
-    inst.rotation.set(0, Math.PI - 0.5, 0); // its front toward you…
+    inst.rotation.set(0, -0.4, 0); // its front out…
     inst.rotateX(ON_STAND.tilt); // …leaning back into the yoke
     inst.scale.setScalar(bass ? 0.92 : 1);
     group.add(inst);
@@ -111,9 +111,8 @@ export function buildStation(spot: InstrumentSpot): Station {
     aim = new THREE.Vector3(0, 0, 0.42);
     radius = 1.4;
   } else {
-    const m = micStand();
-    group.add(m.group);
-    held = m.mic;
+    // The singer sings into it on its stand, a hand on it.
+    group.add(micStand().group);
     aim = new THREE.Vector3(0, 0, 0.4);
     radius = 1.1;
   }

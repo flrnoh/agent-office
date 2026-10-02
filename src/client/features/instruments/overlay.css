@@ -25,6 +25,18 @@
 .ins-what { color: #d9d4e4; font-weight: 700; }
 .ins-cap { display: inline-block; min-width: 22px; padding: 1px 5px; border: 2px solid #8a8496; border-bottom-width: 4px; border-radius: 6px; background: #2b2738; color: #fff; font-size: 12px; font-weight: 900; text-align: center; transition: transform .04s; }
 .ins-cap.on { transform: translateY(2px); border-bottom-width: 2px; border-color: #ffd166; background: #ffd166; color: #1b1824; }
+/* The guitar's and the bass's lead row: each key's note in the room's key. */
+.ins-lead:empty { display: none; }
+.ins-strip { display: flex; gap: 3px; margin: 2px 0 6px; }
+.ins-note { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.ins-note .ins-cap { min-width: 20px; padding: 1px 3px; }
+.ins-note small { font-size: 10px; color: #8a8496; }
+
+/* The keyboard's two rows as little pianos. */
+.ins-piano { position: relative; display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 2px; height: 58px; margin: 0 0 4px; }
+.ins-piano .ins-wk { display: flex; align-items: flex-end; justify-content: center; min-width: 0; padding: 0 0 3px; border-color: #b9b4c4; background: #f4f1ea; color: #1b1824; font-size: 11px; }
+.ins-piano .ins-bk { position: absolute; top: 0; left: calc(var(--i) * (100% + 2px) / var(--n) - 9px); width: 18px; min-width: 0; height: 32px; padding: 0; display: flex; align-items: flex-end; justify-content: center; border-color: #000; background: #1b1824; color: #fff; font-size: 10px; z-index: 1; }
+.ins-piano .ins-cap.on { background: #ffd166; color: #1b1824; }
 @media (max-width: 600px) {
   .ins-panel { left: 8px; right: 8px; width: auto; bottom: 86px; max-height: 45vh; }
 }
