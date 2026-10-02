@@ -57,6 +57,8 @@ export interface ShopsDeps {
   target(): Interactable | null;
   /** In a place across the street (the casino, the gym, a hall). */
   inPlace(): boolean;
+  /** flrnoh fork: the bike shop's counter (features/ride), if it's that: whether it took it. */
+  rideCounter(s: Shop): boolean;
 }
 
 /** How near (m, from the camera) a shop's inside is built, how many at most, and how far before it goes. */
@@ -70,7 +72,7 @@ interface Open {
   items: Interactable[];
 }
 
-const KIND_OF: Record<Station['at'], 'shopcounter' | 'shopchair' | 'shopcrate' | 'shoplisten' | 'shopshelf'> = { counter: 'shopcounter', chair: 'shopchair', crate: 'shopcrate', listen: 'shoplisten', shelf: 'shopshelf' };
+const KIND_OF: Record<Station['at'], Interactable['kind']> = { counter: 'shopcounter', chair: 'shopchair', crate: 'shopcrate', listen: 'shoplisten', shelf: 'shopshelf', washer: 'shopwasher', vending: 'shopvending' }; // the last two: features/ride
 
 export function installShops(ctx: Ctx, deps: ShopsDeps) {
   const open = new Map<number, Open>();
@@ -314,6 +316,7 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
       ctx.me.sit(w.seat.hips);
       ctx.net.send({ t: 'sit', seat: key });
     }
+    if (s.kind === 'waschsalon') return toast('🪑 You sit and wait. The machines hum, somebody’s socks go round and round');
     if (s.kind === 'tattoo') inkStudio(s);
     else barber(s);
   }
@@ -343,6 +346,7 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
   };
   function counter(s: Shop) {
     const k = SHOP_KIND_BY_ID.get(s.kind)!;
+    if (deps.rideCounter(s)) return;
     if (s.kind === 'friseur' || s.kind === 'tattoo') {
       const chair = shopRoom(s).stations.find((t) => t.at === 'chair');
       return chair ? sitIn(s, chair) : s.kind === 'tattoo' ? inkStudio(s) : barber(s);
@@ -373,8 +377,9 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
       const k = label(it);
       if (!k) return { k: '', parts: [] };
       const sitting = ctx.player.seat?.key === shopSeatKey(it.shop ?? -1, stationOf(it)?.n ?? -1);
-      const what = k.id === 'tattoo' ? 'Tattoo, Piercing, Laser' : 'Haare, Farbe, Bart';
-      return { k: `chair|${it.shop}|${sitting}`, parts: [hintTitle(`${k.emoji} ${k.id === 'tattoo' ? 'Tattoo chair' : 'Barber chair'}`), aside(what), key('E', sitting ? 'Choose' : 'Sit down'), ...(sitting ? [key('W A S D', 'Get up')] : [])] };
+      const wait = k.id === 'waschsalon';
+      const what = wait ? 'sit and wait for your wash' : k.id === 'tattoo' ? 'Tattoo, Piercing, Laser' : 'Haare, Farbe, Bart';
+      return { k: `chair|${it.shop}|${sitting}`, parts: [hintTitle(`${k.emoji} ${wait ? 'Plastikstuhl' : k.id === 'tattoo' ? 'Tattoo chair' : 'Barber chair'}`), aside(what), ...(sitting && wait ? [] : [key('E', sitting ? 'Choose' : 'Sit down')]), ...(sitting ? [key('W A S D', 'Get up')] : [])] };
     },
     use: onE((it) => {
       const s = shopOf(it);

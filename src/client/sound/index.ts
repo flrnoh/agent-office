@@ -40,6 +40,7 @@ import { bulliHorn } from './bulli';
 import { beach, Outboards, type BeachSound, type Outboard } from '../features/beach/sound';
 import { kino, type KinoSound } from '../features/kino/sound'; // fork: the cinema
 import { Headphones, shopSound, type ShopSound } from '../features/shops/sound';
+import { rideSound, type RideSound } from '../features/ride/sound'; // fork: bikes, pets, laundry
 import { bungee, BungeeWind } from './bungee';
 import { casino, type CasinoSound } from './casino';
 import { doorbell } from './doorbell';
@@ -388,6 +389,11 @@ export class OfficeSound {
   /** The city's shops: the door's bell, the till, scissors, the tattoo machine, the toys (features/shops/sound.ts). */
   shop(kind: ShopSound, at: Pos) {
     shopSound(this.a, kind, at);
+  }
+
+  /** Bikes, pets and laundry: a bell, a budgie, a washing machine (features/ride/sound.ts). */
+  ride(kind: RideSound, at: Pos) {
+    rideSound(this.a, kind, at);
   }
 
   /** A record on the record shop's headphones, for you alone; null takes them off. */

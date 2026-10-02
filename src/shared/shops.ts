@@ -33,7 +33,7 @@ const DOOR_IN = 1.6;
 export const SILL = 0.55;
 export const WINDOW_TOP = 3.05;
 
-export type ShopKindId = 'baeckerei' | 'cafe' | 'pizza' | 'apotheke' | 'blumen' | 'buchladen' | 'kiosk' | 'bar' | 'spaeti' | 'friseur' | 'tattoo' | 'doener' | 'spielzeug' | 'platten';
+export type ShopKindId = 'baeckerei' | 'cafe' | 'pizza' | 'apotheke' | 'blumen' | 'buchladen' | 'kiosk' | 'bar' | 'spaeti' | 'friseur' | 'tattoo' | 'doener' | 'spielzeug' | 'platten' | 'fahrrad' | 'zoo' | 'waschsalon';
 
 export interface ShopKind {
   id: ShopKindId;
@@ -75,6 +75,10 @@ export const SHOP_KINDS: readonly ShopKind[] = [
   { id: 'doener', sign: 'DÖNER KEBAB', name: 'Döner', emoji: '🥙', verb: 'bestellen', frame: '#b5121b', awning: ['#ffcc00', '#d62828'], signBg: '#ffcc00', ink: '#b5121b', goods: ['#c47a3a', '#7cb518', '#e63946'], wall: '#fff3b0', floor: '#9c6644', keeper: { name: 'Mehmet', shirt: '#ffffff', skin: 4, hair: 0, style: 0 } },
   { id: 'spielzeug', sign: 'SPIELZEUG', name: 'Spielzeugladen', emoji: '🧸', verb: 'ein Spielzeug aussuchen', frame: '#3a86ff', awning: ['#ffbe0b', '#fb5607'], signBg: '#ffbe0b', ink: '#8338ec', goods: ['#ff006e', '#3a86ff', '#ffbe0b', '#06d6a0'], wall: '#fff8e1', floor: '#8ecae6', keeper: { name: 'Opa Sepp', shirt: '#e63946', skin: 0, hair: 5, style: 0 } },
   { id: 'platten', sign: 'PLATTEN', name: 'Plattenladen', emoji: '💿', verb: 'eine Platte kaufen', frame: '#2b2d42', awning: ['#ef233c', '#edf2f4'], signBg: '#edf2f4', ink: '#2b2d42', goods: ['#ef233c', '#8d99ae', '#ffb703', '#2b2d42'], wall: '#d6ccc2', floor: '#3d405b', keeper: { name: 'Didi', shirt: '#2b2d42', skin: 2, hair: 1, style: 4 } },
+  // Rentals, pets and laundry (features/ride, shared/ride.ts).
+  { id: 'fahrrad', sign: 'FAHRRÄDER', name: 'Fahrradladen', emoji: '🚲', verb: 'ein Rad leihen', frame: '#1d3557', awning: ['#2a9d8f', '#f1faee'], signBg: '#f1faee', ink: '#1d3557', goods: ['#e63946', '#1d3557', '#2a9d8f', '#ffb703'], wall: '#f1faee', floor: '#495057', keeper: { name: 'Toni', shirt: '#2a9d8f', skin: 2, hair: 2, style: 0 } },
+  { id: 'zoo', sign: 'ZOOHANDLUNG', name: 'Zoohandlung', emoji: '🐠', verb: 'ein Tier aussuchen', frame: '#2d6a4f', awning: ['#74c69d', '#fefae0'], signBg: '#fefae0', ink: '#2d6a4f', goods: ['#4cc9f0', '#f77f00', '#90be6d', '#ffd60a'], wall: '#e9f5db', floor: '#b5a58a', keeper: { name: 'Frau Wimmer', shirt: '#2d6a4f', skin: 0, hair: 3, style: 1 } },
+  { id: 'waschsalon', sign: 'WASCHSALON', name: 'Waschsalon', emoji: '🫧', verb: 'Waschpulver holen', frame: '#4361ee', awning: ['#4cc9f0', '#ffffff'], signBg: '#ffffff', ink: '#3a0ca3', neon: true, goods: ['#4cc9f0', '#ffffff', '#f72585'], wall: '#e0fbfc', floor: '#adb5bd', keeper: { name: 'Herr Pospischil', shirt: '#4361ee', skin: 1, hair: 5, style: 6 } },
 ];
 
 export const SHOP_KIND_BY_ID = new Map<ShopKindId, ShopKind>(SHOP_KINDS.map((k) => [k.id, k]));

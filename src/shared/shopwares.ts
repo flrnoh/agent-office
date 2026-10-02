@@ -32,9 +32,13 @@ export type ShopGlass =
   | 'plane'
   | 'watergun'
   | 'teddy'
-  | 'record';
+  | 'record'
+  | 'fishbag'
+  | 'budgie'
+  | 'detergent'
+  | 'sock';
 
-export const SHOP_GLASSES: readonly ShopGlass[] = ['semmel', 'krapfen', 'pizzaslice', 'newspaper', 'gummies', 'pill', 'lozenge', 'bouquet', 'sunflower', 'tulips', 'book', 'doener', 'duerum', 'lahmacun', 'ayran', 'yoyo', 'bubbles', 'duck', 'plane', 'watergun', 'teddy', 'record'];
+export const SHOP_GLASSES: readonly ShopGlass[] = ['semmel', 'krapfen', 'pizzaslice', 'newspaper', 'gummies', 'pill', 'lozenge', 'bouquet', 'sunflower', 'tulips', 'book', 'doener', 'duerum', 'lahmacun', 'ayran', 'yoyo', 'bubbles', 'duck', 'plane', 'watergun', 'teddy', 'record', 'fishbag', 'budgie', 'detergent', 'sock'];
 
 export type ToyId = 'yoyo' | 'seifenblasen' | 'quietscheente' | 'papierflieger' | 'wasserpistole' | 'teddy';
 
@@ -67,10 +71,14 @@ export type ShopItemId =
   | 'lahmacun'
   | 'ayran'
   | ToyId
-  | RecordId;
+  | RecordId
+  | PetItemId;
 
 /** A little something it does to you (see features/shops). */
-export type ShopTreat = 'spicy' | 'sober' | 'fresh' | 'read' | 'toy' | 'listen' | null;
+export type ShopTreat = 'spicy' | 'sober' | 'fresh' | 'read' | 'toy' | 'listen' | 'pet' | null;
+
+/** The pet shop's and the laundromat's things (shared/ride.ts says what the budgie does). */
+export type PetItemId = 'goldfisch' | 'wellensittich' | 'waschmittel' | 'socke';
 
 export interface ShopItem extends Drink {
   id: ShopItemId;
@@ -144,6 +152,12 @@ export const SHOP_ITEMS: readonly ShopItem[] = [
   thing('wasserpistole', 'Spielzeug', 'Wasserpistole', '🔫', 'A little squirt gun. Click: a splash for whoever you hit', 'watergun', '#06d6a0', '#ff006e', 'Aber nur ein bisschen nass machen!', 'toy'),
   thing('teddy', 'Spielzeug', 'Teddybär', '🧸', 'Soft and brown, with a bow. Click to hug it', 'teddy', '#a0522d', '#e63946', 'Der hat dich gleich lieb', 'toy'),
   // The record shop: a sleeve under your arm.
+  // The pet shop: a goldfish in a plastic bag of water, or a budgie that sits on your shoulder a while.
+  thing('goldfisch', 'Tiere', 'Goldfisch im Beutel', '🐠', 'A goldfish called Günther, in a knotted bag of water. Sloshes', 'fishbag', '#f77f00', '#bde0fe', 'Nicht schütteln! Und daheim gleich ins Glas', 'pet', 300),
+  thing('wellensittich', 'Tiere', 'Wellensittich', '🦜', 'A green budgie. It hops onto your shoulder and stays a while', 'budgie', '#80b918', '#ffd60a', 'Der heißt Pepe. Er mag dich!', 'pet', 300),
+  // The laundromat.
+  thing('waschmittel', 'Waschen', 'Waschpulver', '🧴', 'A little box of washing powder for one load', 'detergent', '#f72585', '#4cc9f0', 'Eine Ladung, nicht mehr reinkippen!', null, 180),
+  thing('socke', 'Waschen', 'Einzelne Socke', '🧦', 'From the lost-and-found basket. Its twin is still out there somewhere', 'sock', '#ffbe0b', '#e63946', 'Die lag seit März im Trockner', null, 180),
   ...RECORDS.map((r) => thing(r.id, 'Platten', `${r.band}: ${r.title}`, '💿', `${r.genre}, ${r.year}`, 'record', r.sleeve, r.ink, 'Gute Wahl. Die B-Seite ist noch besser', 'listen')),
 ];
 
@@ -181,6 +195,9 @@ export const MENUS: Readonly<Record<ShopKindId, readonly DrinkId[]>> = {
   doener: ['doener', 'doenerscharf', 'duerum', 'lahmacun', 'pommes', 'ayran', 'cola'],
   spielzeug: [...TOYS],
   platten: RECORDS.map((r) => r.id),
+  fahrrad: [],
+  zoo: ['goldfisch', 'wellensittich'],
+  waschsalon: ['waschmittel', 'socke', 'cola', 'chocolate', 'crisps'],
 };
 
 // ---- Throwing toys about (features/shops/toys.ts) ------------------------------------------------

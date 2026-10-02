@@ -5,6 +5,7 @@ import { litBoxMaterial } from '../../world/town/boxes';
 import { G } from '../../world/town/kit';
 import { mergeByColor, mesh, toon } from '../../world/toon';
 import { kindDecor, type Live } from './decor';
+import { furnishRide } from './decor-ride'; // bikes, pets, laundry
 
 // flrnoh fork (see FORK.md "Shops to walk into"): what stands in a shop, built only while you're near
 // it (index.ts keeps a handful) and let go of again: the counter, shelves of goods, tables and chairs,
@@ -240,7 +241,7 @@ function furnish(still: THREE.Group, s: Shop, k: ShopKind, p: Piece) {
       box(still, w, p.h, d, '#343a40', cu, 0, cv);
       return;
     default:
-      return;
+      furnishRide(still, s, k, p);
   }
 }
 
@@ -287,8 +288,8 @@ export function buildInterior(s: Shop): Interior {
     const v = t.at === 'counter' ? t.v + 0.6 : t.v;
     const u = t.at === 'chair' && t.seat ? t.seat.u : t.at === 'listen' ? t.u - 0.6 : t.u;
     const hv = t.at === 'crate' ? t.v + 0.85 : v;
-    const hit = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), hitMat);
-    hit.position.copy(at(u, size[1] / 2, hv));
+    const hit = t.hit ? new THREE.Mesh(new THREE.BoxGeometry(t.hit.w, t.hit.h, t.hit.d), hitMat) : new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), hitMat);
+    hit.position.copy(t.hit ? at(t.hit.u, t.hit.h / 2, t.hit.v) : at(u, size[1] / 2, hv));
     hit.userData.station = t;
     hits.push(hit);
     group.add(hit);

@@ -7,6 +7,7 @@ import { sleeveTexture } from '../../world/sleeves';
 import { tattooMaterial } from '../../world/character/tattoo-art';
 import { canvasTexture } from '../../world/texture';
 import { mesh, toon } from '../../world/toon';
+import { rideDecor } from './decor-ride'; // bikes, pets, laundry
 
 // flrnoh fork (see FORK.md "Shops to walk into"): what only one kind of shop has, on top of its
 // counter and shelves (interior.ts): the café's espresso machine, the bar's taps, the pharmacy's
@@ -334,6 +335,8 @@ export function kindDecor(still: THREE.Group, live: THREE.Group, s: Shop, k: Sho
       }
       break;
     }
+    default:
+      out.push(...rideDecor(still, live, s, k, room, win));
   }
   void SHOP_H;
   return out;

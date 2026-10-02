@@ -16,6 +16,7 @@ import { rigMessage } from '../../rig.js';
 import { boatMessage } from '../../boats.js';
 import { kinoMessage } from '../../kino.js';
 import { toyUse } from '../../../shared/shopwares.js';
+import { rideMessage } from '../../fork/ride.js';
 import { here } from './common.js';
 import { jukeboxChanged } from './jukebox.js';
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
@@ -125,6 +126,8 @@ export const forkHandlers = {
     const used = toyUse(msg, c.peer.drink, c.id);
     if (used) ctx.toNeighbors(c, used);
   },
+  'bike.ride': rideMessage, // a bike from the city's bike shop (fork/ride.ts)
+  'bike.bell': rideMessage,
   'rig.play': rig,
   'rig.leave': rig,
   'rig.frame': rig,
