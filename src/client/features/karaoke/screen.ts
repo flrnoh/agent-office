@@ -249,7 +249,10 @@ export class LyricsScreen {
       const until = first ? first.at - beat : 0;
       // Before the first line: the count-in.
       if (i === 0 && until > 0) this.text('Gleich geht’s los…', W / 2, 200, 44, '#4cf0ff', 900);
-      if (until > 0 && until <= 4 && line.at - (tl.lines[i - 1]?.end ?? -99) >= 0) this.dots(Math.ceil(until), 250);
+      // After a pause of a bar or more (and before the first line), dots count the last beats in.
+      const prev = tl.lines[i - 1]?.syllables.at(-1);
+      const gap = first ? first.at - (prev ? prev.at + prev.len : -Infinity) : 0;
+      if (until > 0 && until <= 4 && gap >= 3) this.dots(Math.ceil(until), 250);
       if (line.section === 'chorus') this.pill('REFRAIN', 160, 250);
       this.sing(line, beat, 340, 66);
       if (next) this.sing(next, -Infinity, 440, 44, 'rgba(255,255,255,.55)');

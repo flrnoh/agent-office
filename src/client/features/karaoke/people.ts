@@ -22,9 +22,9 @@ export class MicHands {
 
   constructor(handsScene: THREE.Scene) {
     this.mine = micModel();
-    this.mine.scale.setScalar(1.1);
-    this.mine.position.set(0.15, -0.2, -0.36);
-    this.mine.rotation.set(0.5, 0, -0.25);
+    this.mine.scale.setScalar(0.55);
+    this.mine.position.set(0.11, -0.16, -0.38);
+    this.mine.rotation.set(-0.35, 0, -0.3);
     this.mine.visible = false;
     handsScene.add(this.mine);
   }

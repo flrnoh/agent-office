@@ -308,7 +308,7 @@ export function buildRoom(group: THREE.Group, charts: THREE.Texture): Room {
         const on = (cx + cz + b) % 2 === 0;
         const hue = ((cz * 0.07 + b * 0.13 + (on ? 0 : 0.5)) % 1 + 1) % 1;
         const v = (on ? 0.25 + 0.75 * pulse : 0.12) * (0.35 + 0.65 * Math.max(show, cosmic ? 0.6 : 0.2)) * (0.6 + level * 0.6);
-        tileCol.setHSL(hue, 1, Math.min(0.6, v * 0.6));
+        tileCol.setHSL(hue, 0.9, Math.min(0.5, v * 0.5));
         tiles.setColorAt(i, tileCol);
       }
       tiles.instanceColor!.needsUpdate = true;

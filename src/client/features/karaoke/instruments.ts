@@ -161,7 +161,7 @@ export class Instruments {
     for (const m of midis) {
       this.osc('sine', midiHz(m), t, len, g);
       this.osc('sine', midiHz(m) * 2, t, len, g);
-      this.osc('square', midiHz(m) / 2, t, len, g).frequency.value = midiHz(m) / 2;
+      this.osc('square', midiHz(m) / 2, t, len, g);
     }
     const lp = biquad(this.ctx, 'lowpass', 3000, 0.5);
     g.connect(lp).connect(this.out);
