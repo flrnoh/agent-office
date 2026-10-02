@@ -3,6 +3,7 @@
 
 import type { CasinoClientMsg, CasinoServerMsg } from '../casino.js';
 import type { BoatClientMsg, BoatServerMsg } from '../boats.js';
+import type { BaumarktClientMsg, BaumarktServerMsg } from '../baumarkt-play.js';
 import type { ToyClientMsg, ToyServerMsg } from '../shopwares.js';
 import type { BungeeState } from '../bungee.js';
 import type { DjSetState } from '../djset.js';
@@ -21,6 +22,7 @@ export type ForkClientMsg =
   | PadelClientMsg // padel in the hall (shared/padel/court.ts)
   | SoccerClientMsg // the soccer hall (shared/soccer.ts)
   | BoatClientMsg // the jetskis and the motorboat at the beach (shared/boats.ts)
+  | BaumarktClientMsg // the Baumarkt: forklift, pallets, trolleys, tools, paint (shared/baumarkt-play.ts)
   | KinoClientMsg // the cinema's Saal 2 (shared/kino.ts)
   | ToyClientMsg // playing with a toy from the city's toy shop (shared/shopwares.ts)
   | TankClientMsg // the petrol station and its car wash (shared/tankstelle-play.ts)
@@ -55,6 +57,7 @@ export type ForkServerMsg =
   | PadelServerMsg
   | SoccerServerMsg
   | BoatServerMsg
+  | BaumarktServerMsg
   | KinoServerMsg
   | ToyServerMsg
   | TankServerMsg

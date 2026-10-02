@@ -4,7 +4,7 @@ Back to the [README](../README.md).
 
 | Key | Action |
 | --- | --- |
-| W A S D / arrows | Walk (hold Shift to run); on the ladder, W and S climb; in a car, W is the gas, S brakes and reverses, A and D steer; in the sea, swim (Shift faster); on a jetski or the motorboat, steer |
+| W A S D / arrows | Walk (hold Shift to run); on the ladder, W and S climb; in a car, W is the gas, S brakes and reverses, A and D steer; in the sea, swim (Shift faster); on a jetski or the motorboat, steer; on the Baumarkt’s forklift, W and S drive and A and D steer its rear wheels |
 | Space | Jump (you can land on desks, couches and the cars in the garage); in a car, brake; swimming, splash; on a jetski or the motorboat, slow down |
 | Mouse drag / wheel | Orbit / zoom the camera |
 | E | Interact: hire a worker, open its terminal, read a board, take an issue's note off the board, prompt a board agent, call a meeting in the meeting room, draw on the whiteboard, read the docs at the bookshelf, watch the TV (or put a YouTube or Twitch stream on it), sit down (or get up), ride the elevator, climb the ladder (or get off it), slide down a fire pole, grab a coffee, take a smoke break, tee off at the golf tee, pet the dog, pick up the basketball (then hold E and let go to shoot), order a drink at the rooftop bar, open the DJ booth (put on a set from YouTube, SoundCloud or Mixcloud), step up to the dart board or the axe lane on the roof (then hold Space and let go to throw), play pool, kicker, air hockey or table tennis at a table on the roof (or watch, when both sides are taken), jump off the bungee jetty on the roof, step onto a padel court in the padel hall (pick a place, or watch), join a team at the halfway boards in the soccer hall (or leave the pitch), get into one of the cars in the garage (behind the wheel, or beside whoever's driving) or out of it, knock through the north wall past the gong for 2 more desks (at the **🚧 Room to grow** sign). In the [castle](maps.md#the-castle): sit on the throne, where E is for whoever's first in line (or the Hand of the King, with nobody waiting), and speak to the Hand to send out a new worker |
@@ -19,7 +19,7 @@ Back to the [README](../README.md).
 | N | Go to the worker that has waited longest on someone; again for the next one |
 | F | Hang a picture from the web on a wall (scroll to size it, click to hang it); falling on the bungee rope, a salto |
 | Q | Put back the issue card you're carrying, or drop the basketball; on the pitch in the soccer hall, a slide tackle (so does **Ctrl**) |
-| H | These controls; in a car, honk the horn; on a jetski or the motorboat, its horn; at the DJ booth on the roof, blow the air horn |
+| H | These controls; in a car, honk the horn; on a jetski, the motorboat or the Baumarkt’s forklift, its horn; at the DJ booth on the roof, blow the air horn |
 | T / Enter | Chat |
 | G / 1–6 | Emote: hold G for the wheel (point and let go) or press 1–6 to wave, give a thumbs up, clap, dance, point or facepalm; everyone on your floor sees it |
 | / | Search the chat and every terminal on your floor |
@@ -40,6 +40,7 @@ In town, walk in through any shop's door: **E** at the counter for its menu, **E
 
 At Sunset Beach, on the scenic loop west of town: **E** at the kiosk's counter for the menu; walk into the sea (or jump off the jetty) to swim, and **E** at the ladder at the jetty's end climbs out; **E** at a jetski or the motorboat gets on, **E** aboard gets off (onto the jetty when you're alongside it, else into the water).
 
+At the Baumarkt (HAMMER & CO, a block north-east of the office): **E** at the forklift gets on, **R** or **Space** raise its forks and **F** or **Shift** lower them (into a pallet's pockets and up: it's on; down on the floor: it's set down), **E** gets off; **E** at the tool wall for a tool, then **click** to use it and **Q** to put it back; **E** at the paint counter to have a can shaken in your colour (**Q** puts it down); **E** at a trolley to push it, **E** or **Q** to let go; **E** at Gabi's till.
 At the petrol station west of the office: in a garage car stopped beside a pump, **E** fills it up (or **E** at the pump on foot); stopped on the car wash's marking, **E** starts the programme (or **E** at its terminal), and **E** waits while it runs (W A S D don't move the car until the light's green); **E** at the shop's counter for coffee, snacks and the paper.
 
 In the soccer hall, after a goal everyone sees an instant replay of it (the last seconds from a TV camera, the end in slow motion): **Space** or **Esc** skips it.

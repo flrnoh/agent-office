@@ -18,6 +18,7 @@ import { Turn, readTurnKey } from '../turn.js';
 import { CarKeys } from '../carkeys.js';
 import { RigTable, Rigs } from '../rig.js';
 import { Marinas } from '../boats.js';
+import { Baumaerkte } from '../baumarkt.js';
 import { KinoScreens } from '../kino.js';
 import { Forecourts } from '../tankstelle.js';
 import { RoofTables } from '../tablegames.js';
@@ -37,6 +38,7 @@ export interface Fork {
   carKeys: CarKeys; // who drives the Bulli
   rigs: Rigs; // the racing rig in the lounge, one driver a floor, one table for the building
   marinas: Marinas; // the jetskis and the motorboat at each floor's jetty on the beach
+  baumaerkte: Baumaerkte; // the Baumarkt on each floor's street: forklift, pallets, trolleys, tools
   kinos: KinoScreens; // the cinema's Saal 2 on each floor's street
   forecourts: Forecourts; // the petrol station's pumps and car wash on each floor
   roofTables: RoofTables; // the table games on the roof
@@ -81,6 +83,7 @@ export function createFork(ctx: Ctx): Fork {
     carKeys: new CarKeys(cfg.dataDir),
     rigs,
     marinas: new Marinas(),
+    baumaerkte: new Baumaerkte(),
     kinos: new KinoScreens(),
     forecourts: new Forecourts((floorId) => {
       const f = floors.get(floorId);
