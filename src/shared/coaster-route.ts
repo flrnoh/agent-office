@@ -97,7 +97,9 @@ const WALL_Z_SOUTH = 13.3;
 const AFTER_LOOP = 1.5;
 const TURN_IN_R = 5;
 /** The vertical lift's pitch up off the tube's line. */
-const VLIFT_R = 2.9;
+const VLIFT_R = 3.2;
+/** …and over the top of it into the brake run. */
+const OVER_R = 3.4;
 
 const smooth = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
 
@@ -351,7 +353,7 @@ export function coasterRoute(storeys: number): Route {
   t.plan([{ line: 14.4 }]);
   // Round the south-east corner over the letters, heading on down the street side.
   const tilt = 2.9; // a little south of west, so the pull-out ends over the plaza's edge
-  t.plan([{ arc: 6, deg: 90 - tilt, side: 'R' }, { line: 2.9 }]);
+  t.plan([{ arc: 6, deg: 90 - tilt, side: 'R' }, { line: 3.4 }]);
   t.zone('chain', lift, t.u, CHAIN_V);
   // The first drop: over, straight down past the balconies, and out.
   const dropFrom = t.u;
@@ -369,7 +371,7 @@ export function coasterRoute(storeys: number): Route {
   t.marks.dropFrom = dropFrom;
   // On along the plaza's edge to where the U-turn starts, whatever's left of the run.
   const run = over.ahead + out.ahead;
-  const flat = Math.max(0.5, 34.1 - 2.9 - run);
+  const flat = Math.max(0.5, 34.1 - 3.4 - run);
   const trimFrom = t.u - 9;
   t.line(flat);
   t.zone('trim', trimFrom, t.u + 6, TURN_V);
@@ -401,21 +403,24 @@ export function coasterRoute(storeys: number): Route {
   t.plan([{ arc: 4, deg: 90, side: 'R' }]);
   t.plan([{ line: t.p.z - (STATION.trackZ + VLIFT_R) }]);
   t.mark('tunnelEnd');
-  t.zone('tunnel', inFrom, t.u, 0);
+  // (the tube's portal reaches a little way out of the wall, round the start of the climb)
+  t.zone('tunnel', inFrom, t.u + 1, 0);
   // Straight up the back of the building, a quarter turn round on the way, and over the top heading east.
   const vFrom = t.u;
   t.zone('trim', vFrom - 3, vFrom + 1, 7.5);
   t.pitch(VLIFT_R, 90);
-  const top = Math.max(1.9, t.p.y + 3.6);
-  t.twisted(Math.max(0.2, top - 3 - t.p.y), -90);
-  t.pitch(3, -90, { x: 1, z: 0 });
+  const top = Math.max(1.9, t.p.y + 3.9);
+  t.twisted(Math.max(0.2, top - OVER_R - t.p.y), -90);
+  t.pitch(OVER_R, -90, { x: 1, z: 0 });
   t.zone('chain', vFrom + 1, t.u - 1.5, VLIFT_V);
   t.mark('vlift');
   // Down the brake run and into the station.
   const brakes = t.u;
   const home = STATION.stopX - t.p.x;
-  t.plan([{ line: 6.6 }], y0 - t.p.y, 0);
-  t.plan([{ line: home - 6.6 }]);
+  // Down to the station's level over a smooth ramp (longer the further it has to come down, never tighter than 4 m).
+  const down = Math.min(home - 3, Math.max(6.6, Math.sqrt((6 * Math.abs(t.p.y - y0)) / 0.25)));
+  t.plan([{ line: down }], y0 - t.p.y, 0);
+  t.plan([{ line: home - down }]);
   t.zone('brake', brakes + 1.5, t.u - 2.5, 1.6);
   t.zone('stop', t.u - 2.5, t.u, 0);
   // It closes where it started: the last point onto the first.
