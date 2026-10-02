@@ -15,4 +15,14 @@ export const forkRoutes = {
       return ctx.radio.pipe(req, res, target.url);
     },
   },
+  djBeats: {
+    method: 'GET',
+    path: '/api/dj/beats',
+    auth: 'session',
+    handle(ctx, { res }) {
+      // What the office heard in the DJ set that's on (server/djbeats/), for the roof's lights.
+      const b = ctx.djBooth.heard();
+      return b ? send(res, 200, b) : send(res, 404, { error: 'not heard yet' });
+    },
+  },
 } satisfies Record<string, Route>;

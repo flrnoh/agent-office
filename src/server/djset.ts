@@ -1,5 +1,8 @@
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { DJ_SET_SITES, djSetTitle, parseDjSetUrl, sameDjSet, type DjSet } from '../shared/djset.js';
+import { DJ_SET_SITES, djSetTitle, parseDjSetUrl, partyVolume, sameDjSet, type DjSet, type DjSetState } from '../shared/djset.js';
+import { validTap, type DjBeats, type DjTap } from '../shared/djbeats.js';
+import { DjBeatsJobs, type Hear } from './djbeats/index.js';
 import type { ClientMsg, ServerMsg } from '../shared/protocol.js';
 import { CHANGE_EVERY, LinkPlayer, oembed, type TitleLookup as LookupOf } from './embeds.js';
 
@@ -26,8 +29,89 @@ const OEMBED: Record<DjSet['kind'], string> = {
 export const oembedTitle: TitleLookup = (set) => oembed(OEMBED[set.kind], set.url);
 
 export class DjBooth extends LinkPlayer<DjSet> {
-  constructor(dataDir: string, lookup: TitleLookup = oembedTitle) {
+  /** Hearing the sets, for the lights (djbeats/). */
+  private beats: DjBeatsJobs;
+  /** A tempo tapped for the set that's on. */
+  private tapped: DjTap | null = null;
+  /** How hearing the set that's on is going changed: the office tells the roof (fork/office.ts). */
+  onBeats: () => void = () => {};
+  /** The party's volume for everyone on the roof, and who set it (kept in dj-volume.json). */
+  private level = 1;
+  private levelBy = '';
+  private levelFile: string;
+
+  constructor(dataDir: string, lookup: TitleLookup = oembedTitle, hear?: Hear) {
     super({ file: path.join(dataDir, 'dj.json'), parse: parseDjSetUrl, same: sameDjSet, lookup });
+    this.levelFile = path.join(dataDir, 'dj-volume.json');
+    try {
+      const saved = JSON.parse(readFileSync(this.levelFile, 'utf8')) as { volume?: unknown; by?: unknown };
+      this.level = partyVolume(saved.volume) ?? 1;
+      this.levelBy = typeof saved.by === 'string' ? saved.by.slice(0, 24) : '';
+    } catch {
+      // none yet: full volume
+    }
+    this.beats = new DjBeatsJobs(dataDir, (url) => url === super.state().set?.url && this.onBeats(), hear);
+    // A set still on from before a restart is heard again (or read back).
+    this.beats.want(super.state().set);
+  }
+
+  override state(): DjSetState {
+    const s = super.state();
+    const beats = s.set ? this.beats.statusOf(s.set.url) : undefined;
+    return {
+      ...s,
+      ...(beats ? { beats } : {}),
+      ...(s.set && this.tapped ? { tap: this.tapped } : {}),
+      ...(this.level !== 1 || this.levelBy ? { volume: this.level, ...(this.levelBy ? { volumeBy: this.levelBy } : {}) } : {}),
+    };
+  }
+
+  /** Sets the party's volume for everyone on the roof; false when it's no volume or already that. */
+  setVolume(v: unknown, by: string): boolean {
+    const level = partyVolume(v);
+    if (level === null || (level === this.level && by === this.levelBy)) return false;
+    this.level = level;
+    this.levelBy = by;
+    try {
+      writeFileSync(this.levelFile, JSON.stringify({ volume: level, by }), { mode: 0o600 });
+    } catch {
+      // disk issues shouldn't take the office down
+    }
+    return true;
+  }
+
+  override play(raw: unknown, by: string) {
+    const r = super.play(raw, by);
+    if ('changed' in r && r.changed) {
+      this.tapped = null;
+      this.beats.want(super.state().set);
+    }
+    return r;
+  }
+
+  override stop(by: string): boolean {
+    this.tapped = null;
+    this.beats.want(null);
+    return super.stop(by);
+  }
+
+  /** What was heard in the set that's on, once it has been. */
+  heard(): DjBeats | null {
+    const set = super.state().set;
+    return set && this.beats.statusOf(set.url)?.status === 'ready' ? this.beats.get(set.url) : null;
+  }
+
+  /** A tempo tapped at the booth (0: back to what was heard). False when nothing's on or it's no tempo. */
+  tap(bpm: number, at: number): boolean {
+    if (!super.state().set) return false;
+    if (bpm === 0) {
+      const had = !!this.tapped;
+      this.tapped = null;
+      return had;
+    }
+    if (!validTap(bpm, at)) return false;
+    this.tapped = { bpm: Math.round(bpm * 10) / 10, at: Math.round(at) };
+    return true;
   }
 }
 
@@ -42,9 +126,23 @@ export interface DjHooks {
   warn(text: string): void;
 }
 
-/** dj.play and dj.stop, from someone's page: only from up on the roof, not too often. */
-export function djMessage(booth: DjBooth, msg: Extract<ClientMsg, { t: 'dj.play' | 'dj.stop' }>, c: DjHooks) {
+/**
+ * dj.play, dj.stop and dj.tap, from someone's page: only from up on the roof, not too often. dj.volume
+ * (the party's volume, the team's to set: guests.ts) from anywhere, as often as a slider sends it.
+ */
+export function djMessage(booth: DjBooth, msg: Extract<ClientMsg, { t: 'dj.play' | 'dj.stop' | 'dj.tap' | 'dj.volume' }>, c: DjHooks) {
+  if (msg.t === 'dj.volume') {
+    if (booth.setVolume(msg.volume, c.who)) c.toRoof({ t: 'dj', state: booth.state() });
+    return;
+  }
   if (!c.onRoof) return c.warn('Head up to the roof to pick what the DJ plays');
+  if (msg.t === 'dj.tap') {
+    if (!booth.state().set) return c.warn('Tap the tempo once a set is on');
+    if (!booth.allow(`tap:${c.id}`)) return c.warn('Easy there, give the DJ a moment');
+    if (!booth.tap(msg.bpm, msg.at)) return;
+    c.toRoof({ t: 'dj', state: booth.state() });
+    return c.toRoof({ t: 'toast', text: msg.bpm ? `🥁 ${c.who} tapped the tempo: ${Math.round(msg.bpm)} BPM` : `🥁 ${c.who} put the lights back on the set's own beat`, level: 'info' });
+  }
   if (msg.t === 'dj.stop') {
     if (!booth.allow(c.id)) return c.warn('Easy there, give the DJ a moment');
     if (!booth.stop(c.who)) return;

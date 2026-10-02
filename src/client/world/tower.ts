@@ -267,7 +267,7 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
 
     // Parasols along the south edge, over the sun loungers.
     for (const x of [-0.8, 2]) {
-      const z = FLOOR.maxZ - 1.1;
+      const z = FLOOR.maxZ - 1.9; // fork: clear of the letters on the parapet (world/facade/)
       box(0.08, 2.6, 0.08, counter, x, y, z);
       parts.add(mesh(new THREE.ConeGeometry(1.5, 0.5, 12), parasol, x, y + 2.6, z, false));
     }

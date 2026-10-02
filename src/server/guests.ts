@@ -12,7 +12,7 @@ import { radioRequestShape } from './radio.js';
 const GUEST = [
   'move', 'act', 'golf', 'emote', 'sit', 'profile',
   'voice', 'rtc', 'chat', 'floor.go', 'ball.take', 'ball.throw',
-  'toss', 'dog.pet', 'gong', 'horn', 'dj.play', 'dj.stop', 'tv.play', 'tv.stop', 'car.enter', 'car.leave',
+  'toss', 'dog.pet', 'gong', 'horn', 'dj.play', 'dj.stop', 'dj.tap', 'tv.play', 'tv.stop', 'car.enter', 'car.leave',
   'car.drive', 'car.honk', 'worker.attach', 'worker.detach', 'wb.open', 'wb.close',
   'wb.update', 'wb.pointer', 'jukebox.play', 'jukebox.skip', 'jukebox.stop', 'cabinet.play',
   'cabinet.leave', 'cabinet.frame', 'ping',
@@ -48,6 +48,7 @@ const TEAM_ONLY = [
   'decor.add', 'decor.remove', 'decor.update', 'desk.label', 'dog.name',
   'floor.add', 'floor.cancel', 'floor.expand', 'floor.interior', 'floor.order', 'floor.projectsDir', 'floor.remove', 'floor.shrink',
   'gh.close', 'gh.comment', 'gh.labels', 'gh.merge', 'jukebox.speakers', 'leaveOnMerge.set',
+  'dj.volume', // fork: the party's volume on the roof is the host's
   'machine.limit', 'map.set', 'meeting.clear', 'meeting.start', 'meeting.stop',
   'notify.test', 'notify.webhook', 'prompts.agent', 'prompts.set', 'queue.add',
   'queue.clear', 'queue.limit', 'queue.move', 'queue.remove', 'queue.retry',
@@ -81,5 +82,6 @@ export function guestMayFetch(p: string, url: URL, onAWall: (imageUrl: string) =
   if (p === '/api/image') return onAWall(url.searchParams.get('url') ?? '');
   // The jukebox's radio: a built-in station, or the stream on a floor's jukebox (the handler checks it's that one).
   if (p === '/api/radio') return radioRequestShape(url.searchParams);
+  if (p === '/api/dj/beats') return true; // fork: the roof's lights, to the DJ set that's on
   return false;
 }

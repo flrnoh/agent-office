@@ -2,6 +2,7 @@
 // YouTube, SoundCloud or Mixcloud, which every browser up there plays in the site's own embedded
 // player, from the same point. Shared by the server (which keeps what's on) and the browser.
 
+import type { DjBeatsStatus, DjTap } from './djbeats.js';
 import { readWebLink, startOf, youtubeVideo } from './embeds.js';
 
 /** How a link's t= reads (shared/embeds.ts, with the office TV's links). */
@@ -33,6 +34,22 @@ export interface DjSetState {
   startedAt: number;
   /** How long ago that was when this was sent, in ms, for until the clocks are compared. */
   elapsed: number;
+  /** How the office hearing the set is going (shared/djbeats.ts): its beats, for the lights. */
+  beats?: DjBeatsStatus;
+  /** A tempo someone tapped at the booth for it, which the lights go by over what was heard. */
+  tap?: DjTap;
+  /** The party's volume on the roof, 0–2 (1 the DJ's own level, 2 Disco), for everyone (house DJ and sets alike); absent is 1. */
+  volume?: number;
+  /** Who set it last. */
+  volumeBy?: string;
+}
+
+/** The party volume's top: 2 is "Disco" (twice as loud as 1, the DJ's own level; see client/sound/party.ts). */
+export const PARTY_VOLUME_MAX = 2;
+
+/** Reads a party volume someone sent: 0–2 in hundredths, or null when it's no volume. */
+export function partyVolume(v: unknown): number | null {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= PARTY_VOLUME_MAX ? Math.round(v * 100) / 100 : null;
 }
 
 export const DJ_SET_SITES: Record<DjSetKind, string> = { youtube: 'YouTube', soundcloud: 'SoundCloud', mixcloud: 'Mixcloud' };
