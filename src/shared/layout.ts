@@ -415,8 +415,8 @@ export const STAGE = { minX: -8, maxX: 2, minZ: FLOOR.minZ, maxZ: -9.2, height: 
 export const DJ_BOOTH = { x: -3, z: -11.3 } as const;
 /** LED tiles, a meter each, lighting up with the music. */
 export const DANCE_FLOOR = { minX: -8, maxX: 2, minZ: -9.2, maxZ: -2.2 } as const;
-/** The bar along the east side: its counter (x is its middle), with the bartender and the bottles behind it. */
-export const ROOF_BAR = { x: 12.95, minZ: -6, maxZ: 4, depth: 0.7, height: 1.1 } as const;
+/** The bar along the east side: its counter (x is its middle), the bartender and bottles behind it (fork: by the bungee jetty, room for the pool). */
+export const ROOF_BAR = { x: 12.95, minZ: -0.6, maxZ: 9.2, depth: 0.7, height: 1.1 } as const;
 /** The fire pit in the lounge, in the south-west corner, with sofas round three sides of it. */
 export const FIRE_PIT = { x: -12, z: 8.2, r: 0.9 } as const;
 /** Tall tables to stand at, between the elevator and the bar. */

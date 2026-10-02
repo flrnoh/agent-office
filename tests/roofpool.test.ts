@@ -100,3 +100,22 @@ test('the water slide ends in the water, with headroom over everywhere people wa
     assert.ok(!inBox(out.x, out.z, SLIDE_ZONE) && !inBox(out.x, out.z, tower), `out at ${out.x},${out.z}`);
   }
 });
+
+test('the sky bar stands at the south end of the terrace, its pergola clear of the bungee jetty, the pool and its slide', async () => {
+  const { BUNGEE } = await import('../src/shared/bungee.js');
+  // The pergola over it (features/rooftop/world.ts): from just in front of the counter to the east edge, 0.8 past each end.
+  const pergola = { minX: ROOF_BAR.x - ROOF_BAR.depth / 2 - 0.9 - 0.1, maxX: FLOOR.maxX, minZ: ROOF_BAR.minZ - 0.9, maxZ: ROOF_BAR.maxZ + 0.9 };
+  const jetty = { minX: BUNGEE.x - BUNGEE.halfWidth, maxX: BUNGEE.x + BUNGEE.halfWidth, minZ: BUNGEE.startZ, maxZ: FLOOR.maxZ + 4 };
+  assert.ok(apart(pergola, jetty, 0.2), 'clear of the bungee jetty');
+  assert.ok(apart(pergola, FOOT, 1), 'clear of the pool');
+  const { slideAt } = await import('../src/shared/roofpool.js');
+  for (let s = 0; s <= 1; s += 0.02) {
+    const p = slideAt(s);
+    assert.ok(apart(pergola, around(p.x, p.z, 0.45), 0.3), `clear of the slide at ${p.x.toFixed(1)},${p.z.toFixed(1)}`);
+  }
+  // Its six stools along the counter, under the pergola.
+  const stools = SEATING.filter((s) => s.bar);
+  assert.equal(stools.length, 6);
+  for (const s of stools) assert.ok(s.z > ROOF_BAR.minZ && s.z < ROOF_BAR.maxZ, `${s.id} along the counter`);
+  assert.ok(ROOF_BAR.maxZ + 0.8 < BUNGEE.startZ, "the pergola's posts stop before the jetty starts");
+});

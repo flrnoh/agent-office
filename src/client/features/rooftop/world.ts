@@ -525,7 +525,7 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
   }
   group.add(bar);
   colliders.push({ minX: front, maxX: bx + ROOF_BAR.depth / 2, minZ: ROOF_BAR.minZ, maxZ: ROOF_BAR.maxZ, top: ROOF_BAR.height });
-  const barIts = [-3.6, -0.6, 2.4].map((z): Interactable => ({ kind: 'bar', x: front - 0.7, z, radius: 1.7 }));
+  const barIts = [bz - 3, bz, bz + 3].map((z): Interactable => ({ kind: 'bar', x: front - 0.7, z, radius: 1.7 })); // fork: along the bar, wherever it is
   interactables.push(...barIts);
   bar.userData.interact = barIts[1];
 
