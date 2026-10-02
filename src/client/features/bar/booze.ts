@@ -59,6 +59,11 @@ export class Booze {
     return this.glass;
   }
 
+  /** Fork: lets go of what's in your hand, whatever it is (a paper plane thrown, features/shops). */
+  letGo() {
+    this.glass = null;
+  }
+
   /** Puts the glass down (leaving the roof: drinks stay at the bar; fork: a bottle from the fridge comes along). */
   putDown() {
     if (this.glass && heldAnywhere(this.glass.id)) return; // (and the padel hall café's)

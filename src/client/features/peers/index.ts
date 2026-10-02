@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { sameLook } from '../../../shared/avatar';
 import { seatOn } from '../../../shared/maps';
+import { shopSeatHips } from '../../../shared/shop-rooms'; // flrnoh fork
 import { storeySeat } from '../../../shared/storey'; // flrnoh fork
 import type { PeerInfo } from '../../../shared/protocol';
 import { DRINK_BY_ID } from '../../../shared/rooftop';
@@ -79,7 +80,7 @@ export function installPeers(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'puff
       r.person.holdDrink(peer.drink ? (DRINK_BY_ID.get(peer.drink) ?? null) : null);
       r.person.carry(peer.carrying);
       r.person.read(!!peer.reading);
-      r.person.sit(store.carOf(id) ? hipsOf(store.carOf(id)!.car) : peer.seat ? (seatOn(plan(), peer.seat)?.hips ?? null) : null);
+      r.person.sit(store.carOf(id) ? hipsOf(store.carOf(id)!.car) : peer.seat ? (seatOn(plan(), peer.seat)?.hips ?? shopSeatHips(peer.seat)) : null); // shopSeatHips: flrnoh fork
       r.person.wheel = onRig(peer.seat); // fork: hands on the racing rig's wheel
       r.person.setDoing(whereabouts(peer, store.carOf(id), plan()));
     }

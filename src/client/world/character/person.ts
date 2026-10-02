@@ -16,6 +16,9 @@ import { styleHair } from './person-hair';
 import { clubSwing, strike, swingStep, type Golf } from './person-golf';
 import { propPosition, throwStep, type Oche } from './person-throw';
 import { poseEmote, type Emoting } from './person-emote';
+import { Marks } from './person-marks'; // flrnoh fork: beard, tattoos, piercings
+import type { Bones } from './person-bones'; // flrnoh fork
+export type { Bones } from './person-bones'; // flrnoh fork
 
 export type Pose = 'stand' | 'walk' | 'sit' | 'type';
 
@@ -28,18 +31,6 @@ const v2 = new THREE.Vector3();
 /** Where the line under a person's name tag sits, just over their hair, and how far it lifts the name tag. */
 const DOING_Y = 1.95;
 const DOING_LIFT = 0.25;
-
-/** Fork: the parts of a Person a gym machine poses (world/gym/equipment.ts): forward is +z, the arms hang down -y from their shoulders. */
-export interface Bones {
-  root: THREE.Group;
-  body: THREE.Group;
-  head: THREE.Group;
-  /** The arm and leg on -x and on +x (the character's right and left). */
-  armR: THREE.Object3D;
-  armL: THREE.Object3D;
-  legR: THREE.Object3D;
-  legL: THREE.Object3D;
-}
 
 /** A chibi cartoon person — used for every human in the office. Forward is +z. */
 export class Person {
@@ -133,6 +124,7 @@ export class Person {
   private gripping = false;
   /** Something they're saying (see say), and for how many more seconds. */
   private speech: { sprite: THREE.Sprite; left: number } | null = null;
+  private marks: Marks; // flrnoh fork: beard, tattoos, piercings
 
   constructor(
     private name: string,
@@ -230,6 +222,7 @@ export class Person {
 
     this.rig = { root: this.root, body: this.body, head: this.head, armL: this.armL, armR: this.armR, legL: this.legL, legR: this.legR };
     this.setLabel(name, false);
+    this.marks = new Marks({ head, left: this.armR, right: this.armL, skin, shirt: this.shirt }, look); // flrnoh fork: armR is their left
   }
 
   /** Fork: the body and limbs, for a pose laid over the frame's after update (soccer/kit.ts: kicks, celebrations, dives, the kit). */
@@ -250,6 +243,7 @@ export class Person {
     this.look = { ...look };
     this.hairMat.color.set(HAIR_COLORS[look.hair]);
     if (restyle) this.buildHair();
+    this.marks.set(look); // flrnoh fork
     this.dress();
   }
 

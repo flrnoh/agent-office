@@ -1,5 +1,6 @@
 import type { ClientMsg, ServerMsg } from '../shared/protocol';
 import { lastFloor, store, type Profile, type Spot } from './state';
+import { marksToParams } from '../shared/avatar'; // flrnoh fork
 
 type Handler = (msg: ServerMsg) => void;
 
@@ -38,6 +39,7 @@ export class Net {
     const { name, color, look } = this.profile();
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const q = new URLSearchParams({ name, color, skin: String(look.skin), hair: String(look.hair), style: String(look.style) });
+    for (const [k, v] of Object.entries(marksToParams(look))) q.set(k, v); // flrnoh fork: beard, tattoos, piercings
     // Back to the floor you were on (after a reload or a restart), in the spot you were in there.
     const floor = store.floor ?? lastFloor();
     if (floor) q.set('floor', floor);

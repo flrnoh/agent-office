@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { LOTS } from '../../../shared/city';
 import { roofDrop, streetBelow } from '../../../shared/layout';
 import { mulberry32 } from '../../../shared/rng';
 import type { Fixture, StreetSite } from '../office/fixture';
@@ -55,7 +54,7 @@ export function buildTown(night: NightParts): Town {
   const glow = glowTexture();
   const lamps = buildTownGround(group, colliders, glow);
   const { raise, beaconMat } = buildTownBuildings(group, colliders, night, glow);
-  buildShops(group, LOTS, night);
+  const shops = buildShops(group, night);
   buildFurniture(group, colliders);
   const cars = buildTraffic(group, r);
   let riseNow = -1;
@@ -81,6 +80,7 @@ export function buildTown(night: NightParts): Town {
       cars.move(Math.min(dt, 0.1), obstacleList);
       lamps.visible = dark > 0.02;
       lamps.material.opacity = dark;
+      shops.light(dark);
       cars.headMat.color.setScalar(0.75 + 0.25 * dark);
       // The masts' lights blink, a second on and a second off, brighter at night.
       beaconMat.opacity = (Math.sin(t * Math.PI) > 0 ? 1 : 0.08) * (0.35 + 0.65 * dark);
