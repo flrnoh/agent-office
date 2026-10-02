@@ -3,6 +3,7 @@
 import type { ChatLine, PresenceClientMsg } from '../../../shared/protocol.js';
 import { seatHereOn } from '../../../shared/maps/index.js';
 import { sanitizeLook } from '../../../shared/avatar.js';
+import { shopSeatHere } from '../../fork/shops.js'; // flrnoh fork
 import { isEmote } from '../../../shared/emotes.js';
 import { ROOF } from '../../../shared/rooftop.js';
 import { GYM } from '../../../shared/gym.js'; // flrnoh fork
@@ -68,7 +69,7 @@ export const presenceHandlers = {
     // Everyone sees them sit down (or get up), and anyone who comes in later finds them sitting.
     // Only on a seat where they are: the roof's up on the roof, the office's on a floor.
     const key = str(msg.seat, 40);
-    const seat = seatHereOn(ctx.maps.plan(), key, c.peer.floor === ROOF, c.peer.floor === HALL, c.peer.floor === GYM) ? key : undefined; // fork: the padel hall's seats in there, the gym's in there
+    const seat = seatHereOn(ctx.maps.plan(), key, c.peer.floor === ROOF, c.peer.floor === HALL, c.peer.floor === GYM) || shopSeatHere(ctx, c, key) ? key : undefined; // fork: the padel hall's seats in there, the gym's in there; a shop's chair down in town
     if (seat === c.peer.seat) return;
     // Somebody on the floor got there first (two people arriving at an empty throne at once).
     // (Not yourself, on a connection that hasn't timed out yet after a reconnect.)

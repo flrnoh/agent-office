@@ -26,6 +26,7 @@ const GUEST = [
   'soccer.join', 'soccer.leave', 'soccer.kick', 'soccer.slide', // fork: the soccer hall (and its slide tackles)
   'boat.enter', 'boat.leave', 'boat.drive', 'boat.horn', // fork: jetskis and the motorboat at the beach
   'kino.play', 'kino.stop', // fork: your own film in the cinema's Saal 2
+  'toy.use', // fork: toys from the city's toy shop
 ] as const satisfies readonly ClientMsg['t'][];
 
 /** What a guest's page sends on its own (resizing a terminal it watches, polling boards): dropped without a word. */

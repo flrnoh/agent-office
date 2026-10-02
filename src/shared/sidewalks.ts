@@ -1,8 +1,9 @@
-import { BLOCK_INNER, CITY_ROAD, CITY_WALK, CITY_X, CITY_Z, CROSSINGS, LOTS, PERIOD, STREETS, onCityStreet, type Crossing } from './city.js';
+import { CITY_ROAD, CITY_WALK, CITY_X, CITY_Z, CROSSINGS, PERIOD, STREETS, onCityStreet, type Crossing } from './city.js';
 import { LOT, SIDE_LOT } from './garage.js';
 import { FLOOR, ROAD, WALL_T } from './layout.js';
 import { STREET_END, STREET_Z } from './scenic.js';
 import { BOLLARD_IN, BOLLARD_OFF, FURNITURE, LAMPS, LAMP_OFF, stretchSpan } from './streetside.js';
+import { SHOPS, shopPoint, type Shop } from './shops.js';
 
 // flrnoh fork (see FORK.md): where the city's passers-by may walk (shared/passersby.ts plans their
 // walks, client/world/town/people.ts draws them). It's a graph laid over the sidewalks: a Walk is one
@@ -276,38 +277,35 @@ function furnish() {
       w.spots.push({ kind: 'stop', walk: w.id, along: walkCoords(w, sx, sz)[0], x: sx, z: sz, yaw: f.yaw, spread: 0.6 });
     }
   }
-  // The shop fronts facing a walk: in front of each bay's window, and its door.
-  for (const lot of LOTS) {
-    if (lot.ring >= 2) continue;
-    for (const face of shopFaces(lot)) {
-      const { w, a, u, len, n } = face;
-      const bays = Math.max(1, Math.round(len / SHOP_BAY));
-      for (let b = 0; b < bays; b++) {
-        for (const [kind, frac] of [
-          ['window', WINDOW_AT],
-          ['door', DOOR_AT],
-        ] as const) {
-          const t = ((b + frac) * len) / bays;
-          const fx = a[0] + u[0] * t;
-          const fz = a[1] + u[1] * t;
-          const along = walkCoords(w, fx, fz)[0];
-          if (along < w.from + END_IN + 2 || along > w.to - END_IN - 2) continue;
-          // Straight across from the walk, clear of the trees, benches and stops on the strip, and the lamps.
-          if ((taken.get(w.id) ?? []).some(([at, half]) => Math.abs(at - along) < half + 0.6)) continue;
-          if (w.posts.some((p) => Math.abs(p.at - along) < p.r + 0.6)) continue;
-          const out = kind === 'door' ? 0.55 : 0.75;
-          w.spots.push({
-            kind,
-            walk: w.id,
-            along,
-            x: fx + n[0] * out,
-            z: fz + n[1] * out,
-            yaw: Math.atan2(-n[0], -n[1]),
-            spread: 0.42,
-            inside: kind === 'door' ? { x: fx - n[0] * 0.9, z: fz - n[1] * 0.9 } : undefined,
-          });
-        }
-      }
+  // The shops facing a walk (shared/shops.ts): in front of each one's window, and its door.
+  for (const shop of SHOPS) {
+    const face = shopFace(shop);
+    if (!face) continue;
+    const { w } = face;
+    const n: [number, number] = [shop.nx, shop.nz];
+    // The window takes the part of the front the door doesn't.
+    const windowU = shop.doorU < shop.len / 2 ? (shop.doorU + shop.len) / 2 : shop.doorU / 2;
+    for (const [kind, u] of [
+      ['window', windowU],
+      ['door', shop.doorU],
+    ] as const) {
+      const { x: fx, z: fz } = shopPoint(shop, u, 0);
+      const along = walkCoords(w, fx, fz)[0];
+      if (along < w.from + END_IN + 2 || along > w.to - END_IN - 2) continue;
+      // Straight across from the walk, clear of the trees, benches and stops on the strip, and the lamps.
+      if ((taken.get(w.id) ?? []).some(([at, half]) => Math.abs(at - along) < half + 0.6)) continue;
+      if (w.posts.some((p) => Math.abs(p.at - along) < p.r + 0.6)) continue;
+      const out = kind === 'door' ? 0.55 : 0.75;
+      w.spots.push({
+        kind,
+        walk: w.id,
+        along,
+        x: fx + n[0] * out,
+        z: fz + n[1] * out,
+        yaw: Math.atan2(-n[0], -n[1]),
+        spread: 0.42,
+        inside: kind === 'door' ? { x: fx - n[0] * 0.9, z: fz - n[1] * 0.9 } : undefined,
+      });
     }
   }
   for (const w of WALKS) {
@@ -316,41 +314,24 @@ function furnish() {
   }
 }
 
-/** One shop window and its share of the wall, along the street, and where in a bay its window's middle and its door are (world/town/shops.ts). */
-const SHOP_BAY = 6;
-const WINDOW_AT = 69 / 192;
-const DOOR_AT = 161 / 192;
-
-/**
- * The sides of `lot` that are shop fronts on a walk (world/town/shops.ts draws them): from corner `a`
- * along `u` for `len`, facing out along `n`, as shops.ts lays out a front.
- */
-export function shopFaces(lot: (typeof LOTS)[number]): { w: Walk; a: [number, number]; u: [number, number]; len: number; n: [number, number] }[] {
-  const hw = lot.w / 2;
-  const hd = lot.d / 2;
-  const i = Math.round((lot.x - CITY_X + PERIOD / 2) / PERIOD);
-  const j = Math.round((lot.z - CITY_Z + PERIOD / 2) / PERIOD);
-  const bx = CITY_X - PERIOD / 2 + i * PERIOD;
-  const bz = CITY_Z - PERIOD / 2 + j * PERIOD;
-  const edge = BLOCK_INNER / 2 - 5;
-  const faces: { w: Walk; a: [number, number]; u: [number, number]; len: number; n: [number, number] }[] = [];
-  const add = (on: boolean, a: [number, number], u: [number, number], len: number, n: [number, number]) => {
-    if (!on) return;
-    const alongX = n[1] !== 0;
-    const fx = a[0] + (u[0] * len) / 2;
-    const fz = a[1] + (u[1] * len) / 2;
-    // The street it faces: the next line out from the block.
-    const line = alongX ? (n[1] > 0 ? bz + PERIOD / 2 : bz - PERIOD / 2) : n[0] > 0 ? bx + PERIOD / 2 : bx - PERIOD / 2;
-    const side = -(alongX ? n[1] : n[0]);
-    const along = alongX ? fx : fz;
-    const w = walkAt(alongX, line, side, along);
-    if (w && w.from <= (alongX ? Math.min(a[0], a[0] + u[0] * len) : Math.min(a[1], a[1] + u[1] * len)) && w.to >= (alongX ? Math.max(a[0], a[0] + u[0] * len) : Math.max(a[1], a[1] + u[1] * len))) faces.push({ w, a, u, len, n });
-  };
-  add(lot.z + hd > bz + edge, [lot.x - hw, lot.z + hd], [1, 0], lot.w, [0, 1]);
-  add(lot.z - hd < bz - edge, [lot.x + hw, lot.z - hd], [-1, 0], lot.w, [0, -1]);
-  add(lot.x + hw > bx + edge, [lot.x + hw, lot.z + hd], [0, -1], lot.d, [1, 0]);
-  add(lot.x - hw < bx - edge, [lot.x - hw, lot.z - hd], [0, 1], lot.d, [-1, 0]);
-  return faces;
+/** The walk in front of `shop` (shared/shops.ts), if its whole front faces one. */
+export function shopFace(shop: Shop): { w: Walk } | undefined {
+  const a = shopPoint(shop, 0, 0);
+  const b = shopPoint(shop, shop.len, 0);
+  const mid = shopPoint(shop, shop.len / 2, 0.5);
+  // Its block, from a point just inside its front.
+  const bi = Math.round((mid.x - CITY_X + PERIOD / 2) / PERIOD);
+  const bj = Math.round((mid.z - CITY_Z + PERIOD / 2) / PERIOD);
+  const bx = CITY_X - PERIOD / 2 + bi * PERIOD;
+  const bz = CITY_Z - PERIOD / 2 + bj * PERIOD;
+  const alongX = shop.nz !== 0;
+  // The street it faces: the next line out from the block.
+  const line = alongX ? (shop.nz > 0 ? bz + PERIOD / 2 : bz - PERIOD / 2) : shop.nx > 0 ? bx + PERIOD / 2 : bx - PERIOD / 2;
+  const side = -(alongX ? shop.nz : shop.nx);
+  const w = walkAt(alongX, line, side, alongX ? mid.x : mid.z);
+  const lo = alongX ? Math.min(a.x, b.x) : Math.min(a.z, b.z);
+  const hi = alongX ? Math.max(a.x, b.x) : Math.max(a.z, b.z);
+  return w && w.from <= lo && w.to >= hi ? { w } : undefined;
 }
 
 furnish();

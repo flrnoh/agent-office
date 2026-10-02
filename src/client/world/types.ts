@@ -67,6 +67,9 @@ export interface Interactable {
   court?: CourtId;
   /** Fork: which of the jetty's jetskis and boats (shared/boats.ts CRAFTS), for a 'watercraft'. */
   craft?: number;
+  /** Fork: which of the city's shops (shared/shops.ts SHOPS), and which of its stations (shared/shop-rooms.ts), for the shops' kinds. */
+  shop?: number;
+  station?: number;
 }
 
 /** A desk, a bean bag, a board agent's kiosk or a chair at the meeting table: somewhere a worker sits (or stands). */

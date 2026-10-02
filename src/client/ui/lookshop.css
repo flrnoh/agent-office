@@ -1,0 +1,19 @@
+/* flrnoh fork: the barber's chair (barber.ts) and the tattoo studio (inkstudio.ts), on the character window's frame (character.css). */
+.modal.charsel.lookshop .charsel-stage { min-height: 380px; }
+.lookshop .charsel-opts { display: flex; flex-direction: column; }
+.lookshop .charsel-opts > label { margin-top: 12px; }
+.lookshop .charsel-opts > label:first-child { margin-top: 0; }
+.lookshop .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.lookshop .tabs .btn { flex: 1; padding: 6px 8px; font-size: 14px; }
+.lookshop .motifs { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.lookshop .motifs .btn { display: flex; align-items: center; gap: 6px; padding: 5px 8px; font-size: 13px; text-align: left; }
+.lookshop .motifs .btn .emo { font-size: 20px; flex: none; }
+.lookshop .seg .btn { padding: 4px 9px; font-size: 13px; }
+.lookshop .cap { margin-top: 10px; font-size: 13px; font-weight: 800; }
+.lookshop .cap.full { color: var(--bad); }
+.lookshop .laser { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.lookshop .laser li { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border: 3px solid var(--ink); border-radius: 12px; background: #fff; }
+.lookshop .laser li .grow { flex: 1; font-size: 14px; font-weight: 700; }
+.lookshop .laser li .btn { padding: 3px 10px; font-size: 13px; }
+.lookshop .empty { margin: 4px 0; font-size: 14px; color: var(--muted); font-weight: 600; }
+.lookshop .done { font-size: 13px; font-weight: 800; color: var(--good); }

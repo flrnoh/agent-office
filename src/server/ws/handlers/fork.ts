@@ -15,6 +15,7 @@ import { bungeeMessage } from '../../bungee.js';
 import { rigMessage } from '../../rig.js';
 import { boatMessage } from '../../boats.js';
 import { kinoMessage } from '../../kino.js';
+import { toyUse } from '../../../shared/shopwares.js';
 import { here } from './common.js';
 import { jukeboxChanged } from './jukebox.js';
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
@@ -119,6 +120,11 @@ export const forkHandlers = {
   'boat.horn': boat,
   'kino.play': kino,
   'kino.stop': kino,
+  'toy.use'(ctx, c, msg) {
+    // A toy from the city's toy shop (shared/shopwares.ts): only the one in their hand, seen on their floor.
+    const used = toyUse(msg, c.peer.drink, c.id);
+    if (used) ctx.toNeighbors(c, used);
+  },
   'rig.play': rig,
   'rig.leave': rig,
   'rig.frame': rig,

@@ -4,7 +4,8 @@ import type { NightParts } from '../outside';
 import { mergeByMaterial, mesh, toon } from '../toon';
 import type { Collider } from '../types';
 import { G, PAINTS, Walls, bayTexture, litTexture, rise } from './kit';
-import { SHOP_H, hasShops } from './shops';
+import { SHOP_H, hasShops } from '../../../shared/shops';
+import { lotColliders } from '../../../shared/shop-rooms';
 
 // flrnoh fork (see FORK.md): the city's buildings (see town/index.ts), a material for each paint, their
 // roofs, and what's on them (masts with blinking beacons, water tanks, plant), put up as tall as the
@@ -18,7 +19,10 @@ export interface TownBuildings {
 }
 
 export function buildTownBuildings(group: THREE.Group, colliders: Collider[], night: NightParts, glow: THREE.Texture): TownBuildings {
-  for (const lot of LOTS) colliders.push({ minX: lot.x - lot.w / 2, maxX: lot.x + lot.w / 2, minZ: lot.z - lot.d / 2, maxZ: lot.z + lot.d / 2, bottom: G, top: G + 400, fence: true });
+  // Solid, but for the shops on the ground floor: their rooms, walls and what stands in them (shared/shops.ts).
+  LOTS.forEach((_, li) => {
+    for (const c of lotColliders(li)) colliders.push({ minX: c.minX, maxX: c.maxX, minZ: c.minZ, maxZ: c.maxZ, bottom: G + c.bottom, top: G + c.top, fence: true });
+  });
   const gradient = (toon('#fff') as THREE.MeshToonMaterial).gradientMap;
   const paintMats = new Map<number, THREE.MeshToonMaterial>();
   const paintOf = (i: number) => {

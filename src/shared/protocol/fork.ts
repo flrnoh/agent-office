@@ -3,6 +3,7 @@
 
 import type { CasinoClientMsg, CasinoServerMsg } from '../casino.js';
 import type { BoatClientMsg, BoatServerMsg } from '../boats.js';
+import type { ToyClientMsg, ToyServerMsg } from '../shopwares.js';
 import type { BungeeState } from '../bungee.js';
 import type { DjSetState } from '../djset.js';
 import type { GymClientMsg, GymServerMsg } from '../gym.js';
@@ -20,6 +21,7 @@ export type ForkClientMsg =
   | SoccerClientMsg // the soccer hall (shared/soccer.ts)
   | BoatClientMsg // the jetskis and the motorboat at the beach (shared/boats.ts)
   | KinoClientMsg // the cinema's Saal 2 (shared/kino.ts)
+  | ToyClientMsg // playing with a toy from the city's toy shop (shared/shopwares.ts)
   /** Put a YouTube, SoundCloud or Mixcloud set on at the DJ booth, for everyone on the roof (see shared/djset.ts). */
   | { t: 'dj.play'; url: string }
   /** Back to the house DJ. */
@@ -52,6 +54,7 @@ export type ForkServerMsg =
   | SoccerServerMsg
   | BoatServerMsg
   | KinoServerMsg
+  | ToyServerMsg
   /** The DJ set on the roof changed (sent to everyone up there). */
   | { t: 'dj'; state: DjSetState }
   /** The stream on the floor's TV changed (sent to everyone on the floor). */

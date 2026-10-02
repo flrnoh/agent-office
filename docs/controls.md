@@ -36,6 +36,8 @@ On the pitch in the soccer hall (after **E** at the boards on the halfway line):
 
 In the cinema behind the office: **E** at the counter for popcorn, nachos or a cola; **E** at a seat sits you down (walk off to get up); **E** at Saal 1's screen shows the programme; **E** at the lectern in Saal 2 puts on your own film for everyone in there, and **E** at its screen watches it full screen.
 
+In town, walk in through any shop's door: **E** at the counter for its menu, **E** at the barber's or the tattoo studio's chair to sit down and change your look (**W A S D** gets you up), **E** at a record crate to dig and at the listening station for the headphones (✕, **Esc** or **E** takes them off). With a toy in your hand, click (or **E** with nothing else in reach) to play with it; with a book or the paper, **E** to read.
+
 At Sunset Beach, on the scenic loop west of town: **E** at the kiosk's counter for the menu; walk into the sea (or jump off the jetty) to swim, and **E** at the ladder at the jetty's end climbs out; **E** at a jetski or the motorboat gets on, **E** aboard gets off (onto the jetty when you're alongside it, else into the water).
 
 In the soccer hall, after a goal everyone sees an instant replay of it (the last seconds from a TV camera, the end in slow motion): **Space** or **Esc** skips it.

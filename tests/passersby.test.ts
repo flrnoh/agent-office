@@ -9,7 +9,8 @@ import { GYM_STREET_BOX } from '../src/shared/gym.js';
 import { HALL_BOX } from '../src/shared/hall.js';
 import { SOCCER_BOX } from '../src/shared/soccer.js';
 import { FURNITURE } from '../src/shared/streetside.js';
-import { BAND_MIN, CORNERS, CURB_AT, WALKS, ZEBRA_AT, onRoad, shopFaces, walkCoords } from '../src/shared/sidewalks.js';
+import { BAND_MIN, CORNERS, CURB_AT, WALKS, ZEBRA_AT, onRoad, walkCoords } from '../src/shared/sidewalks.js';
+import { SHOPS, shopAt, shopLocal } from '../src/shared/shops.js';
 import { EPOCH, SLOTS, bodyAt, density, epochOf, planFor, type Body, type Plan } from '../src/shared/passersby.js';
 
 // flrnoh fork (see FORK.md): the city's passers-by (shared/sidewalks.ts, shared/passersby.ts, drawn
@@ -82,19 +83,26 @@ test('there are sidewalks round the town, joined up at its corners, with benches
   }
 });
 
-test('the doors and shop windows they go to are on the shop fronts world/town/shops.ts draws', async () => {
-  const { hasShops, streetSides } = await import('../src/client/world/town/shops.js');
-  let faces = 0;
-  for (const lot of LOTS) {
-    if (!hasShops(lot)) continue;
-    const sides = streetSides(lot);
-    for (const f of shopFaces(lot)) {
-      faces++;
-      const on = f.n[1] > 0 ? sides.pz : f.n[1] < 0 ? sides.nz : f.n[0] > 0 ? sides.px : sides.nx;
-      assert.ok(on, `a door on a side of the building at (${lot.x.toFixed(0)}, ${lot.z.toFixed(0)}) that's no shop front`);
+test('the doors they go into are the shops\' own doors (shared/shops.ts), and the windows on their fronts', () => {
+  let doors = 0;
+  for (const w of WALKS) {
+    for (const sp of w.spots) {
+      if (sp.kind !== 'door' && sp.kind !== 'window') continue;
+      // Just out in front of a shop's front: the shop behind it, and for a door, its door right there.
+      const shop = SHOPS.find((s) => {
+        const { u, v } = shopLocal(s, sp.x, sp.z);
+        return u >= 0 && u <= s.len && v < 0 && v > -1.2;
+      });
+      assert.ok(shop, `a ${sp.kind} at (${sp.x.toFixed(1)}, ${sp.z.toFixed(1)}) in front of no shop`);
+      if (sp.kind === 'door') {
+        doors++;
+        const { u } = shopLocal(shop!, sp.x, sp.z);
+        assert.ok(Math.abs(u - shop!.doorU) < 0.05, `a door spot at u ${u.toFixed(2)}, the shop's door is at ${shop!.doorU.toFixed(2)}`);
+        assert.ok(sp.inside && shopAt(sp.inside.x, sp.inside.z) === shop, 'going in, they end up inside that shop');
+      }
     }
   }
-  assert.ok(faces > 30, `${faces} shop fronts`);
+  assert.ok(doors > 40, `${doors} shop doors on the walks`);
 });
 
 test('everyone comes out of a shop door and goes into another', () => {
