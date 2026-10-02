@@ -219,8 +219,10 @@ export function buildYard(group: THREE.Group, colliders: Collider[], night: Nigh
         bus.add(w);
         bus.add(mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.34, 12).rotateX(Math.PI / 2), hub, x, 0.5, s * (Wd / 2 - 0.12), false));
       }
-    bus.position.set((TB.minX + TB.maxX) / 2, G, (TB.minZ + TB.maxZ) / 2);
-    root.add(mergeByMaterial(bus));
+    // Placed after merging: mergeByMaterial bakes the parts relative to `bus` itself, so a position on `bus` would be lost (and the bus stood in the office).
+    const merged = mergeByMaterial(bus);
+    merged.position.set((TB.minX + TB.maxX) / 2, G, (TB.minZ + TB.maxZ) / 2);
+    root.add(merged);
     colliders.push({ minX: TB.minX, maxX: TB.maxX, minZ: TB.minZ, maxZ: TB.maxZ, bottom: G, top: G + TB.h });
   }
 
