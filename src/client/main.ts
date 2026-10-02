@@ -63,6 +63,7 @@ import { installWorkerActions } from './features/workers/actions';
 import { installWorkerViews } from './features/workers/views';
 // flrnoh fork (see FORK.md): this fork's own features.
 import { installBeach } from './features/beach';
+import { installBaumarkt } from './features/baumarkt';
 import { installTankstelle } from './features/tankstelle'; // flrnoh fork: the petrol station
 import { installBossDesk } from './features/bossdesk';
 import { installBungee } from './features/bungee';
@@ -209,6 +210,7 @@ installFrontDoor(ctx, core, parts);
 installSpeakers(ctx, { officeWing: () => parts.worlds.officeWing() });
 installFogbox(ctx, { officeWing: () => parts.worlds.officeWing() });
 parts.beach = installBeach(ctx, parts, { booze: () => parts.bar.booze, reach, standUp, stopWalking });
+installBaumarkt(ctx, parts, { standUp, stopWalking }); // fork: the Baumarkt (features/baumarkt)
 (window as any).__kino = installKino(ctx, parts, { booze: () => parts.bar.booze, reach, showSettings: (pane) => parts.hud.showSettings(pane) }); // fork: the cinema
 parts.shops = installShops(ctx, { booze: () => parts.bar.booze, caffeine: () => parts.coffee.caffeine, serveFromCafe: (d) => parts.fridge.serveFromCafe(d), reach, personOf, showMyProfile: (p) => parts.you.showMyProfile(p), target: () => parts.pointer.target(), inPlace: () => parts.places.active(), special: (s) => parts.funshops.counter(s) });
 parts.funshops = installFunShops(ctx, { serve: (i, id) => parts.shops.serve(i, id), keeper: (i) => parts.shops.keeper(i) }); // fork: the Spielhalle and the Post

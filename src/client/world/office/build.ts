@@ -31,6 +31,7 @@ import { loft } from './loft';
 import type { Fixture, Gives, Site } from './fixture';
 import { casinoOut, gymOut, hallOut, rig, soccerOut } from './fork'; // flrnoh fork
 import { town } from '../town'; // flrnoh fork: the city round the office
+import { baumarkt } from '../baumarkt'; // flrnoh fork: the Baumarkt on its block
 import { kino } from '../kino'; // flrnoh fork: the cinema
 import { tankstelle } from '../tankstelle'; // flrnoh fork: the petrol station
 
@@ -50,7 +51,7 @@ function floorPlan() {
     storeyWalls, // fork: upstream's `walls`, a storey at a time
     balcony,
     tee,
-    ...downstairs(cars, street, town, kino, casinoOut, gymOut, hallOut, soccerOut, green, scenic, tankstelle), // fork: town, kino, casinoOut … soccerOut, tankstelle
+    ...downstairs(cars, street, town, kino, baumarkt, casinoOut, gymOut, hallOut, soccerOut, green, scenic, tankstelle), // fork: town, kino, baumarkt, casinoOut … soccerOut, tankstelle
     plug,
     tower,
     desks,
