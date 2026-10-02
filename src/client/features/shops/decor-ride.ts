@@ -144,7 +144,7 @@ export function furnishRide(still: THREE.Group, s: Shop, k: ShopKind, p: Piece):
       // A floor rack, a bike in every slot (price tags on the bars).
       box(still, w, 0.06, 0.08, '#6c757d', cu, 0, cv);
       for (let u = p.u0 + 0.25, i = 0; u < p.u1 - 0.1; u += 0.45, i++) {
-        bikeAt(still, BIKE_KINDS[(i + s.i) % BIKE_KINDS.length], u, 0, cv, true);
+        bikeAt(still, BIKE_KINDS[(i + s.i) % 3], u, 0, cv, true);
         box(still, 0.06, 0.05, 0.01, '#ffd60a', u + 0.1, 0.92, cv - 0.25);
       }
       return true;
@@ -257,7 +257,7 @@ export function rideDecor(still: THREE.Group, live: THREE.Group, s: Shop, k: Sho
       // Bikes parked out front on the sidewalk, at a stand, and one in the window.
       const bar = (win.u0 + win.u1) / 2;
       box(still, Math.max(0.5, win.u1 - win.u0 - 0.4), 0.05, 0.05, '#adb5bd', bar, 0.55, -1.25);
-      for (let u = win.u0 + 0.3, i = 0; u < win.u1 - 0.2; u += 0.6, i++) bikeAt(still, BIKE_KINDS[(i + s.i) % BIKE_KINDS.length], u, 0, -1.2, true, 0.05);
+      for (let u = win.u0 + 0.3, i = 0; u < win.u1 - 0.2; u += 0.6, i++) bikeAt(still, BIKE_KINDS[(i + s.i) % 3], u, 0, -1.2, true, 0.05);
       bikeAt(still, 'racer', (win.u0 + win.u1) / 2, 0.55, FRONT_T + 0.25, false);
       // The bike on the repair stand, up in its clamp, its back wheel spinning now and then.
       const st = piece('repairstand')[0];

@@ -129,7 +129,7 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
     const c = ctx.camera.position;
     for (const [i, o] of open) {
       const p = shopPoint(o.int.shop, o.int.shop.len / 2, o.int.shop.depth / 2);
-      if (!keep.has(i) && (Math.hypot(p.x - c.x, p.z - c.z) > FAR || !onStreet() || open.size > MAX)) close(i);
+      if (!keep.has(i) && (Math.hypot(p.x - c.x, p.z - c.z) > FAR || !onStreet() || open.size >= MAX)) close(i); // at the most: make room for a nearer one
     }
     // One a go, so walking along a street never builds a whole row in one frame.
     const next = want.find((s) => !open.has(s.i));

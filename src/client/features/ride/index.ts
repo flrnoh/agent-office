@@ -8,7 +8,8 @@
  */
 import { SHOPS, SHOP_KIND_BY_ID, shopPoint, shopYaw, type Shop } from '../../../shared/shops';
 import { insideShop } from '../../../shared/shop-rooms';
-import { BIKES, RENTAL_SECONDS, type BikeKind } from '../../../shared/ride';
+import { BIKES, RENTAL_SECONDS, WASH_SECONDS, type BikeKind } from '../../../shared/ride';
+import { startWash } from '../shops/decor-ride';
 import type { Ctx } from '../../core/context';
 import { aside, hintTitle, key, onE } from '../../core/hint';
 import { h, toast } from '../../ui/dom';
@@ -192,8 +193,9 @@ export function installRide(ctx: Ctx, deps: RideDeps) {
   return {
     /** The bike shop's counter (features/shops): whether it was that. */
     counter,
-    /** On a bike right now, for checks. */
+    /** On a bike right now (and how it's going), for checks. */
     riding: () => rider.bike,
+    going: () => ({ speed: rider.speed, meters: rider.meters, steer: rider.steer }),
     /** Rents bike `k` at shop `i` straight away, for checks. */
     rent: (i: number, k: BikeKind) => {
       const s = SHOPS[i];
@@ -202,5 +204,7 @@ export function installRide(ctx: Ctx, deps: RideDeps) {
       mount(k, out.x, out.z, shopYaw(s, s.doorU > s.len / 2 ? 1 : -1, 0));
     },
     getOff: () => getOff(),
+    /** Starts a wash in laundromat `i`'s machine `n`, for checks. */
+    wash: (i: number, n: number) => startWash(i, n, Date.now() + WASH_SECONDS * 1000),
   };
 }
