@@ -14,6 +14,7 @@ import { padelMessage } from '../../padel.js';
 import { bungeeMessage } from '../../bungee.js';
 import { rigMessage } from '../../rig.js';
 import { boatMessage } from '../../boats.js';
+import { kinoMessage } from '../../kino.js';
 import { here } from './common.js';
 import { jukeboxChanged } from './jukebox.js';
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
@@ -56,6 +57,10 @@ function padel(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `padel.${st
 function boat(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `boat.${string}` }>) {
   const floor = ctx.floorOf(c); // the jetskis and the motorboat at the beach (boats.ts)
   boatMessage(ctx.marinas, msg, { id: c.id, floor: floor?.id, send: (m) => ctx.sendTo(c, m), toNeighbors: (m, droppable) => ctx.toNeighbors(c, m, droppable) });
+}
+function kino(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: 'kino.play' | 'kino.stop' }>) {
+  const floor = ctx.floorOf(c); // the cinema's Saal 2 (kino.ts)
+  kinoMessage(floor && ctx.kinos.of(floor), msg, { id: c.id, who: c.peer.name, office: ctx.maps.pick() === OFFICE_MAP, toFloor: (m) => floor && ctx.toFloor(floor, m), warn: (t) => ctx.warn(c, t) });
 }
 function rig(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `rig.${string}` }>) {
   const floor = ctx.floorOf(c);
@@ -112,6 +117,8 @@ export const forkHandlers = {
   'boat.leave': boat,
   'boat.drive': boat,
   'boat.horn': boat,
+  'kino.play': kino,
+  'kino.stop': kino,
   'rig.play': rig,
   'rig.leave': rig,
   'rig.frame': rig,
@@ -158,5 +165,6 @@ export const forkHooks: FeatureHooks = {
 export const rigView: ViewPieces['rig'] = (ctx, floor) => ctx.rigs.view(floor?.id);
 export const tvView: ViewPieces['tv'] = (_ctx, floor) => floor?.tv.state();
 export const boatsView: ViewPieces['boats'] = (ctx, floor) => ctx.marinas.view(floor?.id);
+export const kinoView: ViewPieces['kino'] = (ctx, floor) => ctx.kinos.view(floor);
 export const noView = () => undefined;
 export const bungeeView: ViewPieces['bungee'] = (ctx) => ctx.bungeeRope.state();

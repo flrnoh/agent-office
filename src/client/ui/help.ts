@@ -23,6 +23,9 @@ export const HELP_ROWS: readonly (readonly [string, string])[] = [
   ['🏀', 'The hoop on the west wall, by the exit door: E at the ball picks it up. Hold E (or the mouse, in first person) and let go when the meter is in the green to sink it. In first person it goes where you look. Q drops it. Everyone on your floor sees your shot'],
   ['🏎️', "The Lambos and Ferraris in the garage: E at one gets you behind the wheel, or beside whoever's driving it. W is the gas, S brakes and reverses, A and D steer, Space brakes, H honks and E gets you out. Everyone on your floor sees you drive by"],
   ['🚐', "Flogge's Bulli, backed into the garage's east corner: only its keyholders take the wheel, but anyone can ride along beside them. It's slow and soft, and its horn goes möp möp"],
+  // flrnoh fork: the cinema (features/kino).
+  ['🍿', 'Behind the office to the north-west, the cinema: real films (Blender open movies and silent classics) back to back in Saal 1, on the office clock, so everyone sees the same moment. E at the counter for popcorn, nachos or a cola, E at a seat to sit down (walk off to get up), E at the screen for the programme'],
+  ['🎬', 'In the cinema’s small Saal 2, E at the lectern by the door puts on a YouTube or Twitch link for everyone in there, like the office TV; E at its screen watches it full screen'],
   // flrnoh fork: a day at the beach (features/beach).
   ['🍟', 'Down the scenic loop west of town, Sunset Beach: the Kiosk zur Möwe by the road is open. E at its counter and Uschi hands over Pommes rot-weiß, a Currywurst, a Fischbrötchen, ice cream, a coconut… all free. Ice cream gives you brain freeze, and mind the seagulls'],
   ['🏊', 'Walk into the sea off the beach (or jump off the end of the jetty, or its diving board) and you swim: W A S D, Shift faster, Space splashes. Stay inside the buoys. E at the ladder at the jetty’s end climbs out, or swim in until you can stand'],
