@@ -40,6 +40,8 @@ In town, walk in through any shop's door: **E** at the counter for its menu, **E
 
 At Sunset Beach, on the scenic loop west of town: **E** at the kiosk's counter for the menu; walk into the sea (or jump off the jetty) to swim, and **E** at the ladder at the jetty's end climbs out; **E** at a jetski or the motorboat gets on, **E** aboard gets off (onto the jetty when you're alongside it, else into the water).
 
+At the petrol station west of the office: in a garage car stopped beside a pump, **E** fills it up (or **E** at the pump on foot); stopped on the car wash's marking, **E** starts the programme (or **E** at its terminal), and **E** waits while it runs (W A S D don't move the car until the light's green); **E** at the shop's counter for coffee, snacks and the paper.
+
 In the soccer hall, after a goal everyone sees an instant replay of it (the last seconds from a TV camera, the end in slow motion): **Space** or **Esc** skips it.
 
 You can also click a nearby desk to interact with it, or click a worker in the Workers panel (**🤖 Workers**, top right) to open its terminal.

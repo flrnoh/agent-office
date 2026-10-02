@@ -12,6 +12,7 @@ import type { BungeeState } from '../bungee.js'; // flrnoh fork
 import type { DjSetState } from '../djset.js'; // flrnoh fork
 import type { RigView } from '../rig.js'; // flrnoh fork
 import type { CraftState } from '../boats.js'; // flrnoh fork: the jetty's boats
+import type { TankState } from '../tankstelle-play.js'; // flrnoh fork: the petrol station
 import type { TableSeat } from '../tablegames/tables.js'; // flrnoh fork
 import type { TvState } from '../tv.js'; // flrnoh fork
 import type { KinoScreenState } from '../kino.js'; // flrnoh fork: the cinema
@@ -141,6 +142,8 @@ export interface FloorView {
   boats?: CraftState[];
   /** On a floor: what's on in the cinema's Saal 2, if anything (flrnoh fork, see shared/kino.ts). */
   kino?: KinoScreenState;
+  /** On a floor: the petrol station's pumps going, the car in its wash, the shiny cars (flrnoh fork, see shared/tankstelle-play.ts). */
+  tankstelle?: TankState;
   /** Up on the roof: who's at the table games (flrnoh fork, see shared/tablegames). */
   tables?: TableSeat[];
   /** Who's on the bungee rope, and the day's jumps (flrnoh fork, see shared/bungee.ts), in every view: the jump's seen from below too. */

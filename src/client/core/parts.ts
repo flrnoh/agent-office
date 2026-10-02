@@ -46,6 +46,7 @@ import type { installWorkerActions } from '../features/workers/actions';
 import type { installWorkerViews } from '../features/workers/views';
 // flrnoh fork (see FORK.md): this fork's own features.
 import type { installBeach } from '../features/beach';
+import type { installTankstelle } from '../features/tankstelle'; // flrnoh fork
 import type { installBossDesk } from '../features/bossdesk';
 import type { installBungee } from '../features/bungee';
 import type { installDjSets } from '../features/djset';
@@ -147,4 +148,5 @@ export interface Parts {
   beach: Made<typeof installBeach>;
   shops: Made<typeof installShops>;
   ride: Made<typeof installRide>; // flrnoh fork: bikes, pets, laundry
+  tankstelle: Made<typeof installTankstelle>; // flrnoh fork: the petrol station
 }

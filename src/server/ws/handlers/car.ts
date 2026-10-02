@@ -31,6 +31,7 @@ export const carHandlers = {
   'car.drive'(ctx, c, msg) {
     const floor = ctx.floorOf(c);
     const car = Math.trunc(num(msg.car));
+    if (ctx.forecourts.holds(floor?.id, car)) return; // flrnoh fork: held at a pump or in the car wash (server/tankstelle.ts)
     const now = floor?.garage.drive(c.id, car, { x: num(msg.x), z: num(msg.z), rotY: num(msg.rotY), speed: num(msg.speed), steer: num(msg.steer) });
     if (now) ctx.toNeighbors(c, { t: 'car.move', car, ...now }, true);
   },
