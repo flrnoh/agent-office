@@ -4,6 +4,7 @@ import { BOLLARD_IN, BOLLARD_OFF, FURNITURE, stretchSpan, type Furniture } from 
 import { mergeByMaterial, mesh, toon } from '../toon';
 import type { Collider } from '../types';
 import { G } from './kit';
+import { buildPillars } from './pillars';
 
 // flrnoh fork (see FORK.md): what stands along the city's streets at eye level (see town/index.ts):
 // curbs along every road, and on the strip between the sidewalk and the buildings, street trees,
@@ -107,11 +108,13 @@ export function buildFurniture(group: THREE.Group, colliders: Collider[]) {
       lay(f, new THREE.CylinderGeometry(0.04, 0.04, 2.8, 6), steel, G + 1.4, 2.1, 0.5);
       lay(f, new THREE.CylinderGeometry(0.32, 0.32, 0.06, 16).rotateX(Math.PI / 2), yellow, G + 2.7, 2.1, 0.5);
       block(x, z, 1.6, 1.6, 2.7);
-    } else {
+    } else if (f.kind === 'bin') {
       lay(f, binGeo, ink, G + 0.42);
       // A fire hydrant by it.
       lay(f, hydrantGeo, red, G + 0.35, 0.9, 0);
     }
   }
   group.add(mergeByMaterial(parts));
+  // The advertising pillars and newspaper boxes (town/pillars.ts).
+  buildPillars(group, colliders, FURNITURE);
 }

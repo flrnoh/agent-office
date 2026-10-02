@@ -261,7 +261,7 @@ function furnish() {
   const local = (f: { x: number; z: number; yaw: number }, lx: number, lz: number): [number, number] => [f.x + lx * Math.cos(f.yaw) + lz * Math.sin(f.yaw), f.z - lx * Math.sin(f.yaw) + lz * Math.cos(f.yaw)];
   /** How far along each walk the furniture on its strip takes up, either side of where it stands. */
   const taken = new Map<number, [number, number][]>();
-  const WIDE = { tree: 0.6, bench: 1.9, bikes: 1.4, bus: 2.3, bin: 1.2 } as const;
+  const WIDE = { tree: 0.6, bench: 1.9, bikes: 1.4, bus: 2.3, bin: 1.2, pillar: 1.6, papers: 1.6 } as const;
   for (const f of FURNITURE) {
     const w = walkAt(f.street.alongX, stretchSpan(f.street).line, f.side, f.along);
     if (!w) continue;

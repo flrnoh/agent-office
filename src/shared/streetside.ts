@@ -21,7 +21,8 @@ export const LAMP_OFF = H + CITY_WALK * 0.6;
 export const BOLLARD_OFF = H + 0.45;
 export const BOLLARD_IN = H + CITY_WALK + 0.6;
 
-export type FurnitureKind = 'tree' | 'bench' | 'bikes' | 'bus' | 'bin';
+/** `pillar`: an advertising pillar (Litfaßsäule); `papers`: newspaper boxes by a bin. */
+export type FurnitureKind = 'tree' | 'bench' | 'bikes' | 'bus' | 'bin' | 'pillar' | 'papers';
 
 /** Something on the strip beside a sidewalk, turned by `yaw` to face the road (its +z toward it). */
 export interface Furniture {
@@ -47,6 +48,9 @@ export interface Lamp {
   side: -1 | 1;
   along: number;
 }
+
+/** What stands in a bin's slot, by where it is. */
+const BIN_SLOTS: FurnitureKind[] = ['pillar', 'bin', 'papers', 'pillar', 'bin'];
 
 /** Whether a building stands within `pad` of (x, z). */
 const built = (x: number, z: number, pad: number) => LOTS.some((l) => Math.abs(x - l.x) < l.w / 2 + pad && Math.abs(z - l.z) < l.d / 2 + pad);
@@ -88,7 +92,9 @@ function layFurniture(): Furniture[] {
         if (pick < 0.45) put('bench');
         else if (pick < 0.7) put('bikes');
         else if (pick < 0.82 && len > 30) put('bus');
-        else put('bin');
+        // A bin, or (by where it is, not by drawing another number, so the rest stays as it was) an
+        // advertising pillar or newspaper boxes in its place.
+        else put(BIN_SLOTS[Math.abs(Math.round(x * 3 + z * 7)) % BIN_SLOTS.length]);
       }
     }
   }
