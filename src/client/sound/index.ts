@@ -38,6 +38,7 @@ import { Rain, thunder } from './weather';
 // flrnoh fork (see FORK.md): the fork's own sounds, a recipe file each.
 import { bulliHorn } from './bulli';
 import { beach, Outboards, type BeachSound, type Outboard } from '../features/beach/sound';
+import { baumarktSound, ForkliftHum, type BaumarktSound } from '../features/baumarkt/sound';
 import { bungee, BungeeWind } from './bungee';
 import { casino, type CasinoSound } from './casino';
 import { doorbell } from './doorbell';
@@ -76,6 +77,7 @@ export class OfficeSound {
   private readonly spa = new GymSpa(this.a); // fork
   private readonly bungeeAir = new BungeeWind(this.a); // fork
   private readonly outboards = new Outboards(this.a); // fork
+  private readonly forkliftHum = new ForkliftHum(this.a); // fork
   /** A stream that won't play here. */
   onMusicError?: (text: string) => void;
   /** Fork: a stream the browser won't start before you click (autoplay rules). */
@@ -374,6 +376,16 @@ export class OfficeSound {
   /** The boats' outboards running now, every frame (an empty list lets them die away). */
   setOutboards(list: Outboard[]) {
     this.outboards.set(list);
+  }
+
+  /** The Baumarkt: tools, the paint shaker, the forklift's beep and horn, the scanner, the gate, the PA (features/baumarkt/sound.ts). */
+  baumarkt(kind: BaumarktSound, at: Pos, strength = 1) {
+    baumarktSound(this.a, kind, at, strength);
+  }
+
+  /** The forklift's motor and hydraulics, every frame (null: off). */
+  setForklift(s: Parameters<ForkliftHum['set']>[0]) {
+    this.forkliftHum.set(s);
   }
 
   casino(kind: CasinoSound) {

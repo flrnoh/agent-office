@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FLOOR, WALL_HEIGHT, WALL_T, WING, wingMinZ } from '../../shared/layout';
+export { underRoof } from './roofs'; // fork: the street's roofs keep the rain off too (world/roofs.ts), for sky.ts
 
 /*
  * Fog stays outside (flrnoh fork, see FORK.md). The haze (sky.ts, HAZE) counts only the part of the

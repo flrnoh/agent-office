@@ -63,6 +63,7 @@ import { installWorkerActions } from './features/workers/actions';
 import { installWorkerViews } from './features/workers/views';
 // flrnoh fork (see FORK.md): this fork's own features.
 import { installBeach } from './features/beach';
+import { installBaumarkt } from './features/baumarkt';
 import { installBossDesk } from './features/bossdesk';
 import { installBungee } from './features/bungee';
 import { installTown } from './features/town'; // flrnoh fork: the city round the office
@@ -205,6 +206,7 @@ installFrontDoor(ctx, core, parts);
 installSpeakers(ctx, { officeWing: () => parts.worlds.officeWing() });
 installFogbox(ctx, { officeWing: () => parts.worlds.officeWing() });
 parts.beach = installBeach(ctx, parts, { booze: () => parts.bar.booze, reach, standUp, stopWalking });
+installBaumarkt(ctx, parts, { standUp, stopWalking }); // fork: the Baumarkt (features/baumarkt)
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);

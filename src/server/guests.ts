@@ -25,6 +25,7 @@ const GUEST = [
   'bungee.jump', // fork: bungee off the roof
   'soccer.join', 'soccer.leave', 'soccer.kick', 'soccer.slide', // fork: the soccer hall (and its slide tackles)
   'boat.enter', 'boat.leave', 'boat.drive', 'boat.horn', // fork: jetskis and the motorboat at the beach
+  'bm.fork.enter', 'bm.fork.leave', 'bm.fork.drive', 'bm.fork.horn', 'bm.trolley.grab', 'bm.trolley.push', 'bm.trolley.let', 'bm.hold', 'bm.use', 'bm.mix', // fork: the Baumarkt
 ] as const satisfies readonly ClientMsg['t'][];
 
 /** What a guest's page sends on its own (resizing a terminal it watches, polling boards): dropped without a word. */
