@@ -9,6 +9,7 @@ import { seatOn } from '../../../shared/maps';
 import { shopSeatHips } from '../../../shared/shop-rooms'; // flrnoh fork
 import { storeySeat } from '../../../shared/storey'; // flrnoh fork
 import { heardVolume } from '../../../shared/voicerange'; // flrnoh fork
+import { voiceWalled } from '../voicerange/walls'; // flrnoh fork: rooms voice doesn't get out of
 import type { PeerInfo } from '../../../shared/protocol';
 import { DRINK_BY_ID } from '../../../shared/rooftop';
 import { hipsOf } from '../../../shared/garage';
@@ -143,7 +144,7 @@ export function installPeers(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'puff
         r.bubble = undefined;
       }
       const d = Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z);
-      voice.setVolume(id, heardVolume(d, p.voiceRange)); // flrnoh fork: Hörkreise (shared/voicerange.ts)
+      voice.setVolume(id, voiceWalled({ floor: store.floor, x: player.pos.x, z: player.pos.z }, p) ? 0 : heardVolume(d, p.voiceRange)); // flrnoh fork: Hörkreise (shared/voicerange.ts), walls (voicerange/walls.ts)
     }
   });
   let speakTick = 0;

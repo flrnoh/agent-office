@@ -14,6 +14,7 @@ import type {
   WorkerStatus,
 } from '../shared/protocol.js';
 import { GUEST_MSGS, GUEST_QUIET, guestMayFetch } from './guests.js';
+import { PROBE_SERVER_MSGS } from '../shared/proberaum.js'; // flrnoh fork: the Schallwerk's rehearsal wing
 
 /*
  * The party guest (flrnoh fork, see FORK.md): friends invited to a party on the rooftop bar. They
@@ -84,6 +85,9 @@ const PARTY_SEES = [
   'mg', 'mg.putt', // fork: the bowling centre's mini golf
   'bowl.lanes', 'bowl.lane', 'bowl.roll', 'bowl.board', 'bowl.stats', 'bowl.over', // fork: the bowling centre's lanes and league
   'venue.mode', 'venue.lights', 'venue.fx', 'venue.announce', 'venue.wear', 'venue.house', // fork: the Schallwerk's house
+  'show', 'show.act', 'show.surf', 'show.ball', 'show.wod', 'venuedj', 'venuedj.horn', 'gigs', 'gig.started', // fork: the Schallwerk's show
+  'instr.state', 'instr.note', 'instr.jam', 'instr.tones', // fork: the Schallwerk's instruments
+  ...PROBE_SERVER_MSGS, // fork: the Schallwerk's rehearsal wing
 ] as const satisfies readonly T[];
 
 /** The work, the machine and the office's settings: never sent to a party guest. */

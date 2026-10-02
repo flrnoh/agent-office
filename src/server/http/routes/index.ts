@@ -6,6 +6,7 @@ import { agentRoutes } from './agents.js';
 import { authRoutes } from './auth.js';
 import { fileRoutes } from './files.js';
 import { forkRoutes } from './fork.js'; // flrnoh fork
+import { venueShowRoutes } from './venueshow.js'; // flrnoh fork: the Schallwerk's show
 import { githubRoutes } from './github.js';
 import { pageRoutes } from './pages.js';
 import { searchRoutes } from './search.js';
@@ -31,6 +32,7 @@ export const routes: readonly Route[] = [
   agentRoutes.grokModels,
   forkRoutes.radio, // flrnoh fork: the jukebox's radio
   forkRoutes.djBeats, // flrnoh fork: the DJ set's beats, for the roof's lights
+  venueShowRoutes.beats, // flrnoh fork: the Schallwerk's DJ set's beats
   fileRoutes.image,
   fileRoutes.whiteboardFile,
   fileRoutes.termDrop,
