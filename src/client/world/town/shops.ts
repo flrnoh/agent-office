@@ -5,7 +5,7 @@ import { DOOR_H, DOOR_W, FRONT_T, LOT_PLANS, SHOP_H, SHOP_KIND_BY_ID, SHOPS, SID
 import { shopRoom } from '../../../shared/shop-rooms';
 import { wearWindow } from './shopwindows'; // flrnoh fork: the boutique's and the optician's windows
 import type { NightParts } from '../outside';
-import { canvasTexture, tilingCanvasTexture } from '../texture';
+import { tilingCanvasTexture } from '../texture';
 import { mesh, toon } from '../toon';
 import { ColorBoxes, colorBoxMaterial, litBoxMaterial } from './boxes';
 import { G, PAINTS } from './kit';
@@ -19,28 +19,6 @@ import { G, PAINTS } from './kit';
 
 export { SHOP_H, hasShops } from '../../../shared/shops';
 
-/** The sign over a shop: its name on its own ground, as big as fits. */
-function signTexture(s: ShopKind): THREE.CanvasTexture {
-  return canvasTexture(512, 96, (g) => {
-    g.fillStyle = s.signBg;
-    g.fillRect(0, 0, 512, 96);
-    g.strokeStyle = s.ink;
-    g.lineWidth = 6;
-    g.strokeRect(6, 6, 500, 84);
-    g.fillStyle = s.ink;
-    let size = 58;
-    g.font = `bold ${size}px system-ui, sans-serif`;
-    while (g.measureText(s.sign).width > 470 && size > 30) g.font = `bold ${(size -= 2)}px system-ui, sans-serif`;
-    if (s.neon) {
-      g.shadowColor = s.ink;
-      g.shadowBlur = 14;
-    }
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(s.sign, 256, 52);
-  });
-}
-
 /** Striped canvas for an awning, the stripes running out from the wall. */
 function awningTexture(s: ShopKind): THREE.CanvasTexture {
   return tilingCanvasTexture(64, 16, (g) => {
@@ -52,7 +30,7 @@ function awningTexture(s: ShopKind): THREE.CanvasTexture {
 }
 
 /** Meshes put together by material, keeping their textures' coordinates (mergeByMaterial drops them). */
-function mergeTextured(meshes: THREE.Mesh[]): THREE.Object3D[] {
+export function mergeTextured(meshes: THREE.Mesh[]): THREE.Object3D[] {
   const byMat = new Map<THREE.Material, THREE.BufferGeometry[]>();
   for (const m of meshes) {
     m.updateMatrix();
@@ -85,9 +63,7 @@ export function buildShops(group: THREE.Group, night: NightParts): TownShops {
   /** The signs and awnings: textured, so merged keeping their UVs. */
   const textured: THREE.Mesh[] = [];
   const gradient = (toon('#fff') as THREE.MeshToonMaterial).gradientMap;
-  const signMats = new Map<string, THREE.Material>();
   const awnMats = new Map<string, THREE.Material>();
-  const signOf = (k: ShopKind) => signMats.get(k.id) ?? (signMats.set(k.id, new THREE.MeshBasicMaterial({ map: signTexture(k) })), signMats.get(k.id)!);
   const awningOf = (k: ShopKind) => awnMats.get(k.id) ?? (awnMats.set(k.id, new THREE.MeshToonMaterial({ map: awningTexture(k), gradientMap: gradient })), awnMats.get(k.id)!);
   const plinth = '#5b5f69';
   const pane = (s: Shop, u0: number, u1: number, y0: number, y1: number, v = FRONT_T / 2) => {
@@ -183,13 +159,7 @@ export function buildShops(group: THREE.Group, night: NightParts): TownShops {
     aw.rotation.set(0, yaw, 0, 'YXZ');
     aw.rotateX(0.32);
     textured.push(aw);
-    // The sign over it, on the ledge: as long as the name needs, up to the front's length.
-    const sh = 0.66;
-    const sw = Math.min(L - 1, sh * (512 / 96));
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(sw, sw * (96 / 512)), signOf(k));
-    sign.position.set(mx + s.nx * 0.06, G + SHOP_H - 0.44, mz + s.nz * 0.06);
-    sign.rotation.y = yaw;
-    textured.push(sign);
+    // The sign over it, the cladding, shutters and house number: town/shopfronts.ts.
   }
 
   // The rest of the ground floor of a building with shops: plain wall where there are none.
@@ -219,7 +189,6 @@ export function buildShops(group: THREE.Group, night: NightParts): TownShops {
   const glassMesh = new THREE.Mesh(mergeGeometries(glass)!, SHOP_GLASS);
   glassMesh.renderOrder = 2;
   for (const g of glass) g.dispose();
-  for (const m of signMats.values()) (m as THREE.MeshBasicMaterial).color.setScalar(0.92);
   group.add(frameMesh, roomMesh, glassMesh, ...mergeTextured(textured));
   void night;
   return {

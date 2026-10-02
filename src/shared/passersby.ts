@@ -1,6 +1,9 @@
 import { CROSSINGS } from './city.js';
 import { mulberry32 } from './rng.js';
 import { CORNERS, END_IN, INNER, OUTER, WALKS, detour, walkCoords, walkPoint, type Corner, type Spot, type Walk } from './sidewalks.js';
+import { SHOPS } from './shops.js';
+import { shopOpen } from './shopfronts.js';
+import './shop-outside.js'; // fork: the café tables' spots, on the walks before anyone plans a walk
 
 // flrnoh fork (see FORK.md): the city's passers-by, the same for everyone. Nothing about them goes over
 // the wire: each is a slot at a crossing, and what a slot does is worked out from the office's clock
@@ -172,7 +175,7 @@ class Route {
 }
 
 /** Someone's walk out of `start` (a shop door) round `steps` corners, and into another shop, or null if it doesn't fit. */
-function walkFrom(r: () => number, slot: Slot, start: Spot, steps: number, company: Company, speed: number): Route | null {
+function walkFrom(r: () => number, slot: Slot, start: Spot, steps: number, company: Company, speed: number, shut: (s: Spot) => boolean): Route | null {
   const route = new Route(0, 0, speed);
   route.door(start, true);
   let w = WALKS[start.walk];
@@ -185,16 +188,18 @@ function walkFrom(r: () => number, slot: Slot, start: Spot, steps: number, compa
   /** Along `w` to `to`, stopping at what's on the way now and then. */
   const walkAlong = (to: number, seek: boolean) => {
     for (const s of w.spots) {
-      if ((s.along - along) * dir <= 0.5 || (to - s.along) * dir <= 0.5) continue;
+      if ((s.along - along) * dir <= 0.5 || (to - s.along) * dir <= 0.5 || shut(s)) continue;
       if (seek && s.kind === 'door') return s;
       if (stops <= 0 || s.kind === 'door') continue;
-      const p = { bench: 0.2, bus: 0.35, stop: 0.18, window: 0.1 }[s.kind];
+      const p = { bench: 0.2, bus: 0.35, stop: 0.18, window: 0.1, cafe: 0.3 }[s.kind];
       if (r() >= p) continue;
       stops--;
       route.to(...walkPoint(w, s.along, lane), 'walk', w.id);
-      route.to(s.x, s.z, 'walk');
-      const sit = s.kind === 'bench' || s.kind === 'bus';
-      const dt = s.kind === 'window' ? 4 + r() * 6 : s.kind === 'stop' ? 12 + r() * 25 : sit ? 14 + r() * 30 : 0;
+      // At a café table, someone alone takes the one chair; two take both (see Spot.solo).
+      const [sx, sz] = s.solo && company !== 'pair' ? s.solo : [s.x, s.z];
+      route.to(sx, sz, 'walk');
+      const sit = s.kind === 'bench' || s.kind === 'bus' || s.kind === 'cafe';
+      const dt = s.kind === 'window' ? 4 + r() * 6 : s.kind === 'stop' ? 12 + r() * 25 : s.kind === 'cafe' ? 25 + r() * 40 : sit ? 14 + r() * 30 : 0;
       route.stay(dt, sit ? 'sit' : s.kind === 'stop' ? 'wait' : 'look', s.yaw, s.spread);
       route.to(...walkPoint(w, s.along, lane), 'walk');
       along = s.along;
@@ -232,7 +237,7 @@ function walkFrom(r: () => number, slot: Slot, start: Spot, steps: number, compa
         const mid = walkPoint(next, (next.from + next.to) / 2, 5);
         let weight = via && via.kind !== 'walk' && via.road ? 0.9 : 1;
         if (Math.hypot(mid[0] - home.x, mid[1] - home.z) > STRAY) weight *= 0.12;
-        if (seek) weight = next.spots.some((s) => s.kind === 'door') ? 50 : far >= 0 ? 1 / (1 + DOOR_HOPS[far] * 4) : 0.05;
+        if (seek) weight = next.spots.some((s) => s.kind === 'door' && !shut(s)) ? 50 : far >= 0 ? 1 / (1 + DOOR_HOPS[far] * 4) : 0.05;
         options.push({ w: next, at, via, weight });
       }
     };
@@ -272,9 +277,11 @@ function walkFrom(r: () => number, slot: Slot, start: Spot, steps: number, compa
 
 /**
  * What `slot` does in `epoch`, out on a day as light as `day` (0–1), or null if it stays in. The same
- * numbers on every page, so the same walk.
+ * numbers on every page, so the same walk. `hourAt` (seconds on the office's clock → the hour of its
+ * day, see shopfronts.ts skyHour) keeps them out of shops that are shut at either end of the epoch,
+ * and off their café tables; without it every shop is open.
  */
-export function planFor(slot: Slot, epoch: number, day: number): Plan | null {
+export function planFor(slot: Slot, epoch: number, day: number, hourAt?: (t: number) => number): Plan | null {
   const r = mulberry32(mix(slot.seed, epoch));
   if (r() >= density(day)) return null;
   const seed = mix(slot.seed ^ 0x5bd1e995, epoch);
@@ -288,15 +295,18 @@ export function planFor(slot: Slot, epoch: number, day: number): Plan | null {
     if (l.kind === 'walk') near.add(l.walk);
     else for (const m of CORNERS[l.to].links) if (m.kind === 'walk') near.add(m.walk);
   }
-  const doors = [...near].flatMap((id) => WALKS[id].spots.filter((s) => s.kind === 'door'));
+  const t0 = epoch * EPOCH - slot.phase;
+  const h0 = hourAt?.(t0);
+  const h1 = hourAt?.(t0 + EPOCH);
+  const shut = (s: Spot) => s.shop !== undefined && h0 !== undefined && h1 !== undefined && !(shopOpen(SHOPS[s.shop].kind, h0) && shopOpen(SHOPS[s.shop].kind, h1));
+  const doors = [...near].flatMap((id) => WALKS[id].spots.filter((s) => s.kind === 'door' && !shut(s)));
   if (!doors.length) return null;
   const start = doors[Math.floor(r() * doors.length)];
   const bag = r() < 0.3;
   const want = 1 + Math.floor(r() * 5);
   for (let steps = want; steps >= 0; steps--) {
-    const route = walkFrom(mulberry32(mix(seed, steps)), slot, start, steps, company, speed);
+    const route = walkFrom(mulberry32(mix(seed, steps)), slot, start, steps, company, speed, shut);
     if (!route || route.t > EPOCH - 6) continue;
-    const t0 = epoch * EPOCH - slot.phase;
     const at = t0 + 2 + r() * (EPOCH - 4 - route.t);
     for (const l of route.legs) {
       l.t0 += at;

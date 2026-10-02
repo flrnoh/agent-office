@@ -8,6 +8,7 @@ import { buildTownBuildings } from './buildings';
 import { buildTownGround } from './ground';
 import { buildFurniture } from './furniture';
 import { buildShops } from './shops';
+import { buildShopFronts, type ShopFronts } from './shopfronts'; // fork: the shops from outside
 import { LAID_OUT, glowTexture } from './kit';
 import { buildTraffic, type Obstacle } from './traffic';
 import { buildPassersby, type Passersby } from './people'; // fork: passers-by
@@ -41,6 +42,8 @@ export interface Town {
   setStreet(street: number): void;
   /** The passers-by on the sidewalks (town/people.ts). */
   people: Passersby;
+  /** The shops' fronts, signs, shutters and what's out in front (town/shopfronts.ts), kept by features/shopfronts. */
+  fronts: ShopFronts;
   /** The cars along the streets, stopping for `obstacles` (and the passers-by crossing); the lights: `dark` is how dark it is (0–1). */
   update(t: number, dt: number, dark: number, obstacles: Iterable<Obstacle>): void;
 }
@@ -58,6 +61,7 @@ export function buildTown(night: NightParts): Town {
   const lamps = buildTownGround(group, colliders, glow);
   const { raise, beaconMat } = buildTownBuildings(group, colliders, night, glow);
   const shops = buildShops(group, night);
+  const fronts = buildShopFronts(group, colliders);
   buildFurniture(group, colliders);
   const cars = buildTraffic(group, r);
   const people = buildPassersby();
@@ -70,6 +74,7 @@ export function buildTown(night: NightParts): Town {
     colliders,
     traffic: cars.traffic,
     people,
+    fronts,
     setFloors(floors) {
       // The buildings only change height up to six floors (see rise).
       const drop = roofDrop(Math.max(1, floors));
