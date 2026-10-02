@@ -28,6 +28,11 @@ interface OnBike {
   last: THREE.Vector3;
 }
 
+/** How high a budgie sits on someone's body: on top of the shoulder, where the arm hangs from (0.9, Person). */
+const SHOULDER_Y = 0.98;
+/** And how far out to the right (-x): past the head, which is bigger than the shoulders are wide. */
+const SHOULDER_X = -0.44;
+
 /** A budgie, sitting: forward is +z. */
 function budgie(): THREE.Group {
   const g = new THREE.Group();
@@ -124,14 +129,14 @@ export function ridersOnBikes(ctx: Ctx, deps: RidersDeps) {
       let b = birds.get(id);
       if (!b) {
         const bird = budgie();
-        // On the right shoulder (the character's right is -x), facing ahead.
-        bird.position.set(-0.3, 0.6, -0.02);
+        // On the right shoulder (the character's right is -x, its arm hung at 0.9 up: see Person), facing ahead.
+        bird.position.set(SHOULDER_X, SHOULDER_Y, -0.02);
         person.bones.body.add(bird);
         birds.set(id, (b = { person, bird }));
       }
       // Bobbing its head and turning to look about.
       b.bird.rotation.y = Math.sin(t * 0.7 + id.length) > 0.6 ? 0.9 : Math.sin(t * 0.5) < -0.7 ? -0.7 : 0;
-      b.bird.position.y = 0.6 + Math.max(0, Math.sin(t * 9)) * (Math.sin(t * 1.3) > 0.8 ? 0.02 : 0);
+      b.bird.position.y = SHOULDER_Y + Math.max(0, Math.sin(t * 9)) * (Math.sin(t * 1.3) > 0.8 ? 0.02 : 0);
     }
     if (want.has(store.you ?? '') && (chirpIn -= dt) < 0) {
       chirpIn = 5 + Math.random() * 8;
