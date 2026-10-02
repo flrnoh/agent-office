@@ -40,6 +40,7 @@ const GUEST = [
   'bowl.look', 'bowl.join', 'bowl.leave', 'bowl.ball', 'bowl.new', 'bowl.skip', 'bowl.throw', 'bowl.stats', // fork: the bowling centre's lanes and league
   'show.hello', 'show.act', 'show.surf', 'show.ball', 'show.wod', 'gig.list', // fork: the Schallwerk's crowd and its programme
   'venuedj.take', 'venuedj.leave', 'venuedj.play', 'venuedj.stop', 'venuedj.tap', 'venuedj.house', 'venuedj.fx', // fork: the Schallwerk's DJ booth
+  'instr.hello', 'instr.take', 'instr.leave', 'instr.note', 'instr.jam', 'instr.tone', // fork: the Schallwerk's instruments
 ] as const satisfies readonly ClientMsg['t'][];
 
 /** What a guest's page sends on its own (resizing a terminal it watches, polling boards): dropped without a word. */

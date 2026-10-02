@@ -65,6 +65,7 @@ import { BowlingAmbience, bowlingSound, type BowlingSound } from '../bowling/sou
 import { minigolf, MinigolfLoops, type MinigolfSound } from '../features/minigolf/sound'; // fork: the bowling centre's mini golf
 import { BallRolls, bowlSound, type BowlSound } from '../features/bowlinggame/sound'; // fork: the bowling centre's lanes
 import { VenueShowSound } from '../features/venueshow/sound'; // fork: the Schallwerk's show
+import { InstrumentSound } from '../features/instruments/sound/engine'; // fork: the Schallwerk's instruments
 
 // What the rest of the client imports from here.
 export type { Hall, Listener } from './core';
@@ -101,6 +102,8 @@ export class OfficeSound {
   readonly karaoke = new KaraokeSound(this.a, () => this.music.musicBus ?? null, () => this.music.musicGain());
   /** Fork: the Schallwerk's show: its house mix on the music volume, its crowd (features/venueshow/sound.ts). */
   readonly venueShow = new VenueShowSound(this.a, () => this.music.musicBus ?? null, () => this.music.musicGain());
+  /** Fork: the Schallwerk's instruments, on the music volume (features/instruments/sound/engine.ts). */
+  readonly instruments = new InstrumentSound(() => this.a.ctx, () => this.music.musicBus ?? null);
   /** A stream that won't play here. */
   onMusicError?: (text: string) => void;
   /** Fork: a stream the browser won't start before you click (autoplay rules). */

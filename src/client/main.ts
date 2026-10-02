@@ -82,6 +82,7 @@ import { installMinigolf } from './features/minigolf'; // flrnoh fork: the bowli
 import { installBowlingGame } from './features/bowlinggame'; // flrnoh fork: the bowling centre's lanes
 import { installVenueShow } from './features/venueshow'; // flrnoh fork: the Schallwerk's show
 import { installVoiceRange } from './features/voicerange'; // flrnoh fork: Hörkreise
+import { installInstruments } from './features/instruments'; // flrnoh fork: the Schallwerk's instruments
 import { installDjSets } from './features/djset';
 import { installDoorbell } from './features/doorbell';
 import { installFogbox } from './features/fogbox';
@@ -239,6 +240,7 @@ parts.coaster = installCoaster(ctx, { roof: parts.rooftop.roof, roofFloors: part
 (window as any).__bowlinggame = installBowlingGame(ctx, { personOf }); // fork: the bowling centre's lanes and league
 (window as any).__venueshow = installVenueShow(ctx, { personOf }); // fork: the Schallwerk's show (crowd, DJ booth, gigs)
 (window as any).__voicerange = installVoiceRange(ctx, { bodies: () => parts.peers.remotes }); // fork: Hörkreise, how far each voice carries
+(window as any).__instruments = installInstruments(ctx, { personOf }); // fork: the Schallwerk's instruments
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);
