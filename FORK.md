@@ -570,6 +570,15 @@ The building's outside says what goes on inside (`src/client/world/facade/`, the
 - Nothing has a collider; it's all outside the walls. Tests: `tests/facade.test.ts` (fins clear of every storey's openings and decks, bands under the floor, drips clear of windows).
 - Hooks in upstream files: `src/client/world/office/build.ts` (`facade` on the plan), `materials.ts` (`PALETTE.exterior`), `src/client/world/tower.ts` (its paint, the parasols), `src/client/world/city.ts` (fork file: the roof's facade), `src/client/features/rooftop/world.ts` (the parasols), `src/client/world/world.ts` (`World.setBuilding`), `src/client/core/maps.ts` (sends the picks on `floors`).
 
+### Pool party on the roof
+
+A pool on the roof terrace for an afterwork pool party (`src/shared/roofpool.ts`, `src/client/features/roofpool/`), between the dance floor, the elevator and the bar: a raised basin (6 x 4 m inside, `POOL`) on a wooden deck (`POOL_DECK`, 1 m up, steps up from the south, `POOL_STEPS`), tiled inside with a lane, white coping, chrome ladders, a palm in a pot on each corner of the deck, POOL PARTY 🍹 in neon over the north side, and floats drifting on the water (a flamingo, a donut, a beach ball, a unicorn; `floatAt` from the office's clock, the same on every page). The water's lit from under the surface: clear blue by day, at night going round the party colors with the lights in its walls.
+
+- **Swimming** (`swim.ts`, `PoolSwim`): walk off the deck or jump in (**E** on the deck: a cannonball into the middle), and the pool holds you (`player.rig`) like the sea: **W A S D**, **Shift** faster, **Space** splashes, **E** at a wall climbs out onto the deck there (`climbOutAt`). Its walls keep you in; what's in your way is checked just over the roof's floor (the roof's deck is one slab, as the street is: see the swimming fix in "A day at the beach"). Nothing goes over the wire: everyone works out who's in it from their `move` (`inPoolAt`) and poses them as in the sea (`seaPose`), with a splash as they go in and rings while they swim.
+- **On the roof** it's added the first time the roof's built (`installRoofPool`, from `parts.rooftop.roof`), its deck, steps, pots and the sign's posts pushed into the roof's colliders and an interactable for the cannonball into its interactables (features/rooftop/world.ts is at its size ceiling). From the floors and the street it's on the tower's roof too (`poolFromBelow`, a fixture on the office's plan).
+- Tests: `tests/roofpool.test.ts` (clear of the stage, the dance floor, the elevator's doors, the bar, the fire pit, the axe lane and the dartboard, the bungee jetty, the tall tables, the table games and their players, every roof seat; steps you can walk up; in and out of the water; the floats stay on it).
+- Hooks in upstream files: `src/client/main.ts` (`installRoofPool`), `src/client/world/office/build.ts` (`poolFromBelow`).
+
 ### A day at the beach
 
 Sunset Beach on the scenic loop west of town is for playing; guests and party guests too.
