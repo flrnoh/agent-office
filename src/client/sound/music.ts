@@ -230,8 +230,10 @@ export class TunePlayer {
     private ctx: AudioContext,
     out: AudioNode,
     id: string,
+    seed?: number, // flrnoh fork: a record's own melody (features/shops/sound.ts)
   ) {
     this.tune = TUNES[id] ?? Object.values(TUNES)[0];
+    if (seed) this.tune = { ...this.tune, seed, bpm: this.tune.bpm + (seed % 9) - 4 }; // flrnoh fork
     this.melody = melodyFor(this.tune);
     this.step = 60 / this.tune.bpm / 4;
     const b = buffers(ctx);

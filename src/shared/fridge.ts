@@ -7,6 +7,9 @@
 import type { Drink } from './rooftop.js';
 import { CAFE_BY_ID, isCafeItem, type CafeItemId } from './cafe.js'; // the padel hall's café: held the same way
 import { KIOSK_BY_ID, isKioskBite, isKioskItem, type KioskItemId } from './kiosk.js'; // and the beach kiosk's
+import { KINO_SNACK_BY_ID, isKinoBite, isKinoSnack, type KinoSnackId } from './kino-snacks.js'; // and the cinema's
+import { SHOP_ITEM_BY_ID, isShopItem, type ShopItemId } from './shopwares.js'; // and the city's shops'
+import { TANK_BY_ID, isTankBite, isTankItem, type TankItemId } from './tankshop.js'; // and the petrol station shop's
 
 /** What it comes in: a bottle, a can, or a snack of its own shape. */
 export type FridgeGlass = 'bottle' | 'can' | 'pretzel' | 'crisps' | 'chocolate' | 'apple' | 'sandwich';
@@ -63,18 +66,18 @@ export function isFridgeItem(v: unknown): v is FridgeItemId {
 }
 
 /** Whether it may be held anywhere and comes along to every floor: the fridge's things, the café's and the beach kiosk's. */
-export function heldAnywhere(v: unknown): v is FridgeItemId | CafeItemId | KioskItemId {
-  return isFridgeItem(v) || isCafeItem(v) || isKioskItem(v);
+export function heldAnywhere(v: unknown): v is FridgeItemId | CafeItemId | KioskItemId | KinoSnackId | ShopItemId | TankItemId {
+  return isFridgeItem(v) || isCafeItem(v) || isKioskItem(v) || isKinoSnack(v) || isShopItem(v) || isTankItem(v);
 }
 
 /** How long a drink or snack stays in your hand: the fridge's own (or the café's, or the kiosk's), or a glass from the bar's 45 s. */
 export function holdSeconds(d: Drink, glass = 45): number {
-  return FRIDGE_BY_ID.get(d.id as FridgeItemId)?.seconds ?? CAFE_BY_ID.get(d.id as CafeItemId)?.seconds ?? KIOSK_BY_ID.get(d.id as KioskItemId)?.seconds ?? glass;
+  return FRIDGE_BY_ID.get(d.id as FridgeItemId)?.seconds ?? CAFE_BY_ID.get(d.id as CafeItemId)?.seconds ?? KIOSK_BY_ID.get(d.id as KioskItemId)?.seconds ?? KINO_SNACK_BY_ID.get(d.id as KinoSnackId)?.seconds ?? SHOP_ITEM_BY_ID.get(d.id as ShopItemId)?.seconds ?? TANK_BY_ID.get(d.id as TankItemId)?.seconds ?? glass;
 }
 
 /** Whether it's eaten (in bites) rather than drunk: the fridge's snacks, the café's cakes, the kiosk's food and ice. */
 export function isSnack(d: Drink): boolean {
-  return FRIDGE_BY_ID.get(d.id as FridgeItemId)?.section === 'snacks' || CAFE_BY_ID.get(d.id as CafeItemId)?.section === 'cakes' || isKioskBite(d);
+  return FRIDGE_BY_ID.get(d.id as FridgeItemId)?.section === 'snacks' || CAFE_BY_ID.get(d.id as CafeItemId)?.section === 'cakes' || isKioskBite(d) || isKinoBite(d) || !!SHOP_ITEM_BY_ID.get(d.id as ShopItemId)?.bite || isTankBite(d);
 }
 
 /** Milliseconds to the next sip, or the next bite of a snack, which go quicker. */

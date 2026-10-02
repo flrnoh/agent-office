@@ -14,9 +14,8 @@ const STOREY = 3.3;
 const BAY = 2.8;
 /** How far down the street was from the roof the buildings' heights were picked for: six floors. */
 export const LAID_OUT = roofDrop(6);
-/** How tall a street lamp is, and how far apart they stand along a street. */
-export const LAMP_H = 5.2;
-export const LAMP_EVERY = 28;
+/** How tall a street lamp is, and how far apart they stand along a street (shared/streetside.ts lays them out). */
+export { LAMP_EVERY, LAMP_H } from '../../../shared/streetside';
 
 /** How a building's walls look: its paint, and the windows in it (glass towers are nearly all window). */
 export interface Paint {

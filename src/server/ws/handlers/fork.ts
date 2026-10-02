@@ -15,6 +15,8 @@ import { bungeeMessage } from '../../bungee.js';
 import { rigMessage } from '../../rig.js';
 import { boatMessage } from '../../boats.js';
 import { baumarktMessage } from '../../baumarkt.js';
+import { kinoMessage } from '../../kino.js';
+import { toyUse } from '../../../shared/shopwares.js';
 import { here } from './common.js';
 import { jukeboxChanged } from './jukebox.js';
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
@@ -69,6 +71,19 @@ function baumarkt(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `bm.${st
   const where = () => (floor && c.peer.floor === floor.id ? { x: c.peer.x, z: c.peer.z } : undefined);
   baumarktMessage(ctx.baumaerkte, msg, { id: c.id, floor: floor?.id, where, send: (m) => ctx.sendTo(c, m), toNeighbors: (m, droppable) => ctx.toNeighbors(c, m, droppable) });
 }
+function kino(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: 'kino.play' | 'kino.stop' }>) {
+  const floor = ctx.floorOf(c); // the cinema's Saal 2 (kino.ts)
+  kinoMessage(floor && ctx.kinos.of(floor), msg, { id: c.id, who: c.peer.name, office: ctx.maps.pick() === OFFICE_MAP, toFloor: (m) => floor && ctx.toFloor(floor, m), warn: (t) => ctx.warn(c, t) });
+}
+
+function tank(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `tank.${string}` }>) {
+  const floor = ctx.floorOf(c); // the petrol station and its car wash (tankstelle.ts)
+  if (!floor) return;
+  const res = ctx.forecourts.message(floor.id, { id: c.id, inCar: floor.garage.seatOf(c.id)?.car, x: c.peer.x, z: c.peer.z }, msg, floor.garage.state());
+  if ('refused' in res) return ctx.warn(c, res.refused);
+  ctx.toFloor(floor, res.ok);
+}
+
 function rig(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `rig.${string}` }>) {
   const floor = ctx.floorOf(c);
   rigMessage(ctx.rigs, msg, {
@@ -134,6 +149,15 @@ export const forkHandlers = {
   'bm.hold': baumarkt,
   'bm.use': baumarkt,
   'bm.mix': baumarkt,
+  'kino.play': kino,
+  'kino.stop': kino,
+  'toy.use'(ctx, c, msg) {
+    // A toy from the city's toy shop (shared/shopwares.ts): only the one in their hand, seen on their floor.
+    const used = toyUse(msg, c.peer.drink, c.id);
+    if (used) ctx.toNeighbors(c, used);
+  },
+  'tank.fill': tank,
+  'tank.wash': tank,
   'rig.play': rig,
   'rig.leave': rig,
   'rig.frame': rig,
@@ -183,5 +207,7 @@ export const rigView: ViewPieces['rig'] = (ctx, floor) => ctx.rigs.view(floor?.i
 export const tvView: ViewPieces['tv'] = (_ctx, floor) => floor?.tv.state();
 export const boatsView: ViewPieces['boats'] = (ctx, floor) => ctx.marinas.view(floor?.id);
 export const baumarktView: ViewPieces['baumarkt'] = (ctx, floor) => ctx.baumaerkte.view(floor?.id);
+export const kinoView: ViewPieces['kino'] = (ctx, floor) => ctx.kinos.view(floor);
+export const tankView: ViewPieces['tankstelle'] = (ctx, floor) => ctx.forecourts.view(floor?.id);
 export const noView = () => undefined;
 export const bungeeView: ViewPieces['bungee'] = (ctx) => ctx.bungeeRope.state();
