@@ -3,8 +3,9 @@
 // machines, furniture, screens and playback are the game's own (features/bowlinggame), the throw the
 // office's own simulation.
 // Query params:
-//   view=bowler|deck|seats|board|top|side   behind the approach, by the pins, from the benches, at the
-//                                           league board, from above, or from the side of the lane
+//   view=bowler|deck|seats|board|top|side|monitor|returns   behind the approach, by the pins, from the
+//                                           benches, at the league board, from above, from the side of the
+//                                           lane, at lane 3's monitor, at the ball return between 3 and 4
 //   throw=strike|pocket|gutter|split|none   the ball bowled on lane 3 (default strike)
 //   t=<seconds>                             how long after the bowler starts their steps to draw (default 2.4)
 //   cosmic=1                                black light
@@ -12,7 +13,7 @@
 
 import * as THREE from 'three';
 import { FOUL_LINE_Z, LANE_X } from '../../shared/bowling';
-import { BALLS, LEAGUE_BOARD, PIT_D, boardU, type BowlingRoll, type LaneView, type LeagueBoard, type Roll } from '../../shared/bowling-game';
+import { BALLS, LEAGUE_BOARD, MONITOR, PAIRS, PIT_D, RETURN_Z, boardU, type BowlingRoll, type LaneView, type LeagueBoard, type Roll } from '../../shared/bowling-game';
 import { bowl, fullRack, maskOf } from '../../shared/bowling-sim';
 import { leaveName } from '../../shared/bowling-score';
 import { lookFromSeed } from '../../shared/avatar';
@@ -156,9 +157,13 @@ const cams: Record<string, [number[], number[]]> = {
   board: [[LEAGUE_BOARD.x + 5, 2.1, LEAGUE_BOARD.z + 0.5], [LEAGUE_BOARD.x, 2.1, LEAGUE_BOARD.z]],
   top: [[-14, 22, 14], [-14, 0, -4]],
   side: [[X + 2.2, 1.3, FOUL_LINE_Z + 1.5], [X, 0.6, FOUL_LINE_Z - 2]],
+  deckside: [[X + 1.05, 0.75, FOUL_LINE_Z - PIT_D + 2.2], [X - 0.1, 0.55, FOUL_LINE_Z - PIT_D + 0.4]],
+  monitor: [[X, MONITOR.y - 0.2, MONITOR.z + 2.3], [X, MONITOR.y, MONITOR.z]],
+  returns: [[PAIRS[1].x + 1.2, 1.5, RETURN_Z + 2.4], [PAIRS[1].x, 0.4, RETURN_Z + 0.3]],
 };
 const [p, l] = cams[view] ?? cams.bowler;
 camera.position.set(p[0], p[1], p[2]);
 camera.lookAt(l[0], l[1], l[2]);
 render();
-ready({ left, triangles: renderer.info.render.triangles, calls: renderer.info.render.calls });
+(window as unknown as { __lv: unknown }).__lv = lv;
+ready({ left, secs: params ? bowl(params, BALLS[4].lbs, fullRack()).secs : 0, triangles: renderer.info.render.triangles, calls: renderer.info.render.calls });

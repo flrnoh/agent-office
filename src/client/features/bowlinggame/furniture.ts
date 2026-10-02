@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { FOUL_LINE_Z, LANE_COUNT, LANE_X, ZONES } from '../../../shared/bowling';
+import { BOWLING_ROOM, FOUL_LINE_Z, LANE_COUNT, LANE_X } from '../../../shared/bowling';
+
+const CEILING = BOWLING_ROOM.height;
 import { BALLS, BALL_RADIUS, BENCH, CONSOLE_Z, LEAGUE_BOARD, MONITOR, PAIRS, RETURN_Z, consoleSpot } from '../../../shared/bowling-game';
 import { mesh, roundedBox, toon } from '../../world/toon';
 import type { Collider, Interactable } from '../../world/types';
@@ -166,7 +168,8 @@ export function buildFurniture(parent: THREE.Object3D): Furniture {
     face.position.z = 0.001;
     g.add(face);
     group.add(g);
-    for (const side of [-1, 1]) group.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, ZONES.lanes.maxZ, 6), chrome, LANE_X[lane] + side * 0.5, MONITOR.y + MONITOR.h / 2 + ZONES.lanes.maxZ / 2, MONITOR.z - 0.04, false));
+    const rod = CEILING - (MONITOR.y + MONITOR.h / 2);
+    for (const side of [-1, 1]) group.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, rod, 6), chrome, LANE_X[lane] + side * 0.5, MONITOR.y + MONITOR.h / 2 + rod / 2, MONITOR.z - 0.04, false));
     monitors.push(s);
   }
 

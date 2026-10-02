@@ -75,10 +75,11 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
     up: isUp,
     lbs: () => BALLS[myBall()]?.lbs ?? 12,
     where: (lane) => {
-      const p = views[lane]?.players.find((x) => x.id === me());
+      // As the screens show it: not what the ball still rolling will leave.
+      const p = (built?.lv.shown(lane) ?? views[lane])?.players.find((x) => x.id === me());
       if (!p) return '';
       const pos = position(p.rolls);
-      return `frame ${pos.frame + 1}, ball ${pos.ball + 1} · ${pinsUp(p.rolls)} up`;
+      return `Frame ${pos.frame + 1}, Wurf ${pos.ball + 1} · ${pinsUp(p.rolls)} stehen`;
     },
     changed: () => ctx.hint.invalidate(),
   });
@@ -98,10 +99,10 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
     hint: (el) =>
       ctx.hint.draw(el, `bowl|${bowler.stage}`, () =>
         bowler.stage === 'aim'
-          ? [key('Space', 'Hold to bowl'), key('Mouse', 'Line'), key('A D', 'Across'), key('W S', 'Up / back'), key('E', 'Step off')]
+          ? [key('Leertaste', 'Halten zum Werfen'), key('Maus', 'Richtung'), key('A D', 'Seitlich'), key('W S', 'Vor / zurück'), key('E', 'Runter vom Anlauf')]
           : bowler.stage === 'charge'
-            ? [hintTitle('🎳 Let go to bowl'), aside('mouse or A D: hook'), key('Space', 'Let go')]
-            : [hintTitle('🎳 Down the lane…')],
+            ? [hintTitle('🎳 Loslassen zum Werfen'), aside('Maus oder A D: Drall'), key('Leertaste', 'Loslassen')]
+            : [hintTitle('🎳 Die Kugel rollt …')],
       ),
     takesCamera: true,
     hidesHands: true,
@@ -119,13 +120,13 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
       const mine = !!v?.players.some((p) => p.id === me());
       const up = v?.players.find((p) => p.id === v.up);
       const waiting = up && up.id !== me() && v && store.officeNow() - v.upSince > 90_000;
-      const about = v?.over ? 'game over' : up ? `${clip(up.name, 18)} is up` : `${n}/6 playing`;
+      const about = v?.over ? 'Spiel vorbei' : up ? `${clip(up.name, 18)} ist dran` : `${n}/6 spielen`;
       const parts = [hintTitle(laneTitle(lane)), aside(about)];
       if (mine) {
-        if (v?.over || !v?.players.some((p) => p.rolls.length) || n === 1) parts.push(key('E', 'New game'));
-        else if (waiting) parts.push(key('E', `Skip ${clip(up!.name, 14)}`));
-        parts.push(key('X', 'Leave the lane'));
-      } else parts.push(key('E', n >= 6 ? 'Full' : 'Play'));
+        if (v?.over || !v?.players.some((p) => p.rolls.length) || n === 1) parts.push(key('E', 'Neues Spiel'));
+        else if (waiting) parts.push(key('E', `${clip(up!.name, 14)} überspringen`));
+        parts.push(key('X', 'Aussteigen'));
+      } else parts.push(n >= 6 ? aside('voll') : key('E', 'Mitspielen'));
       return { k: `con|${lane}|${about}|${mine}|${waiting}`, parts };
     },
     use: (it, k) => {
@@ -145,12 +146,10 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
     hint: (it) => {
       const pair = PAIRS.findIndex((p) => p.lanes.includes((it.bowlLane ?? 0) as 0));
       const b = BALLS[myBall()];
-      return { k: `ret|${b.id}`, parts: [hintTitle(`🎳 Kugelrückgabe ${PAIRS[pair]?.lanes.map((l) => laneName(l)).join('/') ?? ''}`), aside(myLane() >= 0 ? `yours: ${b.name}, ${b.lbs} lbs` : 'house balls, 8–16 lbs'), key('E', 'Pick a ball')] };
+      return { k: `ret|${b.id}`, parts: [hintTitle(`🎳 Kugelrückgabe ${PAIRS[pair]?.lanes.map((l) => laneName(l)).join('/') ?? ''}`), aside(myLane() >= 0 ? `deine: ${b.name}, ${b.lbs} lbs` : 'Hauskugeln, 8–16 lbs'), key('E', 'Kugel wählen')] };
     },
     use: (_it, k) => {
-      if (k !== 'E') return;
-      if (myLane() < 0) return toast('🎳 Join a lane at its console first', 'warn');
-      openBalls(myBall(), (ball) => ctx.net.send({ t: 'bowl.ball', ball }));
+      if (k === 'E') showBalls();
     },
   });
   ctx.interactions.define('bowlapproach', {
@@ -161,9 +160,9 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
       const up = v?.players.find((p) => p.id === v.up);
       if (isUp(lane)) {
         const busy = built?.lv.busy(lane);
-        return { k: `app|${lane}|up|${busy}`, parts: [hintTitle(`${laneTitle(lane)} · your ball`), aside(busy ? 'the pinsetter’s at work…' : `${pinsUp(v!.players.find((p) => p.id === me())!.rolls)} pins up`), ...(busy ? [] : [key('E', 'Step up')])] };
+        return { k: `app|${lane}|up|${busy}`, parts: [hintTitle(`${laneTitle(lane)} · du bist dran`), aside(busy ? 'die Maschine stellt auf …' : `${pinsUp(v!.players.find((p) => p.id === me())!.rolls)} Pins stehen`), ...(busy ? [] : [key('E', 'Auf den Anlauf')])] };
       }
-      return { k: `app|${lane}|${up?.id}`, parts: [hintTitle(laneTitle(lane)), aside(up ? `${clip(up.name, 18)} is up` : v?.players.length ? 'game over' : 'free: join at the console')] };
+      return { k: `app|${lane}|${up?.id}`, parts: [hintTitle(laneTitle(lane)), aside(up ? `${clip(up.name, 18)} ist dran` : v?.players.length ? 'Spiel vorbei' : 'frei: an der Konsole mitspielen')] };
     },
     use: (it, k) => {
       const lane = it.bowlLane ?? 0;
@@ -172,15 +171,24 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
       bowler.start(lane);
     },
   });
+  /** The league's window (E at its board). */
+  const showLeague = () => {
+    league?.modal.close();
+    league = openLeague(
+      () => ctx.net.send({ t: 'bowl.stats' }),
+      () => (league = null),
+    );
+  };
+  /** The house balls (E at a return). */
+  const showBalls = () => {
+    if (myLane() < 0) return toast('🎳 Erst an der Konsole einer Bahn mitspielen', 'warn');
+    openBalls(myBall(), (ball) => ctx.net.send({ t: 'bowl.ball', ball }));
+  };
   ctx.interactions.define('bowlboard', {
     reach: 3,
-    hint: () => ({ k: 'board', parts: [hintTitle('🏆 Liga & Bestenliste'), aside(board?.champion ? `👑 ${clip(board.champion.name, 18)}` : 'the week, all time, your games'), key('E', 'Open')] }),
+    hint: () => ({ k: 'board', parts: [hintTitle('🏆 Liga & Bestenliste'), aside(board?.champion ? `👑 ${clip(board.champion.name, 18)}` : 'Woche, Allzeit, deine Spiele'), key('E', 'Ansehen')] }),
     use: (_it, k) => {
-      if (k !== 'E') return;
-      league = openLeague(
-        () => ctx.net.send({ t: 'bowl.stats' }),
-        () => (league = null),
-      );
+      if (k === 'E') showLeague();
     },
   });
 
@@ -328,6 +336,8 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
 
   return {
     bowler,
+    showLeague,
+    showBalls,
     /** For the console: the lanes as the page knows them, and the pins standing on each. */
     lanes: () => views.map((v) => v && { lane: v.lane, players: v.players.map((p) => p.name), up: v.up, pins: pinCount(v.pins.reduce((m, p) => m | (1 << p.n), 0)) }),
   };

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FOUL_LINE_Z, LANE_COUNT, LANE_X, ZONES } from '../../../shared/bowling';
+import { BOWLING_ROOM, FOUL_LINE_Z, LANE_COUNT, LANE_X, ZONES } from '../../../shared/bowling';
 import { GUTTER, HEAD_PIN_D, LANE_WIDTH, PIN_HEIGHT, PIT_D, laneName } from '../../../shared/bowling-game';
 import { canvasTexture } from '../../world/texture';
 import { mesh, toon } from '../../world/toon';
@@ -225,7 +225,7 @@ export function buildMachines(parent: THREE.Object3D): Machines {
   const dark = toon('#14141c');
   const frame = toon('#262635');
   // The soffit over the masking unit, up to well above anyone's eye line, and the fascia's lip.
-  group.add(mesh(new THREE.BoxGeometry(east - west, 2.6, 0.12), dark, (west + east) / 2, MASK.top + 1.3, zMask - 0.04, false));
+  group.add(mesh(new THREE.BoxGeometry(east - west, BOWLING_ROOM.height - MASK.top, 0.12), dark, (west + east) / 2, (BOWLING_ROOM.height + MASK.top) / 2, zMask - 0.04, false));
   group.add(mesh(new THREE.BoxGeometry(east - west, 0.08, 0.4), frame, (west + east) / 2, MASK.bottom - 0.04, zMask - 0.15));
   // Under its lip, the light strip that lights the decks.
   const strip = new THREE.MeshBasicMaterial({ color: '#fff3d6', toneMapped: false });

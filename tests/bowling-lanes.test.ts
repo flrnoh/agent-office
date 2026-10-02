@@ -65,8 +65,8 @@ test('the next ball waits for the last one to roll and the pins to be swept', ()
 test('only sensible throws are bowled', () => {
   const { lanes, now } = alley();
   lanes.join(who('ann'), 0, now());
-  assert.deepEqual(lanes.throw('ann', 0, { u: 'left' }, now()), { error: 'Bad throw' });
-  assert.deepEqual(lanes.throw('ann', 9, STRIKE, now()), { error: 'No such lane' });
+  assert.deepEqual(lanes.throw('ann', 0, { u: 'left' }, now()), { error: 'Ungültiger Wurf' });
+  assert.deepEqual(lanes.throw('ann', 9, STRIKE, now()), { error: 'Diese Bahn gibt es nicht' });
   assert.deepEqual(lanes.throw('ann', 1, STRIKE, now()), { error: 'Erst auf Bahn 2 mitspielen' });
 });
 

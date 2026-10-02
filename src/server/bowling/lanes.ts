@@ -75,7 +75,7 @@ export class BowlingLanes {
 
   /** Onto `lane`'s game (off any other first). A lane whose game is over starts a new one. */
   join(b: Bowler, lane: unknown, now: number): { ok: true; lanes: number[] } | { error: string } {
-    if (!isLane(lane)) return { error: 'No such lane' };
+    if (!isLane(lane)) return { error: 'Diese Bahn gibt es nicht' };
     const at = this.laneOf(b.id);
     if (at === lane) return { ok: true, lanes: [] };
     const l = this.lanes[lane];
@@ -121,7 +121,7 @@ export class BowlingLanes {
 
   /** Everyone on `lane` starts again from the first frame: once the game's over, or by someone on it before anyone's bowled. */
   newGame(id: string, lane: unknown, now: number): { ok: true } | { error: string } {
-    if (!isLane(lane)) return { error: 'No such lane' };
+    if (!isLane(lane)) return { error: 'Diese Bahn gibt es nicht' };
     const l = this.lanes[lane];
     if (!l.players.some((p) => p.id === id)) return { error: `Erst auf Bahn ${lane + 1} mitspielen` };
     if (now < l.busyUntil) return { error: 'Die Kugel rollt noch' };
@@ -149,14 +149,14 @@ export class BowlingLanes {
    * rolling, and only within the limits. The office bowls it and counts the pins.
    */
   throw(id: string, lane: unknown, params: unknown, now: number): { roll: BowlingRoll; over: { name: string; score: number }[] | null } | { error: string } {
-    if (!isLane(lane)) return { error: 'No such lane' };
+    if (!isLane(lane)) return { error: 'Diese Bahn gibt es nicht' };
     const l = this.lanes[lane];
     const p = l.players.find((x) => x.id === id);
     if (!p) return { error: `Erst auf Bahn ${lane + 1} mitspielen` };
     if (l.up !== id) return { error: 'Du bist nicht dran' };
     if (now < l.busyUntil) return { error: 'Die Kugel rollt noch' };
     const t = cleanThrow(params);
-    if (!t) return { error: 'Bad throw' };
+    if (!t) return { error: 'Ungültiger Wurf' };
     const before = l.pins.map((x) => ({ ...x }));
     const res = bowl(t, BALLS[p.ball].lbs, before);
     // A foul counts nothing; what it knocked down is set up again or swept with the frame.

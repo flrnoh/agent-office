@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FOUL_LINE_Z, LANE_COUNT, LANE_X } from '../../../shared/bowling';
-import { BALLS, BALL_RADIUS, PIN_COUNT, PIT_D, RELEASE_S, pairOf, type BowlingRoll, type LaneView, type StandingPin } from '../../../shared/bowling-game';
+import { BALLS, BALL_RADIUS, DECK_D, PIN_COUNT, PIT_D, RELEASE_S, pairOf, type BowlingRoll, type LaneView, type StandingPin } from '../../../shared/bowling-game';
 import { BowlSim, PinState, SIM_HZ, lean, type SimEvent } from '../../../shared/bowling-sim';
 import { celebration } from '../../../shared/bowling-score';
 import type { Person } from '../../world/character';
@@ -55,6 +55,10 @@ interface Sweep {
   /** Lift the standing ones and set them back (true), or rake the lot and bring a fresh rack. */
   keep: boolean;
   after: StandingPin[];
+  /** The pins as they lay when it started. */
+  from: DrawPin[];
+  /** Where the bar comes down: in front of the first of the deadwood. */
+  barStart: number;
   sounded: number;
 }
 interface Lane {
@@ -297,7 +301,11 @@ export class LanesView {
     // The pinsetter: keep what stands (set back where it stood), or rake it all and bring ten.
     const standing = p.sim.standing();
     const keep = !r.foul && sameSet(standing, r.after);
-    l.sweep = { t0: now(), keep, after: r.after, sounded: 0 };
+    const from = l.pins.map((p) => ({ ...p }));
+    const keepN = new Set(keep ? r.after.map((p) => p.n) : []);
+    const dead = from.filter((p) => !p.gone && !(keepN.has(p.n) && p.s === 0));
+    const barStart = Math.max(DECK_D - 2.2, Math.min(BAR_REST.d, ...dead.map((p) => p.d - 0.2)));
+    l.sweep = { t0: now(), keep, after: r.after, from, barStart, sounded: 0 };
     this.deps.sound('pinsetter', { x: LANE_X[lane], y: 1.2, z: zOf(PIT_D) });
     this.deps.changed(lane);
   }
@@ -312,18 +320,15 @@ export class LanesView {
     const keepSet = new Set(s.keep ? s.after.map((p) => p.n) : []);
     let tableDrop: number;
     let lift = 0;
-    let barDrop: number;
-    let barD = BAR_REST.d;
+    // The bar comes down in front of the first of the deadwood, rakes it all into the pit, and goes back up.
+    const [a0, a1, b0, b1, r0, r1] = s.keep ? [0.5, 0.8, 0.8, 1.4, 1.5, 2.0] : [0, 0.3, 0.3, 0.9, 1.0, 1.4];
+    const barDrop = ease(ramp(a0, a1)) * (1 - ease(ramp(r0 - 0.1, r0 + 0.2)));
+    const back = ease(ramp(r0, r1));
+    const barD = (BAR_REST.d + (s.barStart - BAR_REST.d) * ease(ramp(a0, a1)) + (PIT_D + 0.1 - s.barStart) * ease(ramp(b0, b1))) * (1 - back) + BAR_REST.d * back;
     if (s.keep) {
       tableDrop = ease(ramp(0, 0.45)) * (1 - ease(ramp(0.45, 0.75))) + ease(ramp(1.6, 2.0)) * (1 - ease(ramp(2.0, 2.4)));
       lift = k > 0.45 && k < 2.0 ? 1 : 0;
-      barDrop = ease(ramp(0.5, 0.8)) * (1 - ease(ramp(1.4, 1.7)));
-      barD = BAR_REST.d + (PIT_D + 0.1 - BAR_REST.d) * ease(ramp(0.8, 1.4)) * (1 - ease(ramp(1.5, 2.0)));
-    } else {
-      barDrop = ease(ramp(0, 0.3)) * (1 - ease(ramp(0.9, 1.2)));
-      barD = BAR_REST.d + (PIT_D + 0.1 - BAR_REST.d) * ease(ramp(0.3, 0.9)) * (1 - ease(ramp(1.0, 1.4)));
-      tableDrop = ease(ramp(0.9, 1.6)) * (1 - ease(ramp(1.9, 2.4)));
-    }
+    } else tableDrop = ease(ramp(0.9, 1.6)) * (1 - ease(ramp(1.9, 2.4)));
     if (k > 0.3 && s.sounded === 0) {
       s.sounded = 1;
       this.deps.sound('sweep', { x: LANE_X[lane], y: 0.4, z: zOf(PIT_D - 0.5) });
@@ -337,7 +342,7 @@ export class LanesView {
     // The pins: lifted with the table, raked by the bar, or a new rack hanging under the table.
     const hang = under - TABLE_LOW_Y; // how far over the deck a pin hanging from the table is
     const pins: DrawPin[] = [];
-    for (const pin of l.pins) {
+    for (const pin of s.from) {
       if (pin.gone) continue;
       if (keepSet.has(pin.n) && pin.s === 0) {
         const want = s.after.find((a) => a.n === pin.n)!;
@@ -345,9 +350,12 @@ export class LanesView {
         continue;
       }
       // Deadwood (or the whole rack): pushed back by the bar once it's down, into the pit.
-      const d = barDrop > 0.6 ? Math.max(pin.d, barD + 0.12) : pin.d;
-      if (d > PIT_D + 0.05) continue;
-      pins.push({ ...pin, d, wob: 0 });
+      if (barDrop > 0.6 && pin.d < barD + 0.12) pin.d = barD + 0.12;
+      if (pin.d > PIT_D + 0.05) {
+        pin.gone = true;
+        continue;
+      }
+      pins.push({ ...pin, wob: 0 });
     }
     if (!s.keep && k > 0.9) {
       // The fresh rack comes down under the table, and stays once it's set.

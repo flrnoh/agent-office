@@ -51,7 +51,7 @@ export function openBalls(current: number, pick: (id: number) => void) {
     h('div.body', {}, list),
     h('footer', {}, h('span.grow', {}, 'Faustregel: etwa ein Zehntel deines Gewichts. Leichter rollt schneller, schwerer räumt mehr ab.')),
   );
-  const modal = openModal(el, { doing: '🎳 picking a bowling ball' });
+  const modal = openModal(el, { doing: '🎳 sucht eine Kugel aus' });
   setTimeout(() => (list.querySelector('li.on') as HTMLElement | null)?.focus(), 30);
 }
 
@@ -100,7 +100,7 @@ export function openLeague(ask: () => void, closed: () => void): { fill(board: L
     body.replaceChildren(...parts);
   }
   const el = h('div.modal.bowl-modal.wide', { role: 'dialog', 'aria-label': 'Liga & Bestenliste' }, h('header', {}, h('h2', {}, '🎳 Liga & Bestenliste')), nav, body);
-  const modal = openModal(el, { doing: '🏆 looking at the bowling league', onClose: closed });
+  const modal = openModal(el, { doing: '🏆 schaut sich die Bowling-Liga an', onClose: closed });
   show(tab);
   ask();
   return {

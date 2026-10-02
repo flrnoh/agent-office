@@ -111,12 +111,12 @@ export const pairOf = (lane: number) => Math.floor(lane / 2);
 /** Each ball return's hood, on the capping between its pair, its front just behind the approach. */
 export const RETURN_Z = ZONES.bowlers.minZ + 0.55;
 /** The scoring consoles: one desk per pair, a screen for each of its lanes (E at it joins that lane). */
-export const CONSOLE_Z = ZONES.bowlers.minZ + 1.95;
+export const CONSOLE_Z = ZONES.bowlers.minZ + 2.15;
 export const consoleSpot = (lane: number) => ({ x: PAIRS[pairOf(lane)].x + (lane % 2 ? 0.42 : -0.42), z: CONSOLE_Z });
 /** The curved benches behind each console: the middle of their arc (they curve round it on its south side, facing the lanes), its radius, the seat's depth. */
-export const BENCH = { z: ZONES.bowlers.minZ + 1.9, radius: 1.6, depth: 0.45 } as const;
+export const BENCH = { z: ZONES.bowlers.minZ + 2.1, radius: 1.45, depth: 0.45 } as const;
 /** The overhead monitors: one per pair, two screens, hung over the end of the approaches. */
-export const MONITOR = { z: 3.4, y: 3.15, w: 1.5, h: 0.92 } as const;
+export const MONITOR = { z: 3.4, y: 3.5, w: 1.5, h: 0.92 } as const;
 /** The league's big board, on the west wall behind the approaches. */
 export const LEAGUE_BOARD = { x: ZONES.bowlers.minX + 0.06, z: (ZONES.bowlers.minZ + ZONES.bowlers.maxZ) / 2 + 0.2, y: 2.3, w: 3.0, h: 1.9 } as const;
 

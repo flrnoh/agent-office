@@ -15,8 +15,9 @@ import type { Collider } from '../../world/types';
  * dots, lines and gutter edges over it all (`glow`).
  */
 
-/** How high the lane's surface is above the centre's floor. */
+/** How high the lane's surface is above the centre's floor (the carpet's at 0), and the thin base under the gutters. */
 export const SURF = 0.06;
+const BASE = 0.012;
 const W_LANE = LANE_WIDTH;
 const W_ALL = LANE_WIDTH + 2 * GUTTER;
 /** The capping between two lanes' gutters. */
@@ -239,14 +240,21 @@ export function buildLanes(parent: THREE.Object3D): LanesBuilt {
   const east = ZONES.lanes.maxX;
   // The platform under it all, foul line to the back, and the approaches.
   const back = zOf(PIT_D + 0.9);
-  const plat = mesh(new THREE.BoxGeometry(east - west, SURF, ZONES.lanes.maxZ - back), baseMat, (west + east) / 2, SURF / 2 - 0.001, (ZONES.lanes.maxZ + back) / 2, false);
+  // The approaches stand SURF high; past the foul line only a thin base, the lanes on their own beds, so the gutters dip between them.
+  const plat = mesh(new THREE.BoxGeometry(east - west, SURF, ZONES.lanes.maxZ - FOUL_LINE_Z), baseMat, (west + east) / 2, SURF / 2 - 0.001, (ZONES.lanes.maxZ + FOUL_LINE_Z) / 2, false);
   plat.receiveShadow = true;
   group.add(plat);
+  const base = mesh(new THREE.BoxGeometry(east - west, BASE, FOUL_LINE_Z - back), baseMat, (west + east) / 2, BASE / 2, (FOUL_LINE_Z + back) / 2, false);
+  base.receiveShadow = true;
+  group.add(base);
+  const bedGeo = new THREE.BoxGeometry(W_LANE, SURF - BASE, laneLen);
+  const bedMat = toon('#b9884f');
   colliders.push({ minX: west, maxX: east, minZ: FOUL_LINE_Z, maxZ: ZONES.lanes.maxZ, top: SURF });
 
   const glowGutters: THREE.Mesh[] = [];
   for (let i = 0; i < LANE_COUNT; i++) {
     const x = LANE_X[i];
+    group.add(mesh(bedGeo, bedMat, x, (SURF + BASE) / 2, zOf(laneLen / 2), false));
     const lane = mesh(laneGeo, laneMat, x, SURF + 0.002, zOf(laneLen / 2), false);
     lane.receiveShadow = true;
     group.add(lane);
@@ -270,7 +278,7 @@ export function buildLanes(parent: THREE.Object3D): LanesBuilt {
       group.add(mesh(new THREE.BoxGeometry(0.01, 0.5, 1.2), kickFace, kx - side * 0.045, SURF + 0.3, zOf(DECK_D + 0.5), false));
     }
     // The pit: black past the deck, the cushion hanging at its back.
-    group.add(mesh(new THREE.PlaneGeometry(W_ALL, 0.9).rotateX(-Math.PI / 2), pitMat, x, SURF + 0.003, zOf(PIT_D + 0.45), false));
+    group.add(mesh(new THREE.PlaneGeometry(W_ALL, 0.9).rotateX(-Math.PI / 2), pitMat, x, BASE + 0.002, zOf(PIT_D + 0.45), false));
     group.add(mesh(new THREE.BoxGeometry(W_ALL, 1.0, 0.06), pitMat, x, SURF + 0.5, zOf(PIT_D + 0.85), false));
     // The foul light's little eyes on the capping either side of the line.
     for (const side of [-1, 1]) group.add(mesh(new THREE.BoxGeometry(0.05, 0.07, 0.05), toon('#1a1a1a', { emissive: '#ff2020' }), x + side * (W_ALL / 2 + 0.03), SURF + 0.075, FOUL_LINE_Z + 0.02, false));
@@ -282,7 +290,7 @@ export function buildLanes(parent: THREE.Object3D): LanesBuilt {
     const w = k === 0 ? LANE_X[0] - W_ALL / 2 - west : k === capEdges.length - 1 ? east - (LANE_X[LANE_COUNT - 1] + W_ALL / 2) : CAP;
     const mid = k === 0 ? west + w / 2 : k === capEdges.length - 1 ? east - w / 2 : cx;
     const zc = zOf((DECK_D - 0.6 - APPROACH) / 2);
-    group.add(mesh(new THREE.BoxGeometry(w, 0.05, DECK_D - 0.6 + APPROACH), capMat, mid, SURF + 0.025, zc));
+    group.add(mesh(new THREE.BoxGeometry(w, SURF + 0.05 - BASE, DECK_D - 0.6 + APPROACH), capMat, mid, (SURF + 0.05 + BASE) / 2, zc));
     group.add(mesh(new THREE.BoxGeometry(Math.min(0.04, w * 0.3), 0.004, DECK_D - 0.6 + APPROACH), capStripe, mid, SURF + 0.052, zc, false));
   }
   // Nobody walks down the lanes: a fence along the foul line the whole width (you can't see it).

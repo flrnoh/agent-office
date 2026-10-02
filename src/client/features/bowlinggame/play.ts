@@ -91,8 +91,8 @@ export class Bowler {
       'div.bowl-aim.panel.hidden',
       { 'aria-label': 'Bowling' },
       this.title,
-      h('div.bowl-row', {}, h('span.bowl-label', {}, 'Power'), h('div.bowl-meter', {}, this.fill)),
-      h('div.bowl-row', {}, h('span.bowl-label', {}, 'Hook'), h('div.bowl-hook', {}, h('span.bowl-hook-mid'), this.hook)),
+      h('div.bowl-row', {}, h('span.bowl-label', {}, 'Kraft'), h('div.bowl-meter', {}, this.fill)),
+      h('div.bowl-row', {}, h('span.bowl-label', {}, 'Drall'), h('div.bowl-hook', {}, h('span.bowl-hook-mid'), this.hook)),
       this.info,
     );
     $('hud').append(this.panel);
@@ -265,13 +265,14 @@ export class Bowler {
       target.set(x + (ball.pos.x - x) * 0.4, SURF + 0.15, Math.min(ball.pos.z - 4, FOUL_LINE_Z - HEAD_PIN_D + 0.1));
     } else if (this.stageNow === 'watch') {
       // The pins: from a little way up the lane.
-      want.set(x + 0.15, SURF + 0.95, FOUL_LINE_Z - HEAD_PIN_D + 4.2);
+      want.set(x + 0.15, SURF + 0.8, FOUL_LINE_Z - HEAD_PIN_D + 4.2);
       target.set(x, SURF + 0.2, FOUL_LINE_Z - HEAD_PIN_D - 0.4);
     } else {
-      want.set(p.x + 0.42, SURF + 1.72, p.z + 2.0);
-      target.set(x + this.u + this.line * HEAD_PIN_D * 0.5, SURF + 0.2, FOUL_LINE_Z - HEAD_PIN_D * 0.5);
+      // Over your right shoulder, high enough to see the arrows past your head.
+      want.set(p.x + 0.62, SURF + 2.05, p.z + 2.15);
+      target.set(x + this.u + this.line * HEAD_PIN_D * 0.6, SURF, FOUL_LINE_Z - HEAD_PIN_D * 0.62);
     }
-    const k = 1 - Math.exp(-dt * (this.stageNow === 'watch' ? 4.5 : 8));
+    const k = 1 - Math.exp(-dt * (this.stageNow === 'watch' ? 4.5 : 6));
     this.camPos.lerp(want, k);
     lookAt.lookAt(this.camPos, target, UP);
     this.camQuat.slerp(new THREE.Quaternion().setFromRotationMatrix(lookAt), k);
@@ -297,12 +298,12 @@ export class Bowler {
     this.hook.style.left = `${50 - this.spin * 46}%`;
     const board = Math.round(uBoard(this.u));
     const arrow = uBoard(this.u + this.line * 4.6);
-    const foul = slideEnd(this.back, 1) > 0 ? ' · ⚠️ close to the line' : '';
-    const text = `Lane ${laneName(this.lane)} · ${this.hooks.where(this.lane)} · board ${board} → ${Math.round(arrow)} at the arrows · ${BALLS.find((b) => b.lbs === this.hooks.lbs())?.lbs ?? 12} lbs${foul}`;
+    const foul = slideEnd(this.back, 1) > 0 ? ' · ⚠️ nah an der Linie' : '';
+    const text = `Bahn ${laneName(this.lane)} · ${this.hooks.where(this.lane)} · Brett ${board} → ${Math.round(arrow)} am Pfeil · ${BALLS.find((b) => b.lbs === this.hooks.lbs())?.lbs ?? 12} lbs${foul}`;
     if (text !== this.shown) {
       this.shown = text;
       this.info.textContent = text;
     }
-    this.title.textContent = charging ? '🎳 Let go to bowl!' : this.stageNow === 'aim' ? '🎳 Your ball' : '🎳 …';
+    this.title.textContent = charging ? '🎳 Loslassen zum Werfen!' : this.stageNow === 'aim' ? '🎳 Dein Wurf' : '🎳 …';
   }
 }
