@@ -10,6 +10,7 @@ import type { Ctx } from '../../core/context';
 import type { Obstacle } from '../../world/town';
 import type { Rooftop } from '../rooftop/world';
 import { drivePassersby } from './people';
+import { PropCull } from '../../world/town/propcull';
 
 export interface TownFeatureDeps {
   /** The roof, once it's built (see features/rooftop). */
@@ -38,7 +39,14 @@ export function installTown(ctx: Ctx, deps: TownFeatureDeps) {
     return obstacles;
   }
 
+  // Small things far off aren't drawn (world/town/propcull.ts): the landmarks' and halls' many parts
+  // round the office, everything out there but the town itself (its shops see to their own insides).
+  const props = new PropCull();
+  const outlook = office.town.group.parent;
+  if (outlook) props.add(...outlook.children.filter((c) => c !== office.town.group));
+  (window as unknown as { __propcull?: PropCull }).__propcull = props;
   ctx.ticks.add('env', ({ t, dt }) => {
+    props.update(ctx.camera);
     const up = ctx.upTop();
     const roof = up ? deps.roof() : null;
     // Up on the roof, it borrows the office's outlook; back down, the office has it again.
