@@ -17,6 +17,7 @@ import { boatMessage } from '../../boats.js';
 import { baumarktMessage } from '../../baumarkt.js';
 import { kinoMessage } from '../../kino.js';
 import { toyUse } from '../../../shared/shopwares.js';
+import { funshopHandlers } from './funshops.js';
 import { here } from './common.js';
 import { jukeboxChanged } from './jukebox.js';
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
@@ -156,6 +157,7 @@ export const forkHandlers = {
     const used = toyUse(msg, c.peer.drink, c.id);
     if (used) ctx.toNeighbors(c, used);
   },
+  ...funshopHandlers, // the Spielhalle's claw machine and the Post's postcards
   'tank.fill': tank,
   'tank.wash': tank,
   'rig.play': rig,

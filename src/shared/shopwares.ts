@@ -8,6 +8,7 @@
 import type { Drink, DrinkId } from './rooftop.js';
 import type { ShopKindId } from './shops.js';
 import { RECORDS, type RecordId } from './records.js';
+import { PLUSHIES, type PlushId } from './plushies.js'; // the Spielhalle's claw machine
 
 /** What it comes in, or what it is in your hand. */
 export type ShopGlass =
@@ -32,9 +33,11 @@ export type ShopGlass =
   | 'plane'
   | 'watergun'
   | 'teddy'
-  | 'record';
+  | 'record'
+  | 'plush'
+  | 'photostrip';
 
-export const SHOP_GLASSES: readonly ShopGlass[] = ['semmel', 'krapfen', 'pizzaslice', 'newspaper', 'gummies', 'pill', 'lozenge', 'bouquet', 'sunflower', 'tulips', 'book', 'doener', 'duerum', 'lahmacun', 'ayran', 'yoyo', 'bubbles', 'duck', 'plane', 'watergun', 'teddy', 'record'];
+export const SHOP_GLASSES: readonly ShopGlass[] = ['semmel', 'krapfen', 'pizzaslice', 'newspaper', 'gummies', 'pill', 'lozenge', 'bouquet', 'sunflower', 'tulips', 'book', 'doener', 'duerum', 'lahmacun', 'ayran', 'yoyo', 'bubbles', 'duck', 'plane', 'watergun', 'teddy', 'record', 'plush', 'photostrip'];
 
 export type ToyId = 'yoyo' | 'seifenblasen' | 'quietscheente' | 'papierflieger' | 'wasserpistole' | 'teddy';
 
@@ -67,7 +70,9 @@ export type ShopItemId =
   | 'lahmacun'
   | 'ayran'
   | ToyId
-  | RecordId;
+  | RecordId
+  | PlushId
+  | 'fotostreifen';
 
 /** A little something it does to you (see features/shops). */
 export type ShopTreat = 'spicy' | 'sober' | 'fresh' | 'read' | 'toy' | 'listen' | null;
@@ -145,6 +150,9 @@ export const SHOP_ITEMS: readonly ShopItem[] = [
   thing('teddy', 'Spielzeug', 'Teddybär', '🧸', 'Soft and brown, with a bow. Click to hug it', 'teddy', '#a0522d', '#e63946', 'Der hat dich gleich lieb', 'toy'),
   // The record shop: a sleeve under your arm.
   ...RECORDS.map((r) => thing(r.id, 'Platten', `${r.band}: ${r.title}`, '💿', `${r.genre}, ${r.year}`, 'record', r.sleeve, r.ink, 'Gute Wahl. Die B-Seite ist noch besser', 'listen')),
+  // The Spielhalle: what the claw machine hands you, and the photo booth's strip.
+  ...PLUSHIES.map((p) => thing(p.id, 'Greifautomat', p.name, p.emoji, 'Out of the claw machine, won fair and square', 'plush', p.color, p.label, 'Glückwunsch! Der ist selten.', null, 600)),
+  thing('fotostreifen', 'Fotoautomat', 'Fotostreifen', '📸', 'Four photos of you from the booth, still a little damp', 'photostrip', '#fbfaf6', '#1d1d1d', 'Schön geworden!', null, 600),
 ];
 
 export const SHOP_ITEM_BY_ID = new Map<ShopItemId, ShopItem>(SHOP_ITEMS.map((d) => [d.id, d]));
@@ -181,6 +189,8 @@ export const MENUS: Readonly<Record<ShopKindId, readonly DrinkId[]>> = {
   doener: ['doener', 'doenerscharf', 'duerum', 'lahmacun', 'pommes', 'ayran', 'cola'],
   spielzeug: [...TOYS],
   platten: RECORDS.map((r) => r.id),
+  spielhalle: ['popcorn', 'kinocola', 'energy', 'gummibaerchen', 'crisps'],
+  post: [],
 };
 
 // ---- Throwing toys about (features/shops/toys.ts) ------------------------------------------------

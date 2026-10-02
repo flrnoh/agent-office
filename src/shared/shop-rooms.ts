@@ -30,7 +30,15 @@ export type PieceKind =
   | 'plush'
   | 'recordcrate'
   | 'listening'
-  | 'stool';
+  | 'stool'
+  // The Spielhalle and the Post (shared/funshops.ts).
+  | 'arcadecab'
+  | 'claw'
+  | 'photobooth'
+  | 'pushers'
+  | 'poboxes'
+  | 'parcels'
+  | 'letterbox';
 
 /** Something in a shop: a box in its frame (u0..u1 along, v0..v1 in), `h` tall; `solid` ones you bump into. */
 export interface Piece {
@@ -46,7 +54,7 @@ export interface Piece {
   dv: number;
 }
 
-export type StationKind = 'counter' | 'chair' | 'crate' | 'listen' | 'shelf';
+export type StationKind = 'counter' | 'chair' | 'crate' | 'listen' | 'shelf' | 'cabinet' | 'claw' | 'booth' | 'pobox';
 
 /** Where E does something: where you stand (u, v), how near you must be, and (a chair) where you sit. */
 export interface Station {
@@ -200,6 +208,30 @@ function layRoom(s: Shop): Room {
         }
       }
       doorSide('shelf', 2.0, 0.4);
+      break;
+    }
+    case 'spielhalle': {
+      // Cabinets in a row along the wall away from the door, facing in; the claw machine and the photo
+      // booth along the door's wall (the booth open toward the room, a curtain across it); a coin pusher in the middle.
+      let n = 0;
+      for (let v = T + 0.75; v + 0.8 <= D - 2.4 && n < 4; v += 0.95, n++) {
+        put('arcadecab', P, P + 0.8, v, v + 0.8, 1.93, true, 1, 0);
+        stations.push({ at: 'cabinet', n, u: P + 1.3, v: v + 0.4, r: 1.3 });
+      }
+      put('claw', L - P - 1.0, L - P, T + 1.7, T + 2.6, 2.1, true, -1, 0);
+      stations.push({ at: 'claw', n: 0, u: L - P - 1.55, v: T + 2.15, r: 1.4 });
+      put('photobooth', L - P - 1.25, L - P, T + 2.8, T + 4.15, 2.25, false, -1, 0);
+      stations.push({ at: 'booth', n: 0, u: L - P - 0.7, v: T + 3.475, r: 1.2 });
+      if (roomy) put('pushers', mu - 0.45, mu + 0.45, mv - 0.35, mv + 0.35, 1.5, true, 0, -1);
+      break;
+    }
+    case 'post': {
+      // PO boxes along the wall away from the door, parcels stacked on the door's side and by the counter, the yellow letterbox by the door.
+      away('poboxes', 2.2, 0.4);
+      stations.push({ at: 'pobox', n: 0, u: P + 1.0, v: (T + 0.7 + D - 2.4) / 2, r: 1.6 });
+      put('parcels', L - P - 0.8, L - P, T + 1.7, Math.min(T + 3.4, D - 1.5), 1.1);
+      put('letterbox', L - P - 0.5, L - P - 0.05, Math.min(T + 3.6, D - 1.4), Math.min(T + 4.0, D - 1.0), 1.25, true, -1, 0);
+      if (roomy) put('hightable', mu - 0.35, mu + 0.35, mv - 0.35, mv + 0.35, 1.1);
       break;
     }
   }
