@@ -8,8 +8,9 @@ import type { Live } from './decor';
 
 // flrnoh fork (see FORK.md "Shops to walk into", the boutique and the optician): what stands in
 // those two (decor.ts calls wearDecor for them). The boutique: rails of clothes on hangers, changing
-// cubicles whose curtains draw shut while someone's in one, a tall mirror, mannequins in the window.
-// The optician: a wall of glasses, frames on a table and in the window, an eye chart, a mirror.
+// cubicles whose curtains draw shut while someone's in one, a tall mirror (the mannequins in the window
+// are the front's, world/town/shopwindows.ts). The optician: a wall of glasses, frames on a table, an
+// eye chart, a mirror.
 // `still` is merged by color; `live` is kept as it is (the curtains move, the chart is a picture).
 
 const at = (u: number, y: number, v: number) => new THREE.Vector3(u, y, -v);
@@ -94,19 +95,6 @@ function rack(still: THREE.Group, p: Piece, seed: number) {
   }
 }
 
-/** A mannequin on the display at (u, y, v), in a top (and on some a skirt) of `color`. */
-function mannequin(still: THREE.Group, u: number, y: number, v: number, color: string, dress: boolean) {
-  const skin = '#ece6dc';
-  cyl(still, 0.12, 0.03, '#2b2d42', u, y, v, 14);
-  cyl(still, 0.02, 0.7, '#2b2d42', u, y, v, 6);
-  const body = mesh(new THREE.CapsuleGeometry(0.17, 0.28, 4, 10), toon(color), u, y + 1.0, -v, false);
-  still.add(body);
-  if (dress) still.add(mesh(new THREE.CylinderGeometry(0.17, 0.27, 0.36, 14), toon(color), u, y + 0.68, -v, false));
-  else for (const x of [-0.07, 0.07]) still.add(mesh(new THREE.CapsuleGeometry(0.06, 0.32, 4, 8), toon('#3d405b'), u + x, y + 0.62, -v, false));
-  still.add(mesh(new THREE.SphereGeometry(0.13, 12, 10), toon(skin), u, y + 1.42, -v, false));
-  for (const x of [-0.21, 0.21]) still.add(mesh(new THREE.CapsuleGeometry(0.045, 0.3, 4, 8), toon(color), u + x, y + 0.98, -v, false));
-}
-
 /** A pair of glasses `w` wide at (u, y, v), facing along (du, dv): two rings and a bridge. */
 function specs(still: THREE.Group, u: number, y: number, v: number, du: number, dv: number, color: string, i: number) {
   const g = new THREE.Group();
@@ -168,7 +156,6 @@ function curtain(live: THREE.Group, s: Shop, p: Piece, n: number): Live {
 export function wearDecor(still: THREE.Group, live: THREE.Group, s: Shop, k: ShopKind, room: Room): Live[] {
   const out: Live[] = [];
   const pieces = (what: Piece['what']) => room.pieces.filter((p) => p.what === what);
-  const windowDisplay = pieces('display').find((p) => p.v0 <= FRONT_T + 0.2);
   for (const p of pieces('rack')) rack(still, p, s.i + Math.round(p.v0 * 3));
   for (const w of pieces('cubiclewall')) box(still, w.u1 - w.u0, w.h, w.v1 - w.v0, '#e9e2d8', (w.u0 + w.u1) / 2, 0, (w.v0 + w.v1) / 2);
   pieces('cubicle').forEach((p, n) => {
@@ -184,10 +171,6 @@ export function wearDecor(still: THREE.Group, live: THREE.Group, s: Shop, k: Sho
     box(still, p.u1 - p.u0 + 0.1, p.h + 0.1, 0.04, k.id === 'optiker' ? '#1d3557' : '#c9a227', cu, 0.05, p.v1 - 0.02);
     box(still, p.u1 - p.u0 - 0.04, p.h - 0.1, 0.02, '#d6ecf5', cu, 0.15, p.v0);
   }
-  if (k.id === 'boutique' && windowDisplay) {
-    const p = windowDisplay;
-    for (let u = p.u0 + 0.5, i = 0; u < p.u1 - 0.3; u += 0.95, i++) mannequin(still, u, p.h, (p.v0 + p.v1) / 2, k.goods[(i + s.i) % k.goods.length], (i + s.i) % 3 === 1);
-  }
   if (k.id === 'optiker') {
     for (const p of pieces('glasswall')) {
       box(still, 0.06, p.h, p.v1 - p.v0, '#f4f1ea', p.du > 0 ? p.u0 + 0.03 : p.u1 - 0.03, 0, (p.v0 + p.v1) / 2);
@@ -198,13 +181,9 @@ export function wearDecor(still: THREE.Group, live: THREE.Group, s: Shop, k: Sho
         for (let v = p.v0 + 0.15, i = 0; v < p.v1 - 0.1; v += 0.22, i++) specs(still, face - p.du * 0.05, y, v, p.du, 0, k.goods[(i + r + s.i) % k.goods.length], i + r);
       }
     }
+    // Frames lying open on the table (the window's are on stands, world/town/shopwindows.ts).
     for (const p of pieces('display'))
-      for (let u = p.u0 + 0.15, i = 0; u < p.u1 - 0.1; u += 0.22, i++) {
-        // On the window display, on little stands; on the table, lying open.
-        const stand = p === windowDisplay;
-        if (stand) cyl(still, 0.01, 0.16, '#adb5bd', u, p.h, p.v0 + 0.2, 6);
-        specs(still, u, p.h + (stand ? 0.18 : 0.03), stand ? p.v0 + 0.2 : (p.v0 + p.v1) / 2, 0, -1, k.goods[(i + s.i) % k.goods.length], i);
-      }
+      if (p.v0 > FRONT_T + 0.2) for (let u = p.u0 + 0.15, i = 0; u < p.u1 - 0.1; u += 0.22, i++) specs(still, u, p.h + 0.03, (p.v0 + p.v1) / 2, 0, -1, k.goods[(i + s.i) % k.goods.length], i);
     for (const p of pieces('eyechart')) {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(p.v1 - p.v0, (p.v1 - p.v0) * 1.5), own(new THREE.MeshBasicMaterial({ map: eyeChart() })));
       m.position.copy(at(p.du < 0 ? p.u0 - 0.005 : p.u1 + 0.005, 1.35, (p.v0 + p.v1) / 2));

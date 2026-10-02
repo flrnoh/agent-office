@@ -34,9 +34,9 @@ function lens(tint: number): THREE.Material {
   if (!lensMats.length) {
     const clear = new THREE.MeshBasicMaterial({ color: '#e3f4ff', transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
     const dark = new THREE.MeshBasicMaterial({ color: '#16161a', transparent: true, opacity: 0.88, side: THREE.DoubleSide });
-    const mirror = toonUnique('#cfdcec');
-    mirror.emissive = new THREE.Color('#8fb3e0');
-    mirror.emissiveIntensity = 0.55;
+    const mirror = toonUnique('#7fa7d9');
+    mirror.emissive = new THREE.Color('#9fd0ff');
+    mirror.emissiveIntensity = 0.45;
     mirror.side = THREE.DoubleSide;
     for (const m of [clear, dark, mirror]) m.userData.outlineParameters = { visible: false };
     lensMats.push(clear, dark, mirror);
@@ -97,7 +97,7 @@ export class Outfit {
   /** A jacket over the T-shirt: a shell round the torso and sleeves down the arms. */
   private shell(mat: THREE.Material) {
     this.add(this.torso, new THREE.CapsuleGeometry(TORSO_R + 0.014, TORSO_LEN, 6, 14), mat, 0, TORSO_Y, 0, true);
-    for (const arm of [this.left, this.right]) this.add(arm, new THREE.CapsuleGeometry(0.089, 0.2, 4, 10), mat, 0, -0.15, 0, true);
+    for (const arm of [this.left, this.right]) this.add(arm, new THREE.CapsuleGeometry(0.09, 0.28, 4, 10), mat, 0, -0.17, 0, true);
   }
 
   private top(style: string) {
