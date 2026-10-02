@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { HAIR_COLORS, METAL_COLORS, marksKey, piercingKindOf, type Look, type Metal, type Tattoo } from '../../../shared/avatar';
+import { HAIR_COLORS, HAIR_STYLES, METAL_COLORS, hairShows, marksKey, piercingKindOf, type Look, type Metal, type Tattoo } from '../../../shared/avatar';
 import { mesh, toonUnique } from '../toon';
 import { beardParts } from './person-beard';
 import { tattooMaterial } from './tattoo-art';
+import { Outfit } from './person-outfit';
 
 // flrnoh fork (see FORK.md "Beards, tattoos and piercings"): what a Person wears on their skin. A beard
 // (person-beard.ts) in the hair's color, tattoos as decals hugging an arm, a hand or the neck (the
@@ -20,6 +21,11 @@ export interface MarkParts {
   /** The person's own skin and shirt, for a bared arm and its rolled-up sleeve. */
   skin: THREE.Material;
   shirt: THREE.Material;
+  /** For the outfit (person-outfit.ts): the body the torso's on, and the trousers. */
+  body: THREE.Object3D;
+  pants: THREE.MeshToonMaterial;
+  /** The hair, hidden from the start under a hat it would poke through (later, person.ts' dress asks hairShows). */
+  hair: THREE.Object3D;
 }
 
 const metals = new Map<Metal, THREE.MeshToonMaterial>();
@@ -48,6 +54,7 @@ export class Marks {
   private beard = toonUnique('#000000');
   private stubble = toonUnique('#000000');
   private key: string | null = null;
+  private outfit: Outfit;
 
   constructor(
     private parts: MarkParts,
@@ -61,7 +68,9 @@ export class Marks {
     parts.head.add(this.head);
     parts.left.add(this.left);
     parts.right.add(this.right);
+    this.outfit = new Outfit(parts);
     this.set(look);
+    parts.hair.visible = this.hairShows(look);
   }
 
   /** Puts on `look`'s beard, tattoos and piercings, redrawing only when they changed (the beard just follows the hair's color). */
@@ -69,6 +78,7 @@ export class Marks {
     const color = HAIR_COLORS[look.hair] ?? HAIR_COLORS[0];
     this.beard.color.set(color);
     this.stubble.color.set(color);
+    this.outfit.set(look);
     const key = marksKey(look);
     if (key === this.key) return;
     this.key = key;
@@ -80,6 +90,11 @@ export class Marks {
     const neck = tattoos.find((t) => t.spot === 'neck');
     if (neck) this.neck(neck.motif);
     for (const p of look.piercings ?? []) this.pierce(p.kind, metal(p.metal));
+  }
+
+  /** Whether the hair shows under what's on the head (person.ts' dress). */
+  hairShows(look: Look): boolean {
+    return hairShows(look, HAIR_STYLES[look.style]);
   }
 
   private clear() {

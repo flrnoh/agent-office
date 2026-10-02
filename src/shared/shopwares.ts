@@ -163,7 +163,7 @@ export const isToy = (v: unknown): v is ToyId => typeof v === 'string' && (TOYS 
 
 /**
  * What each shop has on its menu, by DrinkId: its own things, and the fridge's, the café's and the
- * beach kiosk's where they fit. The barber's and the tattoo studio's chairs are their menus; the record
+ * beach kiosk's where they fit. The barber's and the tattoo studio's chairs are their menus (the boutique's racks and the optician's wall of glasses too); the record
  * shop sells from its crates.
  */
 export const MENUS: Readonly<Record<ShopKindId, readonly DrinkId[]>> = {
@@ -181,6 +181,8 @@ export const MENUS: Readonly<Record<ShopKindId, readonly DrinkId[]>> = {
   doener: ['doener', 'doenerscharf', 'duerum', 'lahmacun', 'pommes', 'ayran', 'cola'],
   spielzeug: [...TOYS],
   platten: RECORDS.map((r) => r.id),
+  boutique: [],
+  optiker: [],
 };
 
 // ---- Throwing toys about (features/shops/toys.ts) ------------------------------------------------

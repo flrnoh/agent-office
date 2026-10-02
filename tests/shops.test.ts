@@ -38,13 +38,14 @@ test('the shops are laid out once, the same every time, from the city alone', ()
   assert.match(built, /lotColliders\(li\)/);
 });
 
-test('every one of the 14 kinds is all over the city, and the nearest shops are one of each', () => {
-  assert.equal(SHOP_KINDS.length, 14);
+test('every kind (14 and more) is all over the city, and the nearest shops are one of each', () => {
+  assert.ok(SHOP_KINDS.length >= 14, `${SHOP_KINDS.length} kinds`);
+  assert.equal(new Set(SHOP_KINDS.map((k) => k.id)).size, SHOP_KINDS.length);
   const byKind = new Map<string, Shop[]>();
   for (const s of SHOPS) byKind.set(s.kind, [...(byKind.get(s.kind) ?? []), s]);
   for (const k of SHOP_KINDS) {
     const list = byKind.get(k.id) ?? [];
-    assert.ok(list.length >= 8, `${k.id}: ${list.length}`);
+    assert.ok(list.length >= 6, `${k.id}: ${list.length}`);
     // In every quarter round the office.
     const quarters = new Set(list.map((s) => `${Math.sign(s.ox)}${Math.sign(s.oz - 27)}`));
     assert.ok(quarters.size >= 3, `${k.id} only in ${[...quarters]}`);
@@ -168,7 +169,8 @@ test('each kind has something to do: a counter, and the barber’s and the tatto
     if (s.kind === 'buchladen') assert.ok(at.has('shelf'));
   }
   assert.ok(SHOPS.some((s) => s.kind === 'platten' && shopRoom(s).stations.some((t) => t.at === 'crate')));
-  for (const k of SHOP_KINDS) if (k.id !== 'friseur' && k.id !== 'tattoo') assert.ok(MENUS[k.id].length > 0, k.id);
+  // The chairs, the boutique's racks and the optician's glasses are those shops' menus.
+  for (const k of SHOP_KINDS) if (!['friseur', 'tattoo', 'boutique', 'optiker'].includes(k.id)) assert.ok(MENUS[k.id].length > 0, k.id);
 });
 
 test('a shop chair is a seat: its key goes both ways, on an office floor only', () => {
@@ -240,4 +242,41 @@ test('records: a dozen, each its own, the crates the same for everyone', () => {
 
 test('the shops sides are named and SIDES covers them', () => {
   assert.deepEqual([...SIDES].sort(), ['nx', 'nz', 'px', 'pz']);
+});
+
+test('the boutique: cubicles to step into (short of the way across to the counter), racks, a mirror, a window for mannequins', () => {
+  const shops = SHOPS.filter((s) => s.kind === 'boutique');
+  assert.ok(shops.length >= 6);
+  for (const s of shops) {
+    const room = shopRoom(s);
+    const solids = lotColliders(s.lot);
+    const area = shopRect(s, -2, s.len + 2, -2, s.depth + 0.5);
+    const out = shopPoint(s, s.doorU, -0.8);
+    const cubicles = room.pieces.filter((p) => p.what === 'cubicle');
+    assert.ok(cubicles.length >= 1 && cubicles.length <= 2, `boutique ${s.i}: ${cubicles.length} cubicles`);
+    const inCubicles = room.stations.filter((t) => t.at === 'cubicle');
+    assert.equal(inCubicles.length, cubicles.length);
+    for (const t of inCubicles) {
+      // You can walk all the way in, from the street.
+      const p = cubicles[t.n];
+      const mid = shopPoint(s, (p.u0 + p.u1) / 2, (p.v0 + p.v1) / 2);
+      assert.ok(walkable(solids, out, mid, area), `boutique ${s.i}: can't step into cubicle ${t.n}`);
+    }
+    assert.ok(room.stations.some((t) => t.at === 'rack'), `boutique ${s.i} has no rack`);
+    assert.ok(room.pieces.some((p) => p.what === 'display' && p.v0 <= FRONT_T + 0.2), 'a window for the mannequins');
+  }
+  assert.ok(shops.some((s) => shopRoom(s).pieces.some((p) => p.what === 'standmirror')));
+});
+
+test('the optician: a wall of glasses, an eye chart, the counter', () => {
+  const shops = SHOPS.filter((s) => s.kind === 'optiker');
+  assert.ok(shops.length >= 6);
+  for (const s of shops) {
+    const room = shopRoom(s);
+    assert.ok(room.pieces.some((p) => p.what === 'glasswall'));
+    assert.ok(room.pieces.some((p) => p.what === 'eyechart'));
+    assert.ok(room.stations.some((t) => t.at === 'glasses'));
+    assert.ok(room.stations.some((t) => t.at === 'counter'));
+  }
+  assert.ok(shops.some((s) => shopRoom(s).pieces.some((p) => p.what === 'standmirror')));
 });
