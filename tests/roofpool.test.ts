@@ -102,10 +102,11 @@ test('the water slide ends in the water, with headroom over everywhere people wa
   }
 });
 
-test('the sky bar stands at the south end of the terrace, its pergola clear of the bungee jetty, the pool and its slide', async () => {
+test('the sky bar (an L) stands at the south end of the terrace, its pergola clear of the bungee jetty, the pool and its slide', async () => {
   const { BUNGEE } = await import('../src/shared/bungee.js');
-  // The pergola over it (features/rooftop/world.ts): from just in front of the counter to the east edge, 0.8 past each end.
-  const pergola = { minX: ROOF_BAR.x - ROOF_BAR.depth / 2 - 0.9 - 0.1, maxX: FLOOR.maxX, minZ: ROOF_BAR.minZ - 0.9, maxZ: ROOF_BAR.maxZ + 0.9 };
+  const { ROOF_BAR_END } = await import('../src/shared/skybar.js');
+  // The pergola over it (features/rooftop/world.ts): from just in front of the counter to the east edge, 1.1 past the short leg, 0.8 past the south end.
+  const pergola = { minX: ROOF_BAR.x - ROOF_BAR.depth / 2 - 0.9 - 0.1, maxX: FLOOR.maxX, minZ: ROOF_BAR_END.minZ - 1.2, maxZ: ROOF_BAR.maxZ + 0.9 };
   const jetty = { minX: BUNGEE.x - BUNGEE.halfWidth, maxX: BUNGEE.x + BUNGEE.halfWidth, minZ: BUNGEE.startZ, maxZ: FLOOR.maxZ + 4 };
   assert.ok(apart(pergola, jetty, 0.2), 'clear of the bungee jetty');
   assert.ok(apart(pergola, FOOT, 1), 'clear of the pool');
@@ -114,10 +115,13 @@ test('the sky bar stands at the south end of the terrace, its pergola clear of t
     const p = slideAt(s);
     assert.ok(apart(pergola, around(p.x, p.z, 0.45), 0.3), `clear of the slide at ${p.x.toFixed(1)},${p.z.toFixed(1)}`);
   }
-  // Its six stools along the counter, under the pergola.
+  // Six stools along the counter and three in front of the short leg, all under the pergola.
   const stools = SEATING.filter((s) => s.bar);
-  assert.equal(stools.length, 6);
-  for (const s of stools) assert.ok(s.z > ROOF_BAR.minZ && s.z < ROOF_BAR.maxZ, `${s.id} along the counter`);
+  assert.equal(stools.length, 9);
+  for (const s of stools.slice(0, 6)) assert.ok(s.z > ROOF_BAR.minZ && s.z < ROOF_BAR.maxZ, `${s.id} along the counter`);
+  for (const s of stools.slice(6)) assert.ok(s.x > ROOF_BAR_END.minX && s.x < ROOF_BAR_END.maxX && s.z < ROOF_BAR_END.minZ && s.z > pergola.minZ, `${s.id} in front of the short leg`);
+  // Closed at the north end: the leg runs from the counter's front right to the edge.
+  assert.ok(ROOF_BAR_END.minX <= ROOF_BAR.x - ROOF_BAR.depth / 2 && ROOF_BAR_END.maxX >= FLOOR.maxX && ROOF_BAR_END.maxZ === ROOF_BAR.minZ, 'the short leg closes the north end');
   assert.ok(ROOF_BAR.maxZ + 0.8 < BUNGEE.startZ, "the pergola's posts stop before the jetty starts");
 });
 

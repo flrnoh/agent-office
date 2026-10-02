@@ -8,6 +8,7 @@ import { buildLedWall, type WallInfo } from './ledwall'; // fork: the LED wall's
 import { buildRoofTables, type RoofTablesView } from '../../tablegames/models'; // fork: games on the roof
 import { BUNGEE } from '../../../shared/bungee'; // fork: bungee off the roof
 import { COASTER_GAP } from '../../../shared/coaster'; // fork: DER BRECHER's station
+import { ROOF_BAR_END, TENDER } from '../../../shared/skybar'; // fork: the sky bar's short leg
 import { buildBungeeJetty, type BungeeJetty } from '../../world/bungee'; // fork: bungee off the roof
 import { Worker } from '../../world/character';
 import { buildCity, type City } from '../../world/city';
@@ -57,8 +58,8 @@ export interface Rooftop {
   tables: RoofTablesView;
   /** Fork: the bungee jetty over the south edge (see world/bungee.ts). */
   bungee: BungeeJetty;
-  /** Someone ordered a drink at the bar, standing (or sitting) at `z` along it: the bartender comes over. */
-  serve(z: number): void;
+  /** Someone ordered a drink at the bar, standing (or sitting) at x, z along it: the bartender comes over (fork: round the corner too). */
+  serve(x: number, z: number): void;
   /**
    * Moves everything to the music. Returns how hard the strobes flash right now (0–1), for the
    * scene's lights: on the snares as a drop lands, never quicker than a couple of times a second.
@@ -445,9 +446,23 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
     bar.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.4, 8), toon('#e9b949'), bx + 0.12, ROOF_BAR.height + 0.2, z, false));
     bar.add(mesh(new THREE.BoxGeometry(0.03, 0.16, 0.03), toon(['#ef476f', '#06d6a0', '#ffd166'][Math.round(z / 0.6) + 1]), bx + 0.05, ROOF_BAR.height + 0.46, z, false));
   }
+  // Fork: the short leg across the north end, out to the edge, so the bar's an L, closed at the pool's end.
+  const leg = ROOF_BAR_END;
+  const llen = leg.maxX - leg.minX;
+  const lx = (leg.minX + leg.maxX) / 2;
+  const lz = (leg.minZ + leg.maxZ) / 2;
+  bar.add(mesh(new THREE.BoxGeometry(llen, ROOF_BAR.height - 0.06, ROOF_BAR.depth), toon('#6b3f2a'), lx, (ROOF_BAR.height - 0.06) / 2, lz));
+  for (let x = leg.minX + 0.25; x < leg.maxX - 0.1; x += 0.5) bar.add(mesh(new THREE.BoxGeometry(0.08, ROOF_BAR.height - 0.3, 0.03), toon('#8a5a3b'), x, ROOF_BAR.height / 2, leg.minZ - 0.012, false));
+  bar.add(mesh(new THREE.BoxGeometry(llen + 0.15, 0.06, ROOF_BAR.depth + 0.2), toon('#f4f1ea'), lx - 0.025, ROOF_BAR.height - 0.03, lz - 0.05));
+  const legRail = mesh(new THREE.CylinderGeometry(0.03, 0.03, llen - 0.4, 8), toon('#e9b949'), lx + 0.1, 0.22, leg.minZ - 0.2, false);
+  legRail.rotation.z = Math.PI / 2;
+  bar.add(legRail);
+  group.add(mesh(new THREE.BoxGeometry(llen, 0.05, 0.02), barGlow, lx, 0.06, leg.minZ - 0.02, false));
   group.add(bar);
   colliders.push({ minX: front, maxX: bx + ROOF_BAR.depth / 2, minZ: ROOF_BAR.minZ, maxZ: ROOF_BAR.maxZ, top: ROOF_BAR.height });
+  colliders.push({ minX: leg.minX, maxX: leg.maxX, minZ: leg.minZ, maxZ: leg.maxZ, top: ROOF_BAR.height });
   const barIts = [bz - 3, bz, bz + 3].map((z): Interactable => ({ kind: 'bar', x: front - 0.7, z, radius: 1.7 })); // fork: along the bar, wherever it is
+  barIts.push({ kind: 'bar', x: lx + 0.6, z: leg.minZ - 0.7, radius: 1.7 }); // fork: and along the short leg
   interactables.push(...barIts);
   bar.userData.interact = barIts[1];
 
@@ -475,7 +490,7 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
 
   // A pergola over it, hung with string lights, and a neon sign facing the dance floor.
   const wood = toon('#8a5a3b');
-  const p0 = { x: front - 0.9, z: ROOF_BAR.minZ - 0.8 };
+  const p0 = { x: front - 0.9, z: leg.minZ - 1.1 }; // fork: over the short leg's stools too
   const p1 = { x: FLOOR.maxX - 0.1, z: ROOF_BAR.maxZ + 0.8 };
   const roofY = 3.3;
   for (const x of [p0.x, p1.x]) {
@@ -511,16 +526,18 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
   const bartender = new Worker('Bartender', '#e76f51');
   bartender.setStatus('idle', false);
   bartender.setTask({ name: '🍸 Bartender', summary: "What'll it be? E at the bar" });
-  const tendX = bx + ROOF_BAR.depth / 2 + 0.7;
+  const tendX = TENDER.x;
   bartender.root.position.set(tendX, 0, bz);
   bartender.root.rotation.y = -Math.PI / 2;
   group.add(bartender.root);
   let tendZ = bz;
+  /** Fork: how far along behind the short leg the bartender's headed (tendX: not round the corner). */
+  let tendLegX = tendX;
   let wander = 0;
 
   // Bar stools along the counter.
-  for (let i = 1; i <= 6; i++) {
-    const s = SEATING_BY_ID.get(`roof-stool-${i}`)!;
+  for (let i = 1; i <= 9; i++) {
+    const s = SEATING_BY_ID.get(`roof-stool-${i}`)!; // fork: 7–9 round the corner
     const stool = new THREE.Group();
     stool.add(mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.03, 16), steel, 0, 0.015, 0, false));
     stool.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.66, 8), steel, 0, 0.36, 0, false));
@@ -730,8 +747,11 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
     games,
     tables,
     bungee,
-    serve(z: number) {
-      tendZ = THREE.MathUtils.clamp(z, ROOF_BAR.minZ + 0.6, ROOF_BAR.maxZ - 0.6);
+    serve(x: number, z: number) {
+      // Fork: ordered at the short leg, the bartender goes round behind it to you.
+      const atLeg = z < ROOF_BAR_END.maxZ && x > ROOF_BAR_END.minX + 0.6;
+      tendZ = atLeg ? TENDER.legZ : THREE.MathUtils.clamp(z, ROOF_BAR.minZ + 0.6, ROOF_BAR.maxZ - 0.6);
+      tendLegX = atLeg ? THREE.MathUtils.clamp(x, tendX, TENDER.legMaxX) : tendX;
       wander = 6;
       bartender.cheer(1.2);
     },
@@ -750,10 +770,19 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
       wander -= dt;
       if (wander <= 0) {
         wander = 5 + Math.random() * 6;
-        tendZ = ROOF_BAR.minZ + 1 + Math.random() * (ROOF_BAR.maxZ - ROOF_BAR.minZ - 2);
+        // Fork: now and then round the corner, behind the short leg.
+        const corner = Math.random() < 0.25;
+        tendZ = corner ? TENDER.legZ : ROOF_BAR.minZ + 1 + Math.random() * (ROOF_BAR.maxZ - ROOF_BAR.minZ - 2);
+        tendLegX = corner ? tendX + Math.random() * (TENDER.legMaxX - tendX) : tendX;
       }
       const bp = bartender.root.position;
-      bp.z += THREE.MathUtils.clamp(tendZ - bp.z, -dt * 1.6, dt * 1.6);
+      // Fork: along behind the long counter at tendX, then (round the corner) along behind the leg.
+      const step = dt * 1.6;
+      const legX = Math.abs(bp.z - tendZ) < 0.01 ? tendLegX : tendX;
+      if (Math.abs(bp.x - legX) > 0.01) bp.x += THREE.MathUtils.clamp(legX - bp.x, -step, step);
+      else bp.z += THREE.MathUtils.clamp(tendZ - bp.z, -step, step);
+      const faceLeg = bp.x > tendX + 0.3;
+      bartender.root.rotation.y = faceLeg ? Math.PI : -Math.PI / 2;
       bartender.update(dt, t);
 
       // Speaker cones thump.
