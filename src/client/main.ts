@@ -73,6 +73,7 @@ import { installShops } from './features/shops'; // flrnoh fork: the city's shop
 import { installShopFronts } from './features/shopfronts'; // flrnoh fork: the shops from outside
 import { installFunShops } from './features/funshops'; // flrnoh fork: the Spielhalle and the Post
 import { installRide } from './features/ride'; // flrnoh fork: bikes, pets, laundry
+import { installCityBus } from './features/citybus'; // flrnoh fork: the city bus
 import { installDjSets } from './features/djset';
 import { installDoorbell } from './features/doorbell';
 import { installFogbox } from './features/fogbox';
@@ -219,6 +220,7 @@ parts.shops = installShops(ctx, { booze: () => parts.bar.booze, caffeine: () => 
 parts.funshops = installFunShops(ctx, { serve: (i, id) => parts.shops.serve(i, id), keeper: (i) => parts.shops.keeper(i) }); // fork: the Spielhalle and the Post
 parts.ride = installRide(ctx, { personOf, booze: () => parts.bar.booze, serve: (i, id) => parts.shops.serve(i, id), inPlace: () => parts.places.active() }); // fork: bikes, pets, laundry
 parts.tankstelle = installTankstelle(ctx, parts, { booze: () => parts.bar.booze, caffeine: () => parts.coffee.caffeine, reach });
+(window as any).__citybus = installCityBus(ctx, { free: () => (standUp(), stopWalking()) }); // fork: riding the city bus
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);

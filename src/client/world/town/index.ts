@@ -12,6 +12,9 @@ import { buildShopFronts, type ShopFronts } from './shopfronts'; // fork: the sh
 import { LAID_OUT, glowTexture } from './kit';
 import { buildTraffic, type Obstacle } from './traffic';
 import { buildPassersby, type Passersby } from './people'; // fork: passers-by
+import { buildTrafficLights } from './lights'; // fork: traffic lights
+import { buildBuses, type Buses } from './bus'; // fork: the city bus
+import { BUS_L } from '../../../shared/citybus';
 
 export type { Obstacle } from './traffic';
 
@@ -44,8 +47,13 @@ export interface Town {
   people: Passersby;
   /** The shops' fronts, signs, shutters and what's out in front (town/shopfronts.ts), kept by features/shopfronts. */
   fronts: ShopFronts;
-  /** The cars along the streets, stopping for `obstacles` (and the passers-by crossing); the lights: `dark` is how dark it is (0–1). */
-  update(t: number, dt: number, dark: number, obstacles: Iterable<Obstacle>): void;
+  /** The city's buses (town/bus.ts), on the office's clock. */
+  buses: Buses;
+  /**
+   * The cars along the streets, stopping for `obstacles` (and the passers-by crossing); the lights: `dark`
+   * is how dark it is (0–1); `now`: the office's clock (s), which the traffic lights and the buses keep to.
+   */
+  update(t: number, dt: number, dark: number, obstacles: Iterable<Obstacle>, now?: number): void;
 }
 
 /**
@@ -64,6 +72,11 @@ export function buildTown(night: NightParts): Town {
   const fronts = buildShopFronts(group, colliders);
   buildFurniture(group, colliders);
   const cars = buildTraffic(group, r);
+  const lights = buildTrafficLights();
+  group.add(lights.group);
+  const buses = buildBuses(group);
+  const busAt = buses.buses.map((b) => b.pose);
+  cars.traffic.push(...buses.buses.map((b) => b.box));
   const people = buildPassersby();
   group.add(people.group);
   const crossing: Obstacle[] = [];
@@ -74,6 +87,7 @@ export function buildTown(night: NightParts): Town {
     colliders,
     traffic: cars.traffic,
     people,
+    buses,
     fronts,
     setFloors(floors) {
       // The buildings only change height up to six floors (see rise).
@@ -85,15 +99,22 @@ export function buildTown(night: NightParts): Town {
     },
     setStreet(y) {
       cars.setStreet(y);
+      buses.setStreet(y);
     },
-    update(t, dt, dark, obstacles) {
+    update(t, dt, dark, obstacles, now) {
       obstacleList.length = 0;
       for (const o of obstacles) obstacleList.push(o);
+      if (now !== undefined) {
+        lights.update(now, dark);
+        buses.update(now, dark);
+      }
       // The passers-by step aside for the same; the cars stop for those out in the road.
       crossing.length = 0;
       people.update(Math.min(dt, 0.1), obstacleList, crossing);
       obstacleList.push(...crossing);
-      cars.move(Math.min(dt, 0.1), obstacleList);
+      // The buses, nose to tail, for the cars to stop behind (or for, crossing their way).
+      for (const b of busAt) for (const k of [-0.45, 0, 0.45]) obstacleList.push({ x: b.x + Math.cos(b.yaw) * k * BUS_L, z: b.z - Math.sin(b.yaw) * k * BUS_L });
+      cars.move(Math.min(dt, 0.1), obstacleList, now, busAt);
       lamps.visible = dark > 0.02;
       lamps.material.opacity = dark;
       shops.light(dark);

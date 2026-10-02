@@ -687,6 +687,22 @@ Two kinds appended to `SHOP_KINDS` and dealt round the city like the rest (`test
   - `src/shared/protocol/presence.ts`: `PeerInfo.bike`. `src/shared/protocol/fork.ts`: `RideClientMsg`, `RideServerMsg`. `src/server/ws/handlers/fork.ts`: `bike.ride`, `bike.bell`. `src/server/guests.ts`, `src/server/party.ts`: the same, sorted.
   - `src/client/sound/index.ts`: `ride()`. `src/client/main.ts`: `installRide(...)`, `rideCounter` for `installShops`, `__office.bikes`; `src/client/core/parts.ts`: `ride`. `src/client/ui/help.ts`, `docs/features.md`, `docs/controls.md`: words. `tests/shops.test.ts`: the bike shop has no menu.
 
+### Traffic lights and the city bus
+
+The busier crossings round the office (three or four ways, within 175 m) have traffic lights, and two city bus lines drive loops through the streets, all on the office's clock, so everyone sees the same thing with nothing on the wire. At each road coming in: a pole on its right before the stop line with red, amber and green (red and amber together the second before green), a white stop line, and at both ends of its zebra the red and the green man; the lamps glow at night. The two roads take turns (40 s: 15 green, 3 amber, 2 red both ways, each), offset crossing to crossing. The city's cars (still each page's own) stop at the line on red and amber (going on over amber only when they couldn't stop and are over before the red), stop behind a bus, and turn round out of the way of one coming up behind them. The passers-by wait at the curb for the green man where there are lights (and only set off while there's time to get across). The buses (the 7 to the Hauptbahnhof, the 12 to the Stadtpark, both past the office's front) are low-floor city buses with the line and destination on the display, two double doors on the right that slide open, seats, poles and a ceiling light inside; each line's timetable is worked out once by driving the loop against the lights, a whole number of light cycles long (it waits at its first stop for the rest), so it runs the same for ever. They stand 12 s at the bus stops they pass on their side with the doors open: passers-by waiting there get on (their walk ends at the door), and now and then someone's walk starts by getting off. E at an open door rides along (standing in the aisle, your page moves you with it and sends where you are as walking does, so the others see you in it); E asks to get off at the next stop. Engine and door hiss are synthesized. A garage car over a red line at more than 30 km/h gets flashed (your page only).
+
+- Own files:
+  - `src/shared/traffic-lights.ts`: `LIT` (which crossings), `lampAt`, `walkAt`, `walkStart`, `mayPass`, `nextLight`, `lightLimit` (how far a car's front may go).
+  - `src/shared/citybus.ts`: `BUS_LINES` (the loops, their stops, stop lines and timetables), `busAt` (where a bus is at a time), `busCall` (when a bus stands at a stop, for the passers-by).
+  - `src/client/world/town/lights.ts` (the poles, heads, lamps and halos, instanced), `src/client/world/town/bus.ts` (the bus model, doors, its collider).
+  - `src/client/features/citybus/index.ts` (`installCityBus`: getting on, riding, getting off, the `citybus` interaction, the engines and doors), `sound.ts` (`BusEngines`, `busDoorHiss`), `blitzer.ts` (the speed camera).
+  - `tests/traffic-lights.test.ts`.
+- Hooks in upstream files:
+  - `src/client/main.ts`: `installCityBus(...)` (as `window.__citybus`, for a look from the console).
+  - `src/client/sound/index.ts`: `setBuses`, `busDoors` in the fork's section.
+  - `src/client/ui/help.ts`: two rows. `docs/features.md`, `docs/controls.md`.
+- In fork files: `src/client/world/town/index.ts` (builds the lights and the buses, `Town.buses`, `update(…, now)`, the buses as obstacles and colliders), `src/client/world/town/traffic.ts` (`move(dt, obstacles, t, buses)`: the lights and the buses), `src/client/features/town/index.ts` (passes the office's clock), `src/shared/passersby.ts` (`walkFrom` with `base`: waiting for the green man, getting on the bus; `offTheBus`; `planFor` works a walk out a second time on the clock), `tests/passersby.test.ts` (on the road by a bus door is fine).
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.

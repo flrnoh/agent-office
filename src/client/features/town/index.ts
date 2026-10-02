@@ -11,6 +11,7 @@ import type { Obstacle } from '../../world/town';
 import type { Rooftop } from '../rooftop/world';
 import { drivePassersby } from './people';
 import { PropCull } from '../../world/town/propcull';
+import { store } from '../../state';
 
 export interface TownFeatureDeps {
   /** The roof, once it's built (see features/rooftop). */
@@ -56,10 +57,11 @@ export function installTown(ctx: Ctx, deps: TownFeatureDeps) {
     }
     const dark = ctx.sky.lampsOn;
     passersby();
+    const now = store.officeNow() / 1000; // fork: the lights and the buses keep to the office's clock
     if (up) {
       // The roof looks out at the same country, as far below as the building is tall.
       office.scenic.cull(ctx.camera.position, -roofDrop(deps.roofFloors()), (ctx.scene.fog as THREE.Fog).far);
-      office.town.update(t, dt, dark, []);
-    } else if (ctx.inOffice()) office.town.update(t, dt, dark, inTheRoad());
+      office.town.update(t, dt, dark, [], now);
+    } else if (ctx.inOffice()) office.town.update(t, dt, dark, inTheRoad(), now);
   });
 }

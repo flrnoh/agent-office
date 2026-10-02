@@ -11,6 +11,7 @@ import { SOCCER_BOX } from '../src/shared/soccer.js';
 import { FURNITURE } from '../src/shared/streetside.js';
 import { BAND_MIN, CORNERS, CURB_AT, WALKS, ZEBRA_AT, onRoad, walkCoords } from '../src/shared/sidewalks.js';
 import { SHOPS, shopAt, shopLocal } from '../src/shared/shops.js';
+import { BUS_LINES } from '../src/shared/citybus.js'; // fork: the city bus
 import { EPOCH, SLOTS, bodyAt, density, epochOf, planFor, type Body, type Plan } from '../src/shared/passersby.js';
 
 // flrnoh fork (see FORK.md): the city's passers-by (shared/sidewalks.ts, shared/passersby.ts, drawn
@@ -137,7 +138,9 @@ test('they keep to the sidewalks: on the road only across a zebra, never in a bu
       const pad = who === 2 ? 0.1 : 0.2;
       for (const r of keepOut) assert.ok(!inside(r, b.x, b.z), `someone at (${b.x.toFixed(1)}, ${b.z.toFixed(1)}) on the office's ground or across the street (${leg.act})`);
       for (const l of lotsNear(b.x, b.z)) assert.ok(!inside(l, b.x, b.z, -pad - 0.15), `someone (${who}, ${leg.act}) in a building at (${b.x.toFixed(2)}, ${b.z.toFixed(2)})`);
-      if (roadway(b.x, b.z)) {
+      // fork: on and off the city bus, from its doors at the stop (shared/citybus.ts).
+      const busDoor = leg.act === 'door' && BUS_LINES.some((l) => l.stops.some((st) => st.doors.some(([x, z]) => Math.hypot(b.x - x, b.z - z) < 2.5)));
+      if (roadway(b.x, b.z) && !busDoor) {
         crossing++;
         assert.ok(leg.act === 'cross' || leg.act === 'walk', `someone ${leg.act} in the road at (${b.x.toFixed(1)}, ${b.z.toFixed(1)})`);
         // Out on the road only on a zebra (or, on the office's street, straight over a side street's mouth).

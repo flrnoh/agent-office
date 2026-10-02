@@ -4,6 +4,8 @@ import { CORNERS, END_IN, INNER, OUTER, WALKS, detour, walkCoords, walkPoint, ty
 import { SHOPS } from './shops.js';
 import { shopOpen } from './shopfronts.js';
 import './shop-outside.js'; // fork: the café tables' spots, on the walks before anyone plans a walk
+import { busCall } from './citybus.js'; // fork: the city bus
+import { litAt, walkStart, type Axis } from './traffic-lights.js'; // fork: the green man
 
 // flrnoh fork (see FORK.md): the city's passers-by, the same for everyone. Nothing about them goes over
 // the wire: each is a slot at a crossing, and what a slot does is worked out from the office's clock
@@ -142,6 +144,8 @@ function neighbours(c: Corner): number[] {
 class Route {
   legs: Leg[] = [];
   t = 0;
+  /** Got on the bus (fork: the city bus): the walk ends at its door. */
+  boarded = false;
   constructor(
     public x: number,
     public z: number,
@@ -174,10 +178,19 @@ class Route {
   }
 }
 
-/** Someone's walk out of `start` (a shop door) round `steps` corners, and into another shop, or null if it doesn't fit. */
-function walkFrom(r: () => number, slot: Slot, start: Spot, steps: number, company: Company, speed: number, shut: (s: Spot) => boolean): Route | null {
+/**
+ * Someone's walk out of `start` (a shop door) round `steps` corners, and into another shop (or onto the
+ * bus), or null if it doesn't fit. With `base` (when on the office's clock the walk starts) they wait
+ * for the green man at a crossing with lights, and get on the bus if it comes while they wait at its
+ * stop; `alight`: they start off the bus, at its door, by the stop `start`.
+ */
+function walkFrom(r: () => number, slot: Slot, start: Spot, steps: number, company: Company, speed: number, shut: (s: Spot) => boolean, base?: number, alight?: [number, number]): Route | null {
   const route = new Route(0, 0, speed);
-  route.door(start, true);
+  if (alight) {
+    route.x = alight[0];
+    route.z = alight[1];
+    route.to(start.x, start.z, 'door');
+  } else route.door(start, true);
   let w = WALKS[start.walk];
   let dir = r() < 0.5 ? 1 : -1;
   let lane = laneOf(w, dir, company);
@@ -185,6 +198,19 @@ function walkFrom(r: () => number, slot: Slot, start: Spot, steps: number, compa
   route.to(...walkPoint(w, along, lane), 'walk');
   let stops = company === 'dog' ? 1 : 2;
   const home = CORNERS[slot.home];
+  /** Waiting at a bus stop: if the bus comes meanwhile (or soon after), on at its front door, and that's the walk. */
+  const board = (s: Spot) => {
+    const wait = route.legs[route.legs.length - 1];
+    const call = busCall(s.x, s.z, base! + wait.t0, base! + wait.t1 + 20);
+    if (!call) return false;
+    const go = Math.max(call.open + 0.4 + (slot.seed % 7) * 0.4 - base!, wait.t0 + 0.5);
+    if (base! + go + Math.hypot(call.door[0] - s.x, call.door[1] - s.z) / speed + 0.5 > call.leave) return false;
+    wait.t1 = go;
+    route.t = go;
+    route.to(call.door[0], call.door[1], 'door');
+    route.boarded = true;
+    return true;
+  };
   /** Along `w` to `to`, stopping at what's on the way now and then. */
   const walkAlong = (to: number, seek: boolean) => {
     for (const s of w.spots) {
@@ -201,6 +227,7 @@ function walkFrom(r: () => number, slot: Slot, start: Spot, steps: number, compa
       const sit = s.kind === 'bench' || s.kind === 'bus' || s.kind === 'cafe';
       const dt = s.kind === 'window' ? 4 + r() * 6 : s.kind === 'stop' ? 12 + r() * 25 : s.kind === 'cafe' ? 25 + r() * 40 : sit ? 14 + r() * 30 : 0;
       route.stay(dt, sit ? 'sit' : s.kind === 'stop' ? 'wait' : 'look', s.yaw, s.spread);
+      if (base !== undefined && (s.kind === 'stop' || s.kind === 'bus') && board(s)) return s;
       route.to(...walkPoint(w, s.along, lane), 'walk');
       along = s.along;
     }
@@ -212,6 +239,7 @@ function walkFrom(r: () => number, slot: Slot, start: Spot, steps: number, compa
     const seek = step >= steps;
     const end = dir > 0 ? w.to - END_IN : w.from + END_IN;
     const door = walkAlong(end, seek);
+    if (route.boarded) return route;
     if (door) {
       route.to(...walkPoint(w, door.along, lane), 'walk', w.id);
       route.to(door.x, door.z, 'walk');
@@ -259,6 +287,14 @@ function walkFrom(r: () => number, slot: Slot, start: Spot, steps: number, compa
         // At the curb: a look either way first, now and then.
         const across = Math.atan2(path[1][0] - path[0][0], path[1][1] - path[0][1]);
         if (r() < 0.6) route.stay(0.6 + r() * 2.4, 'wait', across, 0.3);
+        // fork: where there are lights, only on the green man (across the road along x when the zebra runs along z).
+        const lit = litAt(c.a, c.b);
+        if (lit && base !== undefined) {
+          const road: Axis = Math.abs(path[1][1] - path[0][1]) > Math.abs(path[1][0] - path[0][0]) ? 'x' : 'z';
+          const now = base + route.t;
+          const go = walkStart(lit, road, now);
+          if (go > now + 1e-6) route.stay(go - now, 'wait', across, 0.3);
+        }
         route.to(path[1][0], path[1][1], 'cross', -1, 1.12);
       }
       route.to(o.at.x, o.at.z, 'walk');
@@ -304,17 +340,43 @@ export function planFor(slot: Slot, epoch: number, day: number, hourAt?: (t: num
   const start = doors[Math.floor(r() * doors.length)];
   const bag = r() < 0.3;
   const want = 1 + Math.floor(r() * 5);
+  // fork: now and then off the bus instead, at a stop near its crossing, when one comes (shared/citybus.ts).
+  const off = offTheBus(slot, near, t0, shut);
+  if (off) {
+    const route = walkFrom(mulberry32(mix(seed, 7)), slot, off.stop, want, company, speed, shut, off.at, off.door);
+    if (route && off.at + route.t <= t0 + EPOCH - 6) return finish(route, off.at);
+  }
+  const at0 = r();
   for (let steps = want; steps >= 0; steps--) {
-    const route = walkFrom(mulberry32(mix(seed, steps)), slot, start, steps, company, speed, shut);
-    if (!route || route.t > EPOCH - 6) continue;
-    const at = t0 + 2 + r() * (EPOCH - 4 - route.t);
+    const rr = () => mulberry32(mix(seed, steps));
+    const first = walkFrom(rr(), slot, start, steps, company, speed, shut);
+    if (!first || first.t > EPOCH - 6) continue;
+    // Where it starts, then again on the clock: waiting at the lights (and the bus) on the way.
+    for (const at of [t0 + 2 + at0 * (EPOCH - 4 - first.t), t0 + 2]) {
+      const route = walkFrom(rr(), slot, start, steps, company, speed, shut, at);
+      if (route && at + route.t <= t0 + EPOCH - 6) return finish(route, at);
+    }
+  }
+  return null;
+
+  function finish(route: Route, at: number): Plan {
     for (const l of route.legs) {
       l.t0 += at;
       l.t1 += at;
     }
     return { slot: slot.id, epoch, start: at, end: at + route.t, company, seed, speed, bag, legs: route.legs };
   }
-  return null;
+}
+
+/** Fork: whether `slot` starts this epoch off the bus, at a stop on one of the `near` walks: the stop, when, and the bus's rear door. */
+function offTheBus(slot: Slot, near: Set<number>, t0: number, shut: (s: Spot) => boolean): { stop: Spot; at: number; door: [number, number] } | null {
+  if (mix(slot.seed, Math.round(t0)) % 4 !== 0) return null;
+  const stops = [...near].flatMap((id) => WALKS[id].spots.filter((s) => s.kind === 'stop' && !shut(s)));
+  if (!stops.length) return null;
+  const stop = stops[slot.seed % stops.length];
+  const call = busCall(stop.x, stop.z, t0 + 2, t0 + EPOCH - 90);
+  if (!call) return null;
+  return { stop, at: call.open + 0.3 + (slot.seed % 5) * 0.5, door: call.rear };
 }
 
 /** Where one of the party is at `t`: the walker (0), the one beside them (1), or the dog (2). */
