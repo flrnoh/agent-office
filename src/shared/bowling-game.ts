@@ -115,6 +115,13 @@ export const CONSOLE_Z = ZONES.bowlers.minZ + 2.15;
 export const consoleSpot = (lane: number) => ({ x: PAIRS[pairOf(lane)].x + (lane % 2 ? 0.42 : -0.42), z: CONSOLE_Z });
 /** The curved benches behind each console: the middle of their arc (they curve round it on its south side, facing the lanes), its radius, the seat's depth. */
 export const BENCH = { z: ZONES.bowlers.minZ + 2.1, radius: 1.45, depth: 0.45 } as const;
+/** Where you sit on the benches: five places along each arc, facing in toward its middle (the lanes). */
+export const BENCH_SEATS: readonly { key: string; pair: number; x: number; z: number; rotY: number }[] = PAIRS.flatMap((p, pair) =>
+  [-0.72, -0.36, 0, 0.36, 0.72].map((a, i) => {
+    const r = BENCH.radius - BENCH.depth / 2;
+    return { key: `bowling-bench-${pair + 1}-${i + 1}`, pair, x: p.x + Math.sin(a) * r, z: BENCH.z + Math.cos(a) * r, rotY: a + Math.PI };
+  }),
+);
 /** The overhead monitors: one per pair, two screens, hung over the end of the approaches. */
 export const MONITOR = { z: 3.4, y: 3.5, w: 1.5, h: 0.92 } as const;
 /** The league's big board, on the west wall behind the approaches. */

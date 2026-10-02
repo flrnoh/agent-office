@@ -104,6 +104,7 @@ export class Bowler {
     this.guide = new THREE.Mesh(geo, mat);
     this.guide.visible = false;
     this.guide.renderOrder = 3;
+    this.guide.raycast = () => {};
     window.addEventListener('keydown', (e) => this.key(e, true));
     window.addEventListener('keyup', (e) => this.key(e, false));
     window.addEventListener('mousedown', (e) => e.button === 0 && this.press(true, e));
@@ -269,7 +270,7 @@ export class Bowler {
       target.set(x, SURF + 0.2, FOUL_LINE_Z - HEAD_PIN_D - 0.4);
     } else {
       // Over your right shoulder, high enough to see the arrows past your head.
-      want.set(p.x + 0.62, SURF + 2.05, p.z + 2.15);
+      want.set(p.x + 0.95, SURF + 2.45, p.z + 2.9);
       target.set(x + this.u + this.line * HEAD_PIN_D * 0.6, SURF, FOUL_LINE_Z - HEAD_PIN_D * 0.62);
     }
     const k = 1 - Math.exp(-dt * (this.stageNow === 'watch' ? 4.5 : 6));

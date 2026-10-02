@@ -14,7 +14,7 @@ export function crownMesh(): THREE.Object3D {
   }
   (g.children[0] as THREE.Mesh).material = gold.clone();
   ((g.children[0] as THREE.Mesh).material as THREE.Material).side = THREE.DoubleSide;
-  g.position.y = 0.36;
+  g.position.y = 0.42;
   g.rotation.z = 0.12;
   return g;
 }

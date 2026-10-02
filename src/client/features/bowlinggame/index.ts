@@ -26,6 +26,7 @@ import { cosmicProps } from './props';
 import { LanesView } from './view';
 import { openBalls, openLeague } from './ui';
 import { crownMesh } from './crown';
+import { BenchSitters, benchInteractables, benchPlace, placeUnder } from './benches';
 
 // The kinds of thing you can use that this defines (see InteractKinds in world/types.ts), and the lane each is for.
 declare module '../../world/types' {
@@ -34,6 +35,7 @@ declare module '../../world/types' {
     bowlreturn: true;
     bowlapproach: true;
     bowlboard: true;
+    bowlbench: true;
   }
   interface Interactable {
     /** Fork: which of the bowling centre's lanes (shared/bowling.ts LANE_X), for the bowling game's kinds. */
@@ -93,7 +95,7 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
     // On the approach, E steps off it (Space bowls, see Bowler); nothing else is in reach, no emotes mid-swing.
     key: (e) => {
       if (e.code !== 'KeyF' && e.code !== 'KeyG' && !(e.code in DESK_KEYS) && !/^(?:Digit|Numpad)[1-6]$/.test(e.code)) return false;
-      if (e.code === 'KeyE' && (bowler.stage === 'aim' || bowler.stage === 'charge')) bowler.stop();
+      if (e.code === 'KeyE' && bowler.stage !== 'steps') bowler.stop(); // the ball rolls on without you watching
       return true;
     },
     hint: (el) =>
@@ -102,7 +104,9 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
           ? [key('Leertaste', 'Halten zum Werfen'), key('Maus', 'Richtung'), key('A D', 'Seitlich'), key('W S', 'Vor / zurück'), key('E', 'Runter vom Anlauf')]
           : bowler.stage === 'charge'
             ? [hintTitle('🎳 Loslassen zum Werfen'), aside('Maus oder A D: Drall'), key('Leertaste', 'Loslassen')]
-            : [hintTitle('🎳 Die Kugel rollt …')],
+            : bowler.stage === 'watch'
+              ? [hintTitle('🎳 Die Kugel rollt …'), key('E', 'Runter vom Anlauf')]
+              : [hintTitle('🎳 Die Kugel rollt …')],
       ),
     takesCamera: true,
     hidesHands: true,
@@ -153,7 +157,8 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
     },
   });
   ctx.interactions.define('bowlapproach', {
-    reach: 1.6,
+    // Your lane under the crosshair from anywhere round the approaches will do.
+    reach: 24,
     hint: (it) => {
       const lane = it.bowlLane ?? 0;
       const v = views[lane];
@@ -167,10 +172,35 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
     use: (it, k) => {
       const lane = it.bowlLane ?? 0;
       if (k !== 'E' || !isUp(lane) || built?.lv.busy(lane) || bowler.active) return;
+      if (ctx.player.seat) ctx.player.stand();
       ctx.activities.stopAll('start');
       bowler.start(lane);
     },
   });
+  // The benches: sit down to watch (like the lounge's sofas, see benches.ts).
+  const sitters = new BenchSitters();
+  const benchTaken = (key: string) =>
+    [...store.peers.values()].some((p) => p.id !== me() && p.floor === BOWLING && placeUnder({ x: p.x, y: p.y, z: p.z, moving: !!p.moving })?.key === key);
+  ctx.interactions.define('bowlbench', {
+    reach: 1.2,
+    hint: (it) => {
+      const mine = ctx.player.seat?.seatId === it.seatId;
+      if (mine) return { k: 'bench|me', parts: [hintTitle('🛋️ Bank'), key('W A S D', 'Aufstehen')] };
+      const full = benchTaken(it.seatId ?? '');
+      return { k: `bench|${full}`, parts: [hintTitle('🛋️ Bank'), full ? aside('besetzt') : key('E', 'Hinsetzen')] };
+    },
+    use: (it, k) => {
+      if (k !== 'E' || !it.seatId) return;
+      if (ctx.player.seat?.seatId === it.seatId) return ctx.player.stand();
+      const place = benchPlace(it.seatId);
+      if (!place) return;
+      if (benchTaken(it.seatId)) return toast('Da sitzt schon jemand', 'warn');
+      ctx.activities.stopAll('start');
+      ctx.player.sit(place);
+      ctx.me.sit(place.hips);
+    },
+  });
+
   /** The league's window (E at its board). */
   const showLeague = () => {
     league?.modal.close();
@@ -271,7 +301,7 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
       });
       room.group.add(bowler.guide);
       room.colliders.push(...lanes.colliders, ...furniture.colliders);
-      room.interactables.push(...furniture.interactables);
+      room.interactables.push(...lanes.interactables, ...furniture.interactables, ...benchInteractables(room.group));
       built = { lanes, machines, furniture, lv, root: room.group };
       const known = views.filter((v): v is LaneView => !!v);
       if (known.length) lv.setAll(known);
@@ -285,6 +315,7 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
       else {
         bowler.stop();
         league?.modal.close();
+        sitters.clear();
       }
       placeCrowns();
     },
@@ -328,6 +359,11 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
       }
       // Those who left (or came) since: the crown follows the champion.
       if (crowns.size || board?.crowned.length) placeCrowns();
+      sitters.update(
+        [...store.peers.values()]
+          .filter((p) => p.id !== me() && p.floor === BOWLING)
+          .map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z, moving: !!p.moving, person: deps.personOf(p.id) })),
+      );
       // Pulled away from the approach (a trip, a seat): off it.
       if (bowler.active && (ctx.trip() || ctx.player.seat)) bowler.stop();
       bowler.update(dt);
@@ -335,6 +371,13 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
   });
 
   return {
+    /** What the crosshair lands on in the room, for checks from the console. */
+    aimed: () => {
+      if (!built) return [];
+      const rc = new THREE.Raycaster();
+      rc.setFromCamera(new THREE.Vector2(0, 0), ctx.camera);
+      return rc.intersectObjects([built.root], true).slice(0, 4).map((h) => `${h.object.name || h.object.type}@${h.distance.toFixed(2)} vis=${h.object.visible} it=${h.object.userData.interact?.kind ?? h.object.parent?.userData.interact?.kind ?? ''}`);
+    },
     bowler,
     showLeague,
     showBalls,

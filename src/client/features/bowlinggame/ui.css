@@ -11,7 +11,7 @@
 .bowl-info { font-size: 12px; font-weight: 800; opacity: .85; }
 
 .bowl-modal.wide { width: min(640px, 100%); }
-.bowl-balls { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.bowl-balls { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
 .bowl-balls li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; cursor: pointer; }
 .bowl-balls li:hover, .bowl-balls li:focus-visible { outline: none; box-shadow: 0 3px 0 var(--ink); transform: translateY(-1px); }
 .bowl-balls li.on { background: var(--paper-2); box-shadow: inset 0 0 0 2px var(--accent); }

@@ -3,7 +3,7 @@ import { FOUL_LINE_Z, LANE_COUNT, LANE_PITCH, LANE_X, ZONES } from '../../../sha
 import { APPROACH, APPROACH_DOTS, ARROWS, BOARD, BOARDS, DECK_D, GUTTER, LANE_DOTS, LANE_HALF, LANE_WIDTH, OIL_D, PIN_SPOTS, PIT_D, boardU } from '../../../shared/bowling-game';
 import { canvasTexture } from '../../world/texture';
 import { mesh, toon } from '../../world/toon';
-import type { Collider } from '../../world/types';
+import type { Collider, Interactable } from '../../world/types';
 
 /*
  * The six lanes themselves (flrnoh fork, see FORK.md "Bowling lanes"), in the centre's own
@@ -193,9 +193,17 @@ const glowMat = (map: THREE.Texture) => {
   return m;
 };
 
+/** Light laid over things (cosmic bowling's neon): the crosshair goes straight through it. */
+export function noPick<T extends THREE.Object3D>(o: T): T {
+  o.raycast = () => {};
+  return o;
+}
+
 export interface LanesBuilt {
   group: THREE.Group;
   colliders: Collider[];
+  /** Each lane's approach: E there (or at its lane, looking down it) steps up to bowl when you're up. */
+  interactables: Interactable[];
   /** Cosmic bowling's neon, faded in and out by `glow(k)` (0 off, 1 on). */
   glow(k: number): void;
 }
@@ -252,17 +260,22 @@ export function buildLanes(parent: THREE.Object3D): LanesBuilt {
   colliders.push({ minX: west, maxX: east, minZ: FOUL_LINE_Z, maxZ: ZONES.lanes.maxZ, top: SURF });
 
   const glowGutters: THREE.Mesh[] = [];
+  const interactables: Interactable[] = [];
   for (let i = 0; i < LANE_COUNT; i++) {
     const x = LANE_X[i];
+    const it: Interactable = { kind: 'bowlapproach', x, z: FOUL_LINE_Z + 3.3, radius: 1.1, bowlLane: i };
+    interactables.push(it);
     group.add(mesh(bedGeo, bedMat, x, (SURF + BASE) / 2, zOf(laneLen / 2), false));
     const lane = mesh(laneGeo, laneMat, x, SURF + 0.002, zOf(laneLen / 2), false);
     lane.receiveShadow = true;
+    lane.userData.interact = it; // the crosshair on the lane (see input/pointer.ts)
     group.add(lane);
-    group.add(mesh(laneGeo, laneGlow, x, SURF + 0.004, zOf(laneLen / 2), false));
+    group.add(noPick(mesh(laneGeo, laneGlow, x, SURF + 0.004, zOf(laneLen / 2), false)));
     const appr = mesh(apprGeo, apprMat, x, SURF + 0.002, zOf(-APPROACH / 2), false);
     appr.receiveShadow = true;
+    appr.userData.interact = it;
     group.add(appr);
-    group.add(mesh(apprGeo, apprGlow, x, SURF + 0.004, zOf(-APPROACH / 2), false));
+    group.add(noPick(mesh(apprGeo, apprGlow, x, SURF + 0.004, zOf(-APPROACH / 2), false)));
     for (const side of [-1, 1]) {
       const gx = x + side * (LANE_HALF + GUTTER / 2);
       const gut = mesh(gutterGeo, gutterMat, gx, SURF + 0.002, zOf(laneLen / 2 - 0.1), false);
@@ -270,7 +283,7 @@ export function buildLanes(parent: THREE.Object3D): LanesBuilt {
       group.add(gut);
       // Cosmic: a neon strip down the bottom of each gutter.
       const strip = mesh(new THREE.BoxGeometry(0.03, 0.004, laneLen), gutterGlowMat, gx, SURF - GUTTER * 0.2 + 0.006, zOf(laneLen / 2), false);
-      glowGutters.push(strip);
+      glowGutters.push(noPick(strip));
       group.add(strip);
       // The kickback beside the deck: a tall panel, red face toward the pins.
       const kx = x + side * (LANE_HALF + GUTTER + 0.04);
@@ -297,9 +310,10 @@ export function buildLanes(parent: THREE.Object3D): LanesBuilt {
   colliders.push({ minX: west, maxX: east, minZ: FOUL_LINE_Z - 0.12, maxZ: FOUL_LINE_Z - 0.04, top: 1.2, fence: true });
 
   let shown = -1;
-  return {
+  const built: LanesBuilt = {
     group,
     colliders,
+    interactables,
     glow(k: number) {
       if (Math.abs(k - shown) < 0.002) return;
       shown = k;
@@ -313,4 +327,6 @@ export function buildLanes(parent: THREE.Object3D): LanesBuilt {
       laneGlow.visible = apprGlow.visible = k > 0.01;
     },
   };
+  built.glow(0); // the overlays are out of sight (and out of the crosshair's way) by day
+  return built;
 }

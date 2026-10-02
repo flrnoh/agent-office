@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BOWLING_ROOM, FOUL_LINE_Z, LANE_COUNT, LANE_X } from '../../../shared/bowling';
+import { BOWLING_ROOM, LANE_COUNT, LANE_X } from '../../../shared/bowling';
 
 const CEILING = BOWLING_ROOM.height;
 import { BALLS, BALL_RADIUS, BENCH, CONSOLE_Z, LEAGUE_BOARD, MONITOR, PAIRS, RETURN_Z, consoleSpot } from '../../../shared/bowling-game';
@@ -78,18 +78,22 @@ export function buildFurniture(parent: THREE.Object3D): Furniture {
   for (let p = 0; p < PAIRS.length; p++) {
     const x = PAIRS[p].x;
     // The hood: a rounded tower the ball comes up through, a grille on top (the hand dryer), the lane numbers.
+    const ret = new THREE.Group();
+    const it: Interactable = { kind: 'bowlreturn', x, z: RETURN_Z + 0.5, radius: 0.75, bowlLane: PAIRS[p].lanes[0] };
+    ret.userData.interact = it; // the crosshair on any of it (see input/pointer.ts)
+    group.add(ret);
     const hood = mesh(roundedBox(0.5, 0.78, 0.5, 0.14), shell, x, SURF + 0.39, RETURN_Z - 0.1);
-    group.add(hood);
-    group.add(mesh(new THREE.BoxGeometry(0.3, 0.02, 0.18), black, x, SURF + 0.79, RETURN_Z - 0.18, false));
-    group.add(mesh(new THREE.BoxGeometry(0.52, 0.05, 0.52), trim, x, SURF + 0.58, RETURN_Z - 0.1, false));
+    ret.add(hood);
+    ret.add(mesh(new THREE.BoxGeometry(0.3, 0.02, 0.18), black, x, SURF + 0.79, RETURN_Z - 0.18, false));
+    ret.add(mesh(new THREE.BoxGeometry(0.52, 0.05, 0.52), trim, x, SURF + 0.58, RETURN_Z - 0.1, false));
     // The tray behind it, chrome rails round it; the lip the returning ball stops on.
-    group.add(mesh(new THREE.BoxGeometry(0.8, 0.06, 0.82), black, x, SURF + 0.36, RETURN_Z + 0.65));
-    group.add(mesh(new THREE.BoxGeometry(0.3, 0.05, 0.3), trim, x, SURF + 0.6, RETURN_Z + 0.2, false));
+    ret.add(mesh(new THREE.BoxGeometry(0.8, 0.06, 0.82), black, x, SURF + 0.36, RETURN_Z + 0.65));
+    ret.add(mesh(new THREE.BoxGeometry(0.3, 0.05, 0.3), trim, x, SURF + 0.6, RETURN_Z + 0.2, false));
     for (const side of [-1, 1]) {
       const rail = mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.82, 8), chrome, x + side * 0.4, SURF + 0.46, RETURN_Z + 0.65);
       rail.rotation.x = Math.PI / 2;
-      group.add(rail);
-      for (const z of [RETURN_Z + 0.28, RETURN_Z + 1.02]) group.add(mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.42, 8), chrome, x + side * 0.38, SURF + 0.21, z));
+      ret.add(rail);
+      for (const z of [RETURN_Z + 0.28, RETURN_Z + 1.02]) ret.add(mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.42, 8), chrome, x + side * 0.38, SURF + 0.21, z));
     }
     colliders.push({ minX: x - 0.42, maxX: x + 0.42, minZ: RETURN_Z - 0.36, maxZ: RETURN_Z + 1.08, top: 0.9 });
     // The house balls on the tray: every weight, the lightest at the front.
@@ -98,11 +102,11 @@ export function buildFurniture(parent: THREE.Object3D): Furniture {
       const m = ballMesh(b.id);
       m.position.copy(rackSpot(p, k));
       m.rotation.set(k * 0.7, k * 1.3 + p, 0);
-      group.add(m);
+      ret.add(m);
       balls.push(m);
     });
     racks.push(balls);
-    interactables.push({ kind: 'bowlreturn', x, z: RETURN_Z + 0.5, radius: 0.75, bowlLane: PAIRS[p].lanes[0] });
+    interactables.push(it);
   }
 
   // ---- Consoles: a pedestal and a desk, a screen per lane angled toward the bowlers ----
@@ -110,8 +114,15 @@ export function buildFurniture(parent: THREE.Object3D): Furniture {
   for (let p = 0; p < PAIRS.length; p++) {
     const x = PAIRS[p].x;
     group.add(mesh(new THREE.CylinderGeometry(0.09, 0.16, 0.8, 12), shell, x, SURF + 0.4, CONSOLE_Z));
-    group.add(mesh(roundedBox(1.2, 0.06, 0.4, 0.05), shell, x, SURF + 0.83, CONSOLE_Z));
-    group.add(mesh(new THREE.BoxGeometry(1.22, 0.02, 0.42), trim, x, SURF + 0.865, CONSOLE_Z, false));
+    // The desk in two halves, each its lane's (the crosshair on it joins that lane).
+    const halves = PAIRS[p].lanes.map((_, k) => {
+      const half = new THREE.Group();
+      half.position.set(x + (k ? 0.3 : -0.3), 0, CONSOLE_Z);
+      half.add(mesh(roundedBox(0.6, 0.06, 0.4, 0.05), shell, 0, SURF + 0.83, 0));
+      half.add(mesh(new THREE.BoxGeometry(0.61, 0.02, 0.42), trim, 0, SURF + 0.865, 0, false));
+      group.add(half);
+      return half;
+    });
     colliders.push({ minX: x - 0.62, maxX: x + 0.62, minZ: CONSOLE_Z - 0.22, maxZ: CONSOLE_Z + 0.22, top: 0.9 });
     for (const lane of PAIRS[p].lanes) {
       const spot = consoleSpot(lane);
@@ -126,7 +137,10 @@ export function buildFurniture(parent: THREE.Object3D): Furniture {
       group.add(frame);
       group.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.22, 6), chrome, spot.x, SURF + 0.95, CONSOLE_Z - 0.05));
       consoles[lane] = s;
-      interactables.push({ kind: 'bowlconsole', x: spot.x, z: CONSOLE_Z + 0.25, radius: 0.5, bowlLane: lane });
+      const it: Interactable = { kind: 'bowlconsole', x: spot.x, z: CONSOLE_Z + 0.25, radius: 0.5, bowlLane: lane };
+      frame.userData.interact = it;
+      halves[lane % 2].userData.interact = it;
+      interactables.push(it);
     }
   }
 
@@ -189,10 +203,10 @@ export function buildFurniture(parent: THREE.Object3D): Furniture {
   for (let i = 0; i <= 16; i++)
     for (const y of [-1, 1]) bg.add(mesh(bulbGeo, bulb, -LEAGUE_BOARD.w / 2 + (i / 16) * LEAGUE_BOARD.w, y * (LEAGUE_BOARD.h / 2 + 0.03), 0.02, false));
   group.add(bg);
-  interactables.push({ kind: 'bowlboard', x: LEAGUE_BOARD.x + 0.9, z: LEAGUE_BOARD.z, radius: 1.3 });
+  const boardIt: Interactable = { kind: 'bowlboard', x: LEAGUE_BOARD.x + 0.9, z: LEAGUE_BOARD.z, radius: 1.3 };
+  bg.userData.interact = boardIt;
+  interactables.push(boardIt);
 
-  // The approaches: E there steps up to bowl (when it's your turn).
-  for (let lane = 0; lane < LANE_COUNT; lane++) interactables.push({ kind: 'bowlapproach', x: LANE_X[lane], z: FOUL_LINE_Z + 3.3, radius: 1.1, bowlLane: lane });
 
   return { group, colliders, interactables, monitors, consoles, board, racks };
 }
