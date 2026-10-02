@@ -721,6 +721,18 @@ The city round the office (*One city round the office*) can be heard: the road's
   - `src/client/world/office/build.ts`: `church` in the floor plan's `downstairs`. `src/client/main.ts`: `installCitySound(...)`.
   - `src/client/ui/help.ts`: a row. `docs/features.md`: "Sounds of the city".
 
+### The minimap
+
+With the town round the office (*One city round the office*) and the loop past the beach, a way to find your way back. A round map in the bottom-right corner (top right on a phone) turns with the camera, straight ahead up, with an **N** on its rim: drawn once onto a canvas (2 px a meter, 660 × 810 m) from the same plans the town, the loop and the coast are built from (`BLOCKS`, `LOTS`, `PARK_TREES`, `STREETS`, `PAVEMENT`, `LOOP`, `shoreX`, `FARM`, `LAKE`, `CREEK`, `MOUNTAINS`, the landmarks' boxes, the buildings across the street, `SHOPS` in their awnings' colors), so it never disagrees with the world. Each frame (`render`, after the camera) it cuts the bit round you out of that, then draws upright on top: the places and (zoomed in past 1.2 px/m) the shops by their emoji, the people on your floor (`store.peers`, `onMyFloor`, not on /lite) as dots, you as an arrow, and the office (`HOME`: the foot of the steps up to the exit door) and the picked place as badges, or at the rim as arrows when they're out of sight. Under it, where you are in words (the office, a shop by `shopAt`, a place within 16 m, a bit of the loop by `placeAt`, Downtown) and the way to the office or the picked place with distance and compass word; the pick is crossed off within 8 m. In a place of its own (the casino, gym, padel and soccer halls, whose rooms have their own numbers) you're shown at its building; off the office's own map (the castle) it hides. The wheel zooms it (0.5–4 px/m, kept in `localStorage`). **J** or a click opens the big map (a modal, north up, drag and wheel, `+`/`−`, shop names past 2.4 px/m, name tags that don't overlap, the office's and the pick's first): click a place to pick it, **Zum Büro**, **Ziel löschen**, **🎯 Ich**. Only on your page: nothing on the wire. **☰ → Minimap** hides it (a HUD panel, on by default); while it shows, the side panels stop short of it.
+
+- Own files:
+  - `src/client/features/minimap/index.ts` (`installMinimap`: the dial, its tick, J, the wheel; `window.__minimap` with `openMap` and `target`), `atlas.ts` (the drawn map: `atlas()`, `BOUNDS`, `PX`, `COLORS`), `pois.ts` (`HOME`, `PLACES_ON_MAP`, `SHOPS_ON_MAP`, `placeSpot`, `compassWord`, `distanceWord`), `bigmap.ts` (`openBigMap`), `ui.css`.
+  - `tests/minimap.test.ts`.
+- Hooks in upstream files:
+  - `src/client/index.html`: the `#minimap` element in `#hud`.
+  - `src/client/state/persist.ts`: `HudPanel` `map`, on in `HUD_DEFAULTS`. `src/client/ui/menu.ts`: its row in `PANELS` and `PANEL_EL`.
+  - `src/client/main.ts`: `installMinimap(ctx)`. `src/client/ui/help.ts`: two rows. `docs/features.md`, `docs/controls.md`.
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.

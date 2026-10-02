@@ -17,6 +17,7 @@ Back to the [README](../README.md).
 | L | Hang a big sign over the desk you face (*Operations*, *Code cleanup*), in one of seven colors; again to change it or take it down |
 | O | Open a pull request for a worker on its own branch, or see the one it has (a worker across several projects gets one in each) |
 | N | Go to the worker that has waited longest on someone; again for the next one |
+| J | The big map (or click the minimap, bottom right): the whole town and the loop, north up; drag to look about, the wheel zooms, click a place or a shop to have the minimap point you there, **Zum Büro** for the way back |
 | F | Hang a picture from the web on a wall (scroll to size it, click to hang it); falling on the bungee rope, a salto |
 | Q | Put back the issue card you're carrying, or drop the basketball; on the pitch in the soccer hall, a slide tackle (so does **Ctrl**) |
 | H | These controls; in a car, honk the horn; on a jetski, the motorboat or the Baumarkt’s forklift, its horn; at the DJ booth on the roof, blow the air horn |
