@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { LOTS } from '../src/shared/city.js';
-import { DOOR_W, FRONT_T, LOT_PLANS, SHOP_H, SHOP_KINDS, SHOPS, SIDES, doorLeaf, hasShops, lotPlan, lotSolids, shopLocal, shopPoint, shopRect, shopWalls, type Rect, type Shop, type Solid } from '../src/shared/shops.js';
+import { DEALT_KINDS, DOOR_W, FRONT_T, LOT_PLANS, SHOP_H, SHOP_KINDS, SHOPS, SIDES, doorLeaf, hasShops, lotPlan, lotSolids, shopLocal, shopPoint, shopRect, shopWalls, type Rect, type Shop, type Solid } from '../src/shared/shops.js';
 import { insideShop, lotColliders, shopRoom, shopSeatHips, shopSeatKey, shopSeatOf, shopSolids, stationAt } from '../src/shared/shop-rooms.js';
 import { MENUS, SHOP_ITEMS, TOYS, isShopItem, toyUse } from '../src/shared/shopwares.js';
 import { RECORDS, crateDig } from '../src/shared/records.js';
@@ -45,14 +45,17 @@ test('every kind (14 and more) is all over the city, and the nearest shops are o
   for (const s of SHOPS) byKind.set(s.kind, [...(byKind.get(s.kind) ?? []), s]);
   for (const k of SHOP_KINDS) {
     const list = byKind.get(k.id) ?? [];
-    assert.ok(list.length >= 6, `${k.id}: ${list.length}`);
+    // 22 kinds over about 128 shops (the supermarkets take two or three each): at least five of every kind.
+    assert.ok(list.length >= 5, `${k.id}: ${list.length}`);
     // In every quarter round the office.
     const quarters = new Set(list.map((s) => `${Math.sign(s.ox)}${Math.sign(s.oz - 27)}`));
     assert.ok(quarters.size >= 3, `${k.id} only in ${[...quarters]}`);
   }
   const door = (s: Shop) => shopPoint(s, s.doorU, 0);
-  const nearest = [...SHOPS].sort((a, b) => Math.hypot(door(a).x, door(a).z) - Math.hypot(door(b).x, door(b).z)).slice(0, SHOP_KINDS.length);
-  assert.equal(new Set(nearest.map((s) => s.kind)).size, SHOP_KINDS.length);
+  // The kinds dealt shop by shop: the nearest of those are one of each (a whole-side kind, the supermarket, has its own sides).
+  const dealt = new Set(DEALT_KINDS.map((k) => k.id));
+  const nearest = SHOPS.filter((s) => dealt.has(s.kind)).sort((a, b) => Math.hypot(door(a).x, door(a).z) - Math.hypot(door(b).x, door(b).z)).slice(0, DEALT_KINDS.length);
+  assert.equal(new Set(nearest.map((s) => s.kind)).size, DEALT_KINDS.length);
 });
 
 test('every shop is inside its building, and no two shops share any floor', () => {
@@ -169,8 +172,8 @@ test('each kind has something to do: a counter, and the barber’s and the tatto
     if (s.kind === 'buchladen') assert.ok(at.has('shelf'));
   }
   assert.ok(SHOPS.some((s) => s.kind === 'platten' && shopRoom(s).stations.some((t) => t.at === 'crate')));
-  // The chairs, the boutique's racks and the optician's glasses are those shops' menus; the Post writes postcards.
-  for (const k of SHOP_KINDS) if (!['friseur', 'tattoo', 'boutique', 'optiker', 'post'].includes(k.id)) assert.ok(MENUS[k.id].length > 0, k.id);
+  // The chairs, the boutique's racks and the optician's glasses are those shops' menus; the Post writes postcards; the supermarket's counter is its checkout.
+  for (const k of SHOP_KINDS) if (!['friseur', 'tattoo', 'boutique', 'optiker', 'post', 'supermarkt'].includes(k.id)) assert.ok(MENUS[k.id].length > 0, k.id);
 });
 
 test('a shop chair is a seat: its key goes both ways, on an office floor only', () => {
@@ -246,7 +249,7 @@ test('the shops sides are named and SIDES covers them', () => {
 
 test('the boutique: cubicles to step into (short of the way across to the counter), racks, a mirror, a window for mannequins', () => {
   const shops = SHOPS.filter((s) => s.kind === 'boutique');
-  assert.ok(shops.length >= 6);
+  assert.ok(shops.length >= 5);
   for (const s of shops) {
     const room = shopRoom(s);
     const solids = lotColliders(s.lot);
@@ -270,7 +273,7 @@ test('the boutique: cubicles to step into (short of the way across to the counte
 
 test('the optician: a wall of glasses, an eye chart, the counter', () => {
   const shops = SHOPS.filter((s) => s.kind === 'optiker');
-  assert.ok(shops.length >= 6);
+  assert.ok(shops.length >= 5);
   for (const s of shops) {
     const room = shopRoom(s);
     assert.ok(room.pieces.some((p) => p.what === 'glasswall'));

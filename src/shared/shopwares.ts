@@ -9,6 +9,7 @@ import type { Drink, DrinkId } from './rooftop.js';
 import type { ShopKindId } from './shops.js';
 import { RECORDS, type RecordId } from './records.js';
 import { PLUSHIES, type PlushId } from './plushies.js'; // the Spielhalle's claw machine
+import { FOOD_GLASSES, FOOD_ITEMS, FOOD_MENUS, type FoodGlass, type FoodItemId } from './shopwares-food.js'; // food round 2
 
 /** What it comes in, or what it is in your hand. */
 export type ShopGlass =
@@ -35,9 +36,10 @@ export type ShopGlass =
   | 'teddy'
   | 'record'
   | 'plush'
-  | 'photostrip';
+  | 'photostrip'
+  | FoodGlass;
 
-export const SHOP_GLASSES: readonly ShopGlass[] = ['semmel', 'krapfen', 'pizzaslice', 'newspaper', 'gummies', 'pill', 'lozenge', 'bouquet', 'sunflower', 'tulips', 'book', 'doener', 'duerum', 'lahmacun', 'ayran', 'yoyo', 'bubbles', 'duck', 'plane', 'watergun', 'teddy', 'record', 'plush', 'photostrip'];
+export const SHOP_GLASSES: readonly ShopGlass[] = ['semmel', 'krapfen', 'pizzaslice', 'newspaper', 'gummies', 'pill', 'lozenge', 'bouquet', 'sunflower', 'tulips', 'book', 'doener', 'duerum', 'lahmacun', 'ayran', 'yoyo', 'bubbles', 'duck', 'plane', 'watergun', 'teddy', 'record', 'plush', 'photostrip', ...FOOD_GLASSES];
 
 export type ToyId = 'yoyo' | 'seifenblasen' | 'quietscheente' | 'papierflieger' | 'wasserpistole' | 'teddy';
 
@@ -72,10 +74,11 @@ export type ShopItemId =
   | ToyId
   | RecordId
   | PlushId
-  | 'fotostreifen';
+  | 'fotostreifen'
+  | FoodItemId;
 
 /** A little something it does to you (see features/shops). */
-export type ShopTreat = 'spicy' | 'sober' | 'fresh' | 'read' | 'toy' | 'listen' | null;
+export type ShopTreat = 'spicy' | 'sober' | 'fresh' | 'read' | 'toy' | 'listen' | 'brainfreeze' | null;
 
 export interface ShopItem extends Drink {
   id: ShopItemId;
@@ -153,6 +156,8 @@ export const SHOP_ITEMS: readonly ShopItem[] = [
   // The Spielhalle: what the claw machine hands you, and the photo booth's strip.
   ...PLUSHIES.map((p) => thing(p.id, 'Greifautomat', p.name, p.emoji, 'Out of the claw machine, won fair and square', 'plush', p.color, p.label, 'Glückwunsch! Der ist selten.', null, 600)),
   thing('fotostreifen', 'Fotoautomat', 'Fotostreifen', '📸', 'Four photos of you from the booth, still a little damp', 'photostrip', '#fbfaf6', '#1d1d1d', 'Schön geworden!', null, 600),
+  // The ice cream parlour, the sushi bar and the butcher's (shopwares-food.ts).
+  ...FOOD_ITEMS,
 ];
 
 export const SHOP_ITEM_BY_ID = new Map<ShopItemId, ShopItem>(SHOP_ITEMS.map((d) => [d.id, d]));
@@ -193,6 +198,7 @@ export const MENUS: Readonly<Record<ShopKindId, readonly DrinkId[]>> = {
   post: [],
   boutique: [],
   optiker: [],
+  ...FOOD_MENUS,
 };
 
 // ---- Throwing toys about (features/shops/toys.ts) ------------------------------------------------

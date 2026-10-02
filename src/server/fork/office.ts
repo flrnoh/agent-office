@@ -22,6 +22,7 @@ import { Baumaerkte } from '../baumarkt.js';
 import { KinoScreens } from '../kino.js';
 import { Postcards } from '../postcards.js';
 import { Forecourts } from '../tankstelle.js';
+import { Trolleys } from '../../shared/trolley.js';
 import { RoofTables } from '../tablegames.js';
 import { PadelCourts } from '../padel.js';
 import { BungeeRope } from '../bungee.js';
@@ -43,6 +44,7 @@ export interface Fork {
   kinos: KinoScreens; // the cinema's Saal 2 on each floor's street
   postcards: Postcards; // the Post's postcards, waiting for their recipients (postcards.json)
   forecourts: Forecourts; // the petrol station's pumps and car wash on each floor
+  trolleys: Trolleys; // who pushes a supermarket trolley on each floor's street, and what's in it
   roofTables: RoofTables; // the table games on the roof
   padelCourts: PadelCourts; // padel in the hall
   bungeeRope: BungeeRope; // bungee off the roof
@@ -89,6 +91,7 @@ export function createFork(ctx: Ctx): Fork {
     baumaerkte: new Baumaerkte(),
     kinos: new KinoScreens(),
     postcards: new Postcards(cfg.dataDir),
+    trolleys: new Trolleys(),
     forecourts: new Forecourts((floorId) => {
       const f = floors.get(floorId);
       if (f) ctx.toFloor(f, { t: 'tankstelle', state: ctx.forecourts.of(floorId).state() });

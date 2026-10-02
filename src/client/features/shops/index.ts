@@ -31,6 +31,7 @@ import type { Caffeine } from '../coffee/caffeine';
 import { at, buildInterior, interiorLight, yawOf, type Interior } from './interior';
 import { toyBox } from './toys';
 import { wearShops } from './wear'; // the boutique and the optician
+import { FOOD_KIND_OF, shopFood } from './food'; // food round 2: the parlour, the sushi belt, the supermarket
 import { openCrate, openHeadphones, openReading, openShopMenu } from './ui';
 import type { CafeItem } from '../../../shared/cafe';
 
@@ -74,7 +75,7 @@ interface Open {
 }
 
 // The Spielhalle's and the Post's (cabinet, claw, booth, pobox) are defined in features/funshops; the boutique's and the optician's (rack, cubicle, glasses) in wear.ts.
-const KIND_OF: Record<Station['at'], InteractKind> = { counter: 'shopcounter', chair: 'shopchair', crate: 'shopcrate', listen: 'shoplisten', shelf: 'shopshelf', cabinet: 'shopcabinet', claw: 'shopclaw', booth: 'shopbooth', pobox: 'shoppobox', rack: 'shoprack', cubicle: 'shopcubicle', glasses: 'shopglasses' };
+const KIND_OF: Record<Station['at'], InteractKind> = { counter: 'shopcounter', chair: 'shopchair', crate: 'shopcrate', listen: 'shoplisten', shelf: 'shopshelf', cabinet: 'shopcabinet', claw: 'shopclaw', booth: 'shopbooth', pobox: 'shoppobox', rack: 'shoprack', cubicle: 'shopcubicle', glasses: 'shopglasses', ...FOOD_KIND_OF };
 
 export function installShops(ctx: Ctx, deps: ShopsDeps) {
   const open = new Map<number, Open>();
@@ -82,6 +83,7 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
   const onStreet = () => ctx.inOffice() && !ctx.upTop() && !ctx.trip() && !deps.inPlace();
   const toys = toyBox(ctx, { personOf: deps.personOf, nameOf: (id) => store.peers.get(id)?.name ?? 'Someone' });
   const now = () => performance.now() / 1000;
+  const food = shopFood(ctx, { serve: (s, d) => serve(s, d), keeperOf: (i) => keeperOf(i), personOf: deps.personOf, onStreet, target: deps.target });
 
   // ---- Building the insides of the shops near you, and letting go of the rest ---------------------
   const v = new THREE.Vector3();
@@ -254,6 +256,13 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
         case 'listen':
           toast('🎧 Put it on at the listening station, or just carry it about');
           break;
+        case 'brainfreeze':
+          window.setTimeout(() => {
+            ctx.shake(0.45, true);
+            ctx.me.say('🥶 Brain freeze!', 2.5);
+            toast('🥶 Brain freeze! Slower next time…');
+          }, 2400);
+          break;
       }
     }, 600);
   }
@@ -348,6 +357,7 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
     return s && it.station !== undefined ? shopRoom(s).stations[it.station] : undefined;
   };
   function counter(s: Shop) {
+    if (food.counter(s)) return; // the parlour's picker, the sushi belt, the supermarket's checkout
     const k = SHOP_KIND_BY_ID.get(s.kind)!;
     if (s.kind === 'boutique' || s.kind === 'optiker') return wear.counter(s);
     if (deps.special(s)) return;
@@ -466,5 +476,6 @@ export function installShops(ctx: Ctx, deps: ShopsDeps) {
     /** The keeper behind shop `i`'s counter, while its inside is built. */
     keeper: keeperOf,
     toys,
+    food,
   };
 }

@@ -43,6 +43,12 @@ const baumarktLeft = (ctx: Ctx, c: Client, floorId: string | undefined) => {
   const floor = floorId ? ctx.floors.get(floorId) : undefined;
   if (floor && ctx.baumaerkte.leave(floorId, c.id)) ctx.toFloor(floor, { t: 'baumarkt', state: ctx.baumaerkte.of(floor.id).state() });
 };
+/** Their supermarket trolley let go of on the floor they're leaving (or left), and everyone still there told. */
+const trolleyLeft = (ctx: Ctx, c: Client, floorId: string | undefined) => {
+  const floor = floorId ? ctx.floors.get(floorId) : undefined;
+  const m = floor && ctx.trolleys.leave(floor.id, c.id);
+  if (floor && m) ctx.toFloor(floor, m);
+};
 
 type Casino = Ctx['casino'];
 type Gym = Ctx['gym'];
@@ -160,6 +166,12 @@ export const forkHandlers = {
   ...funshopHandlers, // the Spielhalle's claw machine and the Post's postcards
   'tank.fill': tank,
   'tank.wash': tank,
+  'trolley.set'(ctx, c, msg) {
+    // The supermarket's trolley (shared/trolley.ts): taken, filled, rung up or let go of, seen on their floor.
+    const floor = ctx.floorOf(c);
+    const m = floor && ctx.trolleys.set(floor.id, c.id, msg.items);
+    if (m) ctx.toNeighbors(c, m);
+  },
   'rig.play': rig,
   'rig.leave': rig,
   'rig.frame': rig,
@@ -187,6 +199,7 @@ export const forkHooks: FeatureHooks = {
     rigLeft(ctx, c); // the racing rig
     boatLeft(ctx, c, was?.id); // out of a boat at the beach
     baumarktLeft(ctx, c, was?.id); // off the Baumarkt's forklift, trolleys and tools
+    trolleyLeft(ctx, c, was?.id); // the supermarket's trolley stays behind
   },
   closed(ctx, c) {
     ctx.casino.leave(c.id);
@@ -200,6 +213,7 @@ export const forkHooks: FeatureHooks = {
   closedOn(ctx, c, floor) {
     boatLeft(ctx, c, floor.id); // out of a boat at the beach
     baumarktLeft(ctx, c, floor.id);
+    trolleyLeft(ctx, c, floor.id); // and the supermarket's trolley
   },
 };
 
@@ -211,5 +225,6 @@ export const boatsView: ViewPieces['boats'] = (ctx, floor) => ctx.marinas.view(f
 export const baumarktView: ViewPieces['baumarkt'] = (ctx, floor) => ctx.baumaerkte.view(floor?.id);
 export const kinoView: ViewPieces['kino'] = (ctx, floor) => ctx.kinos.view(floor);
 export const tankView: ViewPieces['tankstelle'] = (ctx, floor) => ctx.forecourts.view(floor?.id);
+export const trolleysView: ViewPieces['trolleys'] = (ctx, floor) => ctx.trolleys.view(floor?.id);
 export const noView = () => undefined;
 export const bungeeView: ViewPieces['bungee'] = (ctx) => ctx.bungeeRope.state();

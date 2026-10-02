@@ -147,6 +147,8 @@ export interface FloorView {
   kino?: KinoScreenState;
   /** On a floor: the petrol station's pumps going, the car in its wash, the shiny cars (flrnoh fork, see shared/tankstelle-play.ts). */
   tankstelle?: TankState;
+  /** On a floor: who pushes a supermarket trolley, and what's in it (flrnoh fork, see shared/trolley.ts). */
+  trolleys?: Record<string, string[]>;
   /** Up on the roof: who's at the table games (flrnoh fork, see shared/tablegames). */
   tables?: TableSeat[];
   /** Who's on the bungee rope, and the day's jumps (flrnoh fork, see shared/bungee.ts), in every view: the jump's seen from below too. */

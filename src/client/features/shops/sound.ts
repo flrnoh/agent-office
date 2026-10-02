@@ -10,7 +10,7 @@ import type { Pos } from '../../sound/places';
 // the döner's sizzle; and a record on the headphones at the record shop, for you alone, played by the
 // jukebox's own synthesizer (sound/music.ts) with the record's own melody.
 
-export type ShopSound = 'door' | 'till' | 'snip' | 'buzz' | 'squeak' | 'pop' | 'squirt' | 'whoosh' | 'yoyo' | 'hug' | 'rattle' | 'sizzle' | 'splash';
+export type ShopSound = 'door' | 'till' | 'snip' | 'buzz' | 'squeak' | 'pop' | 'squirt' | 'whoosh' | 'yoyo' | 'hug' | 'rattle' | 'sizzle' | 'splash' | 'beep' | 'receipt' | 'trolley' | 'scoop';
 
 /** One of the shops' sounds at `at`. */
 export function shopSound(a: AudioCore, kind: ShopSound, at: Pos) {
@@ -104,6 +104,27 @@ export function shopSound(a: AudioCore, kind: ShopSound, at: Pos) {
         [0.8, 0.04],
         [1.2, 0],
       ]);
+      return;
+    // Food round 2: the checkout's scanner, the receipt printing, a trolley's rattle, the ice cream scoop.
+    case 'beep':
+      a.blip(out, t0, 2960, 1, 0.09, 0.07, 'square');
+      return;
+    case 'receipt':
+      for (let i = 0; i < 10; i++) a.blip(out, t0 + i * 0.06, rand(1100, 1300), 1, 0.04, 0.02, 'square');
+      hiss(a, out, t0 + 0.65, 3000, 2, [
+        [0.01, 0.06],
+        [0.08, 0],
+      ]);
+      return;
+    case 'trolley':
+      for (let i = 0; i < 8; i++) a.blip(out, t0 + i * 0.04 + rand(0, 0.02), rand(1800, 3200), 0.7, 0.03, 0.025, 'square');
+      return;
+    case 'scoop':
+      hiss(a, out, t0, 2200, 1, [
+        [0.04, 0.05],
+        [0.25, 0],
+      ]);
+      a.blip(out, t0 + 0.25, 420, 0.7, 0.12, 0.05, 'sine');
       return;
   }
 }

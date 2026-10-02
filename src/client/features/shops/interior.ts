@@ -5,6 +5,7 @@ import { litBoxMaterial } from '../../world/town/boxes';
 import { G } from '../../world/town/kit';
 import { mergeByColor, mesh, toon } from '../../world/toon';
 import { kindDecor, type Live } from './decor';
+import { FOOD_COUNTERS, foodDecor, furnishFood, isFoodKind } from './decor-food'; // food round 2
 
 // flrnoh fork (see FORK.md "Shops to walk into"): what stands in a shop, built only while you're near
 // it (index.ts keeps a handful) and let go of again: the counter, shelves of goods, tables and chairs,
@@ -240,7 +241,7 @@ function furnish(still: THREE.Group, s: Shop, k: ShopKind, p: Piece) {
       box(still, w, p.h, d, '#343a40', cu, 0, cv);
       return;
     default:
-      return;
+      furnishFood(still, s, k, p); // the ice cream case, the sushi belt, the butcher's, the supermarket's
   }
 }
 
@@ -263,9 +264,9 @@ export function buildInterior(s: Shop): Interior {
   const liveGroup = new THREE.Group();
   for (const p of room.pieces) furnish(still, s, k, p);
   // The step behind the counter the keeper stands on.
-  const c = room.pieces.find((p) => p.what === 'counter' || p.what === 'vitrine');
+  const c = room.pieces.find((p) => p.what === 'counter' || p.what === 'vitrine' || FOOD_COUNTERS.has(p.what));
   if (c) box(still, c.u1 - c.u0, 0.3, room.keeper.v + 0.45 - c.v1, '#6c757d', (c.u0 + c.u1) / 2, 0, (c.v1 + room.keeper.v + 0.45) / 2);
-  const live: Live[] = kindDecor(still, liveGroup, s, k, room);
+  const live: Live[] = isFoodKind(k.id) ? foodDecor(still, liveGroup, s, k, room) : kindDecor(still, liveGroup, s, k, room);
   lamps(liveGroup, s, k);
   const merged = mergeByColor(still);
   merged.traverse((o) => {
@@ -287,8 +288,9 @@ export function buildInterior(s: Shop): Interior {
     const v = t.at === 'counter' ? t.v + 0.6 : t.v;
     const u = t.at === 'chair' && t.seat ? t.seat.u : t.at === 'listen' ? t.u - 0.6 : t.u;
     const hv = t.at === 'crate' ? t.v + 0.85 : v;
+    if (t.aim) [size[0], size[2]] = [t.aim.w, t.aim.d]; // food round 2: its own box
     const hit = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), hitMat);
-    hit.position.copy(at(u, size[1] / 2, hv));
+    hit.position.copy(t.aim ? at(t.aim.u, size[1] / 2, t.aim.v) : at(u, size[1] / 2, hv));
     hit.userData.station = t;
     hits.push(hit);
     group.add(hit);

@@ -28,6 +28,7 @@ import { rig } from './rig'; // flrnoh fork
 import { boats } from './boats'; // flrnoh fork
 import { baumarkt } from './baumarkt'; // flrnoh fork
 import { tankstelle } from './tankstelle'; // flrnoh fork
+import { trolleys } from './trolleys'; // flrnoh fork
 import { services } from './services';
 import { signins } from './signins';
 import { sky } from './sky';
@@ -69,4 +70,5 @@ export const SLICES: readonly Slice[] = [
   boats, // flrnoh fork: the jetskis and the motorboat at the beach
   baumarkt, // flrnoh fork: the Baumarkt's forklift, pallets, trolleys and tools
   tankstelle, // flrnoh fork: the petrol station and its car wash
+  trolleys, // flrnoh fork: the supermarket's shopping trolleys
 ];

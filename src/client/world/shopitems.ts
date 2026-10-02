@@ -4,6 +4,7 @@ import { RECORD_BY_ID } from '../../shared/records';
 import type { Drink } from '../../shared/rooftop';
 import { sleeveTexture } from './sleeves';
 import { mesh, toon } from './toon';
+import { foodItem, isFoodGlass } from './shopitems-food'; // food round 2
 
 // What the city's shops hand you (flrnoh fork, see FORK.md "Shops to walk into"), held like a glass
 // from the bar: fridgeitems.ts hands the shops' shapes over to here. Each is a handful of simple
@@ -15,6 +16,7 @@ const STEM = '#3f7f3a';
 
 /** A Semmel, a slice of pizza, a bouquet, a book, a toy…, `S` times its size. */
 export function shopItem(d: Drink, S = 1): THREE.Group {
+  if (isFoodGlass(d.glass)) return foodItem(d, S); // ice cream, sushi, the butcher's
   const g = new THREE.Group();
   const item = SHOP_ITEM_BY_ID.get(d.id as ShopItemId);
   const body = toon(d.color);
