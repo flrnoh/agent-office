@@ -1,5 +1,6 @@
 import type { Net } from './net';
 import { store } from './state';
+import { VoicePa } from './voice-pa'; // flrnoh fork: the karaoke stage's PA
 
 interface Conn {
   pc: RTCPeerConnection;
@@ -13,6 +14,8 @@ interface Conn {
   screenSender?: RTCRtpSender;
   level: number;
   analyser?: AnalyserNode;
+  src?: MediaStreamAudioSourceNode; // fork: for the PA's reverb (voice-pa.ts)
+  wet?: GainNode;
 }
 
 type Signal = { description?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit | null };
@@ -34,6 +37,8 @@ export class Voice {
   private talking = false;
   muted = false;
   localLevel = 0;
+  /** Fork: who's on the karaoke stage's PA, heard at full volume all through the bowling centre (voice-pa.ts). */
+  private readonly pa = new VoicePa(() => this.audioCtx);
 
   constructor(private net: Net) {
     // Often enough for mouths to keep up with syllables.
@@ -196,7 +201,12 @@ export class Voice {
   /** Proximity voice: louder when you're close, never fully silent. */
   setVolume(peerId: string, volume: number) {
     const c = this.conns.get(peerId);
-    if (c) c.audio.volume = Math.max(0, Math.min(1, volume));
+    if (c) c.audio.volume = this.pa.has(peerId) ? 1 : Math.max(0, Math.min(1, volume)); // fork: on the PA, full volume
+  }
+
+  /** Fork: puts these peers on the PA (the karaoke stage, see features/karaoke) and everyone else off it. */
+  setPa(ids: Iterable<string>) {
+    this.pa.set(ids, this.conns);
   }
 
   async handleSignal(from: string, data: Signal) {
@@ -277,6 +287,8 @@ export class Voice {
             c.analyser = this.audioCtx.createAnalyser();
             c.analyser.fftSize = 1024;
             src.connect(c.analyser);
+            c.src = src;
+            this.pa.joined(id, c); // fork: back on the PA, if they're on it
           } catch {
             // analyser is optional
           }

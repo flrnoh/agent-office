@@ -59,6 +59,7 @@ import { StationLoops, tankstelle, type StationNoise, type TankSound } from '../
 import { BusEngines, busDoorHiss } from '../features/citybus/sound'; // fork: the city bus
 import { CitySound, type CityScene } from './city'; // fork: the sounds of the city
 import { bells, siren, type SirenPass } from './citybells';
+import { KaraokeSound } from '../features/karaoke/sound'; // fork: the bowling centre's karaoke bar
 
 // What the rest of the client imports from here.
 export type { Hall, Listener } from './core';
@@ -90,6 +91,8 @@ export class OfficeSound {
   private readonly station = new StationLoops(this.a); // fork
   private readonly busEngines = new BusEngines(this.a); // fork: the city bus
   private readonly city = new CitySound(this.a); // fork
+  /** Fork: the bowling centre's karaoke bar: its band on the music volume, its crowd and mics (features/karaoke/sound.ts). */
+  readonly karaoke = new KaraokeSound(this.a, () => this.music.musicBus ?? null, () => this.music.musicGain());
   /** A stream that won't play here. */
   onMusicError?: (text: string) => void;
   /** Fork: a stream the browser won't start before you click (autoplay rules). */

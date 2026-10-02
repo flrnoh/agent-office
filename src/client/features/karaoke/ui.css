@@ -1,0 +1,46 @@
+/* The karaoke bar's song book and panel (flrnoh fork, see FORK.md "Karaoke"). */
+
+.modal.kk-book { width: min(620px, 100%); }
+.kk-book .kk-h { margin: 18px 0 8px; font-size: 15px; font-weight: 900; }
+.kk-book .kk-h:first-of-type { margin-top: 14px; }
+.kk-now { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; border: 3px solid var(--ink); border-radius: 14px; background: linear-gradient(120deg, #3a0ca3, #f72585); color: #fff; }
+.kk-status { flex: 1 1 240px; font-weight: 900; font-size: 15px; }
+.kk-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.kk-songs { display: grid; gap: 8px; }
+.kk-song { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; }
+.kk-song-main { flex: 1; min-width: 0; }
+.kk-song-title { font-weight: 900; font-size: 15px; }
+.kk-song-meta { font-size: 12px; font-weight: 800; color: var(--muted); }
+.kk-song-blurb { font-size: 13px; font-weight: 600; }
+.kk-link { display: flex; gap: 8px; }
+.kk-link input { flex: 1; min-width: 0; }
+.kk-queue { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; counter-reset: kk; }
+.kk-queue li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 2px solid var(--ink); border-radius: 12px; background: #fff; font-weight: 700; font-size: 14px; counter-increment: kk; }
+.kk-queue li::before { content: counter(kk) '.'; font-weight: 900; min-width: 20px; }
+.kk-queue li.empty { border-style: dashed; background: transparent; }
+.kk-queue li.empty::before { content: none; }
+.kk-queue li.mine { background: #ffe9f5; }
+.kk-who { font-weight: 900; }
+.kk-what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.kk-queue .kk-x { padding: 2px 8px; }
+.kk-table { width: 100%; border-collapse: collapse; font-size: 14px; font-weight: 700; }
+.kk-table th { text-align: left; font-size: 12px; color: var(--muted); padding: 4px 6px; }
+.kk-table td { padding: 6px; border-top: 2px solid var(--paper-2); }
+.kk-table tr.king td { background: #fff5c2; font-weight: 900; }
+
+/* The panel at the screen's edge: your turn, your mic, the rating. */
+.kk-panel { position: fixed; right: 16px; top: 38%; z-index: 20; max-width: 300px; padding: 10px 14px; border: 3px solid var(--ink); border-radius: 16px; background: var(--paper); box-shadow: 0 4px 0 var(--ink); font-weight: 800; font-size: 14px; pointer-events: auto; animation: pop .18s ease-out; }
+.kk-panel.hidden { display: none; }
+.kk-panel.up { background: linear-gradient(120deg, #ffe14c, #ff9f43); }
+.kk-panel.mic { background: #e9fbff; }
+.kk-panel.rate { background: linear-gradient(120deg, #3a0ca3, #f72585); color: #fff; }
+.kk-big { font-size: 20px; font-weight: 900; }
+.kk-small { font-size: 12px; opacity: .8; margin-top: 2px; }
+.kk-flames { display: flex; gap: 4px; margin: 6px 0 2px; }
+.kk-flames button { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 2px 6px; border: 2px solid rgba(255, 255, 255, .5); border-radius: 10px; background: rgba(0, 0, 0, .2); color: #fff; font: inherit; font-size: 22px; cursor: pointer; filter: grayscale(.8); }
+.kk-flames button.on, .kk-flames button:hover { filter: none; background: rgba(255, 255, 255, .2); }
+.kk-flames .kk-n { font-size: 11px; font-weight: 900; }
+@media (max-width: 600px) {
+  .kk-panel { right: 8px; left: 8px; max-width: none; top: auto; bottom: 90px; }
+  .kk-link { flex-direction: column; }
+}

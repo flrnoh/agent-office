@@ -85,4 +85,6 @@ export const HELP_ROWS: readonly (readonly [string, string])[] = [
   // flrnoh fork: the minimap (features/minimap).
   ['🧭', 'The minimap, bottom right, turns with you: the office, the places and the shops round about, and who’s out there. Once the office is out of sight an arrow at its rim points the way back, with how far (the mouse wheel over it zooms). ☰ hides it'],
   ['J', 'The big map (or click the minimap): the whole town and the loop, north up. Drag to look about, the wheel zooms. Click a place or a shop and the minimap points you there; “Zum Büro” for the way back'],
+  // flrnoh fork: the bowling centre's karaoke bar (features/karaoke).
+  ['🎤', 'Karaoke in the bowling centre: E at a song book (on the tables and the KJ desk by the stage) puts you on the list with one of the bar’s own songs or a YouTube karaoke link. When it’s your turn, step onto the stage and E at a mic stand; mic 2 is for a duet. On the stage with a mic, everyone in the centre hears you at full volume (voice chat: V). In the bar B claps and Shift+B cheers, 1–5 rates a song when it’s over, and the board by the stage crowns the week’s karaoke king or queen'],
 ];
