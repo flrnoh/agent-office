@@ -9,6 +9,7 @@ import { DOG_NAME_MAX, cleanDogName } from '../../shared/dog';
 import { h, openModal, timeAgo } from './dom';
 import { agentFields, choiceLabel, officeChoice } from './provider';
 import { openPromptEditor, rewrittenPrompts } from './prompts';
+import { onOffRow } from './onoff'; // fork
 
 const VIEWS: [ViewMode, string, string][] = [
   ['first', '👀 First person', 'See through your own eyes. Click the office to look around with the mouse and click things to use them. Esc frees the mouse.'],
@@ -140,36 +141,10 @@ export function openSettings(net: Net, settings: Settings, onChange: (s: Setting
   const musicRow = volumeRow('Jukebox volume', 'music', 'musicMuted');
   const speakersRow = volumeRow('Speakers volume', 'speakers', 'speakersMuted'); // flrnoh fork (speakers.ts)
 
-  // The swish of the book's pages at the bookshelf, on or off.
-  const pagesRow = h('div.seg', { role: 'radiogroup', 'aria-label': 'Page turns at the bookshelf' });
-  const paintPages = () => {
-    pagesRow.replaceChildren(
-      ...(
-        [
-          [true, '📖 On'],
-          [false, 'Off'],
-        ] as const
-      ).map(([on, label]) =>
-        h(
-          'button.btn',
-          {
-            type: 'button',
-            role: 'radio',
-            'aria-checked': String(settings.pageTurns === on),
-            class: settings.pageTurns === on ? 'on' : '',
-            onclick: () => {
-              if (settings.pageTurns === on) return;
-              settings = { ...settings, pageTurns: on };
-              onChange(settings);
-              paintPages();
-            },
-          },
-          label,
-        ),
-      ),
-    );
-  };
-  paintPages();
+  // The swish of the book's pages at the bookshelf, and (fork) the sounds of the city: on or off.
+  const toggle = (key: 'pageTurns' | 'citySounds') => (on: boolean) => onChange((settings = { ...settings, [key]: on }));
+  const pagesRow = onOffRow('Page turns at the bookshelf', '📖 On', () => settings.pageTurns, toggle('pageTurns'));
+  const cityRow = onOffRow('Stadtgeräusche', '🏙️ On', () => settings.citySounds, toggle('citySounds'));
 
   // The building's holiday theme, for everyone.
   const themeRow = h('div.seg', { role: 'radiogroup', 'aria-label': 'Holiday theme' });
@@ -514,6 +489,7 @@ export function openSettings(net: Net, settings: Settings, onChange: (s: Setting
     sound: [
       setting('Office sounds', 'you', soundRow, h('p.setting-note', {}, 'Workers typing, footsteps, the coffee machine, birds and rain outside, the dog, and the ding when a worker is done. Voice chat isn’t affected.')),
       setting('Page turns at the bookshelf', 'you', pagesRow, h('p.setting-note', {}, 'A soft swish each time the book in your hands turns a page, as you open a doc or scroll through one. The 🔈 at the top of the bookshelf turns it off too.')),
+      setting('Stadtgeräusche', 'you', cityRow, h('p.setting-note', {}, 'The city round the office: the road and the cars going by, birds in the trees, people by the shops, the church bells on the hour, a siren far off. Quieter and muffled behind glass.')),
       setting('Jukebox', 'you', musicRow, h('p.setting-note', {}, 'The jukebox in the lounge. Everyone on the floor hears the same song, louder the closer they are to it; this is how loud it is for you alone.')),
       setting('Speakers', 'you', speakersRow, h('p.setting-note', {}, 'The speakers hanging all over the office play the jukebox too, wherever you are on the floor. This is how loud they are for you; muting the jukebox mutes them as well.')),
       setting('Voice chat', 'you', talkRow, h('p.setting-note', {}, 'Either way, V joins voice, holding V talks and you’re muted once you let go, and M mutes or unmutes. With push to talk you join muted. Leave voice from the ☰ menu.')),

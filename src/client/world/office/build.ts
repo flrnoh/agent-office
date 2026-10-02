@@ -34,6 +34,7 @@ import { town } from '../town'; // flrnoh fork: the city round the office
 import { baumarkt } from '../baumarkt'; // flrnoh fork: the Baumarkt on its block
 import { kino } from '../kino'; // flrnoh fork: the cinema
 import { tankstelle } from '../tankstelle'; // flrnoh fork: the petrol station
+import { church } from '../church'; // flrnoh fork: the church on its park, whose bells strike the hours
 
 // The office floor, put together from its fixtures (see fixture.ts): the room and its walls, the desks
 // and everything else in it, the balcony, the loft and the meeting room under it, the back office, and
@@ -51,7 +52,7 @@ function floorPlan() {
     storeyWalls, // fork: upstream's `walls`, a storey at a time
     balcony,
     tee,
-    ...downstairs(cars, street, town, kino, baumarkt, casinoOut, gymOut, hallOut, soccerOut, green, scenic, tankstelle), // fork: town, kino, baumarkt, casinoOut … soccerOut, tankstelle
+    ...downstairs(cars, street, town, kino, baumarkt, casinoOut, gymOut, hallOut, soccerOut, green, scenic, tankstelle, church), // fork: town, kino, baumarkt, casinoOut … soccerOut, tankstelle, church
     plug,
     tower,
     desks,

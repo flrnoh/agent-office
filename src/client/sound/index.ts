@@ -57,6 +57,8 @@ import { SoccerMurmur, soccerCrowd, type SoccerCrowdSound } from './soccercrowd'
 import { tableGame, type TableGameSound } from './tablegames';
 import { StationLoops, tankstelle, type StationNoise, type TankSound } from '../features/tankstelle/sound';
 import { BusEngines, busDoorHiss } from '../features/citybus/sound'; // fork: the city bus
+import { CitySound, type CityScene } from './city'; // fork: the sounds of the city
+import { bells, siren, type SirenPass } from './citybells';
 
 // What the rest of the client imports from here.
 export type { Hall, Listener } from './core';
@@ -87,6 +89,7 @@ export class OfficeSound {
   private readonly headset = new Headphones(this.a); // fork
   private readonly station = new StationLoops(this.a); // fork
   private readonly busEngines = new BusEngines(this.a); // fork: the city bus
+  private readonly city = new CitySound(this.a); // fork
   /** A stream that won't play here. */
   onMusicError?: (text: string) => void;
   /** Fork: a stream the browser won't start before you click (autoplay rules). */
@@ -104,6 +107,7 @@ export class OfficeSound {
     this.a.every((now) => this.rain.tickRain(now));
     this.a.every((now) => this.phones.tick(now));
     this.a.every((now) => this.fidgets.tick(now));
+    this.a.every((now) => this.city.tick(now)); // fork
   }
 
   /** Audio has just started (see AudioCore.unlock): the jukebox and the DJ join the graph, and the room starts up. */
@@ -497,5 +501,25 @@ export class OfficeSound {
   /** The soccer hall's crowd and stadium: the horn, the roar of a goal, the "oooh" of a near miss, applause, a chant. */
   soccerCrowd(kind: SoccerCrowdSound, strength = 1) {
     soccerCrowd(this.a, kind, strength);
+  }
+
+  /** The city round the office, every frame (sound/city.ts): where the street is, the cars, the setting; null: quiet. */
+  setCity(scene: CityScene | null) {
+    this.city.set(scene);
+  }
+
+  /** What the city's loops came to where you stand, for quick checks. */
+  get cityLevels() {
+    return this.city.probe();
+  }
+
+  /** The church bell at `at` strikes the hour (sound/citybells.ts). */
+  cityBell(at: Pos, strikes: number) {
+    if (this.city.out) bells(this.a, this.city.out, at, strikes);
+  }
+
+  /** A siren going by far off (sound/citybells.ts). */
+  citySiren(pass: SirenPass) {
+    if (this.city.out) siren(this.a, this.city.out, pass);
   }
 }
