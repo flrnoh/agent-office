@@ -78,6 +78,7 @@ import { installCityBus } from './features/citybus'; // flrnoh fork: the city bu
 import { installMinimap } from './features/minimap'; // flrnoh fork: the minimap and the big map
 import { installKaraoke } from './features/karaoke'; // flrnoh fork: the bowling centre's karaoke bar
 import { installMinigolf } from './features/minigolf'; // flrnoh fork: the bowling centre's black-light mini golf
+import { installBowlingGame } from './features/bowlinggame'; // flrnoh fork: the bowling centre's lanes
 import { installDjSets } from './features/djset';
 import { installDoorbell } from './features/doorbell';
 import { installFogbox } from './features/fogbox';
@@ -229,6 +230,7 @@ parts.tankstelle = installTankstelle(ctx, parts, { booze: () => parts.bar.booze,
 (window as any).__minimap = installMinimap(ctx); // fork: the minimap, J for the big map
 (window as any).__karaoke = installKaraoke(ctx, { personOf }); // fork: the bowling centre's karaoke bar
 (window as any).__minigolf = installMinigolf(ctx, { standUp, stopWalking, personOf }); // fork: the bowling centre's mini golf
+(window as any).__bowlinggame = installBowlingGame(ctx, { personOf }); // fork: the bowling centre's lanes and league
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);

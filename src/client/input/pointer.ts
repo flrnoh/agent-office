@@ -138,7 +138,7 @@ export function installPointer(ctx: Ctx, core: CoreState, parts: PointerParts) {
     if (modalOpen() || parts.telescope.active || ctx.activities.busy()) target = null;
     else if (firstPerson) {
       const aim = aimedAt(CROSSHAIR);
-      target = aim?.near ? aim.it : (throneTarget() ?? seating.mySeat() ?? (inOffice() ? hoops.ballAtFeet() : null));
+      target = aim?.near ? aim.it : (throneTarget() ?? seating.mySeat() ?? (inOffice() && !parts.places.active() ? hoops.ballAtFeet() : null)); // places: flrnoh fork, the office's basketball isn't in there
       if (aim?.near) aimedNote = noteUnder(aim);
     } else {
       target = throneTarget() ?? seating.mySeat() ?? pickTarget();

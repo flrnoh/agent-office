@@ -62,6 +62,7 @@ import { bells, siren, type SirenPass } from './citybells';
 import { KaraokeSound } from '../features/karaoke/sound'; // fork: the bowling centre's karaoke bar
 import { BowlingAmbience, bowlingSound, type BowlingSound } from '../bowling/sound'; // fork: the bowling centre
 import { minigolf, MinigolfLoops, type MinigolfSound } from '../features/minigolf/sound'; // fork: the bowling centre's mini golf
+import { BallRolls, bowlSound, type BowlSound } from '../features/bowlinggame/sound'; // fork: the bowling centre's lanes
 
 // What the rest of the client imports from here.
 export type { Hall, Listener } from './core';
@@ -547,5 +548,16 @@ export class OfficeSound {
   /** fork: the mini golf room's spacey pad (`ambient` 0–1) and the felt under a rolling ball, every frame near it; they fade without a call. */
   setMinigolf(ambient: number, roll: number, rollAt: Pos | null, rollSpeed: number) {
     this.minigolfLoops.set(ambient, roll, rollAt, rollSpeed);
+  }
+
+  // fork: the bowling centre's lanes (features/bowlinggame/sound.ts)
+  private readonly bowlRolls = new BallRolls(this.a);
+  /** The pins, the gutter, the pit, the pinsetter, the ball return, the foul buzzer and the screens' fanfares. */
+  bowlingLane(kind: BowlSound, at: Pos, strength = 1) {
+    bowlSound(this.a, kind, at, strength);
+  }
+  /** Ball `id` rolling at `speed` m/s (in the gutter or not), every frame it rolls: it fades away without a call. */
+  bowlRoll(id: number, at: Pos, speed: number, gutter: boolean) {
+    this.bowlRolls.set(id, at, speed, gutter);
   }
 }
