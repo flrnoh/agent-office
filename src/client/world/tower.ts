@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ELEVATOR, ELEVATOR_FRONT, EXIT_DOOR, FLOOR, ROOF_BAR, SLAB, STAGE, STOREY, STREET_Y, WALL_HEIGHT, WALL_T, WING, wingMinZ, wingRowZ, type Opening, type Side } from '../../shared/layout';
+import { ROOF_BAR_END } from '../../shared/skybar'; // flrnoh fork: the sky bar's an L
 import { storeyPlan, type Balcony } from '../../shared/storey'; // flrnoh fork: each storey its own balconies, on their own walls
 import { tubePortals } from '../../shared/coaster'; // flrnoh fork: DER BRECHER
 import type { Collider } from './types';
@@ -257,7 +258,10 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
     box(ROOF_BAR.depth, ROOF_BAR.height - 0.06, blen, barWood, ROOF_BAR.x, y, bz);
     box(ROOF_BAR.depth + 0.2, 0.06, blen + 0.2, counter, ROOF_BAR.x - 0.05, y + ROOF_BAR.height - 0.06, bz);
     box(0.6, 2.4, blen - 0.6, shelf, FLOOR.maxX - 0.35, y, bz);
-    const p0 = { x: front - 0.9, z: ROOF_BAR.minZ - 0.8 };
+    const leg = ROOF_BAR_END; // fork: the short leg that makes it an L
+    box(leg.maxX - leg.minX, ROOF_BAR.height - 0.06, leg.maxZ - leg.minZ, barWood, (leg.minX + leg.maxX) / 2, y, (leg.minZ + leg.maxZ) / 2);
+    box(leg.maxX - leg.minX, 0.06, leg.maxZ - leg.minZ + 0.2, counter, (leg.minX + leg.maxX) / 2, y + ROOF_BAR.height - 0.06, (leg.minZ + leg.maxZ) / 2 - 0.05);
+    const p0 = { x: front - 0.9, z: leg.minZ - 1.1 };
     const p1 = { x: FLOOR.maxX - 0.1, z: ROOF_BAR.maxZ + 0.8 };
     const roofY = 3.3;
     for (const x of [p0.x, p1.x]) {
