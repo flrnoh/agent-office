@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FORKLIFT, LOAD_H, PALLET, type PalletLoad, type ToolId } from '../../../shared/baumarkt-play';
-import { mesh, toon } from '../toon';
+import { mergeByMaterial, mesh, toon } from '../toon';
 import { BLUE, ORANGE, box, indoor } from './kit';
 
 // flrnoh fork (see FORK.md "The Baumarkt"): what moves about at the DIY store: the forklift (its forks
@@ -22,6 +22,17 @@ export interface ForkliftModel {
 }
 
 /** The forklift: its nose (and forks) to +z, its rear at FORKLIFT.REAR. */
+/**
+ * `g`'s parts that never move against it (all its children but `keep`) as one mesh per material, so a
+ * model costs a handful of draw calls rather than one per box. What's in `keep` stays as it is.
+ */
+function compact(g: THREE.Group, keep: readonly THREE.Object3D[] = []): THREE.Group {
+  const still = new THREE.Group();
+  for (const c of [...g.children]) if (!keep.includes(c)) still.add(c);
+  g.add(mergeByMaterial(still));
+  return g;
+}
+
 export function forkliftModel(): ForkliftModel {
   const g = new THREE.Group();
   const yellow = indoor('#f6b31b');
@@ -84,6 +95,10 @@ export function forkliftModel(): ForkliftModel {
   // A stripe of warning tape down each side, the brand on the counterweight.
   for (const side of [-1, 1]) g.add(box(0.02, 0.12, len - 0.6, indoor('#1d1d1d'), side * (HALF_W + 0.005), 0.75, (NOSE + REAR) / 2 + 0.1));
   g.traverse((o) => ((o as THREE.Mesh).castShadow = true));
+  compact(carriage);
+  // The beacon's mesh keeps its own material (it lights up), so it stays out of the merge.
+  const beaconMesh = g.children.find((c) => (c as THREE.Mesh).material === beacon)!;
+  compact(g, [carriage, beaconMesh, ...steerWheels, ...wheels.filter((w) => w.parent === g)]);
   return { group: g, carriage, steerWheels, wheels, beacon };
 }
 
@@ -132,7 +147,7 @@ export function palletModel(load: PalletLoad): THREE.Group {
       break;
   }
   g.traverse((o) => ((o as THREE.Mesh).castShadow = true));
-  return g;
+  return compact(g);
 }
 
 // ---- Trolleys ---------------------------------------------------------------------------------
@@ -173,7 +188,7 @@ export function trolleyModel(): { group: THREE.Group; wheels: THREE.Mesh[] } {
     g.add(w);
     wheels.push(w);
   }
-  return { group: g, wheels };
+  return { group: compact(g, wheels), wheels };
 }
 
 // ---- What you hold ----------------------------------------------------------------------------

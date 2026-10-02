@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { LOTS } from '../../../shared/city';
 import { DOOR_H, DOOR_W, FRONT_T, LOT_PLANS, SHOP_H, SHOP_KIND_BY_ID, SHOPS, SIDES, SILL, WALL_T, WINDOW_TOP, doorLeaf, faceOf, hasShops, shopRect, type Shop, type ShopKind } from '../../../shared/shops';
 import { shopRoom } from '../../../shared/shop-rooms';
+import { wearWindow } from './shopwindows'; // flrnoh fork: the boutique's and the optician's windows
 import type { NightParts } from '../outside';
 import { tilingCanvasTexture } from '../texture';
 import { mesh, toon } from '../toon';
@@ -136,6 +137,7 @@ export function buildShops(group: THREE.Group, night: NightParts): TownShops {
       if (p.what !== 'display') continue;
       box(rooms, p.u0, p.u1, p.v0, p.v1, 0, p.h, '#e6e1d8');
       if (p.v0 > FRONT_T + 0.2) continue;
+      if (wearWindow(s.kind, p, k.goods, s.i, (u0, u1, v0, v1, y0, y1, c) => box(rooms, u0, u1, v0, v1, y0, y1, c))) continue; // flrnoh fork: mannequins, glasses
       const n = Math.floor((p.u1 - p.u0 - 0.3) / 0.38);
       for (let i = 0; i < n; i++) {
         const u = p.u0 + 0.25 + i * 0.38;

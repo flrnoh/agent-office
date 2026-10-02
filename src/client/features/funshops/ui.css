@@ -1,0 +1,184 @@
+/* flrnoh fork: the Spielhalle's and the Post's windows (features/funshops). */
+.modal.claw-modal {
+  width: min(680px, 96vw);
+  background: #120a24;
+  color: #f1ede4;
+}
+.modal.claw-modal header h2 {
+  color: #00f0ff;
+  text-shadow: 0 0 8px #ff00aa;
+}
+.claw-status {
+  margin-top: 10px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 18px;
+  color: #ffe600;
+  min-height: 1.4em;
+}
+
+.modal.booth-modal {
+  width: min(560px, 96vw);
+}
+.booth-stage {
+  position: relative;
+  width: 300px;
+  max-width: 100%;
+  margin: 0 auto;
+  border: 10px solid #2b2d42;
+  border-radius: 8px;
+  background: #9b2226;
+}
+.booth-view,
+.booth-strip {
+  display: block;
+  width: 100%;
+}
+.booth-strip {
+  max-height: 60vh;
+  object-fit: contain;
+  background: #fbfaf6;
+}
+.booth-count {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 96px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+.booth-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+.booth-flash.on {
+  animation: booth-flash 0.45s ease-out;
+}
+@keyframes booth-flash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.booth-status {
+  text-align: center;
+  font-weight: 800;
+  margin: 10px 0 6px;
+}
+.booth-poses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.booth-poses .btn[aria-pressed='true'] {
+  outline: 3px solid #e63946;
+}
+.booth-shots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.booth-thumb {
+  width: 60px;
+  border: 3px solid #fbfaf6;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.modal.post-modal {
+  width: min(620px, 96vw);
+}
+.modal.post-modal h3 {
+  margin: 12px 0 6px;
+  font-size: 14px;
+}
+.post-motifs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.post-pick {
+  padding: 0;
+  border: 3px solid transparent;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+.post-pick[aria-pressed='true'] {
+  border-color: #ffcc00;
+}
+.post-thumb,
+.post-front {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+.post-to,
+.post-text {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+}
+.post-text {
+  font-family: 'Segoe Print', 'Bradley Hand', cursive;
+  font-size: 17px;
+  resize: vertical;
+}
+.post-count {
+  display: block;
+  text-align: right;
+  font-size: 12px;
+  opacity: 0.7;
+}
+.post-card {
+  display: grid;
+  gap: 12px;
+}
+.post-back {
+  position: relative;
+  padding: 16px 70px 16px 18px;
+  background: #fffdf5;
+  color: #2b2d42;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px #e6dcc0;
+}
+.post-stamp {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 30px;
+  border: 2px dashed #e63946;
+  padding: 2px 6px;
+  background: #ffcc00;
+}
+.post-msg {
+  font-family: 'Segoe Print', 'Bradley Hand', cursive;
+  font-size: 19px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0 0 10px;
+}
+.post-from {
+  font-weight: 800;
+  margin: 0;
+}
+.post-date {
+  font-size: 12px;
+  opacity: 0.6;
+  margin: 4px 0 0;
+}
+@media (max-width: 520px) {
+  .post-motifs {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

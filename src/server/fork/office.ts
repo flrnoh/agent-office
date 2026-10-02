@@ -20,6 +20,7 @@ import { RigTable, Rigs } from '../rig.js';
 import { Marinas } from '../boats.js';
 import { Baumaerkte } from '../baumarkt.js';
 import { KinoScreens } from '../kino.js';
+import { Postcards } from '../postcards.js';
 import { Forecourts } from '../tankstelle.js';
 import { RoofTables } from '../tablegames.js';
 import { PadelCourts } from '../padel.js';
@@ -40,6 +41,7 @@ export interface Fork {
   marinas: Marinas; // the jetskis and the motorboat at each floor's jetty on the beach
   baumaerkte: Baumaerkte; // the Baumarkt on each floor's street: forklift, pallets, trolleys, tools
   kinos: KinoScreens; // the cinema's Saal 2 on each floor's street
+  postcards: Postcards; // the Post's postcards, waiting for their recipients (postcards.json)
   forecourts: Forecourts; // the petrol station's pumps and car wash on each floor
   roofTables: RoofTables; // the table games on the roof
   padelCourts: PadelCourts; // padel in the hall
@@ -62,7 +64,8 @@ export interface Fork {
 export const PLACES = [CASINO, GYM, HALL, SOCCER] as const;
 export const isPlace = (floor: unknown): floor is (typeof PLACES)[number] => (PLACES as readonly unknown[]).includes(floor);
 
-const owner = (c: Client) => (c.accountId ? `account:${c.accountId}` : `name:${c.peer.name}`);
+/** Who someone is to the fork's keepers (the casino's wallets, the gym, the postcards). */
+export const owner = (c: Client) => (c.accountId ? `account:${c.accountId}` : `name:${c.peer.name}`);
 
 export function createFork(ctx: Ctx): Fork {
   const { cfg, clients, floors } = ctx;
@@ -85,6 +88,7 @@ export function createFork(ctx: Ctx): Fork {
     marinas: new Marinas(),
     baumaerkte: new Baumaerkte(),
     kinos: new KinoScreens(),
+    postcards: new Postcards(cfg.dataDir),
     forecourts: new Forecourts((floorId) => {
       const f = floors.get(floorId);
       if (f) ctx.toFloor(f, { t: 'tankstelle', state: ctx.forecourts.of(floorId).state() });

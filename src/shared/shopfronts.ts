@@ -52,7 +52,17 @@ export const FRONT_STYLES: Readonly<Record<string, FrontStyle>> = {
   doener: { facade: 'dark', facadeColor: '#3a1517', sign: 'neon', flicker: true, open: 10, close: 27, shutter: true, outside: ['tables', 'board'], chalk: ['Döner 6,50', 'mit alles & scharf'] },
   spielzeug: { facade: 'colorful', facadeColor: '#ffffff', sign: 'board', open: 9, close: 19, shutter: true, outside: ['gumball', 'bikes'] },
   platten: { facade: 'brick', facadeColor: '#4a4e69', sign: 'neon', flicker: false, open: 11, close: 20, shutter: true, outside: ['crates', 'board'], chalk: ['Vinyl ab 5 €', 'Neu: Krautrock'] },
+  spielhalle: { facade: 'dark', facadeColor: '#1a1030', sign: 'neon', flicker: true, open: 10, close: 26, shutter: true, outside: ['gumball'] },
+  post: { facade: 'plaster', facadeColor: '#f2c230', sign: 'lightbox', open: 8, close: 18, shutter: true, outside: ['bikes'] },
+  boutique: { facade: 'plaster', facadeColor: '#efe6dc', sign: 'board', open: 10, close: 20, shutter: true, outside: ['board'], chalk: ['Neue Kollektion', 'Herbst –20 %'] },
+  optiker: { facade: 'tiles', facadeColor: '#22335a', sign: 'lightbox', open: 9, close: 19, shutter: true, outside: [] },
+  // Kinds still to come, waiting for them: tables out front, crates, a board.
   eisdiele: { facade: 'tiles', facadeColor: '#fde2e4', sign: 'lightbox', open: 11, close: 22, shutter: true, outside: ['tables', 'board', 'tables'], chalk: ['Eis 1,80 die Kugel', 'Spaghetti-Eis'] },
+  metzgerei: { facade: 'tiles', facadeColor: '#f6f1ee', sign: 'board', open: 7, close: 18, shutter: true, outside: ['board'], chalk: ['Leberkässemmel', 'heute: Weißwurst'] },
+  supermarkt: { facade: 'plaster', facadeColor: '#d9e3ea', sign: 'lightbox', open: 7, close: 22, shutter: true, outside: ['crates', 'bikes'] },
+  sushi: { facade: 'dark', facadeColor: '#2b2b2b', sign: 'lightbox', open: 11, close: 23, shutter: true, outside: ['board'], chalk: ['Lunch-Box 9,90', 'Maki & Nigiri'] },
+  fahrrad: { facade: 'brick', facadeColor: '#5a6b4a', sign: 'board', open: 9, close: 19, shutter: true, outside: ['bikes', 'bikes'] },
+  waschsalon: { facade: 'tiles', facadeColor: '#dff3f7', sign: 'lightbox', open: 6, close: 23, shutter: true, outside: [] },
 };
 
 /** How a kind's front looks: its own row, or the default. */
