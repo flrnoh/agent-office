@@ -18,6 +18,7 @@ import { Turn, readTurnKey } from '../turn.js';
 import { CarKeys } from '../carkeys.js';
 import { RigTable, Rigs } from '../rig.js';
 import { Marinas } from '../boats.js';
+import { Forecourts } from '../tankstelle.js';
 import { RoofTables } from '../tablegames.js';
 import { PadelCourts } from '../padel.js';
 import { BungeeRope } from '../bungee.js';
@@ -35,6 +36,7 @@ export interface Fork {
   carKeys: CarKeys; // who drives the Bulli
   rigs: Rigs; // the racing rig in the lounge, one driver a floor, one table for the building
   marinas: Marinas; // the jetskis and the motorboat at each floor's jetty on the beach
+  forecourts: Forecourts; // the petrol station's pumps and car wash on each floor
   roofTables: RoofTables; // the table games on the roof
   padelCourts: PadelCourts; // padel in the hall
   bungeeRope: BungeeRope; // bungee off the roof
@@ -77,6 +79,10 @@ export function createFork(ctx: Ctx): Fork {
     carKeys: new CarKeys(cfg.dataDir),
     rigs,
     marinas: new Marinas(),
+    forecourts: new Forecourts((floorId) => {
+      const f = floors.get(floorId);
+      if (f) ctx.toFloor(f, { t: 'tankstelle', state: ctx.forecourts.of(floorId).state() });
+    }),
     roofTables: new RoofTables(),
     padelCourts: new PadelCourts(),
     bungeeRope: new BungeeRope(),
@@ -151,4 +157,5 @@ export function stopFork(ctx: Ctx) {
   ctx.soccer.stop();
   ctx.gym.stop();
   ctx.turn.stop();
+  ctx.forecourts.stop();
 }

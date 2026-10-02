@@ -3,6 +3,7 @@ import { BLOCKS, BLOCK_INNER, CITY_ROAD, CITY_WALK, CROSSINGS, PARK_TREES, STREE
 import { roadTexture } from '../outside';
 import { mergeByMaterial, mesh, toon } from '../toon';
 import type { Collider } from '../types';
+import { onTankstelle } from '../../../shared/tankstelle'; // fork: the petrol station
 import { Flats, G, LAMP_EVERY, LAMP_H, flat } from './kit';
 
 // flrnoh fork (see FORK.md): the city's ground (see town/index.ts): sidewalks along every street, the
@@ -102,6 +103,7 @@ export function buildTownGround(group: THREE.Group, colliders: Collider[], glow:
         const off = side * (h + CITY_WALK * 0.6);
         const x = s.alongX ? a : (rr.minX + rr.maxX) / 2 + off;
         const z = s.alongX ? (rr.minZ + rr.maxZ) / 2 + off : a;
+        if (onTankstelle(x, z)) continue; // fork: none in the petrol station's driveway
         posts.add(mesh(pole, ink, x, G + LAMP_H / 2, z, false));
         const ax = s.alongX ? x : x - side * 0.6;
         const az = s.alongX ? z - side * 0.6 : z;

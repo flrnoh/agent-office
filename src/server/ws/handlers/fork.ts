@@ -57,6 +57,13 @@ function boat(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `boat.${stri
   const floor = ctx.floorOf(c); // the jetskis and the motorboat at the beach (boats.ts)
   boatMessage(ctx.marinas, msg, { id: c.id, floor: floor?.id, send: (m) => ctx.sendTo(c, m), toNeighbors: (m, droppable) => ctx.toNeighbors(c, m, droppable) });
 }
+function tank(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `tank.${string}` }>) {
+  const floor = ctx.floorOf(c); // the petrol station and its car wash (tankstelle.ts)
+  if (!floor) return;
+  const res = ctx.forecourts.message(floor.id, { id: c.id, inCar: floor.garage.seatOf(c.id)?.car, x: c.peer.x, z: c.peer.z }, msg, floor.garage.state());
+  if ('refused' in res) return ctx.warn(c, res.refused);
+  ctx.toFloor(floor, res.ok);
+}
 function rig(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `rig.${string}` }>) {
   const floor = ctx.floorOf(c);
   rigMessage(ctx.rigs, msg, {
@@ -112,6 +119,8 @@ export const forkHandlers = {
   'boat.leave': boat,
   'boat.drive': boat,
   'boat.horn': boat,
+  'tank.fill': tank,
+  'tank.wash': tank,
   'rig.play': rig,
   'rig.leave': rig,
   'rig.frame': rig,
@@ -158,5 +167,6 @@ export const forkHooks: FeatureHooks = {
 export const rigView: ViewPieces['rig'] = (ctx, floor) => ctx.rigs.view(floor?.id);
 export const tvView: ViewPieces['tv'] = (_ctx, floor) => floor?.tv.state();
 export const boatsView: ViewPieces['boats'] = (ctx, floor) => ctx.marinas.view(floor?.id);
+export const tankView: ViewPieces['tankstelle'] = (ctx, floor) => ctx.forecourts.view(floor?.id);
 export const noView = () => undefined;
 export const bungeeView: ViewPieces['bungee'] = (ctx) => ctx.bungeeRope.state();

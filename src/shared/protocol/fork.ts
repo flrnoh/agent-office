@@ -11,6 +11,7 @@ import type { RigFrame, RigResult, RigState } from '../rig.js';
 import type { SoccerClientMsg, SoccerServerMsg } from '../soccer.js';
 import type { Side, TableId, TableSeat, TableSnap } from '../tablegames/tables.js';
 import type { TvState } from '../tv.js';
+import type { TankClientMsg, TankServerMsg } from '../tankstelle-play.js';
 
 export type ForkClientMsg =
   | CasinoClientMsg // the casino (shared/casino.ts)
@@ -18,6 +19,7 @@ export type ForkClientMsg =
   | PadelClientMsg // padel in the hall (shared/padel/court.ts)
   | SoccerClientMsg // the soccer hall (shared/soccer.ts)
   | BoatClientMsg // the jetskis and the motorboat at the beach (shared/boats.ts)
+  | TankClientMsg // the petrol station and its car wash (shared/tankstelle-play.ts)
   /** Put a YouTube, SoundCloud or Mixcloud set on at the DJ booth, for everyone on the roof (see shared/djset.ts). */
   | { t: 'dj.play'; url: string }
   /** Back to the house DJ. */
@@ -49,6 +51,7 @@ export type ForkServerMsg =
   | PadelServerMsg
   | SoccerServerMsg
   | BoatServerMsg
+  | TankServerMsg
   /** The DJ set on the roof changed (sent to everyone up there). */
   | { t: 'dj'; state: DjSetState }
   /** The stream on the floor's TV changed (sent to everyone on the floor). */
