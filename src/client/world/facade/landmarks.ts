@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { NightParts } from '../outside';
 import { mesh, toon } from '../toon';
 import { B } from './frame';
+import { BUNGEE } from '../../../shared/bungee';
 
 // flrnoh fork (see FORK.md, "A facade for creatives"): what makes the building a landmark: lights up
 // its corners going round the rainbow, FLOGGE OFFICE in lit letters on the roof, a neon blade on the
@@ -168,9 +169,10 @@ export function blade(night: NightParts) {
 export function rooftopLetters(night: NightParts) {
   const group = new THREE.Group();
   const text = 'FLOGGE OFFICE';
-  const LW = 2.6;
-  const LH = 3.8;
-  const x0 = -((text.length - 1) * LW) / 2;
+  const LW = 2.1;
+  const LH = 3.2;
+  // West of the bungee jetty (shared/bungee.ts, off the south edge at x 11), which needs its way out clear.
+  const x0 = BUNGEE.x - 2.6 - (text.length - 1) * LW;
   const z = B.maxZ + 0.1;
   const steel = toon('#8d99ae');
   const back = toon('#5c636e');
