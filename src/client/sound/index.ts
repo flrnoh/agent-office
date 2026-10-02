@@ -59,6 +59,7 @@ import { StationLoops, tankstelle, type StationNoise, type TankSound } from '../
 import { BusEngines, busDoorHiss } from '../features/citybus/sound'; // fork: the city bus
 import { CitySound, type CityScene } from './city'; // fork: the sounds of the city
 import { bells, siren, type SirenPass } from './citybells';
+import { BallRolls, bowlSound, type BowlSound } from '../features/bowlinggame/sound'; // fork: the bowling centre's lanes
 
 // What the rest of the client imports from here.
 export type { Hall, Listener } from './core';
@@ -521,5 +522,16 @@ export class OfficeSound {
   /** A siren going by far off (sound/citybells.ts). */
   citySiren(pass: SirenPass) {
     if (this.city.out) siren(this.a, this.city.out, pass);
+  }
+
+  // fork: the bowling centre's lanes (features/bowlinggame/sound.ts)
+  private readonly bowlRolls = new BallRolls(this.a);
+  /** The pins, the gutter, the pit, the pinsetter, the ball return, the foul buzzer and the screens' fanfares. */
+  bowling(kind: BowlSound, at: Pos, strength = 1) {
+    bowlSound(this.a, kind, at, strength);
+  }
+  /** Ball `id` rolling at `speed` m/s (in the gutter or not), every frame it rolls: it fades away without a call. */
+  bowlRoll(id: number, at: Pos, speed: number, gutter: boolean) {
+    this.bowlRolls.set(id, at, speed, gutter);
   }
 }

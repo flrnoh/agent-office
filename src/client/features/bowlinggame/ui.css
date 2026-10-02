@@ -1,0 +1,37 @@
+/* flrnoh fork: the bowling centre's lanes (features/bowlinggame): the aim panel, the ball rack, the league. */
+.bowl-aim { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); width: min(380px, calc(100vw - 32px)); padding: 8px 12px 9px; display: grid; gap: 6px; font-size: 13px; font-weight: 900; text-align: center; pointer-events: none !important; }
+.bowl-title { font-size: 15px; }
+.bowl-row { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 8px; text-align: left; }
+.bowl-label { font-size: 12px; opacity: .8; }
+.bowl-meter { position: relative; height: 16px; border: 3px solid var(--ink); border-radius: 999px; background: #f1e4d3; overflow: hidden; }
+.bowl-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, #8ef0ff, #ffd166 60%, #ef476f); }
+.bowl-hook { position: relative; height: 16px; border: 3px solid var(--ink); border-radius: 999px; background: linear-gradient(90deg, #c7b8ff, #f1e4d3 45% 55%, #ffc0e0); }
+.bowl-hook-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--ink); opacity: .35; }
+.bowl-hook-dot { position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--ink); }
+.bowl-info { font-size: 12px; font-weight: 800; opacity: .85; }
+
+.bowl-modal.wide { width: min(640px, 100%); }
+.bowl-balls { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.bowl-balls li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; cursor: pointer; }
+.bowl-balls li:hover, .bowl-balls li:focus-visible { outline: none; box-shadow: 0 3px 0 var(--ink); transform: translateY(-1px); }
+.bowl-balls li.on { background: var(--paper-2); box-shadow: inset 0 0 0 2px var(--accent); }
+.bowl-swatch { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--ink); }
+.bowl-ball-name { font-weight: 900; font-size: 14px; }
+.bowl-ball-meta { font-size: 12px; font-weight: 700; color: var(--muted); }
+
+.bowl-tabs { display: flex; gap: 6px; padding: 10px 16px 0; flex-wrap: wrap; }
+.bowl-tab { font: inherit; font-weight: 800; font-size: 14px; padding: 6px 12px; border-radius: 12px; border: 2px solid transparent; background: none; color: var(--ink); cursor: pointer; }
+.bowl-tab.on { background: #fff; border-color: var(--ink); box-shadow: 0 3px 0 var(--ink); }
+.bowl-league h3 { margin: 14px 0 6px; font-size: 15px; }
+.bowl-league h3:first-child { margin-top: 0; }
+.bowl-note, .bowl-empty { margin: 0 0 8px; font-size: 13px; color: var(--muted); font-weight: 700; }
+.bowl-champ { margin: 0; font-weight: 800; }
+.bowl-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
+.bowl-table th { text-align: left; font-size: 12px; color: var(--muted); padding: 2px 6px; }
+.bowl-table td { padding: 4px 6px; border-top: 2px solid var(--paper-2); font-weight: 700; }
+.bowl-table tr.perfect td { background: #fff3c4; }
+.bowl-mine { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px; }
+.bowl-mine div { display: grid; text-align: center; padding: 8px 4px; border: 2px solid var(--ink); border-radius: 12px; background: #fff; }
+.bowl-mine b { font-size: 20px; }
+.bowl-mine span { font-size: 11px; color: var(--muted); font-weight: 800; }
+@media (max-width: 520px) { .bowl-mine { grid-template-columns: repeat(3, 1fr); } }
