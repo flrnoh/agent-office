@@ -15,6 +15,8 @@ import { HALL_BOX } from './hall.js';
 import { SOCCER_BOX } from './soccer.js';
 import { GOLF_HOLE } from './layout.js';
 import { routeStoreys } from './coaster-route.js';
+import { DIVE, POOL_DECK, SLIDE } from './roofpool.js';
+import { ROOF_BAR, STAGE } from './layout.js';
 
 export interface Box3 {
   name: string;
@@ -115,6 +117,30 @@ export function outsideKeepouts(storeys: number): Box3[] {
   out.push(box('padel hall', HALL_BOX.minX, HALL_BOX.maxX, S - 1, S + 14, HALL_BOX.minZ, HALL_BOX.maxZ));
   out.push(box('soccer hall', SOCCER_BOX.minX, SOCCER_BOX.maxX, S - 1, S + 16, SOCCER_BOX.minZ, SOCCER_BOX.maxZ));
   out.push(box('golf', GOLF_HOLE.fairway[0] - 0.5, GOLF_HOLE.fairway[1] + 0.5, S - 1, S + 3, 33, GOLF_HOLE.z + GOLF_HOLE.green));
+  return out;
+}
+
+/**
+ * Up on the roof's deck (y 0), what stands near its edges where the lift hill's brackets go and the track
+ * passes close by: the pool on its deck with its palms, its neon sign, the water slide wound round its
+ * tower and the diving tower (shared/roofpool.ts), the sky bar's back and its pergola, the DJ's stage.
+ */
+export function roofKeepouts(): Box3[] {
+  const d = POOL_DECK;
+  const out: Box3[] = [box('pool deck', d.minX, d.maxX, -0.3, d.top + 0.2, d.minZ, d.maxZ)];
+  for (const [x, z] of [
+    [d.minX + 0.4, d.minZ + 0.4],
+    [d.maxX - 0.4, d.minZ + 0.4],
+    [d.minX + 0.4, d.maxZ - 0.4],
+  ])
+    out.push(box(`palm ${x},${z}`, x - 1.8, x + 1.8, d.top, d.top + 5.4, z - 1.8, z + 1.8));
+  out.push(box('pool sign', d.maxX - 0.5, d.maxX + 0.05, d.top, d.top + 3.6, (-11.8 - 6.6) / 2 - 2, (-11.8 - 6.6) / 2 + 2));
+  const xs = SLIDE.path.map((p) => p[0]);
+  const zs = SLIDE.path.map((p) => p[2]);
+  out.push(box('water slide', Math.min(...xs) - 0.7, Math.max(...xs) + 0.7, 0, SLIDE.top + 1.6, Math.min(...zs) - 0.7, Math.max(...zs) + 0.7));
+  out.push(box('diving tower', DIVE.minX - 0.3, DIVE.maxX + 0.3, 0, DIVE.top + 1.4, DIVE.minZ, DIVE.board.to));
+  out.push(box('sky bar', ROOF_BAR.x - 1.4, FLOOR.maxX, 0, 3.7, ROOF_BAR.minZ - 0.9, ROOF_BAR.maxZ + 0.9));
+  out.push(box('stage', STAGE.minX - 0.5, STAGE.maxX + 0.8, 0, 7, STAGE.minZ, STAGE.maxZ + 1.2));
   return out;
 }
 

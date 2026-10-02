@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { coasterRoute, HEART } from '../src/shared/coaster-route.js';
 import { DS, coasterTrack, poseAt, rideDuration, sAtTime } from '../src/shared/coaster-track.js';
 import { coasterSupports } from '../src/shared/coaster-supports.js';
-import { ROAD_Z, SIDEWALKS_Z, TOWER, groundFloorKeepouts, inBox, levels, outsideKeepouts, type Box3 } from '../src/shared/coaster-keepout.js';
+import { ROAD_Z, SIDEWALKS_Z, TOWER, groundFloorKeepouts, inBox, levels, outsideKeepouts, roofKeepouts, type Box3 } from '../src/shared/coaster-keepout.js';
 import { CARS, SEATS, STATION, carOffset } from '../src/shared/coaster.js';
 import { ANCHOR, BODY, bungeePlan, bungeePose } from '../src/shared/bungee.js';
 import { FLOOR, WALL_HEIGHT, WALL_T, roofDrop } from '../src/shared/layout.js';
@@ -131,9 +131,9 @@ test('coaster ride: where the train is follows from the time since it went, the 
   assert.equal(SEATS, CARS * 2);
 });
 
-test('coaster track: clear of the tower, every storey’s balconies, the facade’s landmarks, the bungee and the halls', () => {
+test('coaster track: clear of the tower, every storey’s balconies, the facade’s landmarks, the bungee, the pool and its slide, and the halls', () => {
   for (const N of STOREYS) {
-    const keep = outsideKeepouts(N);
+    const keep = [...outsideKeepouts(N), ...roofKeepouts()];
     const { street } = levels(N);
     const hits = new Set<string>();
     for (const p of envelope(N)) {
@@ -205,8 +205,9 @@ test('coaster supports: on the ground or the deck, clear of everything, never on
       for (const k of keep) if (b.minX < k.maxX && b.maxX > k.minX && b.minY < k.maxY && b.maxY > k.minY && b.minZ < k.maxZ && b.maxZ > k.minZ) bad.push(`${k.name} at ${c.x.toFixed(1)},${c.z.toFixed(1)}`);
       const onDeck = Math.abs(c.y0) < 1e-6;
       if (onDeck) {
-        // On the roof: inside its edge.
+        // On the roof: inside its edge, clear of the pool, the slide, the bar and the stage.
         if (!(c.x > FLOOR.minX && c.x < FLOOR.maxX && c.z > FLOOR.minZ && c.z < FLOOR.maxZ)) bad.push(`off the deck at ${c.x},${c.z}`);
+        for (const k of roofKeepouts()) if (b.minX < k.maxX && b.maxX > k.minX && b.minY < k.maxY && b.maxY > k.minY && b.minZ < k.maxZ && b.maxZ > k.minZ) bad.push(`${k.name} at ${c.x},${c.z}`);
         continue;
       }
       if (Math.abs(c.y0 - street) > 1e-6) bad.push(`not on the street at ${c.x},${c.z}`);

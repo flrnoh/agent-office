@@ -47,7 +47,7 @@ const LEG_FAR = 33.6;
 /** Brackets off the roof's edge for the lift hill: a column on the deck at (x, z), out to the track. */
 const ROOF_BRACKETS: readonly [number, number][] = [
   [17.6, -9.0],
-  [17.6, 6.2],
+  [17.6, -3.4],
   [17.6, 11.4],
 ];
 

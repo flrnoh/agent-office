@@ -348,7 +348,7 @@ export function coasterRoute(storeys: number): Route {
   // The chain lift: over the north-east corner (above the back office, if a floor's built one out) and up
   // the east side, then along the top to the south-east corner, still on the chain.
   const lift = t.u;
-  t.plan([{ line: 8 }, { arc: 8, deg: 90, side: 'R' }, { line: 7.5 }], crest - y0, 7);
+  t.plan([{ line: 10 }, { arc: 6, deg: 90, side: 'R' }, { line: 9.5 }], crest - y0, 7);
   t.mark('crest');
   t.plan([{ line: 14.4 }]);
   // Round the south-east corner over the letters, heading on down the street side.
