@@ -58,7 +58,7 @@ const casino = (ctx: Ctx, c: Client, msg: Parameters<Casino['message']>[1]) => c
 const gym = (ctx: Ctx, c: Client, msg: Parameters<Gym['message']>[1]) => ctx.gym.message(c.id, msg);
 const soccer = (ctx: Ctx, c: Client, msg: Parameters<Ctx['soccer']['message']>[1]) => ctx.soccer.message(c.id, msg);
 
-function dj(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: 'dj.play' | 'dj.stop' }>) {
+function dj(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: 'dj.play' | 'dj.stop' | 'dj.tap' }>) {
   djMessage(ctx.djBooth, msg, { id: c.id, who: c.peer.name, onRoof: c.peer.floor === ROOF, toRoof: (m) => ctx.toRoof(m), warn: (t) => ctx.warn(c, t) });
 }
 function tv(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: 'tv.play' | 'tv.stop' }>) {
@@ -127,6 +127,7 @@ export const forkHandlers = {
   'padel.sync': padel,
   'dj.play': dj,
   'dj.stop': dj,
+  'dj.tap': dj,
   'tv.play': tv,
   'tv.stop': tv,
   'table.join': table,

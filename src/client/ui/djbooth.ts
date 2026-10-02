@@ -17,6 +17,10 @@ export interface DjBoothOptions {
   openVolume(): void;
   /** Called when anything the window shows changes; returns how to stop listening. */
   watch(fn: () => void): () => void;
+  /** A tap on the beat; the tempo once there are enough in time (sent to everyone), else null. */
+  tap(): number | null;
+  /** Back to the set's own beat, as the office heard it. */
+  untap(): void;
 }
 
 const STATUS: Record<string, string> = {
@@ -32,6 +36,10 @@ const STATUS: Record<string, string> = {
 export function openDjBooth(o: DjBoothOptions) {
   const close = h('button.btn.close', { 'aria-label': 'Close' }, '✕');
   const now = h('div.jb-now');
+  const tempo = h('div.svc-meta', { style: 'white-space:normal;margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center' });
+  /** The tempo you're tapping, till it's sent. */
+  let tapping = '';
+  let tapDone = 0;
   const actions = h('div', { style: 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px' });
   const url = h('input', { type: 'text', placeholder: 'https://youtube.com/watch?v=… · soundcloud.com/… · mixcloud.com/…', 'aria-label': 'Link to a DJ set', spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
   const play = h('button.btn.primary', { type: 'button' }, '▶️ Play set');
@@ -46,6 +54,7 @@ export function openDjBooth(o: DjBoothOptions) {
       {},
       now,
       actions,
+      tempo,
       h('label', { style: 'margin-top:16px' }, 'Put on a set'),
       h('div.webhook', {}, url, play),
       h('p.setting-note', {}, `${DJ_SET_HINT}. It plays from the booth for everyone on the roof, from the same moment.`),
@@ -82,7 +91,28 @@ export function openDjBooth(o: DjBoothOptions) {
         : []),
     );
     actions.classList.toggle('hidden', !set);
+    // The tempo the lights go by: heard from the set, or tapped.
+    const b = s.beats;
+    const heard =
+      s.tap ? `🥁 ${Math.round(s.tap.bpm)} BPM, tapped at the booth`
+      : b?.status === 'ready' ? `🥁 ${Math.round(b.bpm ?? 0)} BPM: the lights go by the set's own beat`
+      : b?.status === 'pending' ? '🥁 listening to the set for its beat…'
+      : b?.status === 'failed' ? `🥁 couldn't hear the set's beat (${b.why ?? 'no reason'}): tap it in`
+      : '🥁 tap the beat in for the lights';
+    tempo.replaceChildren(
+      h('span.grow', {}, tapping || heard),
+      h('button.btn', { type: 'button', title: 'Tap on every beat, four times or more (T)', onclick: tapOnce }, '🥁 Tap'),
+      ...(s.tap ? [h('button.btn', { type: 'button', title: "Back to the beat the office heard in the set", onclick: () => o.untap() }, "↺ The set's own beat")] : []),
+    );
+    tempo.classList.toggle('hidden', !set);
   };
+  function tapOnce() {
+    const bpm = o.tap();
+    tapping = bpm ? `🥁 ${Math.round(bpm)} BPM… (stop tapping to send it)` : 'keep tapping on the beat…';
+    clearTimeout(tapDone);
+    tapDone = window.setTimeout(() => ((tapping = ''), render()), 2000);
+    render();
+  }
 
   const send = () => {
     const r = parseDjSetUrl(url.value);
@@ -98,11 +128,15 @@ export function openDjBooth(o: DjBoothOptions) {
     if (e.key === 'Enter') send();
   });
   horn.addEventListener('click', () => o.horn());
-  // H blows it here too, as at the booth (not while typing a link).
+  // H blows it here too, as at the booth, and T taps the tempo (not while typing a link).
   el.addEventListener('keydown', (e) => {
-    if (e.code === 'KeyH' && e.target !== url && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    if (e.target === url || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.code === 'KeyH') {
       e.preventDefault();
       o.horn();
+    } else if (e.code === 'KeyT' && !e.repeat && o.player.current().set) {
+      e.preventDefault();
+      tapOnce();
     }
   });
 

@@ -183,6 +183,21 @@ Anyone on the roof, guests too, can paste a YouTube, SoundCloud or Mixcloud link
   - `src/server/guests.ts`: `dj.play`, `dj.stop` in `GUEST`.
   - `src/client/sound/index.ts`: `djSetVolume()` (`sound/screens.ts`).
   - `src/client/core/travel.ts`: `setPlace` calls `parts.djset.setUp(up)` in place of `sound.setDj`.
+
+### The roof moves to the set that's on
+
+The LED wall behind the DJ, the lights and the DJ go by the DJ set someone put on, not only by the house DJ. The office hears each set: `yt-dlp` fetches its audio into a throwaway folder, `ffmpeg` (or, without it, macOS' `afconvert`, for AAC and MP3) makes it mono samples, and the office finds its beats, how hard each hits, and where its breakdowns, builds and drops are; the audio is deleted at once, and only that (a few dozen kB per hour) is kept, in `dj-beats/` in its data folder (the last 60 sets). Every browser on the roof fetches it and turns it into the same `DjFrame` the house DJ gives, at the point in the set its player is at. Until it's heard (or if it can't be: a live stream, a SoundCloud playlist, no `yt-dlp`), a steady groove at 124 BPM; anyone can tap the tempo in at the booth (🥁 **Tap**, or **T** in its window), which then goes before what was heard, for everyone, until **↺ The set's own beat**. The LED wall is a shader of round LEDs: eight programs (tunnel, kaleidoscope, spectrum, synthwave sun, warp, checkerboard, rings, plasma) taking turns by the part and the bars, FLOGGE OFFICE as a drop lands, GET READY and a countdown through a build, the set's title in a breakdown, its tempo now and then. The DJ spins and jumps as a drop lands, pumps their fists, bangs their head, points up and claps overhead through a build, and sways with their hands up in a breakdown.
+
+- Needs `yt-dlp` on the Mac (`brew install yt-dlp`; `ffmpeg` is optional). Looked for in Homebrew's folders too (a launch agent's PATH has none), or set `AGENT_OFFICE_YTDLP` / `AGENT_OFFICE_FFMPEG`. Installed after the office started: the next set finds it.
+- `src/shared/djbeats.ts`: what's heard (`DjBeats`), how hearing it goes (`DjBeatsStatus`, on `DjSetState.beats`), a tapped tempo (`DjTap`, `DjSetState.tap`).
+- `src/server/djbeats/analyse.ts` (the listening: three bands, onsets, tempo by autocorrelation, an Ellis-style beat path, bars, parts), `fetch.ts` (yt-dlp, ffmpeg/afconvert), `index.ts` (`DjBeatsJobs`: one set at a time, kept by link). `DjBooth` in `src/server/djset.ts` asks for the set that's on and carries the status and the tap; `dj.tap` in `djMessage`; `GET /api/dj/beats` in `src/server/http/routes/fork.ts` (guests and party guests may fetch it); `onBeats` set in `startFork`.
+- `src/client/features/djset/frame.ts` (`SetBeats`, `gridFrame`), `frame()` and the tap in `features/djset/index.ts` (the set's player's own position corrects the office clock's, every 2 s); the tempo row in `src/client/ui/djbooth.ts`.
+- `src/client/features/rooftop/ledwall.ts` (the LED wall), `dancer.ts` (the DJ, moved out of `world.ts`).
+- `tests/djbeats.test.ts`: a made-up track's tempo, beats, breakdown, build and drop; the booth hearing and letting go; tapping; the frame.
+- Hooks in upstream files:
+  - `src/client/features/rooftop/world.ts`: the DJ comes from `dancer.ts`, the LED wall from `ledwall.ts` (wider and taller, 9.6 × 4.6 m; the old canvas wall and its words are gone).
+  - `src/client/features/rooftop/index.ts`: `setFrame` in its deps (the set's frame before the house DJ's); `src/client/main.ts` passes `parts.djset.frame()`.
+  - `src/server/guests.ts`: `dj.tap` in `GUEST`, `/api/dj/beats` in `guestMayFetch`. `src/server/http/routes/index.ts`: `forkRoutes.djBeats`.
   - `src/client/features/bar/index.ts`: E at the booth opens `showDjBooth()`, the booth's hint (E for a set, H for the horn), `blowHorn` returned.
   - `src/client/main.ts`: `installDjSets(...)`, `djset` for the bar; `src/client/core/parts.ts`: `djset`.
   - `src/client/ui/help.ts`, `docs/features.md`, `docs/controls.md`, `docs/how-it-works.md`: words.

@@ -2,6 +2,7 @@
 // YouTube, SoundCloud or Mixcloud, which every browser up there plays in the site's own embedded
 // player, from the same point. Shared by the server (which keeps what's on) and the browser.
 
+import type { DjBeatsStatus, DjTap } from './djbeats.js';
 import { readWebLink, startOf, youtubeVideo } from './embeds.js';
 
 /** How a link's t= reads (shared/embeds.ts, with the office TV's links). */
@@ -33,6 +34,10 @@ export interface DjSetState {
   startedAt: number;
   /** How long ago that was when this was sent, in ms, for until the clocks are compared. */
   elapsed: number;
+  /** How the office hearing the set is going (shared/djbeats.ts): its beats, for the lights. */
+  beats?: DjBeatsStatus;
+  /** A tempo someone tapped at the booth for it, which the lights go by over what was heard. */
+  tap?: DjTap;
 }
 
 export const DJ_SET_SITES: Record<DjSetKind, string> = { youtube: 'YouTube', soundcloud: 'SoundCloud', mixcloud: 'Mixcloud' };

@@ -125,7 +125,7 @@ parts.confetti = new Confetti((x, z, y) => groundAt(ctx.player.colliders, x, z, 
 ctx.scene.add(parts.confetti.mesh);
 parts.tv = installTv(ctx, { shares: () => parts.talk.currentShares(), watch: () => parts.talk.watchShare(), toggleShare: () => void parts.talk.toggleShare(), showSettings: (pane) => parts.hud.showSettings(pane) });
 parts.arcade = installArcade(ctx);
-parts.rooftop = installRooftop(ctx, { ambient: parts.stage.ambient, hemi: parts.stage.hemi });
+parts.rooftop = installRooftop(ctx, { ambient: parts.stage.ambient, hemi: parts.stage.hemi, setFrame: () => parts.djset.frame() }); // setFrame: flrnoh fork
 
 // You, and how you talk to the office.
 parts.net = new Net(() => store.profile, () => parts.arrival.whereNow());
