@@ -19,6 +19,8 @@ import { baumarktMessage } from '../../baumarkt.js';
 import { kinoMessage } from '../../kino.js';
 import { toyUse } from '../../../shared/shopwares.js';
 import { funshopHandlers } from './funshops.js';
+import { karaokeHandlers } from './karaoke.js';
+import { bowlingHandlers } from './bowling.js';
 import { rideMessage } from '../../fork/ride.js';
 import { here } from './common.js';
 import { jukeboxChanged } from './jukebox.js';
@@ -168,6 +170,8 @@ export const forkHandlers = {
     if (used) ctx.toNeighbors(c, used);
   },
   ...funshopHandlers, // the Spielhalle's claw machine and the Post's postcards
+  ...karaokeHandlers, // the bowling centre's karaoke bar (karaoke.ts)
+  ...bowlingHandlers, // the bowling centre's cosmic switch and rental shoes
   'bike.ride': rideMessage, // a bike from the city's bike shop (fork/ride.ts)
   'bike.bell': rideMessage,
   'tank.fill': tank,

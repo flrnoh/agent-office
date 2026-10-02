@@ -5,6 +5,8 @@ import { CASINO } from '../../shared/casino'; // fork
 import { GYM } from '../../shared/gym'; // fork
 import { GALLERY, HALL } from '../../shared/hall'; // fork
 import { SOCCER } from '../../shared/soccer'; // fork
+import { BOWLING } from '../../shared/bowling'; // fork
+import { bowlingWhereabouts } from '../../shared/bowling-house'; // fork
 import { CARS, type CarSeat } from '../../shared/garage';
 import { seatOn, type MapPlan } from '../../shared/maps';
 import { store } from '../state';
@@ -28,7 +30,7 @@ export function whereabouts(p: PeerInfo, car?: { car: number; seat: CarSeat }, p
   if (car && def?.kind === 'bulli') return `🚐 ${car.seat === 'driver' ? 'driving' : 'riding in'} ${def.name}`; // flrnoh fork
   if (def) return `🏎️ ${car.seat === 'driver' ? 'driving' : 'riding in'} the ${def.name}`;
   if (p.smoking) return '🚬 on a smoke break';
-  if (p.golfing) return '🏌️ teeing off';
+  if (p.golfing) return p.floor === BOWLING ? '⛳ putting in the black-light mini golf' : '🏌️ teeing off'; // fork: the mini golf borrows the golf pose
   if (p.throwing) return p.throwing === 'darts' ? '🎯 playing darts' : '🪓 throwing axes';
   const office = plan.style === 'office' || p.floor === ROOF;
   const place = p.seat ? (office ? seatAt(p.seat) : seatOn(plan, p.seat)) : undefined;
@@ -44,6 +46,7 @@ export function whereabouts(p: PeerInfo, car?: { car: number; seat: CarSeat }, p
   if (p.floor === GYM) return '🏋️ in the gym'; // fork (client/gym.ts)
   if (p.floor === HALL) return p.y > GALLERY.y - 0.5 ? '☕ at the padel hall café' : '🎾 in the padel hall'; // fork (client/hall.ts)
   if (p.floor === SOCCER) return '⚽ in the soccer hall'; // fork (client/soccer/place.ts)
+  if (p.floor === BOWLING) return bowlingWhereabouts(p.x, p.z); // fork (client/bowling)
   // On a map of its own, the office's rooms aren't where they'd be.
   if (!office) return undefined;
   // Through the north wall in the back office: nobody gets there unless the floor's built out.
