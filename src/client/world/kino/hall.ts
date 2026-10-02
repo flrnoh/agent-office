@@ -43,8 +43,10 @@ export function buildSaal1(g: THREE.Group): Hall {
   const fabric = L.mat('#5a1420', 0.08);
   const dark = L.mat('#140c0e', 0.3);
   slab(still, fabric, x0, x0 + 0.02, 0, H, z0, z1);
-  slab(still, fabric, x0, x1, 0, H, z0, z0 + 0.02);
-  slab(still, fabric, x0, x1, 0, H, z1 - 0.02, z1);
+  // (The side walls stop at the screen wall's face, the tiers and sconces a centimetre off the walls'
+  // backs: nothing in here shares a face's plane with the fabric, or it flickers.)
+  slab(still, fabric, x0, x1 - 0.02, 0, H, z0, z0 + 0.02);
+  slab(still, fabric, x0, x1 - 0.02, 0, H, z1 - 0.02, z1);
   const ceiling = plane(g, L.mat('#1c1418', 0.4), (x0 + x1) / 2, H, (z0 + z1) / 2, x1 - x0, z1 - z0, 0);
   ceiling.rotation.x = Math.PI / 2;
   // The screen's wall: black round the screen, with the doorways either side.
@@ -61,7 +63,7 @@ export function buildSaal1(g: THREE.Group): Hall {
   const stepLight = glowing('#ffb347');
   const edge = (k: number) => SCREEN1.x - 5.5 - 1.25 * k;
   for (let k = 1; k <= ROWS1; k++) {
-    slab(still, stepMat, x0, edge(k), rowY(k) - ROW_RISE, rowY(k), z0, z1);
+    slab(still, stepMat, x0 + 0.01, edge(k), rowY(k) - ROW_RISE, rowY(k), z0 + 0.01, z1 - 0.01);
     for (const z of [z0 + 1.1, SCREEN1.z, z1 - 1.1]) slab(still, stepLight, edge(k) - 0.02, edge(k) + 0.01, rowY(k) - 0.06, rowY(k) - 0.02, z - 0.35, z + 0.35);
   }
   // The seats: a cushion, a back and armrests, red velvet.
@@ -85,8 +87,8 @@ export function buildSaal1(g: THREE.Group): Hall {
   const sconce = L.mat('#ffcf7a', 0.02);
   for (let x = x0 + 2; x < x1 - 3; x += 3.2) {
     const y = 2.4 + Math.max(0, (SCREEN1.x - 5.5 - x) / 1.25) * ROW_RISE;
-    slab(still, sconce, x - 0.2, x + 0.2, y, y + 0.35, z0, z0 + 0.12);
-    slab(still, sconce, x - 0.2, x + 0.2, y, y + 0.35, z1 - 0.12, z1);
+    slab(still, sconce, x - 0.2, x + 0.2, y, y + 0.35, z0 + 0.01, z0 + 0.12);
+    slab(still, sconce, x - 0.2, x + 0.2, y, y + 0.35, z1 - 0.12, z1 - 0.01);
   }
   g.add(mergeByMaterial(still));
 
@@ -119,10 +121,11 @@ export function buildSaal1(g: THREE.Group): Hall {
   const exit = exitSign();
   for (const d of doors) plane(g, glowing('#ffffff', exit), x1 - 0.04, 2.85, d.z, 1.1, 0.36, -Math.PI / 2);
 
-  // The booth's window high in the back wall, and the beam from it to the screen.
+  // The booth's window high in the back wall, and the beam from it to the screen (their backs sunk
+  // into the fabric at different depths, so no two share a plane).
   const lensY = rowY(ROWS1) + 3.2;
-  slab(g, glowing('#2b3a55'), x0, x0 + 0.03, lensY - 0.5, lensY + 0.5, SCREEN1.z - 0.8, SCREEN1.z + 0.8);
-  slab(g, glowing('#fff6e0'), x0, x0 + 0.05, lensY - 0.12, lensY + 0.12, SCREEN1.z - 0.12, SCREEN1.z + 0.12);
+  slab(g, glowing('#2b3a55'), x0 + 0.01, x0 + 0.03, lensY - 0.5, lensY + 0.5, SCREEN1.z - 0.8, SCREEN1.z + 0.8);
+  slab(g, glowing('#fff6e0'), x0 + 0.015, x0 + 0.05, lensY - 0.12, lensY + 0.12, SCREEN1.z - 0.12, SCREEN1.z + 0.12);
   const beam = projectorBeam(new THREE.Vector3(x0 + 0.05, G + lensY, SCREEN1.z), SCREEN1.x - 0.1, G + sy0, G + sy1, SCREEN1.z - SCREEN1.w / 2, SCREEN1.z + SCREEN1.w / 2);
   g.add(beam);
 
@@ -178,15 +181,16 @@ export function buildSaal2(g: THREE.Group): Hall {
     for (const side of [-1, 1]) slab(still, red, s.x - 0.2, s.x + 0.5, s.y + 0.18, s.y + 0.7, s.z + side * 0.42 - 0.08, s.z + side * 0.42 + 0.08);
     slab(still, wood, s.x - 0.18, s.x + 0.48, s.y, s.y + 0.18, s.z - 0.4, s.z + 0.4);
   }
-  // The screen's gold frame and the side drapes, which stay open.
+  // The screen's gold frame and the side drapes, which stay open; their backs sunk into the wall's
+  // fabric at different depths, so no two of them share a plane.
   const gold = L.mat('#c9a227', 0.25);
   const sy0 = SCREEN2.y - SCREEN2.h / 2;
   const sy1 = SCREEN2.y + SCREEN2.h / 2;
-  slab(still, L.mat('#0d0d10', 0.4), x0, SCREEN2.x + 0.04, sy0 - 0.2, sy1 + 0.2, SCREEN2.z - SCREEN2.w / 2 - 0.2, SCREEN2.z + SCREEN2.w / 2 + 0.2);
-  for (const s of [-1, 1]) slab(still, gold, x0, SCREEN2.x + 0.1, sy0 - 0.3, sy1 + 0.3, SCREEN2.z + s * (SCREEN2.w / 2 + 0.25) - 0.08, SCREEN2.z + s * (SCREEN2.w / 2 + 0.25) + 0.08);
-  slab(still, gold, x0, SCREEN2.x + 0.1, sy1 + 0.22, sy1 + 0.38, SCREEN2.z - SCREEN2.w / 2 - 0.33, SCREEN2.z + SCREEN2.w / 2 + 0.33);
+  slab(still, L.mat('#0d0d10', 0.4), x0 + 0.01, SCREEN2.x + 0.04, sy0 - 0.2, sy1 + 0.2, SCREEN2.z - SCREEN2.w / 2 - 0.2, SCREEN2.z + SCREEN2.w / 2 + 0.2);
+  for (const s of [-1, 1]) slab(still, gold, x0 + 0.015, SCREEN2.x + 0.1, sy0 - 0.3, sy1 + 0.3, SCREEN2.z + s * (SCREEN2.w / 2 + 0.25) - 0.08, SCREEN2.z + s * (SCREEN2.w / 2 + 0.25) + 0.08);
+  slab(still, gold, x0 + 0.015, SCREEN2.x + 0.1, sy1 + 0.22, sy1 + 0.38, SCREEN2.z - SCREEN2.w / 2 - 0.33, SCREEN2.z + SCREEN2.w / 2 + 0.33);
   const velvet = L.mat('#ffffff', 0.3, curtainTexture('#7a1020'));
-  for (const s of [-1, 1]) slab(g, velvet, x0, x0 + 0.5, 0, H - 0.3, SCREEN2.z + s * (SCREEN2.w / 2 + 0.9) - 0.6, SCREEN2.z + s * (SCREEN2.w / 2 + 0.9) + 0.6);
+  for (const s of [-1, 1]) slab(g, velvet, x0 + 0.005, x0 + 0.5, 0, H - 0.3, SCREEN2.z + s * (SCREEN2.w / 2 + 0.9) - 0.6, SCREEN2.z + s * (SCREEN2.w / 2 + 0.9) + 0.6);
   // The lectern by the door, with the remote on it.
   slab(still, wood, BOOTH2.x - 0.3, BOOTH2.x + 0.3, 0, 1.0, BOOTH2.z - 0.3, BOOTH2.z + 0.3);
   slab(still, wood, BOOTH2.x - 0.36, BOOTH2.x + 0.36, 1.0, 1.08, BOOTH2.z - 0.36, BOOTH2.z + 0.36);

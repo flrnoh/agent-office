@@ -81,7 +81,8 @@ export function buildShell(g: THREE.Group): { doors: KinoDoor[]; posters: Poster
       g.add(pane);
       slab(g, brass, ex - 0.08, ex + 0.08, GLAZE.y0, GLAZE.y1, z1 - 0.04, z1 + 0.04);
     }
-    slab(g, brass, ex - 0.1, ex + 0.1, GLAZE.y0 - 0.05, GLAZE.y0 + 0.03, a, b);
+    // The sill runs a centimetre into the walls either end (flush, its ends would flicker with the plinth's).
+    slab(g, brass, ex - 0.1, ex + 0.1, GLAZE.y0 - 0.05, GLAZE.y0 + 0.03, a - 0.01, b + 0.01);
   }
   // The door frame: brass, with a step-free threshold.
   slab(g, brass, ex - 0.12, ex + 0.12, 3.05, GLAZE.y1, dz0 - 0.15, dz1 + 0.15);
@@ -114,8 +115,9 @@ export function buildShell(g: THREE.Group): { doors: KinoDoor[]; posters: Poster
     },
   });
 
-  // The red carpet from the doors out to the sidewalk, and the forecourt's paving under the canopy.
-  slab(g, toon('#3d3f45'), ex + t / 2, KINO.maxX + 6, -0.02, 0.03, ENTRANCE.z - 8, ENTRANCE.z + 8);
+  // The red carpet from the doors out to the sidewalk, and the forecourt's paving under the canopy (a
+  // centimetre into the wall, clear of the plinth's and pilasters' backs).
+  slab(g, toon('#3d3f45'), ex + t / 2 - 0.01, KINO.maxX + 6, -0.02, 0.03, ENTRANCE.z - 8, ENTRANCE.z + 8);
   slab(g, toon('#a4161a'), ex - 0.1, KINO.maxX + 6, 0.03, 0.06, ENTRANCE.z - 1.4, ENTRANCE.z + 1.4);
   // Brass posts with red ropes along the carpet.
   for (const s of [-1, 1]) {
@@ -132,9 +134,10 @@ export function buildShell(g: THREE.Group): { doors: KinoDoor[]; posters: Poster
     posters.push({ mat });
   }
 
-  // Inside the hall doors, the doorways' frames (the doors themselves stand open).
+  // Inside the hall doors, the doorways' frames (the doors themselves stand open); the jambs stand a
+  // centimetre into the opening, clear of the halls' wall ends.
   for (const d of HALL_DOORS) {
-    for (const s of [-1, 1]) slab(g, brass, d.x - t / 2 - 0.05, d.x + t / 2 + 0.05, 0, 2.5, d.z + s * (d.w / 2 + 0.05) - 0.05, d.z + s * (d.w / 2 + 0.05) + 0.05);
+    for (const s of [-1, 1]) slab(g, brass, d.x - t / 2 - 0.05, d.x + t / 2 + 0.05, 0, 2.5, d.z + s * (d.w / 2 - 0.01), d.z + s * (d.w / 2 + 0.1));
     slab(g, brass, d.x - t / 2 - 0.05, d.x + t / 2 + 0.05, 2.45, 2.6, d.z - d.w / 2 - 0.1, d.z + d.w / 2 + 0.1);
   }
   return { doors, posters };

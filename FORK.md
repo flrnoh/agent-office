@@ -920,6 +920,12 @@ The rooftop bar's counter turns at its north end (the pool's end) and runs east 
 - Own file: `src/shared/skybar.ts` (`ROOF_BAR`, moved out of layout.ts, `ROOF_BAR_END`, `SKYBAR_STOOLS`, the bartender's path `TENDER`).
 - Hooks in upstream files: `src/shared/layout.ts` (re-exports `ROOF_BAR`, `...SKYBAR_STOOLS` in `SEATING`), `src/client/features/rooftop/world.ts` (the leg, its collider and interactable, the pergola, stools 7–9, `serve(x, z)` and the bartender's walk), `src/client/features/bar/index.ts` (`serve` gets x too), `src/client/world/tower.ts` (the leg seen from outside), `src/client/ui/whereabouts.ts` ("at the bar" takes in the leg's stools), `src/shared/coaster-keepout.ts` (the sky bar's box).
 
+### No flickering faces
+
+Nothing flickers when you move: no two faces of different colour share a plane where they overlap (z-fighting), outside or in the places. Signs, logos, stripes, trim and decals stand a centimetre or two proud of what they sit on, or the part behind stops a centimetre short; parts nobody can see (inside a wall, never drawn) are left as they were. And the renderer uses a reversed depth buffer where the GPU has `EXT_clip_control`, so faces a centimetre apart stay apart from across the city or the roof too (three falls back to the ordinary buffer elsewhere).
+
+- Hooks in upstream files: `src/client/core/scene.ts` (`reversedDepthBuffer: true` in `makeRenderer`); one-line offsets in `src/client/world/tower.ts` (cornice, roof housing), `src/client/world/office/shell.ts` (`CORNER_IN`, baseboards at the corners), `src/client/world/office/balcony.ts` (exit stairs, the smoke-break sign), `src/client/world/office/loft.ts` (stairs, the wall over the door), `src/client/world/elevator.ts` (door seam, brass frame), `src/client/world/outside.ts` (the garage's back wall), `src/client/world/scenic/road.ts` (signs, billboard), `src/client/world/holiday.ts` (ribbons, the R.I.P. label), `src/client/features/bookshelf/world.ts` (back panel), `src/client/features/cabinet/world.ts` (bezel, screen). On a sync, keep the offsets.
+
 ### Fork maintenance
 
 - `FORK.md` (this file), `.github/workflows/upstream-sync.yml`, `bin/update-office.sh`, and one line at the end of `CLAUDE.md` pointing here.

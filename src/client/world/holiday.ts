@@ -413,8 +413,8 @@ function present(w: number, paper: string, ribbon: string): THREE.Group {
   const h = w * 0.8;
   g.add(mesh(new THREE.BoxGeometry(w, h, w), toon(paper), 0, h / 2, 0));
   const rib = toon(ribbon);
-  g.add(mesh(new THREE.BoxGeometry(w * 1.02, h * 1.02, w * 0.18), rib, 0, h / 2, 0, false));
-  g.add(mesh(new THREE.BoxGeometry(w * 0.18, h * 1.02, w * 1.02), rib, 0, h / 2, 0, false));
+  g.add(mesh(new THREE.BoxGeometry(w + 0.02, h + 0.01, w * 0.18), rib, 0, (h + 0.01) / 2, 0, false)); // a centimeter off the paper, never flickering into it
+  g.add(mesh(new THREE.BoxGeometry(w * 0.18, h + 0.01, w + 0.02), rib, 0, (h + 0.01) / 2, 0, false));
   for (const sx of [-1, 1]) {
     const loop = mesh(new THREE.TorusGeometry(w * 0.15, w * 0.05, 6, 12), rib, sx * w * 0.13, h + w * 0.1, 0, false);
     loop.rotation.y = Math.PI / 2;
@@ -535,7 +535,7 @@ export class Holiday {
       if (kind !== 1) {
         const label = textPlane('R.I.P.', { color: '#2b2d42', size: 56 });
         label.scale.multiplyScalar(kind === 2 ? 0.55 : 0.45);
-        label.position.set(x + 0.09, G + (kind === 2 ? 0.28 : 0.5), z);
+        label.position.set(x + 0.095, G + (kind === 2 ? 0.28 : 0.5), z);
         label.rotation.y = s.rotation.y;
         rip.push(label);
       }

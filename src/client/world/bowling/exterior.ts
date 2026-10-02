@@ -93,9 +93,10 @@ export function buildBowlingExterior(group: THREE.Group, colliders: Collider[], 
     parts.add(mesh(box(B.maxX - B.minX + out * 2, h, out * 2 + 0.01), mat, CX, G + y, B.minZ));
     parts.add(mesh(box(out * 2 + 0.01, h, B.maxZ - B.minZ + out * 2), mat, B.minX, G + y, (B.minZ + B.maxZ) / 2));
     parts.add(mesh(box(out * 2 + 0.01, h, B.maxZ - B.minZ + out * 2), mat, B.maxX, G + y, (B.minZ + B.maxZ) / 2));
-    // Across the front: the two solid ends, and over the bay on the fascia.
-    parts.add(mesh(box(BAY.minX - B.minX + out, h, out * 2), mat, (B.minX - out + BAY.minX) / 2, G + y, FRONT));
-    parts.add(mesh(box(B.maxX - BAY.maxX + out, h, out * 2), mat, (BAY.maxX + B.maxX + out) / 2, G + y, FRONT));
+    // Across the front: the two solid ends (wrapped round their corners into the bay, so the band's end
+    // isn't flush with the wall there), and over the bay on the fascia.
+    parts.add(mesh(box(BAY.minX - B.minX + out * 2, h, out * 2), mat, (B.minX + BAY.minX) / 2, G + y, FRONT));
+    parts.add(mesh(box(B.maxX - BAY.maxX + out * 2, h, out * 2), mat, (BAY.maxX + B.maxX) / 2, G + y, FRONT));
     if (y > BAY.glass) parts.add(mesh(box(BAY.maxX - BAY.minX, h, out * 2), mat, DX, G + y, FRONT));
   };
   band(0.45, 0.9, teal, 0.06);
@@ -265,7 +266,7 @@ export function buildBowlingExterior(group: THREE.Group, colliders: Collider[], 
     parts.add(mesh(box(SIGN.w - 1.6, 0.18, 0.18), teal, SIGN.x, G + H + 0.9, SIGN.z - 0.35));
     parts.add(mesh(box(SIGN.w - 1.6, 0.18, 0.18), teal, SIGN.x, G + H + SIGN.h + 0.4, SIGN.z - 0.35));
     for (let i = 0; i < 10; i++) {
-      const strut = mesh(box(0.08, SIGN.h * 1.1, 0.08), dark, SIGN.x - SIGN.w / 2 + 1.6 + i * ((SIGN.w - 3.2) / 9), G + H + 0.9 + SIGN.h / 2, SIGN.z - 0.4);
+      const strut = mesh(box(0.08, SIGN.h * 1.1, 0.08), dark, SIGN.x - SIGN.w / 2 + 1.6 + i * ((SIGN.w - 3.2) / 9), G + H + 0.9 + SIGN.h / 2, SIGN.z - 0.41);
       strut.rotation.z = i % 2 ? 0.45 : -0.45;
       parts.add(strut);
     }

@@ -63,7 +63,7 @@ export function buildTrain(night: NightParts): TrainView {
     car.add(mesh(roundedBox(W, 0.16, L, 0.1), body, 0, FLOOR_Y - 0.08, 0));
     for (const x of [-1, 1]) {
       car.add(mesh(new THREE.BoxGeometry(0.1, 0.55, L - 0.2), body, x * (W / 2 - 0.05), FLOOR_Y + 0.27, 0.02));
-      car.add(mesh(new THREE.BoxGeometry(0.11, 0.09, L - 0.24), stripe, x * (W / 2 - 0.045), FLOOR_Y + 0.42, 0.02, false));
+      car.add(mesh(new THREE.BoxGeometry(0.12, 0.09, L - 0.24), stripe, x * (W / 2 - 0.05), FLOOR_Y + 0.42, 0.02, false)); // a centimeter proud of the side, in and out
     }
     car.add(mesh(roundedBox(W, 0.62, 0.24, 0.08), body, 0, FLOOR_Y + 0.31, L / 2 - 0.2));
     car.add(mesh(new THREE.BoxGeometry(W - 0.1, 0.08, 0.26), stripe, 0, FLOOR_Y + 0.6, L / 2 - 0.2, false));
@@ -103,7 +103,7 @@ export function buildTrain(night: NightParts): TrainView {
       for (const x of [-0.42, 0.42]) car.add(mesh(new THREE.SphereGeometry(0.09, 10, 8), lamp, x, FLOOR_Y + 0.33, L / 2 + 0.12, false));
       for (const side of [-1, 1]) {
         const p = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.34), word);
-        p.position.set(side * (W / 2 + 0.01), FLOOR_Y + 0.22, 0);
+        p.position.set(side * (W / 2 + 0.02), FLOOR_Y + 0.22, 0);
         p.rotation.y = side * (Math.PI / 2);
         car.add(p);
       }

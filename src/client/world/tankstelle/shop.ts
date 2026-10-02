@@ -83,7 +83,8 @@ export function buildShop(group: THREE.Group, night: NightParts): Door {
   block(solid, w + 0.4, 0.3, d + 1.6, toon('#d9d6cf'), cx, cz + 0.6, S.h);
   block(solid, w - 2 * t, 0.06, d - t, toon(WHITE), cx, cz + t / 2, CEIL);
   // The front: a fascia over the glass with the brand, posts between the panes, glass either side of the door.
-  block(solid, w, S.h - CEIL, t, toon(TEAL), cx, S.maxZ - t / 2, CEIL);
+  // The fascia stands a centimeter proud of the side walls' ends and faces, so it doesn't flicker into them.
+  block(solid, w + 0.01, S.h - CEIL, t + 0.01, toon(TEAL), cx, S.maxZ - t / 2 + 0.005, CEIL);
   block(solid, w + 0.02, 0.16, t + 0.04, bulb(night, YELLOW, 0.25), cx, S.maxZ - t / 2, CEIL + 0.08);
   const brand = signPlane(1024, 128, 8, (g) => {
     g.fillStyle = TEAL;
@@ -97,7 +98,7 @@ export function buildShop(group: THREE.Group, night: NightParts): Door {
     g.textAlign = 'right';
     g.fillText('24h', 1004, 68);
   });
-  brand.position.set(cx, G + CEIL + 0.62, S.maxZ + 0.01);
+  brand.position.set(cx, G + CEIL + 0.62, S.maxZ + 0.03);
   group.add(brand);
   const glass = glassMat();
   const door = SHOP_DOOR;
@@ -107,7 +108,8 @@ export function buildShop(group: THREE.Group, night: NightParts): Door {
     [S.minX, dl],
     [dr, S.maxX],
   ]) {
-    group.add(mesh(new THREE.BoxGeometry(x1 - x0, CEIL, 0.04), glass, (x0 + x1) / 2, G + CEIL / 2, S.maxZ - t / 2, false));
+    // The glass ends a centimeter inside the end posts, so their ends aren't one plane.
+    group.add(mesh(new THREE.BoxGeometry(x1 - x0 - 0.02, CEIL, 0.04), glass, (x0 + x1) / 2, G + CEIL / 2, S.maxZ - t / 2, false));
     for (let x = x0; x <= x1 + 0.01; x += (x1 - x0) / Math.max(1, Math.round((x1 - x0) / 2.2))) block(solid, 0.12, CEIL, t + 0.02, toon(STEEL), Math.min(x1 - 0.06, Math.max(x0 + 0.06, x)), S.maxZ - t / 2, 0);
     block(solid, x1 - x0, 0.35, t + 0.02, toon(STEEL), (x0 + x1) / 2, S.maxZ - t / 2, 0);
   }
@@ -151,7 +153,8 @@ export function buildShop(group: THREE.Group, night: NightParts): Door {
   goods(inside, r, -112.3, -111.3, -12.45, 1, 2, 0.15, 0.4);
   // The newspapers on a rack beside the counter.
   block(inside, 0.8, 0.9, 0.4, toon(STEEL), -106.2, -11.7, 0);
-  for (let i = 0; i < 3; i++) block(inside, 0.7, 0.04, 0.32, toon(i === 1 ? '#f1efe8' : '#e8e2d0'), -106.2, -11.7, 0.9 + i * 0.02);
+  // Each a little smaller than the one under it, so the stack's sides aren't one plane.
+  for (let i = 0; i < 3; i++) block(inside, 0.7 - i * 0.02, 0.04, 0.32 - i * 0.02, toon(i === 1 ? '#f1efe8' : '#e8e2d0'), -106.2, -11.7, 0.9 + i * 0.02);
   // Behind the cashier: the back counter, the coffee machine, cups, the sausage warmer, the cigarettes.
   const B = BACK_COUNTER;
   block(inside, B.maxX - B.minX, B.h, B.maxZ - B.minZ, toon('#d9d6cf'), (B.minX + B.maxX) / 2, (B.minZ + B.maxZ) / 2, 0);
@@ -176,7 +179,7 @@ export function buildShop(group: THREE.Group, night: NightParts): Door {
     const z = (sh.minZ + sh.maxZ) / 2;
     const len = sh.maxZ - sh.minZ;
     block(inside, 0.3, 1.7, len, toon('#d9d6cf'), x, z, 0);
-    for (let l = 0; l < 4; l++) block(inside, sh.maxX - sh.minX, 0.04, len, toon(STEEL), x, z, 0.12 + l * 0.42);
+    for (let l = 0; l < 4; l++) block(inside, sh.maxX - sh.minX, 0.04, len - 0.02, toon(STEEL), x, z, 0.12 + l * 0.42); // ends a hair inside the shelf's
     block(inside, sh.maxX - sh.minX + 0.02, 0.3, 0.06, toon(YELLOW), x, sh.maxZ, 1.7);
     for (const face of [-1, 1]) {
       const g = new THREE.Group();
@@ -198,7 +201,8 @@ export function buildShop(group: THREE.Group, night: NightParts): Door {
     }
   }
   inside.add(mesh(new THREE.BoxGeometry(F.maxX - F.minX - 0.1, 1.95, 0.03), glassMat(), (F.minX + F.maxX) / 2, G + 1.15, F.maxZ + 0.02, false));
-  for (let x = F.minX + 1.1; x < F.maxX; x += 1.1) block(inside, 0.05, 2, 0.05, toon(STEEL), x, F.maxZ + 0.03, 0.1);
+  // The posts between the doors a centimeter further out than the glass's back, so they're not one plane.
+  for (let x = F.minX + 1.1; x < F.maxX; x += 1.1) block(inside, 0.05, 2, 0.05, toon(STEEL), x, F.maxZ + 0.04, 0.1);
   // The ceiling's lights.
   const panel = bulb(night, '#fffdf2', 0.55);
   for (let x = S.minX + 2.5; x < S.maxX - 1; x += 4) for (let z = S.minZ + 2.5; z < S.maxZ - 1; z += 3.5) inside.add(mesh(new THREE.BoxGeometry(1.4, 0.04, 0.5), panel, x, G + CEIL - 0.03, z, false));

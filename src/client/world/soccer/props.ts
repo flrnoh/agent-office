@@ -166,7 +166,7 @@ export function buildPitch(group: THREE.Group) {
   turf.repeat.set(PW / 4.5, PL / 4.5);
   const turfMat = new THREE.MeshToonMaterial({ map: turf, gradientMap });
   group.add(flatMesh(new THREE.PlaneGeometry(PW + 2 * BOARD.thick, PL + 2 * BOARD.thick), turfMat, PITCH_CX, 0.004, PZ));
-  for (const s of [-1, 1]) group.add(flatMesh(new THREE.PlaneGeometry(GOAL.width + 0.2, GOAL.depth + 0.1), turfMat, PITCH_CX, 0.004, PZ + s * (PL / 2 + GOAL.depth / 2)));
+  for (const s of [-1, 1]) group.add(flatMesh(new THREE.PlaneGeometry(GOAL.width + 0.2, GOAL.depth + 0.1), turfMat, PITCH_CX, 0.008, /* over the pitch's edge, under the lines */ PZ + s * (PL / 2 + GOAL.depth / 2)));
 
   // The lines, crisp white, lifted clear of the turf.
   const LINE = 0.08;

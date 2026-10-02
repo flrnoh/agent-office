@@ -137,7 +137,7 @@ export function palletModel(load: PalletLoad): THREE.Group {
     }
     case 'tiles':
       for (const z of [-0.3, 0.3]) g.add(box(0.74, h, 0.56, indoor('#9e9e9e'), 0, top, z));
-      g.add(box(0.76, 0.04, 1.16, indoor('#264653'), 0, top + h - 0.06, 0));
+      g.add(box(0.76, 0.04, 1.18, indoor('#264653'), 0, top + h - 0.06, 0));
       break;
     case 'bricks':
       for (let layer = 0; layer < 5; layer++) g.add(box(0.76, 0.13, 1.16, indoor(layer % 2 ? '#b5523b' : '#c2603f'), 0, top + layer * 0.14, 0));
@@ -207,7 +207,7 @@ export function toolModel(id: ToolId): { group: THREE.Group; spin: THREE.Object3
       // A pistol grip, the motor housing over it, the chuck and the bit (or a screwdriver tip) ahead.
       g.add(box(0.06, 0.16, 0.08, black, 0, -0.12, 0));
       g.add(box(0.075, 0.09, big ? 0.24 : 0.18, body, 0, 0.0, -0.04));
-      g.add(box(0.07, 0.04, 0.09, body, 0, -0.16, 0.0));
+      g.add(box(0.06, 0.04, 0.08, body, 0, -0.16, 0.0));
       g.add(box(0.08, 0.05, 0.1, black, 0, -0.2, 0.0));
       spin = new THREE.Group();
       spin.position.set(0, 0.045, big ? -0.17 : -0.14);
