@@ -27,6 +27,7 @@ import { prompts } from './prompts';
 import { rig } from './rig'; // flrnoh fork
 import { boats } from './boats'; // flrnoh fork
 import { tankstelle } from './tankstelle'; // flrnoh fork
+import { trolleys } from './trolleys'; // flrnoh fork
 import { services } from './services';
 import { signins } from './signins';
 import { sky } from './sky';
@@ -67,4 +68,5 @@ export const SLICES: readonly Slice[] = [
   signins,
   boats, // flrnoh fork: the jetskis and the motorboat at the beach
   tankstelle, // flrnoh fork: the petrol station and its car wash
+  trolleys, // flrnoh fork: the supermarket's shopping trolleys
 ];

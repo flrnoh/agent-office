@@ -20,6 +20,7 @@ import { RigTable, Rigs } from '../rig.js';
 import { Marinas } from '../boats.js';
 import { KinoScreens } from '../kino.js';
 import { Forecourts } from '../tankstelle.js';
+import { Trolleys } from '../../shared/trolley.js';
 import { RoofTables } from '../tablegames.js';
 import { PadelCourts } from '../padel.js';
 import { BungeeRope } from '../bungee.js';
@@ -39,6 +40,7 @@ export interface Fork {
   marinas: Marinas; // the jetskis and the motorboat at each floor's jetty on the beach
   kinos: KinoScreens; // the cinema's Saal 2 on each floor's street
   forecourts: Forecourts; // the petrol station's pumps and car wash on each floor
+  trolleys: Trolleys; // who pushes a supermarket trolley on each floor's street, and what's in it
   roofTables: RoofTables; // the table games on the roof
   padelCourts: PadelCourts; // padel in the hall
   bungeeRope: BungeeRope; // bungee off the roof
@@ -82,6 +84,7 @@ export function createFork(ctx: Ctx): Fork {
     rigs,
     marinas: new Marinas(),
     kinos: new KinoScreens(),
+    trolleys: new Trolleys(),
     forecourts: new Forecourts((floorId) => {
       const f = floors.get(floorId);
       if (f) ctx.toFloor(f, { t: 'tankstelle', state: ctx.forecourts.of(floorId).state() });

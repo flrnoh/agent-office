@@ -222,7 +222,7 @@ test('what the browser remembers keeps its keys and shapes', () => {
 
 test("the store's keys are its state, as window.__office shows them", () => {
   // As the office had them before its store was split into slices: methods and the slices aren't among them.
-  assert.deepEqual(Object.keys(store).sort(), ['accounts', 'ball', 'boats', 'boatsAt', 'cabinet', 'cabinetFrame', 'cars', 'carsAt', 'chat', 'clock', 'decor', 'dog', 'dogStart', 'drawing', 'floor', 'floorPlan', 'floors', 'ice', 'invites', 'issues', 'jail', 'jukebox', 'leaveOnMerge', 'limits', 'machine', 'map', 'me', 'meeting', 'notify', 'peers', 'profile', 'project', 'projectsDir', 'prompts', 'pulls', 'queue', 'repos', 'rig', 'rigFrame', 'screens', 'services', 'signins', 'sky', 'subs', 'tank', 'team', 'theme', 'upgrade', 'usage', 'whiteboard', 'workers', 'you']); // rig, rigFrame, boats, boatsAt, tank: flrnoh fork
+  assert.deepEqual(Object.keys(store).sort(), ['accounts', 'ball', 'boats', 'boatsAt', 'cabinet', 'cabinetFrame', 'cars', 'carsAt', 'chat', 'clock', 'decor', 'dog', 'dogStart', 'drawing', 'floor', 'floorPlan', 'floors', 'ice', 'invites', 'issues', 'jail', 'jukebox', 'leaveOnMerge', 'limits', 'machine', 'map', 'me', 'meeting', 'notify', 'peers', 'profile', 'project', 'projectsDir', 'prompts', 'pulls', 'queue', 'repos', 'rig', 'rigFrame', 'screens', 'services', 'signins', 'sky', 'subs', 'tank', 'team', 'theme', 'trolleys', 'upgrade', 'usage', 'whiteboard', 'workers', 'you']); // rig, rigFrame, boats, boatsAt, tank, trolleys: flrnoh fork
 });
 
 test('a new store starts every field where it always has', async () => {
@@ -250,6 +250,7 @@ test('a new store starts every field where it always has', async () => {
       team: null, accounts: null, signins: null,
       boats: moored(), boatsAt: [], // flrnoh fork: the jetskis and the motorboat at the beach
       tank: { fills: [], wash: null, shine: [] }, // flrnoh fork: the petrol station
+      trolleys: [], // flrnoh fork: the supermarket's trolleys
     },
   );
 });

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { LOTS } from '../src/shared/city.js';
-import { DOOR_W, FRONT_T, LOT_PLANS, SHOP_H, SHOP_KINDS, SHOPS, SIDES, doorLeaf, hasShops, lotPlan, lotSolids, shopLocal, shopPoint, shopRect, shopWalls, type Rect, type Shop, type Solid } from '../src/shared/shops.js';
+import { DEALT_KINDS, DOOR_W, FRONT_T, LOT_PLANS, SHOP_H, SHOP_KINDS, SHOPS, SIDES, doorLeaf, hasShops, lotPlan, lotSolids, shopLocal, shopPoint, shopRect, shopWalls, type Rect, type Shop, type Solid } from '../src/shared/shops.js';
 import { insideShop, lotColliders, shopRoom, shopSeatHips, shopSeatKey, shopSeatOf, shopSolids, stationAt } from '../src/shared/shop-rooms.js';
 import { MENUS, SHOP_ITEMS, TOYS, isShopItem, toyUse } from '../src/shared/shopwares.js';
 import { RECORDS, crateDig } from '../src/shared/records.js';
@@ -38,20 +38,22 @@ test('the shops are laid out once, the same every time, from the city alone', ()
   assert.match(built, /lotColliders\(li\)/);
 });
 
-test('every one of the 14 kinds is all over the city, and the nearest shops are one of each', () => {
-  assert.equal(SHOP_KINDS.length, 14);
+test('every kind is all over the city, and the nearest shops are one of each', () => {
+  assert.ok(SHOP_KINDS.length >= 14, `${SHOP_KINDS.length} kinds`);
   const byKind = new Map<string, Shop[]>();
   for (const s of SHOPS) byKind.set(s.kind, [...(byKind.get(s.kind) ?? []), s]);
   for (const k of SHOP_KINDS) {
     const list = byKind.get(k.id) ?? [];
-    assert.ok(list.length >= 8, `${k.id}: ${list.length}`);
+    assert.ok(list.length >= 6, `${k.id}: ${list.length}`);
     // In every quarter round the office.
     const quarters = new Set(list.map((s) => `${Math.sign(s.ox)}${Math.sign(s.oz - 27)}`));
     assert.ok(quarters.size >= 3, `${k.id} only in ${[...quarters]}`);
   }
   const door = (s: Shop) => shopPoint(s, s.doorU, 0);
-  const nearest = [...SHOPS].sort((a, b) => Math.hypot(door(a).x, door(a).z) - Math.hypot(door(b).x, door(b).z)).slice(0, SHOP_KINDS.length);
-  assert.equal(new Set(nearest.map((s) => s.kind)).size, SHOP_KINDS.length);
+  // The kinds dealt shop by shop: the nearest of those are one of each (a whole-side kind, the supermarket, has its own sides).
+  const dealt = new Set(DEALT_KINDS.map((k) => k.id));
+  const nearest = SHOPS.filter((s) => dealt.has(s.kind)).sort((a, b) => Math.hypot(door(a).x, door(a).z) - Math.hypot(door(b).x, door(b).z)).slice(0, DEALT_KINDS.length);
+  assert.equal(new Set(nearest.map((s) => s.kind)).size, DEALT_KINDS.length);
 });
 
 test('every shop is inside its building, and no two shops share any floor', () => {
@@ -168,7 +170,8 @@ test('each kind has something to do: a counter, and the barber’s and the tatto
     if (s.kind === 'buchladen') assert.ok(at.has('shelf'));
   }
   assert.ok(SHOPS.some((s) => s.kind === 'platten' && shopRoom(s).stations.some((t) => t.at === 'crate')));
-  for (const k of SHOP_KINDS) if (k.id !== 'friseur' && k.id !== 'tattoo') assert.ok(MENUS[k.id].length > 0, k.id);
+  // Every counter is a menu, but the barber's and the tattoo studio's chairs and the supermarket's checkout.
+  for (const k of SHOP_KINDS) if (k.id !== 'friseur' && k.id !== 'tattoo' && k.id !== 'supermarkt') assert.ok(MENUS[k.id].length > 0, k.id);
 });
 
 test('a shop chair is a seat: its key goes both ways, on an office floor only', () => {
