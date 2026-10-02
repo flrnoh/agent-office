@@ -31,6 +31,7 @@ const GUEST = [
   'claw.drop', 'post.recipients', 'post.send', 'post.check', // fork: the Spielhalle's claw machine, the Post's postcards
   'trolley.set', // fork: the supermarket's shopping trolley
   'bike.ride', 'bike.bell', // fork: bikes from the city's bike shop
+  'voice.range', // fork: how far your voice carries
   'tank.fill', 'tank.wash', // fork: the petrol station and its car wash
   'karaoke.hello', 'karaoke.queue', 'karaoke.unqueue', 'karaoke.mic', 'karaoke.stop', 'karaoke.done', 'karaoke.rate', 'karaoke.cheer', // fork: the bowling centre's karaoke bar
   'bowling.lights', 'bowling.shoes', // fork: the bowling centre's cosmic switch and rental shoes

@@ -227,6 +227,8 @@ export function installKaraoke(ctx: Ctx, deps: KaraokeDeps) {
       paKey = key;
       ctx.voice.setPa(pa);
     }
+    // You on the stage with a mic: the whole centre hears you, whatever your Hörkreis (features/voicerange).
+    ctx.voice.selfOnPa = st.mics.includes(me()) && onStage(myPos().x, myPos().z);
     // Mics in hands, and mouths moving with the words for whoever sings without voice chat.
     const beat = song ? ((now - turn!.startedAt) / 1000) * (song.bpm / 60) : NaN;
     const mouth = song && Number.isFinite(beat) ? (timeline(song).lines.some((l) => l.syllables.some((s) => beat >= s.at && beat < s.at + s.len)) ? 0.18 + Math.random() * 0.12 : 0) : null;
@@ -278,6 +280,7 @@ export function installKaraoke(ctx: Ctx, deps: KaraokeDeps) {
     hands.clear();
     paKey = '';
     ctx.voice.setPa([]);
+    ctx.voice.selfOnPa = false;
     panel.show(null);
   }
 

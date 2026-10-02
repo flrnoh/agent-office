@@ -44,6 +44,8 @@ export interface PeerInfo {
   drink?: DrinkId;
   /** flrnoh fork: on a bike from the city's bike shop (shared/ride.ts). */
   bike?: BikeKind;
+  /** flrnoh fork: how far their voice carries, in meters (shared/voicerange.ts); none is the default. */
+  voiceRange?: number;
   /** Signed in with their own account, so `name` is theirs and nobody else can take it. */
   account?: boolean;
   /** The floor they're on (see FloorInfo); none while the building has no floors yet. */

@@ -27,6 +27,7 @@ Back to the [README](../README.md).
 | Ctrl + K (⌘K on a Mac) | Command palette: find a worker, issue, PR, service, board, teammate or action; Enter opens it, Shift+Enter walks you there first |
 | V | Join voice; in voice, hold to talk (you're muted when you let go) |
 | M | Mute / unmute in voice |
+| , / . | In voice, your Hörkreis smaller / bigger: only who stands in it hears you (the ◯ button on the top bar goes through the sizes) |
 | Tab | The ☰ menu: every window, and what shows on screen (in the soccer hall: the match's stats and the Hall of Fame instead; **Tab**, **✕** or **Esc** closes them) |
 | Esc | Close any window (a terminal too) and get back to looking around |
 | Ctrl + [ | Send Esc to a terminal instead, to close a menu like Claude's `/skills` or interrupt Claude. **⎋ Esc** in the terminal's header does the same |
