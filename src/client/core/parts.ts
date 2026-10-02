@@ -55,6 +55,7 @@ import type { installGuests } from '../features/guests';
 import type { installPlaces } from '../features/places';
 import type { installRig } from '../features/rig';
 import type { installShops } from '../features/shops';
+import type { installFunShops } from '../features/funshops';
 import type { installRide } from '../features/ride';
 import type { installTableGames } from '../features/tablegames';
 import type { installFocus } from '../input/focus';
@@ -147,6 +148,7 @@ export interface Parts {
   guests: Made<typeof installGuests>;
   beach: Made<typeof installBeach>;
   shops: Made<typeof installShops>;
+  funshops: Made<typeof installFunShops>;
   ride: Made<typeof installRide>; // flrnoh fork: bikes, pets, laundry
   tankstelle: Made<typeof installTankstelle>; // flrnoh fork: the petrol station
 }

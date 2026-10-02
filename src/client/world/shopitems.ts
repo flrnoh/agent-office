@@ -212,6 +212,20 @@ export function shopItem(d: Drink, S = 1): THREE.Group {
       cyl(0.095, 0.095, 0.004, toon('#111111'), 0.16, 24, 0, -0.002).rotation.x = Math.PI / 2;
       break;
     }
+    case 'plush': {
+      // The claw machine's prize (the Spielhalle): a round body, a big head, ears in its second color.
+      ball(0.055, body, 0, 0.055).scale.set(1, 1.05, 0.9);
+      ball(0.05, body, 0, 0.14);
+      for (const x of [-0.035, 0.035]) ball(0.02, label, x, 0.185);
+      for (const x of [-0.016, 0.016]) ball(0.007, toon('#1d1d1d'), x, 0.15, 0.045);
+      break;
+    }
+    case 'photostrip': {
+      // The photo booth's strip: white card, four grey photos down it.
+      box(0.055, 0.2, 0.004, body, 0, 0.1);
+      for (let i = 0; i < 4; i++) box(0.042, 0.04, 0.002, toon(['#6c757d', '#868e96', '#5c636a', '#7d848b'][i]), 0, 0.03 + i * 0.047, 0.003);
+      break;
+    }
     case 'fishbag': {
       // A knotted plastic bag of water hanging from your fingers, a goldfish going round in it, the
       // water sloshing as you go (it moves itself, wherever it's drawn).

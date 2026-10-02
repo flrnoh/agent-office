@@ -8,6 +8,7 @@
 import type { Drink, DrinkId } from './rooftop.js';
 import type { ShopKindId } from './shops.js';
 import { RECORDS, type RecordId } from './records.js';
+import { PLUSHIES, type PlushId } from './plushies.js'; // the Spielhalle's claw machine
 
 /** What it comes in, or what it is in your hand. */
 export type ShopGlass =
@@ -33,12 +34,14 @@ export type ShopGlass =
   | 'watergun'
   | 'teddy'
   | 'record'
+  | 'plush'
+  | 'photostrip'
   | 'fishbag'
   | 'budgie'
   | 'detergent'
   | 'sock';
 
-export const SHOP_GLASSES: readonly ShopGlass[] = ['semmel', 'krapfen', 'pizzaslice', 'newspaper', 'gummies', 'pill', 'lozenge', 'bouquet', 'sunflower', 'tulips', 'book', 'doener', 'duerum', 'lahmacun', 'ayran', 'yoyo', 'bubbles', 'duck', 'plane', 'watergun', 'teddy', 'record', 'fishbag', 'budgie', 'detergent', 'sock'];
+export const SHOP_GLASSES: readonly ShopGlass[] = ['semmel', 'krapfen', 'pizzaslice', 'newspaper', 'gummies', 'pill', 'lozenge', 'bouquet', 'sunflower', 'tulips', 'book', 'doener', 'duerum', 'lahmacun', 'ayran', 'yoyo', 'bubbles', 'duck', 'plane', 'watergun', 'teddy', 'record', 'plush', 'photostrip', 'fishbag', 'budgie', 'detergent', 'sock'];
 
 export type ToyId = 'yoyo' | 'seifenblasen' | 'quietscheente' | 'papierflieger' | 'wasserpistole' | 'teddy';
 
@@ -72,6 +75,8 @@ export type ShopItemId =
   | 'ayran'
   | ToyId
   | RecordId
+  | PlushId
+  | 'fotostreifen'
   | PetItemId;
 
 /** A little something it does to you (see features/shops). */
@@ -159,6 +164,9 @@ export const SHOP_ITEMS: readonly ShopItem[] = [
   thing('waschmittel', 'Waschen', 'Waschpulver', '🧴', 'A little box of washing powder for one load', 'detergent', '#f72585', '#4cc9f0', 'Eine Ladung, nicht mehr reinkippen!', null, 180),
   thing('socke', 'Waschen', 'Einzelne Socke', '🧦', 'From the lost-and-found basket. Its twin is still out there somewhere', 'sock', '#ffbe0b', '#e63946', 'Die lag seit März im Trockner', null, 180),
   ...RECORDS.map((r) => thing(r.id, 'Platten', `${r.band}: ${r.title}`, '💿', `${r.genre}, ${r.year}`, 'record', r.sleeve, r.ink, 'Gute Wahl. Die B-Seite ist noch besser', 'listen')),
+  // The Spielhalle: what the claw machine hands you, and the photo booth's strip.
+  ...PLUSHIES.map((p) => thing(p.id, 'Greifautomat', p.name, p.emoji, 'Out of the claw machine, won fair and square', 'plush', p.color, p.label, 'Glückwunsch! Der ist selten.', null, 600)),
+  thing('fotostreifen', 'Fotoautomat', 'Fotostreifen', '📸', 'Four photos of you from the booth, still a little damp', 'photostrip', '#fbfaf6', '#1d1d1d', 'Schön geworden!', null, 600),
 ];
 
 export const SHOP_ITEM_BY_ID = new Map<ShopItemId, ShopItem>(SHOP_ITEMS.map((d) => [d.id, d]));
@@ -177,7 +185,7 @@ export const isToy = (v: unknown): v is ToyId => typeof v === 'string' && (TOYS 
 
 /**
  * What each shop has on its menu, by DrinkId: its own things, and the fridge's, the café's and the
- * beach kiosk's where they fit. The barber's and the tattoo studio's chairs are their menus; the record
+ * beach kiosk's where they fit. The barber's and the tattoo studio's chairs are their menus (the boutique's racks and the optician's wall of glasses too); the record
  * shop sells from its crates.
  */
 export const MENUS: Readonly<Record<ShopKindId, readonly DrinkId[]>> = {
@@ -195,6 +203,10 @@ export const MENUS: Readonly<Record<ShopKindId, readonly DrinkId[]>> = {
   doener: ['doener', 'doenerscharf', 'duerum', 'lahmacun', 'pommes', 'ayran', 'cola'],
   spielzeug: [...TOYS],
   platten: RECORDS.map((r) => r.id),
+  spielhalle: ['popcorn', 'kinocola', 'energy', 'gummibaerchen', 'crisps'],
+  post: [],
+  boutique: [],
+  optiker: [],
   fahrrad: [],
   zoo: ['goldfisch', 'wellensittich'],
   waschsalon: ['waschmittel', 'socke', 'cola', 'chocolate', 'crisps'],

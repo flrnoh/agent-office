@@ -87,7 +87,7 @@ function furnish(still: THREE.Group, s: Shop, k: ShopKind, p: Piece) {
   const d = p.v1 - p.v0;
   const cu = (p.u0 + p.u1) / 2;
   const cv = (p.v0 + p.v1) / 2;
-  const wood = k.id === 'bar' || k.id === 'tattoo' ? '#2b2024' : k.id === 'apotheke' || k.id === 'friseur' ? '#f1ece4' : '#8d6e63';
+  const wood = k.neon ? '#2b2024' : k.id === 'apotheke' || k.id === 'friseur' ? '#f1ece4' : '#8d6e63';
   switch (p.what) {
     case 'counter':
       box(still, w, p.h - 0.06, d, wood, cu, 0, cv);
@@ -247,7 +247,7 @@ function furnish(still: THREE.Group, s: Shop, k: ShopKind, p: Piece) {
 
 /** Lamps on the ceiling: little glowing discs, a row down the middle of the room. */
 function lamps(live: THREE.Group, s: Shop, k: ShopKind) {
-  const mat = own(new THREE.MeshBasicMaterial({ color: k.id === 'bar' || k.id === 'tattoo' ? '#ffb4e6' : '#fff2d6' }));
+  const mat = own(new THREE.MeshBasicMaterial({ color: k.neon ? '#ffb4e6' : '#fff2d6' })); // the neon kinds' (the bar, the tattoo studio, the Spielhalle)
   mat.userData.outlineParameters = { visible: false };
   const n = Math.max(1, Math.round(s.len / 3));
   for (let i = 0; i < n; i++) for (const v of [s.depth * 0.35, s.depth * 0.72]) {

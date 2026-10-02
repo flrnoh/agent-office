@@ -7,6 +7,8 @@ import { sleeveTexture } from '../../world/sleeves';
 import { tattooMaterial } from '../../world/character/tattoo-art';
 import { canvasTexture } from '../../world/texture';
 import { mesh, toon } from '../../world/toon';
+import { funDecor } from '../funshops/decor';
+import { wearDecor } from './decor-wear'; // the boutique and the optician
 import { rideDecor } from './decor-ride'; // bikes, pets, laundry
 
 // flrnoh fork (see FORK.md "Shops to walk into"): what only one kind of shop has, on top of its
@@ -21,30 +23,30 @@ export interface Live {
   update(t: number, dt: number): void;
 }
 
-const at = (u: number, y: number, v: number) => new THREE.Vector3(u, y, -v);
-const tm = (map: THREE.Texture, opts: THREE.MeshToonMaterialParameters = {}) => {
+export const at = (u: number, y: number, v: number) => new THREE.Vector3(u, y, -v);
+export const tm = (map: THREE.Texture, opts: THREE.MeshToonMaterialParameters = {}) => {
   const m = new THREE.MeshToonMaterial({ map, gradientMap: (toon('#fff') as THREE.MeshToonMaterial).gradientMap, ...opts });
   m.userData.own = true;
   return m;
 };
-const glowMat = (color: string, strength = 1) => {
+export const glowMat = (color: string, strength = 1) => {
   const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(strength) });
   m.userData.own = true;
   m.userData.outlineParameters = { visible: false };
   return m;
 };
-function box(parent: THREE.Object3D, w: number, h: number, d: number, color: string | THREE.Material, u: number, y: number, v: number) {
+export function box(parent: THREE.Object3D, w: number, h: number, d: number, color: string | THREE.Material, u: number, y: number, v: number) {
   const m = mesh(new THREE.BoxGeometry(w, h, d), typeof color === 'string' ? toon(color) : color, u, y + h / 2, -v, false);
   parent.add(m);
   return m;
 }
-function cyl(parent: THREE.Object3D, r0: number, r1: number, h: number, color: string | THREE.Material, u: number, y: number, v: number, segs = 12) {
+export function cyl(parent: THREE.Object3D, r0: number, r1: number, h: number, color: string | THREE.Material, u: number, y: number, v: number, segs = 12) {
   const m = mesh(new THREE.CylinderGeometry(r0, r1, h, segs), typeof color === 'string' ? toon(color) : color, u, y + h / 2, -v, false);
   parent.add(m);
   return m;
 }
 /** A picture on a wall at (u, y, v), facing (du, dv), `w` × `h`. */
-function picture(parent: THREE.Object3D, mat: THREE.Material, w: number, h: number, u: number, y: number, v: number, du: number, dv: number) {
+export function picture(parent: THREE.Object3D, mat: THREE.Material, w: number, h: number, u: number, y: number, v: number, du: number, dv: number) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
   m.position.copy(at(u, y, v));
   m.rotation.y = Math.atan2(du, -dv);
@@ -54,7 +56,7 @@ function picture(parent: THREE.Object3D, mat: THREE.Material, w: number, h: numb
 
 const textures = new Map<string, THREE.CanvasTexture>();
 /** A canvas picture drawn once and kept (a few per kind of shop at most). */
-function painted(key: string, w: number, h: number, draw: (g: CanvasRenderingContext2D) => void): THREE.CanvasTexture {
+export function painted(key: string, w: number, h: number, draw: (g: CanvasRenderingContext2D) => void): THREE.CanvasTexture {
   let t = textures.get(key);
   if (!t) textures.set(key, (t = canvasTexture(w, h, draw)));
   return t;
@@ -110,6 +112,9 @@ export function kindDecor(still: THREE.Group, live: THREE.Group, s: Shop, k: Sho
   const mirrored = s.doorU < s.len / 2;
   const win = mirrored ? { u0: s.doorU + 1.0, u1: s.len - 0.4 } : { u0: 0.4, u1: s.doorU - 1.0 };
   switch (k.id) {
+    case 'boutique':
+    case 'optiker':
+      return wearDecor(still, live, s, k, room);
     case 'cafe': {
       // The espresso machine: chrome, two group heads, cups on top.
       const u = counter.u0 + 0.5;
@@ -336,6 +341,7 @@ export function kindDecor(still: THREE.Group, live: THREE.Group, s: Shop, k: Sho
       break;
     }
     default:
+      out.push(...funDecor(still, live, s, k, room)); // the Spielhalle and the Post (features/funshops)
       out.push(...rideDecor(still, live, s, k, room, win));
   }
   void SHOP_H;
