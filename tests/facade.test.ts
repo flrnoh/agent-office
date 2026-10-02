@@ -56,3 +56,20 @@ test('paint drips off the top, never down over the top storey\'s windows', () =>
     }
   }
 });
+
+test('FLOGGE OFFICE on the roof leaves the bungee jetty its way out', async () => {
+  const { BUNGEE } = await import('../src/shared/bungee.js');
+  const { rooftopLetters } = await import('../src/client/world/facade/landmarks.js');
+  // The letters' canvases need a page; their frame doesn't, so stub the canvas.
+  const g = globalThis as unknown as { document?: unknown };
+  const had = g.document;
+  g.document ??= { createElement: () => ({ getContext: () => new Proxy({}, { get: (_t, k) => (k === 'measureText' ? () => ({ width: 10 }) : () => {}) }) }) };
+  try {
+    const { group } = rooftopLetters({ bulbs: [] } as unknown as NightParts);
+    const box = new THREE.Box3().setFromObject(group);
+    assert.ok(box.max.x < BUNGEE.x - 1.2, `the letters reach x ${box.max.x.toFixed(1)}`);
+    assert.ok(box.min.x > B.minX, 'and stay on the building');
+  } finally {
+    g.document = had;
+  }
+});

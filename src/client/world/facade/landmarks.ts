@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import type { NightParts } from '../outside';
 import { mesh, toon } from '../toon';
+import { FLOOR } from '../../../shared/layout';
 import { B } from './frame';
+import { BUNGEE } from '../../../shared/bungee';
 
 // flrnoh fork (see FORK.md, "A facade for creatives"): what makes the building a landmark: lights up
 // its corners going round the rainbow, FLOGGE OFFICE in lit letters on the roof, a neon blade on the
@@ -12,11 +14,16 @@ const INK = '#2b2d42';
 const COLORS = ['#ef476f', '#ff8a5b', '#ffd166', '#06d6a0', '#4cc9f0', '#8a5cff', '#f72585'];
 
 /** A letter on a canvas: `ch` in `color`, ink-outlined (or glowing, for neon), `w` by `h` px. */
-function glyph(ch: string, color: string, neon: boolean, w = 160, h = 220): THREE.CanvasTexture {
+function glyph(ch: string, color: string, neon: boolean, w = 160, h = 220, mirrored = false): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
   const g = c.getContext('2d')!;
+  if (mirrored) {
+    // As a lit letter looks from behind.
+    g.translate(w, 0);
+    g.scale(-1, 1);
+  }
   g.font = `900 ${Math.round(h * 0.82)}px Nunito, ui-rounded, system-ui, sans-serif`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
@@ -164,32 +171,38 @@ export function blade(night: NightParts) {
   };
 }
 
-/** FLOGGE OFFICE up on the roof along the street side, a letter at a time on a steel frame, lit at night. */
+/**
+ * FLOGGE OFFICE up on the roof, standing on the parapet along the street side (the roof's curb, 0.45
+ * high, from FLOOR.maxZ out to the wall's outside), a letter at a time on a steel frame, lit at night:
+ * from the street it reads, from the deck you stand right at it and see it from behind, mirrored.
+ */
 export function rooftopLetters(night: NightParts) {
   const group = new THREE.Group();
   const text = 'FLOGGE OFFICE';
-  const LW = 2.6;
-  const LH = 3.8;
-  const x0 = -((text.length - 1) * LW) / 2;
-  const z = B.maxZ + 0.1;
+  const LW = 2.1;
+  const LH = 3.2;
+  const CURB = 0.45;
+  // West of the bungee jetty (shared/bungee.ts, off the south edge at x 11), which needs its way out clear.
+  const x0 = BUNGEE.x - 2.6 - (text.length - 1) * LW;
+  const z = (FLOOR.maxZ + B.maxZ) / 2;
   const steel = toon('#8d99ae');
-  const back = toon('#5c636e');
   [...text].forEach((ch, i) => {
     if (ch === ' ') return;
     const x = x0 + i * LW;
-    const mat = litSign(night, glyph(ch, COLORS[i % COLORS.length], false), 0.18);
-    group.add(mesh(new THREE.PlaneGeometry(LW * 1.05, LH), mat, x, LH / 2 + 0.25, z + 0.02, false));
-    const b = mesh(new THREE.PlaneGeometry(LW * 0.8, LH * 0.8), back, x, LH / 2 + 0.25, z - 0.02, false);
-    b.rotation.y = Math.PI;
-    group.add(b);
-    // A post up behind each letter.
-    group.add(mesh(new THREE.BoxGeometry(0.08, LH + 0.2, 0.08), steel, x, (LH + 0.2) / 2, z - 0.12, false));
+    const color = COLORS[i % COLORS.length];
+    // Either side of the glass on the parapet: the street's way round, and the deck's, mirrored.
+    const front = mesh(new THREE.PlaneGeometry(LW * 1.05, LH), litSign(night, glyph(ch, color, false), 0.18), x, CURB + LH / 2, z + 0.09, false);
+    const back = mesh(new THREE.PlaneGeometry(LW * 1.05, LH), litSign(night, glyph(ch, color, false, 160, 220, true), 0.18), x, CURB + LH / 2, z - 0.09, false);
+    back.rotation.y = Math.PI;
+    group.add(front, back);
+    // A post up through each letter.
+    group.add(mesh(new THREE.BoxGeometry(0.08, LH, 0.08), steel, x, CURB + LH / 2, z, false));
   });
   const span = (text.length - 1) * LW + 1;
-  for (const y of [0.35, LH - 0.2]) group.add(mesh(new THREE.BoxGeometry(span, 0.08, 0.08), steel, x0 + ((text.length - 1) * LW) / 2, y, z - 0.18, false));
+  for (const y of [CURB + 0.9, CURB + LH - 0.3]) group.add(mesh(new THREE.BoxGeometry(span, 0.08, 0.08), steel, x0 + ((text.length - 1) * LW) / 2, y, z, false));
   return {
     group,
-    /** Standing on the cornice, `y` up. */
+    /** On the roof's deck, `y` up. */
     place(y: number) {
       group.position.y = y;
     },

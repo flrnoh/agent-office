@@ -719,7 +719,7 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
     colliders.push({ minX: s.x - 0.36, maxX: s.x + 0.36, minZ: s.z - 0.8, maxZ: s.z + 1.1, top: 0.36 });
   }
   for (const x of [-0.8, 2]) {
-    const z = FLOOR.maxZ - 1.1;
+    const z = FLOOR.maxZ - 1.9; // fork: clear of the letters on the parapet (world/facade/)
     statics.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.6, 8), frame, x, 1.3, z, false));
     statics.add(mesh(new THREE.ConeGeometry(1.5, 0.5, 12, 1, true), toon('#ef476f'), x, 2.6, z, true));
     statics.add(mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.45, 12), frame, x, 0.225, z, false));
