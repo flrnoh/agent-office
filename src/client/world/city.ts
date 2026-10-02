@@ -8,6 +8,7 @@ import { citySoccer } from './soccer/exterior'; // fork
 import type { NightParts } from './outside';
 import { mergeByMaterial, mesh, toon } from './toon';
 import { buildTower } from './tower';
+import { buildFacade } from './facade'; // fork: the building's outside, from up on the roof too
 
 // flrnoh fork (see FORK.md): up on the roof, the office's own building under you and the clouds over
 // the city. The city itself is the office's own (world/town/), the same from every floor, from the
@@ -43,6 +44,8 @@ export function buildCity(night: NightParts): City {
 
   const building = buildTower([], night);
   group.add(building.group);
+  const facade = buildFacade(night); // fork
+  group.add(facade.group);
   const garage = new THREE.Group();
   const garageH = -STREET_Y - SLAB;
   const concrete = toon('#d3d6dd');
@@ -97,6 +100,7 @@ export function buildCity(night: NightParts): City {
       // What's lent to the roof is laid out with the street at STREET_Y, as it is from the bottom floor.
       holder.position.y = -drop - STREET_Y;
       building.set(floors, floors, wings);
+      facade.set(floors, floors); // fork
     },
   };
 }
