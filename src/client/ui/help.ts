@@ -82,4 +82,7 @@ export const HELP_ROWS: readonly (readonly [string, string])[] = [
   ['Esc', 'Close any window and get back to looking around'],
   ['Ctrl + [', 'Send Esc to a terminal instead, to close a menu like Claude’s /skills or interrupt Claude. ⎋ Esc in the terminal’s header does the same'],
   ['⚙️', 'Settings (in the ☰ menu): switch between first and third person'],
+  // flrnoh fork: the minimap (features/minimap).
+  ['🧭', 'The minimap, bottom right, turns with you: the office, the places and the shops round about, and who’s out there. Once the office is out of sight an arrow at its rim points the way back, with how far (the mouse wheel over it zooms). ☰ hides it'],
+  ['J', 'The big map (or click the minimap): the whole town and the loop, north up. Drag to look about, the wheel zooms. Click a place or a shop and the minimap points you there; “Zum Büro” for the way back'],
 ];

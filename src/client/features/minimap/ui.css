@@ -1,0 +1,23 @@
+/* flrnoh fork: the minimap in the bottom-right corner and the big map (features/minimap). */
+.minimap { position: absolute; right: 12px; bottom: 12px; width: 184px; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+.minimap.off-map { display: none; }
+.minimap-dial { position: relative; width: 184px; height: 184px; border-radius: 50%; border: 3px solid var(--ink); box-shadow: var(--shadow); background: #bfdc9c; pointer-events: auto; cursor: pointer; }
+.minimap-canvas { display: block; width: 100%; height: 100%; border-radius: 50%; }
+.minimap-north { position: absolute; left: 0; top: 0; width: 20px; height: 20px; margin: -10px 0 0 -10px; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--ink); background: var(--paper); color: var(--bad); font: 900 11px/1 var(--font); pointer-events: none; }
+.minimap-info { display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 240px; }
+.minimap-where, .minimap-way { padding: 2px 9px; border-radius: 9px; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); font-size: 12px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.minimap-way { background: var(--ink); color: var(--paper); }
+/* The side panels stop short of it. */
+#hud:has(.minimap:not(.hud-off):not(.off-map)) .side { max-height: calc(100vh - 90px - 250px); }
+
+.modal.bigmap { width: min(1100px, 100%); height: calc(100vh - 32px); }
+.bigmap-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.bigmap-canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.bigmap-tip { position: absolute; left: 0; top: 0; padding: 3px 9px; border-radius: 9px; border: 2px solid var(--ink); background: var(--paper); font-size: 12px; font-weight: 900; pointer-events: none; white-space: nowrap; }
+
+@media (max-width: 700px) {
+  .minimap { right: 8px; bottom: auto; top: 72px; width: 120px; }
+  .minimap-dial { width: 120px; height: 120px; }
+  .minimap-info { max-width: 150px; }
+  #hud:has(.minimap:not(.hud-off):not(.off-map)) .side { max-height: none; }
+}
