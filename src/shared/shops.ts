@@ -33,7 +33,7 @@ const DOOR_IN = 1.6;
 export const SILL = 0.55;
 export const WINDOW_TOP = 3.05;
 
-export type ShopKindId = 'baeckerei' | 'cafe' | 'pizza' | 'apotheke' | 'blumen' | 'buchladen' | 'kiosk' | 'bar' | 'spaeti' | 'friseur' | 'tattoo' | 'doener' | 'spielzeug' | 'platten';
+export type ShopKindId = 'baeckerei' | 'cafe' | 'pizza' | 'apotheke' | 'blumen' | 'buchladen' | 'kiosk' | 'bar' | 'spaeti' | 'friseur' | 'tattoo' | 'doener' | 'spielzeug' | 'platten' | 'spielhalle' | 'post';
 
 export interface ShopKind {
   id: ShopKindId;
@@ -75,6 +75,9 @@ export const SHOP_KINDS: readonly ShopKind[] = [
   { id: 'doener', sign: 'DÖNER KEBAB', name: 'Döner', emoji: '🥙', verb: 'bestellen', frame: '#b5121b', awning: ['#ffcc00', '#d62828'], signBg: '#ffcc00', ink: '#b5121b', goods: ['#c47a3a', '#7cb518', '#e63946'], wall: '#fff3b0', floor: '#9c6644', keeper: { name: 'Mehmet', shirt: '#ffffff', skin: 4, hair: 0, style: 0 } },
   { id: 'spielzeug', sign: 'SPIELZEUG', name: 'Spielzeugladen', emoji: '🧸', verb: 'ein Spielzeug aussuchen', frame: '#3a86ff', awning: ['#ffbe0b', '#fb5607'], signBg: '#ffbe0b', ink: '#8338ec', goods: ['#ff006e', '#3a86ff', '#ffbe0b', '#06d6a0'], wall: '#fff8e1', floor: '#8ecae6', keeper: { name: 'Opa Sepp', shirt: '#e63946', skin: 0, hair: 5, style: 0 } },
   { id: 'platten', sign: 'PLATTEN', name: 'Plattenladen', emoji: '💿', verb: 'eine Platte kaufen', frame: '#2b2d42', awning: ['#ef233c', '#edf2f4'], signBg: '#edf2f4', ink: '#2b2d42', goods: ['#ef233c', '#8d99ae', '#ffb703', '#2b2d42'], wall: '#d6ccc2', floor: '#3d405b', keeper: { name: 'Didi', shirt: '#2b2d42', skin: 2, hair: 1, style: 4 } },
+  // flrnoh fork, "fun shops": the arcade with its claw machine and photo booth, and the post office (shared/funshops.ts).
+  { id: 'spielhalle', sign: 'SPIELHALLE', name: 'Spielhalle', emoji: '🕹️', verb: 'Snacks holen', frame: '#0b0b1a', awning: ['#14002e', '#ff00aa'], signBg: '#0b0b1a', ink: '#00f0ff', neon: true, goods: ['#ff00aa', '#00f0ff', '#ffe600', '#7cff00'], wall: '#1a1033', floor: '#120a24', keeper: { name: 'Kevin', shirt: '#ff00aa', skin: 2, hair: 3, style: 4 } },
+  { id: 'post', sign: 'POST', name: 'Post & Paketshop', emoji: '📮', verb: 'eine Postkarte schreiben', frame: '#1d1d1b', awning: ['#ffcc00', '#ffcc00'], signBg: '#ffcc00', ink: '#1d1d1b', goods: ['#c8a165', '#ffcc00', '#e9d8a6'], wall: '#fffbe6', floor: '#9a9a90', keeper: { name: 'Frau Wimmer', shirt: '#ffcc00', skin: 0, hair: 2, style: 1 } },
 ];
 
 export const SHOP_KIND_BY_ID = new Map<ShopKindId, ShopKind>(SHOP_KINDS.map((k) => [k.id, k]));

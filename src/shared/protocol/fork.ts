@@ -13,6 +13,7 @@ import type { SoccerClientMsg, SoccerServerMsg } from '../soccer.js';
 import type { Side, TableId, TableSeat, TableSnap } from '../tablegames/tables.js';
 import type { TvState } from '../tv.js';
 import type { KinoClientMsg, KinoServerMsg } from '../kino.js';
+import type { ClawClientMsg, ClawServerMsg, PostClientMsg, PostServerMsg } from '../funshops.js';
 import type { TankClientMsg, TankServerMsg } from '../tankstelle-play.js';
 
 export type ForkClientMsg =
@@ -23,6 +24,8 @@ export type ForkClientMsg =
   | BoatClientMsg // the jetskis and the motorboat at the beach (shared/boats.ts)
   | KinoClientMsg // the cinema's Saal 2 (shared/kino.ts)
   | ToyClientMsg // playing with a toy from the city's toy shop (shared/shopwares.ts)
+  | ClawClientMsg // the Spielhalle's claw machine (shared/funshops.ts)
+  | PostClientMsg // the Post's postcards (shared/funshops.ts)
   | TankClientMsg // the petrol station and its car wash (shared/tankstelle-play.ts)
   /** Put a YouTube, SoundCloud or Mixcloud set on at the DJ booth, for everyone on the roof (see shared/djset.ts). */
   | { t: 'dj.play'; url: string }
@@ -57,6 +60,8 @@ export type ForkServerMsg =
   | BoatServerMsg
   | KinoServerMsg
   | ToyServerMsg
+  | ClawServerMsg
+  | PostServerMsg
   | TankServerMsg
   /** The DJ set on the roof changed (sent to everyone up there). */
   | { t: 'dj'; state: DjSetState }

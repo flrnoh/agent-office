@@ -72,6 +72,7 @@ const PARTY_SEES = [
   'boats', 'boat.move', 'boat.horn', // fork: jetskis and the motorboat at the beach
   'kino', // fork: the cinema's Saal 2
   'toy.used', // fork: toys from the city's toy shop
+  'claw', 'post.recipients', 'post.sent', 'post.cards', // fork: the claw machine, postcards (party guests' recipients leave out the accounts)
   'tankstelle', // fork: the petrol station and its car wash
 ] as const satisfies readonly T[];
 
