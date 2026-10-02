@@ -85,4 +85,6 @@ export const HELP_ROWS: readonly (readonly [string, string])[] = [
   // flrnoh fork: the minimap (features/minimap).
   ['🧭', 'The minimap, bottom right, turns with you: the office, the places and the shops round about, and who’s out there. Once the office is out of sight an arrow at its rim points the way back, with how far (the mouse wheel over it zooms). ☰ hides it'],
   ['J', 'The big map (or click the minimap): the whole town and the loop, north up. Drag to look about, the wheel zooms. Click a place or a shop and the minimap points you there; “Zum Büro” for the way back'],
+  // flrnoh fork: the bowling centre (client/bowling).
+  ['🎳', 'Right next to the office to the east, the bowling centre: E at its glass doors goes in, E at the doors inside back out (everyone from every floor meets in there). E at the counter for a beer from the tap, a Spezi, Pommes rot-weiß or a Currywurst; E at the end of the counter rents bowling shoes in your size (they stay there when you leave). E on a sofa in the lounge sits you down. The big lever by the lounge switches cosmic bowling on and off for everyone: house lights down, black light, mirror ball'],
 ];
