@@ -60,7 +60,7 @@ export function buildTownGround(group: THREE.Group, colliders: Collider[], glow:
   }
   const inner = BLOCK_INNER;
   for (const b of BLOCKS) {
-    if (b.kind === 'city') lots.add(b.x - inner / 2, b.x + inner / 2, b.z - inner / 2, b.z + inner / 2, G - 0.015);
+    if (b.kind === 'city' || b.kind === 'landmark') lots.add(b.x - inner / 2, b.x + inner / 2, b.z - inner / 2, b.z + inner / 2, G - 0.015);
     else if (b.kind === 'park') lawns.add(b.x - inner / 2, b.x + inner / 2, b.z - inner / 2, b.z + inner / 2, G - 0.015);
   }
   const road = roadTexture();
