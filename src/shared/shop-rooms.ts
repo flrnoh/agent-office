@@ -1,3 +1,4 @@
+import { foodRoom, type FoodPieceKind, type FoodStationKind } from './shop-rooms-food.js'; // food round 2
 import { FRONT_T, SHOP_H, SHOPS, WALL_T, lotSolids, shopLocal, shopPoint, shopRect, shopWalls, shopYaw, type Shop, type ShopKindId, type Solid } from './shops.js';
 
 // flrnoh fork (see FORK.md "Shops to walk into"): what's in each shop, in its frame (see shops.ts),
@@ -30,7 +31,8 @@ export type PieceKind =
   | 'plush'
   | 'recordcrate'
   | 'listening'
-  | 'stool';
+  | 'stool'
+  | FoodPieceKind;
 
 /** Something in a shop: a box in its frame (u0..u1 along, v0..v1 in), `h` tall; `solid` ones you bump into. */
 export interface Piece {
@@ -46,7 +48,7 @@ export interface Piece {
   dv: number;
 }
 
-export type StationKind = 'counter' | 'chair' | 'crate' | 'listen' | 'shelf';
+export type StationKind = 'counter' | 'chair' | 'crate' | 'listen' | 'shelf' | FoodStationKind;
 
 /** Where E does something: where you stand (u, v), how near you must be, and (a chair) where you sit. */
 export interface Station {
@@ -57,6 +59,8 @@ export interface Station {
   r: number;
   /** A chair: its seat, facing (du, dv), and how high your hips are on it. */
   seat?: { u: number; v: number; du: number; dv: number; hips: number };
+  /** What E is aimed at, if not the usual box (features/shops/interior.ts): its middle and size along u and v. */
+  aim?: { u: number; v: number; w: number; d: number };
 }
 
 export interface Room {
@@ -72,6 +76,8 @@ export interface Room {
 const mirrored = (s: Shop) => s.doorU < s.len / 2;
 
 function layRoom(s: Shop): Room {
+  const food = foodRoom(s); // the ice cream parlour, the sushi bar, the butcher's, the supermarket
+  if (food) return food;
   const L = s.len;
   const D = s.depth;
   const P = WALL_T;
@@ -212,7 +218,7 @@ function turned(s: Shop, r: Room): Room {
   const L = s.len;
   return {
     pieces: r.pieces.map((p) => ({ ...p, u0: L - p.u1, u1: L - p.u0, du: -p.du })),
-    stations: r.stations.map((t) => ({ ...t, u: L - t.u, seat: t.seat && { ...t.seat, u: L - t.seat.u, du: -t.seat.du } })),
+    stations: r.stations.map((t) => ({ ...t, u: L - t.u, seat: t.seat && { ...t.seat, u: L - t.seat.u, du: -t.seat.du }, aim: t.aim && { ...t.aim, u: L - t.aim.u } })),
     keeper: { ...r.keeper, u: L - r.keeper.u },
     spot: { ...r.spot, u: L - r.spot.u },
   };

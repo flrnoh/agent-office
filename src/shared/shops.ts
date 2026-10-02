@@ -9,7 +9,8 @@ import { STREET_END, onLoop } from './scenic.js';
 // it (as deep as half the building, at most ROOM_MAX), and a wall to the next shop. What's behind the
 // rooms (the core of the building) and everything over the ground floor stays solid. Which kind of
 // shop each is goes round SHOP_KINDS in order of how far it is from the office, so the shops nearest
-// to it are one of every kind, and every kind is all over the city.
+// to it are one of every kind, and every kind is all over the city. A kind marked `whole` (the
+// supermarket) instead takes a whole side of two or three shops' length, every few such sides.
 //
 // Each shop has a frame of its own: `u` runs along its front (0 at one end, `len` at the other), `v`
 // inward from the front's outer face (0) to its back wall (`depth`). shop-rooms.ts furnishes it in
@@ -33,7 +34,7 @@ const DOOR_IN = 1.6;
 export const SILL = 0.55;
 export const WINDOW_TOP = 3.05;
 
-export type ShopKindId = 'baeckerei' | 'cafe' | 'pizza' | 'apotheke' | 'blumen' | 'buchladen' | 'kiosk' | 'bar' | 'spaeti' | 'friseur' | 'tattoo' | 'doener' | 'spielzeug' | 'platten';
+export type ShopKindId = 'baeckerei' | 'cafe' | 'pizza' | 'apotheke' | 'blumen' | 'buchladen' | 'kiosk' | 'bar' | 'spaeti' | 'friseur' | 'tattoo' | 'doener' | 'spielzeug' | 'platten' | 'eisdiele' | 'sushi' | 'metzgerei' | 'supermarkt';
 
 export interface ShopKind {
   id: ShopKindId;
@@ -58,6 +59,8 @@ export interface ShopKind {
   floor: string;
   /** Who's behind the counter: a name for their speech, a shirt, and a look (shared/avatar.ts). */
   keeper: { name: string; shirt: string; skin: number; hair: number; style: number };
+  /** A shop as long as a whole side of its building (two or three shops' worth): the supermarket (see layShops). */
+  whole?: true;
 }
 
 export const SHOP_KINDS: readonly ShopKind[] = [
@@ -75,7 +78,17 @@ export const SHOP_KINDS: readonly ShopKind[] = [
   { id: 'doener', sign: 'DÖNER KEBAB', name: 'Döner', emoji: '🥙', verb: 'bestellen', frame: '#b5121b', awning: ['#ffcc00', '#d62828'], signBg: '#ffcc00', ink: '#b5121b', goods: ['#c47a3a', '#7cb518', '#e63946'], wall: '#fff3b0', floor: '#9c6644', keeper: { name: 'Mehmet', shirt: '#ffffff', skin: 4, hair: 0, style: 0 } },
   { id: 'spielzeug', sign: 'SPIELZEUG', name: 'Spielzeugladen', emoji: '🧸', verb: 'ein Spielzeug aussuchen', frame: '#3a86ff', awning: ['#ffbe0b', '#fb5607'], signBg: '#ffbe0b', ink: '#8338ec', goods: ['#ff006e', '#3a86ff', '#ffbe0b', '#06d6a0'], wall: '#fff8e1', floor: '#8ecae6', keeper: { name: 'Opa Sepp', shirt: '#e63946', skin: 0, hair: 5, style: 0 } },
   { id: 'platten', sign: 'PLATTEN', name: 'Plattenladen', emoji: '💿', verb: 'eine Platte kaufen', frame: '#2b2d42', awning: ['#ef233c', '#edf2f4'], signBg: '#edf2f4', ink: '#2b2d42', goods: ['#ef233c', '#8d99ae', '#ffb703', '#2b2d42'], wall: '#d6ccc2', floor: '#3d405b', keeper: { name: 'Didi', shirt: '#2b2d42', skin: 2, hair: 1, style: 4 } },
+  // Food round 2 (shared/shop-rooms-food.ts furnishes them, features/shops/food.ts is what E does).
+  { id: 'eisdiele', sign: 'EISCAFÉ VENEZIA', name: 'Eisdiele', emoji: '🍨', verb: 'Eis aussuchen', frame: '#0081a7', awning: ['#f07167', '#fdfcdc'], signBg: '#fdfcdc', ink: '#0081a7', goods: ['#f07167', '#fed9b7', '#00afb9', '#fdfcdc', '#7f4f24'], wall: '#fdfcdc', floor: '#e9d8a6', keeper: { name: 'Gianni', shirt: '#ffffff', skin: 3, hair: 1, style: 0 } },
+  { id: 'sushi', sign: 'SUSHI 回転', name: 'Sushi-Bar', emoji: '🍣', verb: 'Teller nehmen', frame: '#1d1d1d', awning: ['#c1121f', '#fdf0d5'], signBg: '#1d1d1d', ink: '#fdf0d5', neon: true, goods: ['#f4845f', '#fdf0d5', '#2d6a4f', '#c1121f'], wall: '#efe6d8', floor: '#6b4f3a', keeper: { name: 'Kenji', shirt: '#fdf0d5', skin: 2, hair: 0, style: 0 } },
+  { id: 'metzgerei', sign: 'METZGEREI', name: 'Metzgerei', emoji: '🥩', verb: 'bestellen', frame: '#9d0208', awning: ['#9d0208', '#ffffff'], signBg: '#ffffff', ink: '#9d0208', goods: ['#c9184a', '#ff8fa3', '#e9c46a', '#9c6644'], wall: '#f8f9fa', floor: '#adb5bd', keeper: { name: 'Herr Wimmer', shirt: '#ffffff', skin: 0, hair: 5, style: 0 } },
+  { id: 'supermarkt', sign: 'SUPERMARKT', name: 'Supermarkt', emoji: '🛒', verb: 'bezahlen', frame: '#e63946', awning: ['#e63946', '#ffd60a'], signBg: '#ffd60a', ink: '#e63946', goods: ['#e63946', '#ffd60a', '#2a9d8f', '#f4a261', '#457b9d', '#ffffff'], wall: '#f8f9fa', floor: '#dee2e6', keeper: { name: 'Frau Schmid', shirt: '#e63946', skin: 1, hair: 2, style: 1 }, whole: true },
 ];
+
+/** The kinds dealt round shop by shop (the others take a whole side of a building: see layShops). */
+export const DEALT_KINDS: readonly ShopKind[] = SHOP_KINDS.filter((k) => !k.whole);
+/** The kinds that take a whole side of a building. */
+export const WHOLE_KINDS: readonly ShopKind[] = SHOP_KINDS.filter((k) => k.whole);
 
 export const SHOP_KIND_BY_ID = new Map<ShopKindId, ShopKind>(SHOP_KINDS.map((k) => [k.id, k]));
 
@@ -236,18 +249,47 @@ export function shopRect(s: Pick<Shop, 'ox' | 'oz' | 'ux' | 'uz' | 'nx' | 'nz'>,
 export const LOT_PLANS: readonly LotPlan[] = LOTS.map(lotPlan);
 
 /** Where each quarter of the city starts its round of kinds, so neighbouring quarters don't match. */
-const QUARTER_START: Record<string, number> = { '1-1': 0, '-1-1': 4, '11': 8, '-11': 11 };
+const QUARTER_START: Record<string, number> = { '1-1': 0, '-1-1': 4, '11': 9, '-11': 13 };
+
+/** Which quarter of the city round the office (x, z) is in. */
+export const quarterOf = (x: number, z: number) => `${Math.sign(x)}${Math.sign(z - 27)}`;
+
+/** A whole-side kind (the supermarket) takes every this-many-th side of two or three shops, nearest first, in each quarter. */
+const WHOLE_EVERY = 4;
 
 function layShops(): Shop[] {
   const shops: Omit<Shop, 'i' | 'kind'>[] = [];
+  const whole: (ShopKindId | undefined)[] = [];
+  // The sides that could be a whole-side kind: two or three shops long, in order of how far their middle is, per quarter.
+  const wide: { li: number; side: Side; d: number; q: string }[] = [];
+  LOTS.forEach((lot, li) => {
+    for (const side of SIDES) {
+      const r = LOT_PLANS[li].rooms[side];
+      if (!r || r.count < 2 || r.count > 3) continue;
+      const f = faceOf(lot, side);
+      const mx = f.ax + f.ux * (r.from + r.to) / 2;
+      const mz = f.az + f.uz * (r.from + r.to) / 2;
+      wide.push({ li, side, d: Math.hypot(mx, mz), q: quarterOf(mx, mz) });
+    }
+  });
+  wide.sort((a, b) => a.d - b.d || a.li - b.li);
+  const wholeSide = new Map<string, ShopKindId>();
+  const perQ = new Map<string, number>();
+  for (const w of wide) {
+    const n = perQ.get(w.q) ?? 0;
+    perQ.set(w.q, n + 1);
+    if (WHOLE_KINDS.length && n % WHOLE_EVERY === 0) wholeSide.set(`${w.li}${w.side}`, WHOLE_KINDS[(n / WHOLE_EVERY) % WHOLE_KINDS.length].id);
+  }
   LOTS.forEach((lot, li) => {
     const plan = LOT_PLANS[li];
     for (const side of SIDES) {
       const r = plan.rooms[side];
       if (!r) continue;
       const f = faceOf(lot, side);
-      const len = (r.to - r.from) / r.count;
-      for (let k = 0; k < r.count; k++) {
+      const big = wholeSide.get(`${li}${side}`);
+      const count = big ? 1 : r.count;
+      const len = (r.to - r.from) / count;
+      for (let k = 0; k < count; k++) {
         const start = r.from + k * len;
         const ox = f.ax + f.ux * start;
         const oz = f.az + f.uz * start;
@@ -255,24 +297,25 @@ function layShops(): Shop[] {
         const doorU = (li + k + SIDES.indexOf(side)) % 2 ? DOOR_IN : len - DOOR_IN;
         const frame = { ox, oz, ux: f.ux, uz: f.uz, nx: f.nx, nz: f.nz };
         shops.push({ lot: li, side, ...frame, len, depth: r.depth, doorU, rect: shopRect(frame, 0, len, 0, r.depth) });
+        whole.push(big);
       }
     }
   });
-  // The nearest shops to the office are one of every kind; past them the kinds go round in order of
+  // The nearest shops to the office are one of every dealt kind; past them the kinds go round in order of
   // how far each shop's door is, in each quarter of the city on its own, so every kind turns up in
   // every quarter, whatever blocks there are (a landmark's takes its shops away).
   const door = (s: (typeof shops)[number]) => shopPoint(s, s.doorU, 0);
   const far = (s: (typeof shops)[number]) => Math.hypot(door(s).x, door(s).z);
-  const order = shops.map((s, n) => ({ n, d: far(s) })).sort((a, b) => a.d - b.d || a.n - b.n);
-  const kinds: ShopKindId[] = [];
+  const order = shops.map((s, n) => ({ n, d: far(s) })).filter(({ n }) => !whole[n]).sort((a, b) => a.d - b.d || a.n - b.n);
+  const kinds: ShopKindId[] = whole.map((w) => w as ShopKindId);
   const dealt = new Map<string, number>();
   order.forEach(({ n }, rank) => {
-    if (rank < SHOP_KINDS.length) return void (kinds[n] = SHOP_KINDS[rank].id);
+    if (rank < DEALT_KINDS.length) return void (kinds[n] = DEALT_KINDS[rank].id);
     const d = door(shops[n]);
-    const q = `${Math.sign(d.x)}${Math.sign(d.z - 27)}`;
+    const q = quarterOf(d.x, d.z);
     const k = dealt.get(q) ?? QUARTER_START[q] ?? 0;
     dealt.set(q, k + 1);
-    kinds[n] = SHOP_KINDS[k % SHOP_KINDS.length].id;
+    kinds[n] = DEALT_KINDS[k % DEALT_KINDS.length].id;
   });
   return shops.map((s, i) => ({ ...s, i, kind: kinds[i] }));
 }
