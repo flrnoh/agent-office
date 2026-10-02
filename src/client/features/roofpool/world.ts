@@ -4,20 +4,23 @@ import type { NightParts } from '../../world/outside';
 import { mergeByMaterial, mesh, toon } from '../../world/toon';
 import type { Collider } from '../../world/types';
 import { buildSlide } from './slide';
+import { buildDiveTower } from './dive';
 
 // The pool on the roof (flrnoh fork, see FORK.md "Pool party on the roof"), as built: a raised basin on
 // a wooden deck with steps up from the south, tiled inside, its water lit from under the surface in
 // party colors that go round at night, floats drifting on it (a flamingo, a donut, a beach ball, a
 // unicorn; where each is comes from the office's clock, so everyone sees the same), palms in pots on
-// the deck's corners, chrome ladders, POOL PARTY in neon over the north side, and a water slide.
+// the deck's corners, chrome ladders, POOL PARTY in neon along the east side, a water slide and a
+// diving tower.
 
 const INK = '#2b2d42';
 
 export interface RoofPool {
   group: THREE.Group;
-  /** The water's surface and the slide's tower: what you look at to use them. */
+  /** The water's surface, the slide's tower and the diving tower: what you look at to use them. */
   surface: THREE.Object3D;
   tower: THREE.Object3D;
+  diving: THREE.Object3D;
   /** The deck, the steps, the palms' pots and the sign's posts. */
   colliders: Collider[];
   /** `t` seconds on the office's clock; `dark` how dark it is (0 day … 1 night); the floats keep clear of `you` (in the water, or coming down the slide). */
@@ -313,15 +316,18 @@ export function buildRoofPool(night: NightParts): RoofPool {
     colliders.push({ minX: x - 0.36, maxX: x + 0.36, minZ: z - 0.36, maxZ: z + 0.36, bottom: d.top, top: 99 });
   }
 
-  // POOL PARTY in neon over the north side, on two posts on the deck.
+  // POOL PARTY in neon along the east side, facing the terrace, on two posts on the deck.
   const sign = neonBoard('POOL PARTY 🍹', '#ff3dcb', night);
-  sign.group.position.set((p.minX + p.maxX) / 2, d.top + 2.0, d.minZ + 0.35);
+  const signX = d.maxX - 0.35;
+  const signZ = (p.minZ + p.maxZ) / 2;
+  sign.group.position.set(signX, d.top + 2.0, signZ);
+  sign.group.rotation.y = -Math.PI / 2;
   group.add(sign.group);
   const post = toon('#8d99ae');
   for (const s of [-1, 1]) {
-    const x = (p.minX + p.maxX) / 2 + s * (sign.w / 2 - 0.15);
-    statics.add(mesh(new THREE.BoxGeometry(0.1, 2.3, 0.1), post, x, d.top + 1.15, d.minZ + 0.28));
-    colliders.push({ minX: x - 0.08, maxX: x + 0.08, minZ: d.minZ + 0.2, maxZ: d.minZ + 0.36, bottom: d.top, top: 99 });
+    const z = signZ + s * (sign.w / 2 - 0.15);
+    statics.add(mesh(new THREE.BoxGeometry(0.1, 2.3, 0.1), post, signX + 0.07, d.top + 1.15, z));
+    colliders.push({ minX: signX - 0.01, maxX: signX + 0.15, minZ: z - 0.08, maxZ: z + 0.08, bottom: d.top, top: 99 });
   }
   group.add(mergeByMaterial(statics));
 
@@ -329,6 +335,11 @@ export function buildRoofPool(night: NightParts): RoofPool {
   const slide = buildSlide();
   group.add(slide.group);
   colliders.push(...slide.colliders);
+
+  // The diving tower on the north side.
+  const dive = buildDiveTower();
+  group.add(dive.group);
+  colliders.push(...dive.colliders);
 
   // The floats.
   const floats = FLOATS.map((k) => {
@@ -342,6 +353,7 @@ export function buildRoofPool(night: NightParts): RoofPool {
     group,
     surface,
     tower: slide.group,
+    diving: dive.group,
     colliders,
     update(t, dark, you) {
       ripple.offset.set((t * 0.03) % 1, (t * 0.017) % 1);
