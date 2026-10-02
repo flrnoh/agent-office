@@ -13,6 +13,9 @@ export class Dj {
   /** How far into the DJ's set it is (see djTime), while you're up there. */
   private djClock: (() => number) | null = null;
   private djTimer = 0;
+  /** flrnoh fork: the party's volume, set at the booth for everyone on the roof. */
+  private party!: GainNode;
+  private partyLevel = 1;
 
   constructor(private readonly a: AudioCore) {}
 
@@ -20,7 +23,15 @@ export class Dj {
   connect(musicBus: GainNode) {
     // Loud enough to hear from anywhere on the roof, and loudest on the dance floor.
     this.djIn = this.a.panner({ x: DJ_BOOTH.x, y: 2.2, z: DJ_BOOTH.z }, 7, 0.8);
-    this.djIn.connect(musicBus);
+    this.party = this.a.ctx!.createGain(); // fork: the party's volume
+    this.party.gain.value = this.partyLevel ** 2;
+    this.djIn.connect(this.party).connect(musicBus);
+  }
+
+  /** flrnoh fork: the party's volume (0–1), set at the booth for everyone, eased in so a slider doesn't crackle. */
+  setPartyVolume(v: number) {
+    this.partyLevel = v;
+    if (this.party) this.party.gain.setTargetAtTime(v * v, this.a.ctx!.currentTime, 0.05);
   }
 
   /** The DJ's set on the roof, `clock` saying how far into it it is (see djTime); null stops it. */

@@ -39,6 +39,8 @@ export type ForkClientMsg =
   | { t: 'dj.stop' }
   /** The set's tempo, tapped at the booth: `at` a beat on the office's clock; bpm 0 goes back to what the office heard (shared/djbeats.ts). */
   | { t: 'dj.tap'; bpm: number; at: number }
+  /** The party's volume on the roof, 0–1, for everyone there (the team's to set, not guests'). */
+  | { t: 'dj.volume'; volume: number }
   /** Put a YouTube or Twitch link on the floor's TV, for everyone there (see shared/tv.ts). */
   | { t: 'tv.play'; url: string }
   /** Turn the TV's stream off. */

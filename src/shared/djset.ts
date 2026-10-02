@@ -38,6 +38,15 @@ export interface DjSetState {
   beats?: DjBeatsStatus;
   /** A tempo someone tapped at the booth for it, which the lights go by over what was heard. */
   tap?: DjTap;
+  /** The party's volume on the roof, 0–1, for everyone (house DJ and sets alike); absent is full. */
+  volume?: number;
+  /** Who set it last. */
+  volumeBy?: string;
+}
+
+/** Reads a party volume someone sent: 0–1 in hundredths, or null when it's no volume. */
+export function partyVolume(v: unknown): number | null {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1 ? Math.round(v * 100) / 100 : null;
 }
 
 export const DJ_SET_SITES: Record<DjSetKind, string> = { youtube: 'YouTube', soundcloud: 'SoundCloud', mixcloud: 'Mixcloud' };

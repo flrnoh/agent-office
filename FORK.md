@@ -194,6 +194,7 @@ The LED wall behind the DJ, the lights and the DJ go by the DJ set someone put o
 - `src/client/features/djset/frame.ts` (`SetBeats`, `gridFrame`), `frame()` and the tap in `features/djset/index.ts` (the set's player's own position corrects the office clock's, every 2 s); the tempo row in `src/client/ui/djbooth.ts`.
 - `src/client/features/rooftop/ledwall.ts` (the LED wall), `dancer.ts` (the DJ, moved out of `world.ts`).
 - `tests/djbeats.test.ts`: a made-up track's tempo, beats, breakdown, build and drop; the booth hearing and letting go; tapping; the frame.
+- **Party volume:** the booth's window has a slider (and 🔇 Silence) setting how loud the house DJ and every set are for everyone on the roof, on top of each person's own volume. The team sets it (`dj.volume` is in `TEAM_ONLY`), from anywhere; guests and party guests see it. `DjBooth.setVolume` keeps it in `dj-volume.json`; it rides on `DjSetState.volume`/`volumeBy`. Client: `setPartyVolume` in `sound/index.ts` (fork section) scales `djSetVolume()` and, through a gain in `features/bar/sound.ts` (hook lines), the house DJ.
 - Hooks in upstream files:
   - `src/client/features/rooftop/world.ts`: the DJ comes from `dancer.ts`, the LED wall from `ledwall.ts` (wider and taller, 9.6 × 4.6 m; the old canvas wall and its words are gone).
   - `src/client/features/rooftop/index.ts`: `setFrame` in its deps (the set's frame before the house DJ's); `src/client/main.ts` passes `parts.djset.frame()`.

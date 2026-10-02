@@ -13,6 +13,7 @@ import { openDjBooth } from '../../ui/djbooth';
 import type { SettingsPane } from '../../ui/settings';
 import type { Interactable } from '../../world/types';
 import { isDjBeats } from '../../../shared/djbeats';
+import type { DjSetState } from '../../../shared/djset';
 import { gridFrame, SetBeats, setHue, type SetFrame } from './frame';
 
 export interface DjSetDeps {
@@ -39,8 +40,9 @@ export function installDjSets(ctx: Ctx, deps: DjSetDeps) {
     houseDj();
   }
   /** What's on, from the office; the booth's window and the beats (below) look again, as the set's tempo may have come with it. */
-  const onState = (state: Parameters<DjSetPlayer['set']>[0]) => {
+  const onState = (state: DjSetState) => {
     djSets.set(state);
+    ctx.sound.setPartyVolume(state.volume ?? 1);
     watchers.forEach((fn) => fn());
   };
   ctx.messages.on('welcome', (msg) => void (msg.dj && onState(msg.dj)));
@@ -133,6 +135,7 @@ export function installDjSets(ctx: Ctx, deps: DjSetDeps) {
       watch: (fn) => (watchers.add(fn), () => watchers.delete(fn)),
       tap,
       untap: () => ctx.net.send({ t: 'dj.tap', bpm: 0, at: store.officeNow() }),
+      setVolume: (volume) => ctx.net.send({ t: 'dj.volume', volume }),
     });
   }
 
