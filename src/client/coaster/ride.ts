@@ -47,7 +47,7 @@ export interface CoasterDeps {
   /** How many storeys the building has now. */
   storeys(): number;
   /** The roof, once it's built: the station's colliders and what to use go into it. */
-  roof(): { colliders: Collider[]; interactables: Interactable[] } | null;
+  roof(): { colliders: Collider[]; interactables: Interactable[]; pickables: THREE.Object3D[] } | null;
   bodyOf(id: string): THREE.Object3D | undefined;
   lookOf(id: string): Look | undefined;
   noOutline(o: THREE.Object3D): void;
@@ -294,6 +294,8 @@ export class CoasterRide {
     if (!roof) return;
     roof.colliders.push(...this.station.colliders);
     roof.interactables.push(...this.station.interactables);
+    roof.pickables.push(this.station.group, this.train.group);
+    this.train.group.userData.interact = this.station.interactables[0];
     this.attached = true;
   }
 

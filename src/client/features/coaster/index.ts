@@ -73,7 +73,7 @@ export function installCoaster(ctx: Ctx, deps: CoasterFeatureDeps): CoasterRide 
   });
   ctx.messages.onAny((msg) => coaster.onMessage(msg));
   ctx.interactions.define('coaster', {
-    reach: 3.6,
+    reach: 6,
     hint: () => coaster.hint(hintTitle, key, aside, 'coaster'),
     use: (it, k) => coaster.use(it, k),
   });

@@ -61,14 +61,14 @@ export class Riders {
       s.person.root.visible = r.id !== hide;
       s.up += ((r.hands ? 1 : 0) - s.up) * Math.min(1, dt * 9);
       s.person.update(dt, t, false, false);
-      // Hands up: both arms straight up and a little out, waving a touch.
+      // Hands up: both arms up and out in a V over the head (as when they're flung up jumping), waving a touch.
       if (s.up > 0.01) {
         const { armL, armR } = s.person.limbs();
-        const wave = Math.sin(t * 7 + i) * 0.12;
-        armL.rotation.x = THREE.MathUtils.lerp(armL.rotation.x, -2.95 + wave, s.up);
-        armR.rotation.x = THREE.MathUtils.lerp(armR.rotation.x, -2.95 - wave, s.up);
-        armL.rotation.z = THREE.MathUtils.lerp(armL.rotation.z, 0.32, s.up);
-        armR.rotation.z = THREE.MathUtils.lerp(armR.rotation.z, -0.32, s.up);
+        const wave = Math.sin(t * 7 + i) * 0.14;
+        armL.rotation.x = THREE.MathUtils.lerp(armL.rotation.x, -0.35, s.up);
+        armR.rotation.x = THREE.MathUtils.lerp(armR.rotation.x, -0.35, s.up);
+        armL.rotation.z = THREE.MathUtils.lerp(armL.rotation.z, -2.55 + wave, s.up);
+        armR.rotation.z = THREE.MathUtils.lerp(armR.rotation.z, 2.55 - wave, s.up);
       }
     }
   }

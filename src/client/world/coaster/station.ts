@@ -183,7 +183,8 @@ export function buildStation(night: NightParts): StationView {
     { kind: 'coaster', x: STATION.boardAt.x, z: STATION.boardAt.z, radius: 3.6 },
     { kind: 'coasterphoto', x: tx + 0.9, z: tz, radius: 1.9 },
   ];
-  // What the hint finds when you look at them.
+  // What the hint finds when you look at them: the station's the train's (the monitor, the photo's).
+  group.userData.interact = interactables[0];
   monitorScreen.userData.interact = interactables[1];
   boardScreen.userData.interact = interactables[1];
 
