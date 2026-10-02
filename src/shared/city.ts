@@ -5,6 +5,7 @@ import { GYM_STREET_BOX } from './gym.js';
 import { HALL_BOX } from './hall.js';
 import { SOCCER_BOX } from './soccer.js';
 import { mulberry32 } from './rng.js';
+import { landmarkAt } from './landmark-blocks.js'; // fork: the landmarks' blocks
 
 // flrnoh fork (see FORK.md): the city round the office, one and the same from every floor, from the
 // street and from the rooftop bar. It used to be two: the rooftop bar looked out over a city of its
@@ -46,7 +47,8 @@ export const lineZ = (b: number) => CITY_Z + PERIOD * b;
 /** Block (i, j) lies between the streets lineX(i - 1)..lineX(i) and lineZ(j - 1)..lineZ(j); its middle. */
 export const blockAt = (i: number, j: number) => ({ x: CITY_X - PERIOD / 2 + i * PERIOD, z: CITY_Z - PERIOD / 2 + j * PERIOD });
 
-export type BlockKind = 'office' | 'across' | 'city' | 'park';
+/** `landmark`: a block that's a landmark's own (shared/landmarks.ts), with no buildings of the city's on it. */
+export type BlockKind = 'office' | 'across' | 'city' | 'park' | 'landmark';
 
 export interface Block {
   i: number;
@@ -165,6 +167,8 @@ function layOut() {
       const across = j === ACROSS.j && i >= ACROSS.from && i <= ACROSS.to;
       // South of the street the town is only inside the loop, west of the farm: east of it are the pines.
       const city = !across && (bz < CITY_Z || bx < PERIOD) && clearOfCountry(around(bx, bz, inner / 2), LOOP_PAVED + 2);
+      // fork: a landmark's block (shared/landmarks.ts) draws the same numbers, so the rest of the city stays as it was, but keeps none of it.
+      const landmark = city && !!landmarkAt(i, j);
       if (across) blocks.push({ i, j, x: bx, z: bz, kind: 'across' });
       // Now and then a park, with trees.
       if (r() < 0.1 && dist > 60) {
@@ -175,13 +179,14 @@ function layOut() {
           t.z = bz + (r() - 0.5) * (inner - 6);
           planted.push(t);
         }
-        if (city) {
+        if (landmark) blocks.push({ i, j, x: bx, z: bz, kind: 'landmark' });
+        else if (city) {
           blocks.push({ i, j, x: bx, z: bz, kind: 'park' });
           trees.push(...planted);
         }
         continue;
       }
-      if (city) blocks.push({ i, j, x: bx, z: bz, kind: 'city' });
+      if (city) blocks.push({ i, j, x: bx, z: bz, kind: landmark ? 'landmark' : 'city' });
       // The block split into lots: one big one, two halves or four quarters.
       const split = r();
       const plots: [number, number, number, number][] = [];
@@ -231,7 +236,7 @@ function layOut() {
           const pd = 2 + r() * 2;
           lot.top = { kind: 'plant', w: pw, d: pd, x: lx + (r() - 0.5) * tw * 0.4, z: lz + (r() - 0.5) * td * 0.4 };
         }
-        if (!city || !clearOfCountry({ minX: lx - w / 2, maxX: lx + w / 2, minZ: lz - d / 2, maxZ: lz + d / 2 }, LOOP_PAVED + 6)) continue;
+        if (!city || landmark || !clearOfCountry({ minX: lx - w / 2, maxX: lx + w / 2, minZ: lz - d / 2, maxZ: lz + d / 2 }, LOOP_PAVED + 6)) continue;
         if (bz > CITY_Z) {
           // The edge of town: four to eight storeys, no towers.
           const cap = 13 + (Math.abs(lx * 7 + lz * 3) % 13);

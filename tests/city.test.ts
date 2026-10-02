@@ -110,7 +110,7 @@ test("the city's cars drive on its streets", () => {
 });
 
 test('the buildings close by have shops on the sides that face a street, and only there', async () => {
-  const { hasShops, streetSides } = await import('../src/client/world/town/shops.js');
+  const { hasShops, streetSides } = await import('../src/shared/shops.js');
   const shopLots = LOTS.filter(hasShops);
   assert.ok(shopLots.length > 20, `${shopLots.length} buildings with shops`);
   const streetBeyond = (x: number, z: number, dx: number, dz: number) => {

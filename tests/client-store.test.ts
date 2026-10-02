@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { EMPTY_PLAN } from '../src/shared/floorplan.js';
 import { parked } from '../src/shared/garage.js';
 import { moored } from '../src/shared/boats.js'; // flrnoh fork
+import { freshBaumarkt } from '../src/shared/baumarkt-play.js'; // flrnoh fork
 import { JUKEBOX_TUNES } from '../src/shared/jukebox.js';
 import type { ServerMsg } from '../src/shared/protocol.js';
 
@@ -212,7 +213,7 @@ test('what the browser remembers keeps its keys and shapes', () => {
   assert.deepEqual(state.lastSpot(), { floor: 'f1', name: 'F', x: 1, y: 2, z: 3, facing: 4 });
   assert.ok(storage.has('agent-office.spot'));
   const settings = state.loadSettings();
-  assert.deepEqual(settings, { view: 'first', volume: 0.7, muted: false, music: 0.5, musicMuted: false, speakers: 0.4, speakersMuted: false, pageTurns: true, pushToTalk: false, notify: true, hud: state.HUD_DEFAULTS, pins: [] }); // speakers: flrnoh fork
+  assert.deepEqual(settings, { view: 'first', volume: 0.7, muted: false, music: 0.5, musicMuted: false, speakers: 0.4, speakersMuted: false, pageTurns: true, citySounds: true, pushToTalk: false, notify: true, hud: state.HUD_DEFAULTS, pins: [] }); // speakers, citySounds: flrnoh fork
   state.saveSettings({ ...settings, volume: 2, view: 'third' });
   assert.equal(state.loadSettings().volume, 1);
   assert.equal(state.loadSettings().view, 'third');
@@ -222,7 +223,7 @@ test('what the browser remembers keeps its keys and shapes', () => {
 
 test("the store's keys are its state, as window.__office shows them", () => {
   // As the office had them before its store was split into slices: methods and the slices aren't among them.
-  assert.deepEqual(Object.keys(store).sort(), ['accounts', 'ball', 'boats', 'boatsAt', 'cabinet', 'cabinetFrame', 'cars', 'carsAt', 'chat', 'clock', 'decor', 'dog', 'dogStart', 'drawing', 'floor', 'floorPlan', 'floors', 'ice', 'invites', 'issues', 'jail', 'jukebox', 'leaveOnMerge', 'limits', 'machine', 'map', 'me', 'meeting', 'notify', 'peers', 'profile', 'project', 'projectsDir', 'prompts', 'pulls', 'queue', 'repos', 'rig', 'rigFrame', 'screens', 'services', 'signins', 'sky', 'subs', 'team', 'theme', 'upgrade', 'usage', 'whiteboard', 'workers', 'you']); // rig, rigFrame, boats, boatsAt: flrnoh fork
+  assert.deepEqual(Object.keys(store).sort(), ['accounts', 'ball', 'baumarkt', 'baumarktAt', 'boats', 'boatsAt', 'cabinet', 'cabinetFrame', 'cars', 'carsAt', 'chat', 'clock', 'decor', 'dog', 'dogStart', 'drawing', 'floor', 'floorPlan', 'floors', 'ice', 'invites', 'issues', 'jail', 'jukebox', 'leaveOnMerge', 'limits', 'machine', 'map', 'me', 'meeting', 'notify', 'peers', 'profile', 'project', 'projectsDir', 'prompts', 'pulls', 'queue', 'repos', 'rig', 'rigFrame', 'screens', 'services', 'signins', 'sky', 'subs', 'tank', 'team', 'theme', 'trolleys', 'upgrade', 'usage', 'whiteboard', 'workers', 'you']); // rig, rigFrame, boats, boatsAt, tank, baumarkt, baumarktAt: flrnoh fork
 });
 
 test('a new store starts every field where it always has', async () => {
@@ -249,6 +250,9 @@ test('a new store starts every field where it always has', async () => {
       cars: parked(), carsAt: [], jail: { prisoners: [], bones: 0 },
       team: null, accounts: null, signins: null,
       boats: moored(), boatsAt: [], // flrnoh fork: the jetskis and the motorboat at the beach
+      baumarkt: freshBaumarkt(), baumarktAt: 0, // flrnoh fork: the Baumarkt
+      tank: { fills: [], wash: null, shine: [] }, // flrnoh fork: the petrol station
+      trolleys: [], // flrnoh fork: the supermarket's trolleys
     },
   );
 });

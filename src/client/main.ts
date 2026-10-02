@@ -63,9 +63,18 @@ import { installWorkerActions } from './features/workers/actions';
 import { installWorkerViews } from './features/workers/views';
 // flrnoh fork (see FORK.md): this fork's own features.
 import { installBeach } from './features/beach';
+import { installBaumarkt } from './features/baumarkt';
+import { installTankstelle } from './features/tankstelle'; // flrnoh fork: the petrol station
 import { installBossDesk } from './features/bossdesk';
 import { installBungee } from './features/bungee';
 import { installTown } from './features/town'; // flrnoh fork: the city round the office
+import { installCitySound } from './features/citysound'; // flrnoh fork: the sounds of the city
+import { installKino } from './features/kino'; // flrnoh fork: the cinema
+import { installShops } from './features/shops'; // flrnoh fork: the city's shops, to walk into
+import { installShopFronts } from './features/shopfronts'; // flrnoh fork: the shops from outside
+import { installFunShops } from './features/funshops'; // flrnoh fork: the Spielhalle and the Post
+import { installRide } from './features/ride'; // flrnoh fork: bikes, pets, laundry
+import { installCityBus } from './features/citybus'; // flrnoh fork: the city bus
 import { installDjSets } from './features/djset';
 import { installDoorbell } from './features/doorbell';
 import { installFogbox } from './features/fogbox';
@@ -198,6 +207,7 @@ parts.rig = installRig(ctx, { freePlace: (seat) => parts.seating.freePlace(seat)
 parts.tables = installTableGames(ctx, { roof: parts.rooftop.roof });
 parts.bungee = installBungee(ctx, { roof: parts.rooftop.roof, roofFloors: parts.rooftop.roofFloors, bodyOf: (id) => personOf(id)?.root });
 installTown(ctx, { roof: parts.rooftop.roof, roofFloors: parts.rooftop.roofFloors, bodies: () => [...parts.peers.remotes.values()].map((r) => r.person.root) }); // fork
+installCitySound(ctx, { roofFloors: parts.rooftop.roofFloors }); // fork
 parts.places = installPlaces(ctx, core, parts, { served: (d) => parts.fridge.serveFromCafe(d) });
 parts.guests = installGuests(ctx, { openWorkerTerminal: (id) => parts.waiting.openWorkerTerminal(id) });
 installDoorbell(ctx);
@@ -205,6 +215,14 @@ installFrontDoor(ctx, core, parts);
 installSpeakers(ctx, { officeWing: () => parts.worlds.officeWing() });
 installFogbox(ctx, { officeWing: () => parts.worlds.officeWing() });
 parts.beach = installBeach(ctx, parts, { booze: () => parts.bar.booze, reach, standUp, stopWalking });
+installBaumarkt(ctx, parts, { standUp, stopWalking }); // fork: the Baumarkt (features/baumarkt)
+(window as any).__kino = installKino(ctx, parts, { booze: () => parts.bar.booze, reach, showSettings: (pane) => parts.hud.showSettings(pane) }); // fork: the cinema
+(window as any).__fronts = installShopFronts(ctx, parts); // fork: the shops from outside
+parts.shops = installShops(ctx, { booze: () => parts.bar.booze, caffeine: () => parts.coffee.caffeine, serveFromCafe: (d) => parts.fridge.serveFromCafe(d), reach, personOf, showMyProfile: (p) => parts.you.showMyProfile(p), target: () => parts.pointer.target(), inPlace: () => parts.places.active(), special: (s) => parts.funshops.counter(s), rideCounter: (s) => parts.ride.counter(s) });
+parts.funshops = installFunShops(ctx, { serve: (i, id) => parts.shops.serve(i, id), keeper: (i) => parts.shops.keeper(i) }); // fork: the Spielhalle and the Post
+parts.ride = installRide(ctx, { personOf, booze: () => parts.bar.booze, serve: (i, id) => parts.shops.serve(i, id), inPlace: () => parts.places.active() }); // fork: bikes, pets, laundry
+parts.tankstelle = installTankstelle(ctx, parts, { booze: () => parts.bar.booze, caffeine: () => parts.coffee.caffeine, reach });
+(window as any).__citybus = installCityBus(ctx, { free: () => (standUp(), stopWalking()) }); // fork: riding the city bus
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);
@@ -264,7 +282,9 @@ void whoami().then(() => {
 
 // Debug handle for quick checks from the console / headless screenshots.
 const { worlds, views, rooftop, bar, coffee, golf, bargames, hanging, climbing, cars, emotes, hoops, rig, tables, bungee, places } = parts;
-(window as any).__office = { world: () => worlds.world(), court: () => worlds.court(), sendoffs: views.sendoffs, jail: views.jail, plan: worlds.plan, applyMap: parts.maps.applyMap, roof: rooftop.roof, booze: bar.booze, dj: () => djFrame(rooftop.djAt()), store, player: parts.player, caffeine: coffee.caffeine, camera: ctx.camera, arcade: parts.arcade, cabinet: parts.cabinet, workerViews: views.workerViews, departures: views.departures, arrivals: views.arrivals, scene: ctx.scene, net: parts.net, renderer: ctx.renderer, hands: parts.hands, me: parts.me, remotes: parts.peers.remotes, settings: parts.settings, gallery: parts.gallery, hanger: hanging.hanger, office: ctx.office, ride: parts.travel.ride, switchFloor: parts.travel.switchFloor, climber: climbing.climber, driver: cars.driver, getIn: cars.getIn, getOut: cars.getOut, golf: golf.golf, balls: golf.balls, thrower: bargames.thrower, elevatorPanelOpen, confetti: parts.confetti, dog: parts.dog, sky: ctx.sky, holiday: parts.stage.holiday, carried: () => core.carrying, emoteWheel: emotes.emoteWheel, emote: emotes.emote, ball: hoops.ball, rig: rig.rig, tables, padel: places.padel, bungee, soccer: places.soccer, beach: parts.beach }; // rig … beach: flrnoh fork
+(window as any).__office = { world: () => worlds.world(), court: () => worlds.court(), sendoffs: views.sendoffs, jail: views.jail, plan: worlds.plan, applyMap: parts.maps.applyMap, roof: rooftop.roof, booze: bar.booze, dj: () => djFrame(rooftop.djAt()), store, player: parts.player, caffeine: coffee.caffeine, camera: ctx.camera, arcade: parts.arcade, cabinet: parts.cabinet, workerViews: views.workerViews, departures: views.departures, arrivals: views.arrivals, scene: ctx.scene, net: parts.net, renderer: ctx.renderer, hands: parts.hands, me: parts.me, remotes: parts.peers.remotes, settings: parts.settings, gallery: parts.gallery, hanger: hanging.hanger, office: ctx.office, ride: parts.travel.ride, switchFloor: parts.travel.switchFloor, climber: climbing.climber, driver: cars.driver, getIn: cars.getIn, getOut: cars.getOut, golf: golf.golf, balls: golf.balls, thrower: bargames.thrower, elevatorPanelOpen, confetti: parts.confetti, dog: parts.dog, sky: ctx.sky, holiday: parts.stage.holiday, carried: () => core.carrying, emoteWheel: emotes.emoteWheel, emote: emotes.emote, ball: hoops.ball, rig: rig.rig, tables, padel: places.padel, bungee, soccer: places.soccer, beach: parts.beach, shops: parts.shops, funshops: parts.funshops }; // rig … shops: flrnoh fork
+(window as any).__office.tankstelle = parts.tankstelle; // flrnoh fork: the petrol station
+(window as any).__office.bikes = parts.ride; // flrnoh fork: bikes, pets, laundry
 (window as any).__voice = parts.voice;
 (window as any).__sound = parts.sound;
 (window as any).__notify = parts.notifier;

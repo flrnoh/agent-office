@@ -3,6 +3,7 @@ import { neighbourBoxes } from '../outside';
 import { AUTUMN, LEAVES, PINES, boulder, leafy, palm, pine } from './flora';
 import { G, beside, inBox, indexAt, insideLoop, nearest, stretch, type ScenicKit } from './kit';
 import { inTown } from '../../../shared/city'; // fork: the city round the office
+import { inStation } from '../../../shared/tankstelle'; // fork: the petrol station
 
 /** Trees all round the loop, by what's near them, and boulders by the road through the mountains. They go in last, round everything else. */
 export function plantTrees(kit: ScenicKit) {
@@ -46,7 +47,9 @@ export function plantTrees(kit: ScenicKit) {
         const at = beside(i, side * (LOOP_PAVED + 3 + rand() * (side > 0 ? 16 : 8)));
         if (!free(at.x, at.z, 1.2) || at.x < shoreX(at.z) + 6) continue;
         const sc = 0.9 + rand() * 0.45;
-        palm(parts.beach, at.x, at.z, sc, rand() * 6);
+        const turn = rand() * 6;
+        if (inStation(at.x, at.z, 2)) continue; // fork: none on the petrol station (its numbers drawn all the same)
+        palm(parts.beach, at.x, at.z, sc, turn);
         trunk(at.x, at.z, 0.2 * sc, 6 * sc);
         taken.push({ x: at.x, z: at.z, r: 2 });
       }

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FLOOR, WALL_HEIGHT, WALL_T, WING, wingMinZ } from '../../shared/layout';
+export { underRoof } from './roofs'; // fork: the street's roofs keep the rain off too (world/roofs.ts), for sky.ts
 
 /*
  * Fog stays outside (flrnoh fork, see FORK.md). The haze (sky.ts, HAZE) counts only the part of the
@@ -48,6 +49,9 @@ export function wingRoom(level: number): Box | null {
   return { min: [WING.minX - WALL_T, -0.1, wingMinZ(level) - WALL_T], max: [WING.maxX + WALL_T, WALL_HEIGHT, FLOOR.minZ - WALL_T] };
 }
 
+/** How many shop rooms can be lit from inside at once (features/shops builds no more than that). */
+export const SHOP_LIGHTS = 6;
+
 /** A box nothing is in: no way runs through it. */
 const NOWHERE = new THREE.Vector3(0, -1e4, 0);
 
@@ -58,7 +62,37 @@ export const fogBoxUniforms = {
   skyFogOfficeMax: { value: new THREE.Vector3(...OFFICE_ROOM.max) },
   skyFogWingMin: { value: NOWHERE.clone() },
   skyFogWingMax: { value: NOWHERE.clone() },
+  /** The city's shop you're in, if any (features/shops): its room is clear air too. */
+  skyFogShopMin: { value: NOWHERE.clone() },
+  skyFogShopMax: { value: NOWHERE.clone() },
+  /** The rooms of the city's shops whose insides are built (features/shops), and the light in them. */
+  skyShopCount: { value: 0 },
+  skyShopMin: { value: Array.from({ length: SHOP_LIGHTS }, () => NOWHERE.clone()) },
+  skyShopMax: { value: Array.from({ length: SHOP_LIGHTS }, () => NOWHERE.clone()) },
+  skyShopColor: { value: new THREE.Color(0, 0, 0) },
 };
+
+/** Every frame: the shop rooms (world frame) lit from inside, at most SHOP_LIGHTS, and their light (color × strength). */
+export function setShopLights(boxes: readonly Box[], color: THREE.Color) {
+  const n = Math.min(boxes.length, SHOP_LIGHTS);
+  fogBoxUniforms.skyShopCount.value = n;
+  for (let i = 0; i < n; i++) {
+    fogBoxUniforms.skyShopMin.value[i].set(...boxes[i].min);
+    fogBoxUniforms.skyShopMax.value[i].set(...boxes[i].max);
+  }
+  fogBoxUniforms.skyShopColor.value.copy(color);
+}
+
+/** Every frame: the shop room you're in, in the world's frame (null: none), whose air the fog stays out of. */
+export function setFogShop(box: Box | null) {
+  if (box) {
+    fogBoxUniforms.skyFogShopMin.value.set(...box.min);
+    fogBoxUniforms.skyFogShopMax.value.set(...box.max);
+  } else {
+    fogBoxUniforms.skyFogShopMin.value.copy(NOWHERE);
+    fogBoxUniforms.skyFogShopMax.value.copy(NOWHERE);
+  }
+}
 
 /** Every frame: whether you're on a floor of the office (`on`), and how far it's built out into the back office. */
 export function setFogRooms(on: boolean, wing: number) {
@@ -75,12 +109,26 @@ export function setFogRooms(on: boolean, wing: number) {
 
 /** For the fragment shader, with the haze's (after fog_pars_fragment): segmentInBox and outdoorShare, as above. */
 export const FOGBOX_PARS = /* glsl */ `
+  uniform int skyShopCount;
+  uniform vec3 skyShopMin[ ${SHOP_LIGHTS} ];
+  uniform vec3 skyShopMax[ ${SHOP_LIGHTS} ];
+  uniform vec3 skyShopColor;
+  // The light in a city shop's room, for what's in it (sky.ts's LIGHT): none outside them.
+  vec3 skyShopLight( vec3 p ) {
+    for ( int i = 0; i < ${SHOP_LIGHTS}; i ++ ) {
+      if ( i >= skyShopCount ) break;
+      if ( all( greaterThan( p, skyShopMin[ i ] ) ) && all( lessThan( p, skyShopMax[ i ] ) ) ) return skyShopColor;
+    }
+    return vec3( 0.0 );
+  }
 #ifdef USE_FOG
   uniform float skyFogRooms;
   uniform vec3 skyFogOfficeMin;
   uniform vec3 skyFogOfficeMax;
   uniform vec3 skyFogWingMin;
   uniform vec3 skyFogWingMax;
+  uniform vec3 skyFogShopMin;
+  uniform vec3 skyFogShopMax;
   float skyFogInBox( vec3 o, vec3 d, vec3 lo, vec3 hi ) {
     vec3 inv = ( step( 0.0, d ) * 2.0 - 1.0 ) / max( abs( d ), vec3( 1e-6 ) );
     vec3 a = ( lo - o ) * inv;
@@ -92,7 +140,7 @@ export const FOGBOX_PARS = /* glsl */ `
   float skyFogOutdoors( vec3 p ) {
     if ( skyFogRooms < 0.5 ) return 1.0;
     vec3 d = p - cameraPosition;
-    return max( 1.0 - skyFogInBox( cameraPosition, d, skyFogOfficeMin, skyFogOfficeMax ) - skyFogInBox( cameraPosition, d, skyFogWingMin, skyFogWingMax ), 0.0 );
+    return max( 1.0 - skyFogInBox( cameraPosition, d, skyFogOfficeMin, skyFogOfficeMax ) - skyFogInBox( cameraPosition, d, skyFogWingMin, skyFogWingMax ) - skyFogInBox( cameraPosition, d, skyFogShopMin, skyFogShopMax ), 0.0 );
   }
 #endif
 `;

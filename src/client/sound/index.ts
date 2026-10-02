@@ -38,6 +38,10 @@ import { Rain, thunder } from './weather';
 // flrnoh fork (see FORK.md): the fork's own sounds, a recipe file each.
 import { bulliHorn } from './bulli';
 import { beach, Outboards, type BeachSound, type Outboard } from '../features/beach/sound';
+import { baumarktSound, ForkliftHum, type BaumarktSound } from '../features/baumarkt/sound';
+import { kino, type KinoSound } from '../features/kino/sound'; // fork: the cinema
+import { Headphones, shopSound, type ShopSound } from '../features/shops/sound';
+import { rideSound, type RideSound } from '../features/ride/sound'; // fork: bikes, pets, laundry
 import { bungee, BungeeWind } from './bungee';
 import { casino, type CasinoSound } from './casino';
 import { doorbell } from './doorbell';
@@ -45,11 +49,16 @@ import { fridgeDoor, opener } from './fridge';
 import { gym, gymAt, GymSpa, type GymMachineSound, type GymSound } from './gym';
 import { padelHall, type PadelHallSound } from './hall';
 import { padel, type PadelSound } from './padel';
+import { passerbyChat, passerbyStep } from './passersby';
 import { rig } from './rig';
 import { djSetVolume, tvVolume } from './screens';
 import { soccer, type SoccerSound } from './soccer';
 import { SoccerMurmur, soccerCrowd, type SoccerCrowdSound } from './soccercrowd';
 import { tableGame, type TableGameSound } from './tablegames';
+import { StationLoops, tankstelle, type StationNoise, type TankSound } from '../features/tankstelle/sound';
+import { BusEngines, busDoorHiss } from '../features/citybus/sound'; // fork: the city bus
+import { CitySound, type CityScene } from './city'; // fork: the sounds of the city
+import { bells, siren, type SirenPass } from './citybells';
 
 // What the rest of the client imports from here.
 export type { Hall, Listener } from './core';
@@ -76,6 +85,11 @@ export class OfficeSound {
   private readonly spa = new GymSpa(this.a); // fork
   private readonly bungeeAir = new BungeeWind(this.a); // fork
   private readonly outboards = new Outboards(this.a); // fork
+  private readonly forkliftHum = new ForkliftHum(this.a); // fork
+  private readonly headset = new Headphones(this.a); // fork
+  private readonly station = new StationLoops(this.a); // fork
+  private readonly busEngines = new BusEngines(this.a); // fork: the city bus
+  private readonly city = new CitySound(this.a); // fork
   /** A stream that won't play here. */
   onMusicError?: (text: string) => void;
   /** Fork: a stream the browser won't start before you click (autoplay rules). */
@@ -93,6 +107,7 @@ export class OfficeSound {
     this.a.every((now) => this.rain.tickRain(now));
     this.a.every((now) => this.phones.tick(now));
     this.a.every((now) => this.fidgets.tick(now));
+    this.a.every((now) => this.city.tick(now)); // fork
   }
 
   /** Audio has just started (see AudioCore.unlock): the jukebox and the DJ join the graph, and the room starts up. */
@@ -366,14 +381,67 @@ export class OfficeSound {
     doorbell(this.a);
   }
 
+  /** The city's passers-by close to you: a footstep, or two of them talking (passersby.ts). */
+  passerby(kind: 'step' | 'chat', at: Pos) {
+    (kind === 'step' ? passerbyStep : passerbyChat)(this.a, at);
+  }
+
   /** A day at the beach: splashes, strokes, the kiosk's bell and fryer, a gull, the boats' horns (features/beach/sound.ts). */
   beach(kind: BeachSound, at: Pos, strength = 1) {
     beach(this.a, kind, at, strength);
   }
 
+  /** The cinema: the popcorn machine, the counter's bell, the gong before a film (features/kino/sound.ts). */
+  kino(kind: KinoSound, at: Pos) {
+    kino(this.a, kind, at);
+  }
+
+  /** The city's shops: the door's bell, the till, scissors, the tattoo machine, the toys (features/shops/sound.ts). */
+  shop(kind: ShopSound, at: Pos) {
+    shopSound(this.a, kind, at);
+  }
+
+  /** Bikes, pets and laundry: a bell, a budgie, a washing machine (features/ride/sound.ts). */
+  ride(kind: RideSound, at: Pos) {
+    rideSound(this.a, kind, at);
+  }
+
+  /** A record on the record shop's headphones, for you alone; null takes them off. */
+  headphones(rec: { tune: string; seed: number } | null) {
+    this.headset.play(rec);
+  }
+
   /** The boats' outboards running now, every frame (an empty list lets them die away). */
   setOutboards(list: Outboard[]) {
     this.outboards.set(list);
+  }
+
+  /** The Baumarkt: tools, the paint shaker, the forklift's beep and horn, the scanner, the gate, the PA (features/baumarkt/sound.ts). */
+  baumarkt(kind: BaumarktSound, at: Pos, strength = 1) {
+    baumarktSound(this.a, kind, at, strength);
+  }
+
+  /** The forklift's motor and hydraulics, every frame (null: off). */
+  setForklift(s: Parameters<ForkliftHum['set']>[0]) {
+    this.forkliftHum.set(s);
+  }
+
+  /** The petrol station: the nozzle, the pump's cut-off, the shop's till, the wash's chime (features/tankstelle/sound.ts). */
+  tankstelle(kind: TankSound, at: Pos) {
+    tankstelle(this.a, kind, at);
+  }
+
+  /** The station's pumps and car wash running now, every frame. */
+  setStation(noise: StationNoise) {
+    this.station.set(noise);
+  }
+
+  /** The city buses' engines in earshot, every frame, and their doors' hiss (features/citybus/sound.ts). */
+  setBuses(list: Parameters<BusEngines['set']>[0]) {
+    this.busEngines.set(list);
+  }
+  busDoors(at: Pos, opening: boolean) {
+    busDoorHiss(this.a, at, opening);
   }
 
   casino(kind: CasinoSound) {
@@ -433,5 +501,25 @@ export class OfficeSound {
   /** The soccer hall's crowd and stadium: the horn, the roar of a goal, the "oooh" of a near miss, applause, a chant. */
   soccerCrowd(kind: SoccerCrowdSound, strength = 1) {
     soccerCrowd(this.a, kind, strength);
+  }
+
+  /** The city round the office, every frame (sound/city.ts): where the street is, the cars, the setting; null: quiet. */
+  setCity(scene: CityScene | null) {
+    this.city.set(scene);
+  }
+
+  /** What the city's loops came to where you stand, for quick checks. */
+  get cityLevels() {
+    return this.city.probe();
+  }
+
+  /** The church bell at `at` strikes the hour (sound/citybells.ts). */
+  cityBell(at: Pos, strikes: number) {
+    if (this.city.out) bells(this.a, this.city.out, at, strikes);
+  }
+
+  /** A siren going by far off (sound/citybells.ts). */
+  citySiren(pass: SirenPass) {
+    if (this.city.out) siren(this.a, this.city.out, pass);
   }
 }

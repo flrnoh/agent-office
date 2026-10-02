@@ -14,6 +14,11 @@ import { padelMessage } from '../../padel.js';
 import { bungeeMessage } from '../../bungee.js';
 import { rigMessage } from '../../rig.js';
 import { boatMessage } from '../../boats.js';
+import { baumarktMessage } from '../../baumarkt.js';
+import { kinoMessage } from '../../kino.js';
+import { toyUse } from '../../../shared/shopwares.js';
+import { funshopHandlers } from './funshops.js';
+import { rideMessage } from '../../fork/ride.js';
 import { here } from './common.js';
 import { jukeboxChanged } from './jukebox.js';
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
@@ -32,6 +37,18 @@ const rigLeft = (ctx: Ctx, c: Client) => ctx.rigs.leave(c.id).forEach(ctx.rigCha
 const boatLeft = (ctx: Ctx, c: Client, floorId: string | undefined) => {
   const floor = floorId ? ctx.floors.get(floorId) : undefined;
   if (floor && ctx.marinas.leave(floorId, c.id)) ctx.toFloor(floor, { t: 'boats', boats: ctx.marinas.of(floor.id).state() });
+};
+
+/** Off the forklift, a trolley let go and what they held put back, at the Baumarkt of the floor they're leaving (or left). */
+const baumarktLeft = (ctx: Ctx, c: Client, floorId: string | undefined) => {
+  const floor = floorId ? ctx.floors.get(floorId) : undefined;
+  if (floor && ctx.baumaerkte.leave(floorId, c.id)) ctx.toFloor(floor, { t: 'baumarkt', state: ctx.baumaerkte.of(floor.id).state() });
+};
+/** Their supermarket trolley let go of on the floor they're leaving (or left), and everyone still there told. */
+const trolleyLeft = (ctx: Ctx, c: Client, floorId: string | undefined) => {
+  const floor = floorId ? ctx.floors.get(floorId) : undefined;
+  const m = floor && ctx.trolleys.leave(floor.id, c.id);
+  if (floor && m) ctx.toFloor(floor, m);
 };
 
 type Casino = Ctx['casino'];
@@ -57,6 +74,24 @@ function boat(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `boat.${stri
   const floor = ctx.floorOf(c); // the jetskis and the motorboat at the beach (boats.ts)
   boatMessage(ctx.marinas, msg, { id: c.id, floor: floor?.id, send: (m) => ctx.sendTo(c, m), toNeighbors: (m, droppable) => ctx.toNeighbors(c, m, droppable) });
 }
+function baumarkt(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `bm.${string}` }>) {
+  const floor = ctx.floorOf(c); // the Baumarkt on the street (baumarkt.ts)
+  const where = () => (floor && c.peer.floor === floor.id ? { x: c.peer.x, z: c.peer.z } : undefined);
+  baumarktMessage(ctx.baumaerkte, msg, { id: c.id, floor: floor?.id, where, send: (m) => ctx.sendTo(c, m), toNeighbors: (m, droppable) => ctx.toNeighbors(c, m, droppable) });
+}
+function kino(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: 'kino.play' | 'kino.stop' }>) {
+  const floor = ctx.floorOf(c); // the cinema's Saal 2 (kino.ts)
+  kinoMessage(floor && ctx.kinos.of(floor), msg, { id: c.id, who: c.peer.name, office: ctx.maps.pick() === OFFICE_MAP, toFloor: (m) => floor && ctx.toFloor(floor, m), warn: (t) => ctx.warn(c, t) });
+}
+
+function tank(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `tank.${string}` }>) {
+  const floor = ctx.floorOf(c); // the petrol station and its car wash (tankstelle.ts)
+  if (!floor) return;
+  const res = ctx.forecourts.message(floor.id, { id: c.id, inCar: floor.garage.seatOf(c.id)?.car, x: c.peer.x, z: c.peer.z }, msg, floor.garage.state());
+  if ('refused' in res) return ctx.warn(c, res.refused);
+  ctx.toFloor(floor, res.ok);
+}
+
 function rig(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: `rig.${string}` }>) {
   const floor = ctx.floorOf(c);
   rigMessage(ctx.rigs, msg, {
@@ -112,6 +147,34 @@ export const forkHandlers = {
   'boat.leave': boat,
   'boat.drive': boat,
   'boat.horn': boat,
+  'bm.fork.enter': baumarkt,
+  'bm.fork.leave': baumarkt,
+  'bm.fork.drive': baumarkt,
+  'bm.fork.horn': baumarkt,
+  'bm.trolley.grab': baumarkt,
+  'bm.trolley.push': baumarkt,
+  'bm.trolley.let': baumarkt,
+  'bm.hold': baumarkt,
+  'bm.use': baumarkt,
+  'bm.mix': baumarkt,
+  'kino.play': kino,
+  'kino.stop': kino,
+  'toy.use'(ctx, c, msg) {
+    // A toy from the city's toy shop (shared/shopwares.ts): only the one in their hand, seen on their floor.
+    const used = toyUse(msg, c.peer.drink, c.id);
+    if (used) ctx.toNeighbors(c, used);
+  },
+  ...funshopHandlers, // the Spielhalle's claw machine and the Post's postcards
+  'bike.ride': rideMessage, // a bike from the city's bike shop (fork/ride.ts)
+  'bike.bell': rideMessage,
+  'tank.fill': tank,
+  'tank.wash': tank,
+  'trolley.set'(ctx, c, msg) {
+    // The supermarket's trolley (shared/trolley.ts): taken, filled, rung up or let go of, seen on their floor.
+    const floor = ctx.floorOf(c);
+    const m = floor && ctx.trolleys.set(floor.id, c.id, msg.items);
+    if (m) ctx.toNeighbors(c, m);
+  },
   'rig.play': rig,
   'rig.leave': rig,
   'rig.frame': rig,
@@ -138,6 +201,8 @@ export const forkHooks: FeatureHooks = {
     if (c.peer.floor === ROOF) offRope(ctx, c.id); // and off the bungee rope
     rigLeft(ctx, c); // the racing rig
     boatLeft(ctx, c, was?.id); // out of a boat at the beach
+    baumarktLeft(ctx, c, was?.id); // off the Baumarkt's forklift, trolleys and tools
+    trolleyLeft(ctx, c, was?.id); // the supermarket's trolley stays behind
   },
   closed(ctx, c) {
     ctx.casino.leave(c.id);
@@ -150,6 +215,8 @@ export const forkHooks: FeatureHooks = {
   },
   closedOn(ctx, c, floor) {
     boatLeft(ctx, c, floor.id); // out of a boat at the beach
+    baumarktLeft(ctx, c, floor.id);
+    trolleyLeft(ctx, c, floor.id); // and the supermarket's trolley
   },
 };
 
@@ -158,5 +225,9 @@ export const forkHooks: FeatureHooks = {
 export const rigView: ViewPieces['rig'] = (ctx, floor) => ctx.rigs.view(floor?.id);
 export const tvView: ViewPieces['tv'] = (_ctx, floor) => floor?.tv.state();
 export const boatsView: ViewPieces['boats'] = (ctx, floor) => ctx.marinas.view(floor?.id);
+export const baumarktView: ViewPieces['baumarkt'] = (ctx, floor) => ctx.baumaerkte.view(floor?.id);
+export const kinoView: ViewPieces['kino'] = (ctx, floor) => ctx.kinos.view(floor);
+export const tankView: ViewPieces['tankstelle'] = (ctx, floor) => ctx.forecourts.view(floor?.id);
+export const trolleysView: ViewPieces['trolleys'] = (ctx, floor) => ctx.trolleys.view(floor?.id);
 export const noView = () => undefined;
 export const bungeeView: ViewPieces['bungee'] = (ctx) => ctx.bungeeRope.state();

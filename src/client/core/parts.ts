@@ -46,6 +46,7 @@ import type { installWorkerActions } from '../features/workers/actions';
 import type { installWorkerViews } from '../features/workers/views';
 // flrnoh fork (see FORK.md): this fork's own features.
 import type { installBeach } from '../features/beach';
+import type { installTankstelle } from '../features/tankstelle'; // flrnoh fork
 import type { installBossDesk } from '../features/bossdesk';
 import type { installBungee } from '../features/bungee';
 import type { installDjSets } from '../features/djset';
@@ -53,6 +54,9 @@ import type { installFridge } from '../features/fridge';
 import type { installGuests } from '../features/guests';
 import type { installPlaces } from '../features/places';
 import type { installRig } from '../features/rig';
+import type { installShops } from '../features/shops';
+import type { installFunShops } from '../features/funshops';
+import type { installRide } from '../features/ride';
 import type { installTableGames } from '../features/tablegames';
 import type { installFocus } from '../input/focus';
 import type { installPointer } from '../input/pointer';
@@ -143,4 +147,8 @@ export interface Parts {
   bungee: Made<typeof installBungee>;
   guests: Made<typeof installGuests>;
   beach: Made<typeof installBeach>;
+  shops: Made<typeof installShops>;
+  funshops: Made<typeof installFunShops>;
+  ride: Made<typeof installRide>; // flrnoh fork: bikes, pets, laundry
+  tankstelle: Made<typeof installTankstelle>; // flrnoh fork: the petrol station
 }

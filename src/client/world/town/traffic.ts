@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CITY_ROAD, RUNS, type Run } from '../../../shared/city';
+import { lightLimit } from '../../../shared/traffic-lights'; // fork: the traffic lights
 import { toon } from '../toon';
 import type { Collider } from '../types';
 import { G, mergeGeometries } from './kit';
@@ -11,6 +12,13 @@ import { G, mergeGeometries } from './kit';
 export interface Obstacle {
   x: number;
   z: number;
+}
+
+/** Fork: a city bus (shared/citybus.ts), where it is and which way its nose (+x) points. */
+export interface BusAt {
+  x: number;
+  z: number;
+  yaw: number;
 }
 
 /** One of the city's cars, up and down a run of street (see RUNS). */
@@ -36,8 +44,11 @@ export interface Traffic {
   traffic: Collider[];
   /** Where the street is in the frame the colliders are in (the floor you're on's). */
   setStreet(y: number): void;
-  /** Drives every car `dt` on, stopping for `obstacles`. */
-  move(dt: number, obstacles: Obstacle[]): void;
+  /**
+   * Drives every car `dt` on, stopping for `obstacles` and (fork) at the lights' stop lines as they
+   * show at `t` (the office's clock, s), and out of the way of the `buses` coming up behind.
+   */
+  move(dt: number, obstacles: Obstacle[], t?: number, buses?: readonly BusAt[]): void;
   /** Their headlights, brighter at night. */
   headMat: THREE.MeshBasicMaterial;
 }
@@ -104,7 +115,7 @@ export function buildTraffic(group: THREE.Group, r: () => number): Traffic {
     }
     return c.run.alongX ? { x: along, z: c.run.line + across, yaw } : { x: c.run.line + across, z: along, yaw };
   };
-  const moveCars = (dt: number, obstacles: Obstacle[]) => {
+  const moveCars = (dt: number, obstacles: Obstacle[], t?: number, buses: readonly BusAt[] = []) => {
     for (const c of cars) {
       if (c.turn >= 0) {
         c.turn += dt / 2.2;
@@ -132,9 +143,17 @@ export function buildTraffic(group: THREE.Group, r: () => number): Traffic {
         const side = Math.abs(dx * fz - dz * fx);
         if (along > 0 && along < 24 && side < CAR_W / 2 + 1.1) ahead = Math.min(ahead, along - CAR_L / 2 - 0.6);
       }
+      // Fork: the lights, and a bus coming up behind in its lane: it turns round out of its way.
+      const front = c.at + (c.dir * CAR_L) / 2;
+      const lim = t === undefined ? Infinity : lightLimit(c.run.alongX, c.run.line, c.dir, front, c.speed, t);
+      ahead = Math.min(ahead, lim + GAP);
+      if (buses.some((b) => busBehind(b, me.x, me.z, fx, fz))) {
+        c.turn = 0;
+        continue;
+      }
       const want = Math.max(0, Math.min(c.cruise, (ahead - GAP) * 1.1));
       c.speed += Math.max(-9 * dt, Math.min(3 * dt, want - c.speed));
-      c.at += c.dir * c.speed * dt;
+      c.at += c.dir * Math.min(c.speed * dt, lim);
       // At the end of its run, round and back the other way.
       const end = c.dir > 0 ? c.run.to - CITY_ROAD / 4 - 1 : c.run.from + CITY_ROAD / 4 + 1;
       if ((end - c.at) * c.dir <= 0) {
@@ -160,5 +179,15 @@ export function buildTraffic(group: THREE.Group, r: () => number): Traffic {
     for (const m of [carMesh, heads, tails, dark]) m.instanceMatrix.needsUpdate = true;
   };
   moveCars(0, []);
+  /** A bus in the car's lane, going its way, close behind it. */
+  const busBehind = (b: BusAt, x: number, z: number, fx: number, fz: number) => {
+    const bx = Math.cos(b.yaw);
+    const bz = -Math.sin(b.yaw);
+    if (bx * fx + bz * fz < 0.9) return false;
+    const dx = x - b.x;
+    const dz = z - b.z;
+    const along = dx * fx + dz * fz;
+    return along > 0 && along < 5.5 + 12 && Math.abs(dx * fz - dz * fx) < 1.6;
+  };
   return { traffic, setStreet: (y) => (street = y), move: moveCars, headMat };
 }

@@ -9,6 +9,9 @@ import { roofDrop } from '../../../shared/layout';
 import type { Ctx } from '../../core/context';
 import type { Obstacle } from '../../world/town';
 import type { Rooftop } from '../rooftop/world';
+import { drivePassersby } from './people';
+import { PropCull } from '../../world/town/propcull';
+import { store } from '../../state';
 
 export interface TownFeatureDeps {
   /** The roof, once it's built (see features/rooftop). */
@@ -24,6 +27,8 @@ export function installTown(ctx: Ctx, deps: TownFeatureDeps) {
   /** Whether the outlook is lent to the roof right now. */
   let lent = false;
   const obstacles: Obstacle[] = [];
+  /** The passers-by on the office's clock (see people.ts). */
+  const passersby = drivePassersby(ctx);
 
   /** Who and what the city's cars stop for, down on the street: people on foot, and the garage's cars. */
   function inTheRoad(): Obstacle[] {
@@ -35,7 +40,14 @@ export function installTown(ctx: Ctx, deps: TownFeatureDeps) {
     return obstacles;
   }
 
+  // Small things far off aren't drawn (world/town/propcull.ts): the landmarks' and halls' many parts
+  // round the office, everything out there but the town itself (its shops see to their own insides).
+  const props = new PropCull();
+  const outlook = office.town.group.parent;
+  if (outlook) props.add(...outlook.children.filter((c) => c !== office.town.group));
+  (window as unknown as { __propcull?: PropCull }).__propcull = props;
   ctx.ticks.add('env', ({ t, dt }) => {
+    props.update(ctx.camera);
     const up = ctx.upTop();
     const roof = up ? deps.roof() : null;
     // Up on the roof, it borrows the office's outlook; back down, the office has it again.
@@ -44,10 +56,12 @@ export function installTown(ctx: Ctx, deps: TownFeatureDeps) {
       lent = up;
     }
     const dark = ctx.sky.lampsOn;
+    passersby();
+    const now = store.officeNow() / 1000; // fork: the lights and the buses keep to the office's clock
     if (up) {
       // The roof looks out at the same country, as far below as the building is tall.
       office.scenic.cull(ctx.camera.position, -roofDrop(deps.roofFloors()), (ctx.scene.fog as THREE.Fog).far);
-      office.town.update(t, dt, dark, []);
-    } else if (ctx.inOffice()) office.town.update(t, dt, dark, inTheRoad());
+      office.town.update(t, dt, dark, [], now);
+    } else if (ctx.inOffice()) office.town.update(t, dt, dark, inTheRoad(), now);
   });
 }

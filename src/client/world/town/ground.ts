@@ -3,7 +3,8 @@ import { BLOCKS, BLOCK_INNER, CITY_ROAD, CITY_WALK, CROSSINGS, PARK_TREES, STREE
 import { roadTexture } from '../outside';
 import { mergeByMaterial, mesh, toon } from '../toon';
 import type { Collider } from '../types';
-import { Flats, G, LAMP_EVERY, LAMP_H, flat } from './kit';
+import { LAMPS, LAMP_H } from '../../../shared/streetside';
+import { Flats, G, flat } from './kit';
 
 // flrnoh fork (see FORK.md): the city's ground (see town/index.ts): sidewalks along every street, the
 // streets, the crossings with their zebras, the blocks' lots and the parks' lawns and trees, and the
@@ -60,7 +61,7 @@ export function buildTownGround(group: THREE.Group, colliders: Collider[], glow:
   }
   const inner = BLOCK_INNER;
   for (const b of BLOCKS) {
-    if (b.kind === 'city') lots.add(b.x - inner / 2, b.x + inner / 2, b.z - inner / 2, b.z + inner / 2, G - 0.015);
+    if (b.kind === 'city' || b.kind === 'landmark') lots.add(b.x - inner / 2, b.x + inner / 2, b.z - inner / 2, b.z + inner / 2, G - 0.015);
     else if (b.kind === 'park') lawns.add(b.x - inner / 2, b.x + inner / 2, b.z - inner / 2, b.z + inner / 2, G - 0.015);
   }
   const road = roadTexture();
@@ -92,29 +93,19 @@ export function buildTownGround(group: THREE.Group, colliders: Collider[], glow:
   const pole = new THREE.CylinderGeometry(0.08, 0.1, LAMP_H, 6);
   const arm = new THREE.BoxGeometry(0.08, 0.08, 1.3);
   const head = new THREE.BoxGeometry(0.5, 0.18, 0.34);
-  for (const s of STREETS) {
-    const rr = stretchRect(s);
-    const from = s.alongX ? rr.minX : rr.minZ;
-    const to = s.alongX ? rr.maxX : rr.maxZ;
-    for (let a = from + 12 + (Math.abs(s.a * 7 + s.b * 3) % 3) * 4; a < to - 10; a += LAMP_EVERY) {
-      for (const side of [-1, 1]) {
-        // On the sidewalk's outer half, the arm out over the road.
-        const off = side * (h + CITY_WALK * 0.6);
-        const x = s.alongX ? a : (rr.minX + rr.maxX) / 2 + off;
-        const z = s.alongX ? (rr.minZ + rr.maxZ) / 2 + off : a;
-        posts.add(mesh(pole, ink, x, G + LAMP_H / 2, z, false));
-        const ax = s.alongX ? x : x - side * 0.6;
-        const az = s.alongX ? z - side * 0.6 : z;
-        const armMesh = mesh(arm, ink, ax, G + LAMP_H - 0.05, az, false);
-        if (!s.alongX) armMesh.rotation.y = Math.PI / 2;
-        posts.add(armMesh);
-        const hx = s.alongX ? x : x - side * 1.2;
-        const hz = s.alongX ? z - side * 1.2 : z;
-        posts.add(mesh(head, lampGlass, hx, G + LAMP_H - 0.15, hz, false));
-        lampPos.push(hx, G + LAMP_H - 0.3, hz);
-        colliders.push({ minX: x - 0.15, maxX: x + 0.15, minZ: z - 0.15, maxZ: z + 0.15, bottom: G, top: G + LAMP_H });
-      }
-    }
+  // Where they stand is shared/streetside.ts' (the passers-by walk round them): on the sidewalk's outer half.
+  for (const { x, z, side, street: s } of LAMPS) {
+    posts.add(mesh(pole, ink, x, G + LAMP_H / 2, z, false));
+    const ax = s.alongX ? x : x - side * 0.6;
+    const az = s.alongX ? z - side * 0.6 : z;
+    const armMesh = mesh(arm, ink, ax, G + LAMP_H - 0.05, az, false);
+    if (!s.alongX) armMesh.rotation.y = Math.PI / 2;
+    posts.add(armMesh);
+    const hx = s.alongX ? x : x - side * 1.2;
+    const hz = s.alongX ? z - side * 1.2 : z;
+    posts.add(mesh(head, lampGlass, hx, G + LAMP_H - 0.15, hz, false));
+    lampPos.push(hx, G + LAMP_H - 0.3, hz);
+    colliders.push({ minX: x - 0.15, maxX: x + 0.15, minZ: z - 0.15, maxZ: z + 0.15, bottom: G, top: G + LAMP_H });
   }
   group.add(mergeByMaterial(posts));
   const lampGeo = new THREE.BufferGeometry();

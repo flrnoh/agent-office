@@ -3,7 +3,7 @@ import { FLOOR, SLAB, STREET_Y, WALL_HEIGHT, WALL_T, WING, wingMinZ } from '../.
 import type { SkyState, Theme, Weather } from '../../shared/protocol';
 import { guessPlace, skyTime, sunPosition } from '../../shared/sun';
 import type { NightParts } from './outside';
-import { FOGBOX_PARS, fogBoxUniforms } from './fogbox';
+import { FOGBOX_PARS, fogBoxUniforms, underRoof } from './fogbox';
 
 /*
  * Day, night and the weather outside the windows. The server says where the office is and what the
@@ -128,7 +128,7 @@ material.diffuseColor = mix( material.diffuseColor, vec3( 0.93, 0.96, 1.0 ), sky
 /** The lamps' light, added to what the sun and the sky give. */
 const LIGHT = /* glsl */ `
 if ( skyOn > 0.0 ) {
-  vec3 skyLight = skyIndoor * skyOffice * ( 0.65 + 0.35 * skyN.y ) + ( 1.0 - skyIndoor ) * ( skyGar * skyGarage + skyLampsAt( vSkyWorld, skyN ) );
+  vec3 skyLight = skyIndoor * skyOffice * ( 0.65 + 0.35 * skyN.y ) + ( 1.0 - skyIndoor ) * ( skyGar * skyGarage + skyLampsAt( vSkyWorld, skyN ) + skyShopLight( vSkyWorld ) ); // fork: + the city's shops' (fogbox.ts)
   reflectedLight.indirectDiffuse += skyLight * BRDF_Lambert( material.diffuseColor );
 }
 `;
@@ -383,7 +383,7 @@ let wingBox: { minX: number; maxX: number; minZ: number; maxZ: number } | null =
 
 /** Is (x, z) under the building, where no rain or snow falls? */
 const sheltered = (x: number, z: number) =>
-  (x > B.minX - 0.05 && x < B.maxX + 0.05 && z > B.minZ - 0.05 && z < B.maxZ + 0.05) || (!!wingBox && x > wingBox.minX - 0.05 && x < wingBox.maxX + 0.05 && z > wingBox.minZ - 0.05 && z < wingBox.maxZ);
+  (x > B.minX - 0.05 && x < B.maxX + 0.05 && z > B.minZ - 0.05 && z < B.maxZ + 0.05) || (!!wingBox && x > wingBox.minX - 0.05 && x < wingBox.maxX + 0.05 && z > wingBox.minZ - 0.05 && z < wingBox.maxZ) || underRoof(x, z);
 
 export class Sky {
   private preview: { hour?: number; weather?: Weather; intensity?: number } = {};

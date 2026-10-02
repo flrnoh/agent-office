@@ -1,12 +1,17 @@
 // What a person looks like in the office, picked on the character select screen.
 // Server and client share these lists so a look is just three small indexes on the wire.
 
+import { randomMarks, sameMarks, sanitizeMarks, type LookMarks } from './avatar-marks.js'; // flrnoh fork: beard, tattoos, piercings
+export * from './avatar-marks.js'; // flrnoh fork
+import { sameOutfit, sanitizeOutfit, type LookOutfit } from './avatar-outfit.js'; // flrnoh fork: clothes, hats, glasses
+export * from './avatar-outfit.js'; // flrnoh fork
+
 export const SKIN_TONES = ['#ffe3cc', '#ffd7b5', '#f1c27d', '#e0ac69', '#c68642', '#a0663a', '#8d5524', '#5c3a21'];
 export const HAIR_COLORS = ['#2b2d42', '#4a3222', '#6f4e37', '#e9c46a', '#c1440e', '#d9d9d9', '#d62828', '#ff8fab', '#9d4edd', '#264653'];
 export const HAIR_COLOR_NAMES = ['Black', 'Dark brown', 'Brown', 'Blonde', 'Ginger', 'Silver', 'Red', 'Pink', 'Purple', 'Teal'];
 export const HAIR_STYLES = ['Short', 'Long', 'Bun', 'Spiky', 'Curly', 'Ponytail', 'Bald'];
 
-export interface Look {
+export interface Look extends LookMarks, LookOutfit { // LookMarks, LookOutfit: flrnoh fork
   skin: number;
   hair: number;
   style: number;
@@ -26,7 +31,7 @@ export function lookFromSeed(seed: string): Look {
 
 export function randomLook(): Look {
   const pick = (n: number) => Math.floor(Math.random() * n);
-  return { skin: pick(SKIN_TONES.length), hair: pick(HAIR_COLORS.length), style: pick(HAIR_STYLES.length) };
+  return { skin: pick(SKIN_TONES.length), hair: pick(HAIR_COLORS.length), style: pick(HAIR_STYLES.length), ...randomMarks() }; // randomMarks: flrnoh fork
 }
 
 const NAME_ADJECTIVES = ['Sunny', 'Cosmic', 'Quiet', 'Speedy', 'Clever', 'Brave', 'Jolly', 'Mellow', 'Nimble', 'Plucky', 'Snappy', 'Witty', 'Zesty', 'Cozy', 'Lucky', 'Breezy', 'Chipper', 'Dapper', 'Fuzzy', 'Gentle', 'Groovy', 'Humble', 'Keen', 'Lively', 'Merry', 'Nifty', 'Peppy', 'Spry', 'Swift', 'Tidy', 'Zippy', 'Bold'];
@@ -42,13 +47,13 @@ export function randomName(): string {
 export function sanitizeLook(x: unknown, fallback: Look): Look {
   const o = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>;
   const idx = (v: unknown, n: number, d: number) => (Number.isInteger(v) && (v as number) >= 0 && (v as number) < n ? (v as number) : d);
-  return {
+  return sanitizeOutfit(o, fallback, sanitizeMarks(o, fallback, { // flrnoh fork: and the beard, tattoos and piercings (avatar-marks.ts), the outfit (avatar-outfit.ts)
     skin: idx(o.skin, SKIN_TONES.length, fallback.skin),
     hair: idx(o.hair, HAIR_COLORS.length, fallback.hair),
     style: idx(o.style, HAIR_STYLES.length, fallback.style),
-  };
+  })); // flrnoh fork
 }
 
 export function sameLook(a: Look, b: Look): boolean {
-  return a.skin === b.skin && a.hair === b.hair && a.style === b.style;
+  return a.skin === b.skin && a.hair === b.hair && a.style === b.style && sameMarks(a, b) && sameOutfit(a, b); // sameMarks, sameOutfit: flrnoh fork
 }

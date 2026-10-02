@@ -113,6 +113,16 @@ export interface TvView {
   boxes: readonly Box[];
 }
 
+/** flrnoh fork: what a screen calls itself (the office TV's, or the cinema's Saal 2: features/kino). */
+export interface ScreenLook {
+  id: string;
+  icon: string;
+  name: string;
+  /** Its card's heading while a video's on ("On the TV"). */
+  on: string;
+}
+const TV_LOOK: ScreenLook = { id: 'tv-stream', icon: '📺', name: 'Office TV', on: 'On the TV' };
+
 export class TvStreams extends EmbedPlayer<TvStream> {
   /** Laid over the page; holds the site's player. */
   private readonly host: HTMLElement;
@@ -125,19 +135,23 @@ export class TvStreams extends EmbedPlayer<TvStream> {
   private frames = 0;
   private cardKey = '';
 
-  constructor(hooks: EmbedHooks, after: HTMLElement) {
+  constructor(
+    hooks: EmbedHooks,
+    private readonly after: HTMLElement,
+    private readonly look: ScreenLook = TV_LOOK, // fork: the cinema's Saal 2 has one too
+  ) {
     const box = document.createElement('div');
     super(hooks, {
       decks: { youtube: (set, at, on) => youtubeDeck(set.id, at, on, box, true), twitch: (set, at, on) => twitchDeck(set, at, on, box) },
       site: (set) => TV_SITES[set.kind],
       fallbackTitle: tvTitle,
       same: sameTvStream,
-      cantPlay: (why) => `📺 Can't play it on the TV here: ${why}`,
-      clickToHear: '📺 Click to hear the TV',
+      cantPlay: (why) => `${look.icon} Can't play it on the ${look === TV_LOOK ? 'TV' : look.name} here: ${why}`,
+      clickToHear: `${look.icon} Click to hear the ${look === TV_LOOK ? 'TV' : look.name}`,
     });
     this.host = box;
-    box.id = 'tv-stream';
-    box.setAttribute('aria-label', 'Office TV');
+    box.id = look.id;
+    box.setAttribute('aria-label', look.name);
     box.style.cssText = `position:fixed;left:0;top:0;width:${W}px;height:${H}px;transform-origin:0 0;pointer-events:none;opacity:0;background:#000;overflow:hidden;contain:strict`;
     after.after(box);
     this.cardCanvas.width = 1280;
@@ -203,8 +217,7 @@ export class TvStreams extends EmbedPlayer<TvStream> {
     const toEye = eye.clone().sub(center);
     // From behind the wall, or from too far to make it out.
     if (toEye.dot(normal) < 0.2 || toEye.length() > SEE_FROM) return null;
-    const canvas = this.host.previousElementSibling as HTMLElement | null;
-    const rect = (canvas ?? document.body).getBoundingClientRect();
+    const rect = this.after.getBoundingClientRect(); // fork: the canvas (two screens' players both follow it)
     const pts: Pt[] = [];
     for (const [x, y] of [[-w, h], [w, h], [w, -h], [-w, -h]]) {
       const p = new THREE.Vector3(x, y, 0).applyMatrix4(m);
@@ -252,7 +265,7 @@ export class TvStreams extends EmbedPlayer<TvStream> {
     g.fillStyle = '#fff';
     g.textAlign = 'center';
     g.font = '900 72px Nunito, ui-rounded, system-ui, sans-serif';
-    g.fillText(set ? `📺 ${set.live ? 'Live' : 'On the TV'}` : '📺 Office TV', 640, 250);
+    g.fillText(set ? `${this.look.icon} ${set.live ? 'Live' : this.look.on}` : `${this.look.icon} ${this.look.name}`, 640, 250);
     g.font = '800 52px Nunito, ui-rounded, system-ui, sans-serif';
     const title = this.titleNow();
     const lines = wrap(g, title, 1140).slice(0, 2);

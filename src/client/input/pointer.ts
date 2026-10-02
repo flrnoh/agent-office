@@ -15,7 +15,7 @@ import { store } from '../state';
 import { modalOpen, toast } from '../ui/dom';
 import type { Interactable } from '../world/types';
 
-export type PointerParts = Pick<Parts, 'worlds' | 'rooftop' | 'place' | 'you' | 'boards' | 'cards' | 'seating' | 'hoops' | 'emotes' | 'hanging' | 'telescope' | 'hintbar' | 'places' | 'guests'>; // places, guests: flrnoh fork
+export type PointerParts = Pick<Parts, 'worlds' | 'rooftop' | 'place' | 'you' | 'boards' | 'cards' | 'seating' | 'hoops' | 'emotes' | 'hanging' | 'telescope' | 'hintbar' | 'places' | 'guests' | 'shops'>; // places, guests, shops: flrnoh fork
 
 /** Listens for the mouse over the canvas, registers the aim tick ('aim'), and takes the player's clicks. */
 export function installPointer(ctx: Ctx, core: CoreState, parts: PointerParts) {
@@ -171,6 +171,7 @@ export function installPointer(ctx: Ctx, core: CoreState, parts: PointerParts) {
       hanger.place(ndc);
       return;
     }
+    if (!target && parts.shops.useHeld()) return; // fork: a toy from the city's toy shop
     if (player.view === 'first') {
       // Reach out even at nothing, like poking the air.
       reach();

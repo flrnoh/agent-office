@@ -1,119 +1,26 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { BLOCK_INNER, CITY_X, CITY_Z, PERIOD, onCityStreet, type Lot } from '../../../shared/city';
-import { ROAD } from '../../../shared/layout';
-import { STREET_END, onLoop } from '../../../shared/scenic';
+import { LOTS } from '../../../shared/city';
+import { DOOR_H, DOOR_W, FRONT_T, LOT_PLANS, SHOP_H, SHOP_KIND_BY_ID, SHOPS, SIDES, SILL, WALL_T, WINDOW_TOP, doorLeaf, faceOf, hasShops, shopRect, type Shop, type ShopKind } from '../../../shared/shops';
+import { shopRoom } from '../../../shared/shop-rooms';
+import { wearWindow } from './shopwindows'; // flrnoh fork: the boutique's and the optician's windows
 import type { NightParts } from '../outside';
-import { canvasTexture, tilingCanvasTexture } from '../texture';
-import { mergeByMaterial, mesh, toon } from '../toon';
-import { G, Walls } from './kit';
+import { tilingCanvasTexture } from '../texture';
+import { mesh, toon } from '../toon';
+import { ColorBoxes, colorBoxMaterial, litBoxMaterial } from './boxes';
+import { G, PAINTS } from './kit';
 
-// flrnoh fork (see FORK.md): the city at eye level (see town/index.ts). The buildings close by have
-// shops on their ground floor where they face a street: shop windows with something on display and a
-// door, an awning over them and a sign with the shop's name, lit from inside at night. Over them the
-// building's own walls and windows go on up (town/buildings.ts starts them at SHOP_H).
+// flrnoh fork (see FORK.md "Shops to walk into"): the shops on the ground floors of the buildings close
+// by, as shared/shops.ts lays them out: shop fronts with real windows (glass you see through) and an
+// open door, an awning and a sign, and behind them each shop's room: its floor, ceiling and walls, lit
+// from inside (a little by day, warm at night), with a window display of goods. What stands in a shop
+// is only built for the few near you (features/shops); from afar this is all there is. Over the shops
+// the building's own walls and windows go on up (town/buildings.ts starts them at SHOP_H).
 
-/** How tall a ground floor with shops is. */
-export const SHOP_H = 4.2;
-/** One shop window and its share of the wall, along the street. */
-const SHOP_BAY = 6;
-
-interface Shop {
-  name: string;
-  /** The frame and the wall round the windows, the awning's two stripes, the sign's ground and its letters. */
-  frame: string;
-  awning: [string, string];
-  sign: string;
-  ink: string;
-  /** What's in the window: a row of these colors, standing on shelves. */
-  goods: string[];
-}
-
-const SHOPS: Shop[] = [
-  { name: 'BÄCKEREI', frame: '#7a4b2a', awning: ['#e9c46a', '#fff4d6'], sign: '#fff4d6', ink: '#7a4b2a', goods: ['#d9a35b', '#e8c07d', '#b9773e'] },
-  { name: 'CAFÉ', frame: '#2f3e46', awning: ['#2a9d8f', '#e9f5f2'], sign: '#2f3e46', ink: '#f6e7cb', goods: ['#f6e7cb', '#c08552', '#8c5e3c'] },
-  { name: 'PIZZA', frame: '#9b2226', awning: ['#bb3e03', '#fefae0'], sign: '#fefae0', ink: '#9b2226', goods: ['#ee9b00', '#ca6702', '#94d2bd'] },
-  { name: 'APOTHEKE', frame: '#e9ecef', awning: ['#2b9348', '#ffffff'], sign: '#2b9348', ink: '#ffffff', goods: ['#ffffff', '#80ed99', '#caf0f8'] },
-  { name: 'BLUMEN', frame: '#386641', awning: ['#ff8fab', '#fff0f3'], sign: '#fff0f3', ink: '#386641', goods: ['#ff8fab', '#ffd166', '#c77dff', '#6a994e'] },
-  { name: 'BUCHLADEN', frame: '#3d405b', awning: ['#81b29a', '#f4f1de'], sign: '#f4f1de', ink: '#3d405b', goods: ['#e07a5f', '#81b29a', '#f2cc8f', '#3d405b'] },
-  { name: 'KIOSK', frame: '#264653', awning: ['#e76f51', '#ffffff'], sign: '#e76f51', ink: '#ffffff', goods: ['#e9c46a', '#f4a261', '#2a9d8f', '#e76f51'] },
-  { name: 'BAR', frame: '#1b1b1e', awning: ['#5a189a', '#e0aaff'], sign: '#1b1b1e', ink: '#e0aaff', goods: ['#ffb703', '#8ecae6', '#e0aaff'] },
-  { name: 'SPÄTI', frame: '#14213d', awning: ['#fca311', '#ffffff'], sign: '#fca311', ink: '#14213d', goods: ['#fca311', '#e5e5e5', '#d62828'] },
-  { name: 'FRISEUR', frame: '#6d6875', awning: ['#b5838d', '#ffcdb2'], sign: '#ffcdb2', ink: '#6d6875', goods: ['#ffcdb2', '#e5989b', '#ffffff'] },
-];
-
-/** One shop bay: the frame, a big window with shelves of goods, and a door in it; and what of it glows at night. */
-function bayTextures(s: Shop): { map: THREE.CanvasTexture; lit: THREE.CanvasTexture } {
-  const W = 192;
-  const H = 128;
-  const draw = (g: CanvasRenderingContext2D, night: boolean) => {
-    g.fillStyle = night ? '#000000' : s.frame;
-    g.fillRect(0, 0, W, H);
-    // The window: from the bay's left edge to the door, under the sign band at the top.
-    const top = 26;
-    const bottom = H - 8;
-    const wx0 = 10;
-    const wx1 = 128;
-    g.fillStyle = night ? '#ffd9a0' : '#a8c8d8';
-    g.fillRect(wx0, top, wx1 - wx0, bottom - top);
-    // Shelves of goods in it.
-    for (let row = 0; row < 3; row++) {
-      const y = top + 18 + row * 26;
-      g.fillStyle = night ? '#7a5a3a' : '#e6e1d8';
-      g.fillRect(wx0 + 4, y + 14, wx1 - wx0 - 8, 3);
-      for (let k = 0; k < 7; k++) {
-        g.fillStyle = s.goods[(k + row) % s.goods.length];
-        const h = 8 + ((k * 5 + row * 3) % 6);
-        g.fillRect(wx0 + 8 + k * 15, y + 14 - h, 10, h);
-      }
-    }
-    if (!night) {
-      // A glint across the glass.
-      g.fillStyle = 'rgba(255,255,255,0.35)';
-      g.beginPath();
-      g.moveTo(wx0 + 20, bottom);
-      g.lineTo(wx0 + 44, top);
-      g.lineTo(wx0 + 56, top);
-      g.lineTo(wx0 + 32, bottom);
-      g.fill();
-    }
-    // The door: glass in a frame, a handle.
-    const dx0 = 142;
-    const dx1 = 180;
-    g.fillStyle = night ? '#000000' : '#1f2328';
-    g.fillRect(dx0 - 3, top - 3, dx1 - dx0 + 6, H - top + 3);
-    g.fillStyle = night ? '#c99a5a' : '#8fb3c4';
-    g.fillRect(dx0, top, dx1 - dx0, H - top);
-    g.fillStyle = night ? '#000000' : '#d9d9d9';
-    g.fillRect(dx0 + 4, top + 40, 4, 20);
-    // Mullions round the window.
-    if (!night) {
-      g.strokeStyle = '#1f2328';
-      g.lineWidth = 4;
-      g.strokeRect(wx0, top, wx1 - wx0, bottom - top);
-    }
-  };
-  return { map: tilingCanvasTexture(W, H, (g) => draw(g, false)), lit: tilingCanvasTexture(W, H, (g) => draw(g, true)) };
-}
-
-/** The sign over a shop: its name on its own ground. */
-function signTexture(s: Shop): THREE.CanvasTexture {
-  return canvasTexture(512, 96, (g) => {
-    g.fillStyle = s.sign;
-    g.fillRect(0, 0, 512, 96);
-    g.strokeStyle = s.ink;
-    g.lineWidth = 6;
-    g.strokeRect(6, 6, 500, 84);
-    g.fillStyle = s.ink;
-    g.font = 'bold 58px system-ui, sans-serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(s.name, 256, 52);
-  });
-}
+export { SHOP_H, hasShops } from '../../../shared/shops';
 
 /** Striped canvas for an awning, the stripes running out from the wall. */
-function awningTexture(s: Shop): THREE.CanvasTexture {
+function awningTexture(s: ShopKind): THREE.CanvasTexture {
   return tilingCanvasTexture(64, 16, (g) => {
     g.fillStyle = s.awning[0];
     g.fillRect(0, 0, 64, 16);
@@ -123,7 +30,7 @@ function awningTexture(s: Shop): THREE.CanvasTexture {
 }
 
 /** Meshes put together by material, keeping their textures' coordinates (mergeByMaterial drops them). */
-function mergeTextured(meshes: THREE.Mesh[]): THREE.Object3D[] {
+export function mergeTextured(meshes: THREE.Mesh[]): THREE.Object3D[] {
   const byMat = new Map<THREE.Material, THREE.BufferGeometry[]>();
   for (const m of meshes) {
     m.updateMatrix();
@@ -139,108 +46,156 @@ function mergeTextured(meshes: THREE.Mesh[]): THREE.Object3D[] {
   });
 }
 
-/** Whether there's a road within 12 m out from (x, z) along (dx, dz): a city street, the office's, or the loop. */
-function roadOut(x: number, z: number, dx: number, dz: number): boolean {
-  for (let d = 1; d <= 12; d += 0.5) {
-    const px = x + dx * d;
-    const pz = z + dz * d;
-    if (onCityStreet(px, pz) || onLoop(px, pz) || (pz > ROAD.minZ && pz < ROAD.maxZ && Math.abs(px) < STREET_END)) return true;
-  }
-  return false;
+/** The see-through glass of the shop windows and doors: you see into the shop, lit at night. */
+export const SHOP_GLASS = new THREE.MeshBasicMaterial({ color: '#cfe8f2', transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
+SHOP_GLASS.userData.outlineParameters = { visible: false };
+
+export interface TownShops {
+  /** The rooms' light: `dark` is how dark it is outside (0–1). */
+  light(dark: number): void;
 }
 
-/** Which sides of `lot` face a street (not the next lot on its block, nor the country): +z, -z, +x, -x. */
-export function streetSides(lot: Lot): { pz: boolean; nz: boolean; px: boolean; nx: boolean } {
-  const i = Math.round((lot.x - CITY_X + PERIOD / 2) / PERIOD);
-  const j = Math.round((lot.z - CITY_Z + PERIOD / 2) / PERIOD);
-  const bx = CITY_X - PERIOD / 2 + i * PERIOD;
-  const bz = CITY_Z - PERIOD / 2 + j * PERIOD;
-  const edge = BLOCK_INNER / 2 - 5;
-  const hw = lot.w / 2;
-  const hd = lot.d / 2;
-  return {
-    pz: lot.z + hd > bz + edge && roadOut(lot.x, lot.z + hd, 0, 1),
-    nz: lot.z - hd < bz - edge && roadOut(lot.x, lot.z - hd, 0, -1),
-    px: lot.x + hw > bx + edge && roadOut(lot.x + hw, lot.z, 1, 0),
-    nx: lot.x - hw < bx - edge && roadOut(lot.x - hw, lot.z, -1, 0),
-  };
-}
-
-/** Whether a lot gets shops: the buildings close enough to walk to (see Lot.ring). */
-export const hasShops = (lot: Lot) => lot.ring < 2;
-
-/** The shops on the ground floors of `lots`, built into `group`. */
-export function buildShops(group: THREE.Group, lots: readonly Lot[], night: NightParts) {
-  const gradient = (toon('#fff') as THREE.MeshToonMaterial).gradientMap;
-  const fronts = SHOPS.map(() => new Walls());
-  const parts = new THREE.Group();
+/** The shops on the ground floors of the city's buildings, built into `group`. */
+export function buildShops(group: THREE.Group, night: NightParts): TownShops {
+  const frames = new ColorBoxes();
+  const rooms = new ColorBoxes();
+  const glass: THREE.BufferGeometry[] = [];
   /** The signs and awnings: textured, so merged keeping their UVs. */
   const textured: THREE.Mesh[] = [];
-  const signMats = new Map<number, THREE.Material>();
-  const awnMats = new Map<number, THREE.Material>();
-  const signOf = (k: number) => signMats.get(k) ?? (signMats.set(k, new THREE.MeshBasicMaterial({ map: signTexture(SHOPS[k]) })), signMats.get(k)!);
-  const awningOf = (k: number) => awnMats.get(k) ?? (awnMats.set(k, new THREE.MeshToonMaterial({ map: awningTexture(SHOPS[k]), gradientMap: gradient })), awnMats.get(k)!);
-  const plinth = toon('#5b5f69');
-  let n = 0;
-  for (const lot of lots) {
-    if (!hasShops(lot)) continue;
-    const sides = streetSides(lot);
-    const hw = lot.w / 2;
-    const hd = lot.d / 2;
-    /** One side: from corner `a` along `u` (length `len`), facing out along `n`. */
-    const side = (a: [number, number], u: [number, number], len: number, nrm: [number, number], on: boolean) => {
-      const k = (Math.abs(Math.round(lot.x * 7 + lot.z * 13)) + n++) % SHOPS.length;
-      const bays = Math.max(1, Math.round(len / SHOP_BAY));
-      // The shop front, or on a side to the next lot plain wall: the frame color without windows.
-      const w = fronts[on ? k : 0];
-      if (!on) {
-        // A plain stretch of wall low down (the frame's color, no window): drawn with the bay's left edge.
-        w.quad([a[0], G, a[1]], [u[0] * len, 0, u[1] * len], SHOP_H, [nrm[0], 0, nrm[1]], [0, 0, 0.04, 0.1]);
-        return;
-      }
-      w.quad([a[0], G, a[1]], [u[0] * len, 0, u[1] * len], SHOP_H, [nrm[0], 0, nrm[1]], [0, 0, bays, 1]);
-      const mid: [number, number] = [a[0] + (u[0] * len) / 2, a[1] + (u[1] * len) / 2];
-      const yaw = Math.atan2(nrm[0], nrm[1]);
-      // The awning: tilted down away from the wall, along most of the front.
-      const awGeo = new THREE.BoxGeometry(len - 0.6, 0.08, 1.4);
-      // A stripe pair every 1.2 m, however long the front.
-      const uv = awGeo.getAttribute('uv');
-      for (let q = 0; q < uv.count; q++) uv.setX(q, uv.getX(q) * ((len - 0.6) / 1.2));
-      const aw = mesh(awGeo, awningOf(k), 0, 0, 0, false);
-      // Hung from just under the sign band (the top 0.85 m of the front), over the windows.
-      aw.position.set(mid[0] + nrm[0] * 0.68, G + SHOP_H - 1.12, mid[1] + nrm[1] * 0.68);
-      aw.rotation.set(0, yaw, 0, 'YXZ');
-      aw.rotateX(0.32);
-      textured.push(aw);
-      // The sign over it, on the wall: as long as the name needs, up to the front's length.
-      const sh = 0.66;
-      const sw = Math.min(len - 1, sh * (512 / 96));
-      const sign = new THREE.Mesh(new THREE.PlaneGeometry(sw, sw * (96 / 512)), signOf(k));
-      sign.position.set(mid[0] + nrm[0] * 0.06, G + SHOP_H - 0.44, mid[1] + nrm[1] * 0.06);
-      sign.rotation.y = yaw;
-      textured.push(sign);
-      // A dark plinth along the bottom, and a ledge over the shop front.
-      const pl = mesh(new THREE.BoxGeometry(len, 0.25, 0.12), plinth, mid[0] + nrm[0] * 0.04, G + 0.12, mid[1] + nrm[1] * 0.04, false);
-      pl.rotation.y = yaw;
-      parts.add(pl);
-      const ledge = mesh(new THREE.BoxGeometry(len + 0.2, 0.18, 0.35), plinth, mid[0] + nrm[0] * 0.15, G + SHOP_H, mid[1] + nrm[1] * 0.15, false);
-      ledge.rotation.y = yaw;
-      parts.add(ledge);
+  const gradient = (toon('#fff') as THREE.MeshToonMaterial).gradientMap;
+  const awnMats = new Map<string, THREE.Material>();
+  const awningOf = (k: ShopKind) => awnMats.get(k.id) ?? (awnMats.set(k.id, new THREE.MeshToonMaterial({ map: awningTexture(k), gradientMap: gradient })), awnMats.get(k.id)!);
+  const plinth = '#5b5f69';
+  const pane = (s: Shop, u0: number, u1: number, y0: number, y1: number, v = FRONT_T / 2) => {
+    const g = new THREE.PlaneGeometry(u1 - u0, y1 - y0);
+    const p = shopRect(s, u0, u1, v, v);
+    g.rotateY(s.nx !== 0 ? Math.PI / 2 : 0);
+    g.translate((p.minX + p.maxX) / 2, G + (y0 + y1) / 2, (p.minZ + p.maxZ) / 2);
+    glass.push(g);
+  };
+
+  for (const s of SHOPS) {
+    const k = SHOP_KIND_BY_ID.get(s.kind)!;
+    const L = s.len;
+    const D = s.depth;
+    const box = (out: ColorBoxes, u0: number, u1: number, v0: number, v1: number, y0: number, y1: number, color: string) => out.box(shopRect(s, u0, u1, v0, v1), G + y0, G + y1, color);
+    const d0 = s.doorU - DOOR_W / 2;
+    const d1 = s.doorU + DOOR_W / 2;
+    // The front, in the shop's frame color, with windows either side of the door: the outer face
+    // in the frame's color, a thin skin inside in the room's.
+    const front = (u0: number, u1: number, y0: number, y1: number) => {
+      box(frames, u0, u1, 0, FRONT_T - 0.04, y0, y1, k.frame);
+      box(rooms, u0, u1, FRONT_T - 0.04, FRONT_T, y0, y1, k.wall);
     };
-    side([lot.x - hw, lot.z + hd], [1, 0], lot.w, [0, 1], sides.pz);
-    side([lot.x + hw, lot.z - hd], [-1, 0], lot.w, [0, -1], sides.nz);
-    side([lot.x + hw, lot.z + hd], [0, -1], lot.d, [1, 0], sides.px);
-    side([lot.x - hw, lot.z - hd], [0, 1], lot.d, [-1, 0], sides.nx);
+    front(0, 0.3, 0, SHOP_H);
+    front(L - 0.3, L, 0, SHOP_H);
+    front(0.3, L - 0.3, WINDOW_TOP, SHOP_H);
+    front(d0, d1, DOOR_H, WINDOW_TOP);
+    front(d0 - 0.22, d0, 0, WINDOW_TOP);
+    front(d1, d1 + 0.22, 0, WINDOW_TOP);
+    for (const [w0, w1] of [
+      [0.3, d0 - 0.22],
+      [d1 + 0.22, L - 0.3],
+    ]) {
+      if (w1 - w0 < 0.2) {
+        if (w1 > w0) front(w0, w1, 0, WINDOW_TOP);
+        continue;
+      }
+      front(w0, w1, 0, SILL);
+      // Mullions every couple of meters, and the glass between.
+      const n = Math.max(1, Math.round((w1 - w0) / 2.4));
+      const step = (w1 - w0) / n;
+      for (let i = 1; i < n; i++) box(frames, w0 + i * step - 0.05, w0 + i * step + 0.05, 0.02, FRONT_T - 0.02, SILL, WINDOW_TOP, k.frame);
+      pane(s, w0, w1, SILL, WINDOW_TOP);
+    }
+    // The door, propped open against the inside of the front: a frame round its glass.
+    const leaf = doorLeaf(s);
+    box(frames, leaf.u0, leaf.u1, leaf.v0, leaf.v1, 0, 0.12, '#1f2328');
+    box(frames, leaf.u0, leaf.u1, leaf.v0, leaf.v1, DOOR_H - 0.16, DOOR_H - 0.04, '#1f2328');
+    box(frames, leaf.u0, leaf.u1, leaf.v1 - 0.06, leaf.v1, 0, DOOR_H - 0.04, '#1f2328');
+    box(frames, leaf.u0, leaf.u1, leaf.v0, leaf.v0 + 0.06, 0, DOOR_H - 0.04, '#1f2328');
+    {
+      const g = new THREE.PlaneGeometry(DOOR_W - 0.2, DOOR_H - 0.3);
+      const p = shopRect(s, leaf.hinge, leaf.hinge, leaf.v0 + 0.07, leaf.v1 - 0.07);
+      g.rotateY(s.nx !== 0 ? 0 : Math.PI / 2);
+      g.translate((p.minX + p.maxX) / 2, G + 0.12 + (DOOR_H - 0.3) / 2, (p.minZ + p.maxZ) / 2);
+      glass.push(g);
+    }
+    // A step of a threshold, the plinth and the ledge over the front.
+    box(frames, d0, d1, -0.02, FRONT_T, -0.02, 0.03, '#8d99ae');
+    box(frames, 0, d0, -0.12, 0.02, 0, 0.25, plinth);
+    box(frames, d1, L, -0.12, 0.02, 0, 0.25, plinth);
+    box(frames, -0.1, L + 0.1, -0.35, 0.02, SHOP_H - 0.09, SHOP_H + 0.09, plinth);
+    // The room: its walls, floor and ceiling, lit from inside.
+    box(rooms, 0, WALL_T, FRONT_T, D, 0, SHOP_H, k.wall);
+    box(rooms, L - WALL_T, L, FRONT_T, D, 0, SHOP_H, k.wall);
+    box(rooms, 0, L, D - WALL_T, D, 0, SHOP_H, k.wall);
+    rooms.box(shopRect(s, WALL_T, L - WALL_T, FRONT_T, D - WALL_T), G - 0.05, G + 0.01, k.floor, [false, false, true, false, false, false]);
+    rooms.box(shopRect(s, WALL_T, L - WALL_T, FRONT_T, D - WALL_T), G + SHOP_H - 0.06, G + SHOP_H - 0.02, '#f8f4ec', [false, false, false, true, false, false]);
+    // The window display: low stands behind the glass with goods on them, seen from the street.
+    for (const p of shopRoom(s).pieces) {
+      if (p.what !== 'display') continue;
+      box(rooms, p.u0, p.u1, p.v0, p.v1, 0, p.h, '#e6e1d8');
+      if (p.v0 > FRONT_T + 0.2) continue;
+      if (wearWindow(s.kind, p, k.goods, s.i, (u0, u1, v0, v1, y0, y1, c) => box(rooms, u0, u1, v0, v1, y0, y1, c))) continue; // flrnoh fork: mannequins, glasses
+      const n = Math.floor((p.u1 - p.u0 - 0.3) / 0.38);
+      for (let i = 0; i < n; i++) {
+        const u = p.u0 + 0.25 + i * 0.38;
+        const h = 0.18 + ((i * 7 + s.i) % 5) * 0.06;
+        box(rooms, u, u + 0.24, p.v0 + 0.1, p.v0 + 0.32, p.h, p.h + h, k.goods[(i + s.i) % k.goods.length]);
+      }
+    }
+    // The awning: tilted down away from the wall, along most of the front.
+    const mid = shopRect(s, L / 2, L / 2, 0, 0);
+    const mx = mid.minX;
+    const mz = mid.minZ;
+    const yaw = Math.atan2(s.nx, s.nz);
+    const awGeo = new THREE.BoxGeometry(L - 0.6, 0.08, 1.4);
+    // A stripe pair every 1.2 m, however long the front.
+    const uv = awGeo.getAttribute('uv');
+    for (let q = 0; q < uv.count; q++) uv.setX(q, uv.getX(q) * ((L - 0.6) / 1.2));
+    const aw = mesh(awGeo, awningOf(k), 0, 0, 0, false);
+    aw.position.set(mx + s.nx * 0.68, G + SHOP_H - 1.12, mz + s.nz * 0.68);
+    aw.rotation.set(0, yaw, 0, 'YXZ');
+    aw.rotateX(0.32);
+    textured.push(aw);
+    // The sign over it, the cladding, shutters and house number: town/shopfronts.ts.
   }
-  fronts.forEach((w, k) => {
-    if (!w.pos.length) return;
-    const { map, lit } = bayTextures(SHOPS[k]);
-    const m = new THREE.MeshToonMaterial({ map, emissive: '#ffffff', emissiveMap: lit, emissiveIntensity: 0, gradientMap: gradient });
-    night.windows.push(m);
-    const front = new THREE.Mesh(w.geometry(), m);
-    front.receiveShadow = true;
-    group.add(front);
+
+  // The rest of the ground floor of a building with shops: plain wall where there are none.
+  LOTS.forEach((lot, li) => {
+    if (!hasShops(lot)) return;
+    const plan = LOT_PLANS[li];
+    const wall = PAINTS[lot.paint].wall;
+    for (const side of SIDES) {
+      const f = faceOf(lot, side);
+      const r = plan.rooms[side];
+      const spans: [number, number][] = r ? [[0, r.from], [r.to, f.len]] : [[0, f.len]];
+      for (const [a, b] of spans) {
+        if (b - a < 0.01) continue;
+        const frame = { ox: f.ax, oz: f.az, ux: f.ux, uz: f.uz, nx: f.nx, nz: f.nz };
+        // A hair proud of the face, so a corner shop's own side wall behind it never flickers through.
+        frames.box(shopRect(frame, a, b, -0.02, 0.1), G, G + SHOP_H, wall);
+        frames.box(shopRect(frame, a, b, -0.1, 0.02), G, G + 0.25, plinth);
+      }
+    }
   });
-  for (const m of signMats.values()) (m as THREE.MeshBasicMaterial).color.setScalar(0.92);
-  group.add(mergeByMaterial(parts), ...mergeTextured(textured));
+
+  const frameMesh = new THREE.Mesh(frames.geometry(), colorBoxMaterial());
+  frameMesh.receiveShadow = true;
+  const roomMat = litBoxMaterial();
+  const roomMesh = new THREE.Mesh(rooms.geometry(), roomMat);
+  roomMesh.receiveShadow = true;
+  const glassMesh = new THREE.Mesh(mergeGeometries(glass)!, SHOP_GLASS);
+  glassMesh.renderOrder = 2;
+  for (const g of glass) g.dispose();
+  group.add(frameMesh, roomMesh, glassMesh, ...mergeTextured(textured));
+  void night;
+  return {
+    light(dark) {
+      // A little by day (it's under the building), warm and bright at night, so the windows glow.
+      roomMat.emissiveIntensity = 0.32 + 0.45 * dark;
+      SHOP_GLASS.opacity = 0.16 - 0.08 * dark;
+    },
+  };
 }
