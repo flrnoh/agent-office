@@ -3,6 +3,7 @@ import path from 'node:path';
 import { DJ_SET_SITES, djSetTitle, parseDjSetUrl, partyVolume, sameDjSet, type DjSet, type DjSetState } from '../shared/djset.js';
 import { validTap, type DjBeats, type DjTap } from '../shared/djbeats.js';
 import { DjBeatsJobs, type Hear } from './djbeats/index.js';
+import { DjVideoJobs, type FetchVideo } from './djvideo/index.js';
 import type { ClientMsg, ServerMsg } from '../shared/protocol.js';
 import { CHANGE_EVERY, LinkPlayer, oembed, type TitleLookup as LookupOf } from './embeds.js';
 
@@ -31,16 +32,18 @@ export const oembedTitle: TitleLookup = (set) => oembed(OEMBED[set.kind], set.ur
 export class DjBooth extends LinkPlayer<DjSet> {
   /** Hearing the sets, for the lights (djbeats/). */
   private beats: DjBeatsJobs;
+  /** A YouTube set's video, for the LED wall (djvideo/). */
+  private video: DjVideoJobs;
   /** A tempo tapped for the set that's on. */
   private tapped: DjTap | null = null;
-  /** How hearing the set that's on is going changed: the office tells the roof (fork/office.ts). */
+  /** How hearing the set that's on, or fetching its video, is going changed: the office tells the roof (fork/office.ts). */
   onBeats: () => void = () => {};
   /** The party's volume for everyone on the roof, and who set it (kept in dj-volume.json). */
   private level = 1;
   private levelBy = '';
   private levelFile: string;
 
-  constructor(dataDir: string, lookup: TitleLookup = oembedTitle, hear?: Hear) {
+  constructor(dataDir: string, lookup: TitleLookup = oembedTitle, hear?: Hear, fetchVideo?: FetchVideo) {
     super({ file: path.join(dataDir, 'dj.json'), parse: parseDjSetUrl, same: sameDjSet, lookup });
     this.levelFile = path.join(dataDir, 'dj-volume.json');
     try {
@@ -50,17 +53,34 @@ export class DjBooth extends LinkPlayer<DjSet> {
     } catch {
       // none yet: full volume
     }
-    this.beats = new DjBeatsJobs(dataDir, (url) => url === super.state().set?.url && this.onBeats(), hear);
+    const mine = (url: string) => url === super.state().set?.url;
+    this.video = new DjVideoJobs(dataDir, (url) => mine(url) && this.onBeats(), fetchVideo);
+    this.beats = new DjBeatsJobs(dataDir, (url) => mine(url) && (this.wantVideo(), this.onBeats()), hear);
     // A set still on from before a restart is heard again (or read back).
     this.beats.want(super.state().set);
+    this.wantVideo();
+  }
+
+  /** Fetches the video of the set that's on (YouTube's only) once its beats are heard (or couldn't be): one download at a time. */
+  private wantVideo() {
+    const set = super.state().set;
+    this.video.want(set, !!set && this.beats.statusOf(set.url)?.status !== 'pending');
+  }
+
+  /** The kept copy of the video of the set that's on, once it's there (for GET /api/dj/video). */
+  videoFile(): string | null {
+    const set = super.state().set;
+    return set?.kind === 'youtube' && this.video.statusOf(set.url)?.status === 'ready' ? this.video.fileOf(set.url) : null;
   }
 
   override state(): DjSetState {
     const s = super.state();
     const beats = s.set ? this.beats.statusOf(s.set.url) : undefined;
+    const video = s.set?.kind === 'youtube' ? this.video.statusOf(s.set.url) : undefined;
     return {
       ...s,
       ...(beats ? { beats } : {}),
+      ...(video ? { video } : {}),
       ...(s.set && this.tapped ? { tap: this.tapped } : {}),
       ...(this.level !== 1 || this.levelBy ? { volume: this.level, ...(this.levelBy ? { volumeBy: this.levelBy } : {}) } : {}),
     };
@@ -85,6 +105,7 @@ export class DjBooth extends LinkPlayer<DjSet> {
     if ('changed' in r && r.changed) {
       this.tapped = null;
       this.beats.want(super.state().set);
+      this.wantVideo();
     }
     return r;
   }
@@ -92,6 +113,7 @@ export class DjBooth extends LinkPlayer<DjSet> {
   override stop(by: string): boolean {
     this.tapped = null;
     this.beats.want(null);
+    this.video.want(null, false);
     return super.stop(by);
   }
 

@@ -25,6 +25,15 @@ export interface DjSet {
   title?: string;
 }
 
+/** The set's video for the roof's LED wall, a small copy the office fetches (YouTube sets only). */
+export interface DjVideoStatus {
+  status: 'pending' | 'ready' | 'failed';
+  /** Which copy it is, once ready: the browsers fetch /api/dj/video?v=<key>, so a new set is never an old one from their cache. */
+  key?: string;
+  /** Why it failed, in a few words. */
+  why?: string;
+}
+
 export interface DjSetState {
   /** The set that's on; null while the house DJ plays (the synthesized set in client/dnb.ts). */
   set: DjSet | null;
@@ -38,6 +47,8 @@ export interface DjSetState {
   beats?: DjBeatsStatus;
   /** A tempo someone tapped at the booth for it, which the lights go by over what was heard. */
   tap?: DjTap;
+  /** How fetching a YouTube set's video for the LED wall is going (server/djvideo/); absent for the other sites. */
+  video?: DjVideoStatus;
   /** The party's volume on the roof, 0–2 (1 the DJ's own level, 2 Disco), for everyone (house DJ and sets alike); absent is 1. */
   volume?: number;
   /** Who set it last. */
