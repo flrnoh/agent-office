@@ -678,27 +678,20 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
   planterRow(FLOOR.minX + 0.4, -6.2, FLOOR.maxZ - 0.7, FLOOR.maxZ);
   planterRow(5.2, BUNGEE.x - BUNGEE.halfWidth - 0.3, FLOOR.maxZ - 0.7, FLOOR.maxZ); // fork: round the bungee jetty
   planterRow(BUNGEE.x + BUNGEE.halfWidth + 0.3, FLOOR.maxX - 0.4, FLOOR.maxZ - 0.7, FLOOR.maxZ);
-  const screenX = 10.9;
-  const screenZ = -8.2;
-  const slat = toon('#8d99ae');
-  for (let z = FLOOR.minZ; z < screenZ; z += 0.3) statics.add(mesh(new THREE.BoxGeometry(0.06, 2.2, 0.14), slat, screenX, 1.1, z, false));
-  for (let x = screenX; x < FLOOR.maxX; x += 0.3) statics.add(mesh(new THREE.BoxGeometry(0.14, 2.2, 0.06), slat, x, 1.1, screenZ, false));
-  colliders.push({ minX: screenX - 0.1, maxX: screenX + 0.1, minZ: FLOOR.minZ, maxZ: screenZ, top: 99 });
-  colliders.push({ minX: screenX, maxX: FLOOR.maxX, minZ: screenZ - 0.1, maxZ: screenZ + 0.1, top: 99 });
   const fans: THREE.Group[] = [];
-  for (const [x, z] of [
-    [13.2, -11],
-    [16.2, -11],
-  ]) {
-    statics.add(mesh(new THREE.BoxGeometry(2.2, 1.3, 2.4), toon('#dfe3e8'), x, 0.65, z));
-    statics.add(mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.06, 20), toon('#565a75'), x, 1.31, z, false));
+  // Fork: the air conditioning's up on the elevator's housing (the pool has its corner: features/roofpool/).
+  const acY = WALL_HEIGHT + 0.3;
+  for (const [x, z] of [[ELEVATOR.x - 0.62, -12.25], [ELEVATOR.x + 0.62, -11.35]]) {
+    statics.add(mesh(new THREE.BoxGeometry(1.1, 0.7, 1.1), toon('#dfe3e8'), x, acY + 0.35, z));
+    statics.add(mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 20), toon('#565a75'), x, acY + 0.71, z, false));
     const fan = new THREE.Group();
     for (let b = 0; b < 3; b++) {
       const blade = mesh(new THREE.BoxGeometry(1.2, 0.02, 0.22), toon('#2b2d42'), 0, 0, 0, false);
       blade.rotation.y = (b / 3) * Math.PI;
       fan.add(blade);
     }
-    fan.position.set(x, 1.36, z);
+    fan.scale.setScalar(0.6);
+    fan.position.set(x, acY + 0.76, z);
     group.add(fan);
     fans.push(fan);
   }

@@ -1,17 +1,18 @@
 // The pool on the roof (flrnoh fork, see FORK.md "Pool party on the roof"): a raised pool on a wooden
-// deck between the dance floor, the elevator and the bar, for an afterwork pool party. Shared by the
+// deck in the north-east corner of the terrace (clear of the elevator, where the sky bar once stood),
+// for an afterwork pool party, with a water slide and a diving tower. Shared by the
 // page (which builds it and swims in it) and the tests (which check it stands clear of everything else
 // up there). Nobody tells the office they're swimming: like the sea, every page works it out from where
 // someone is (their `move`).
 
 /** The water, inside the basin's walls: x and z on the roof, its surface `surface` up, its floor the roof. */
-export const POOL = { minX: 4.4, maxX: 9.8, minZ: -8.2, maxZ: -4.2, surface: 0.85 } as const;
+export const POOL = { minX: 11.4, maxX: 16.2, minZ: -11.8, maxZ: -6.6, surface: 0.85 } as const;
 
 /** The deck round it, its top `top` up, and the steps up to it on its south side (toward the tables). */
-export const POOL_DECK = { minX: 3.6, maxX: 10.6, minZ: -9.0, maxZ: -3.4, top: 1.0 } as const;
+export const POOL_DECK = { minX: 10.6, maxX: 17.0, minZ: -12.6, maxZ: -5.8, top: 1.0 } as const;
 
 /** The steps up onto the deck from the south: each `rise` high and `run` deep, from x0 to x1. */
-export const POOL_STEPS = { x0: 5.2, x1: 8.8, rise: 0.25, run: 0.3, count: 3 } as const;
+export const POOL_STEPS = { x0: 11.4, x1: 14.4, rise: 0.25, run: 0.3, count: 3 } as const;
 
 /** How far below the surface a swimmer's feet are (the sea's SWIM_SINK). */
 export const POOL_SINK = 1.25;
@@ -58,9 +59,11 @@ export function climbOutAt(x: number, z: number): { x: number; z: number } {
     { d: z - p.minZ, at: { x, z: p.minZ - 0.45 } },
     { d: p.maxZ - z, at: { x, z: p.maxZ + 0.45 } },
   ];
-  // Not up where the water slide runs low over the deck, or into its tower.
+  // Not up where the water slide runs low over the deck, or into its tower,
   const free = (at: { x: number; z: number }) =>
-    !(at.x > SLIDE_ZONE.minX && at.x < SLIDE.x + SLIDE.half + 0.1 && at.z > SLIDE_ZONE.minZ && at.z < SLIDE_ZONE.maxZ);
+    !(at.x > SLIDE_ZONE.minX && at.x < SLIDE.x + SLIDE.half + 0.1 && at.z > SLIDE_ZONE.minZ && at.z < SLIDE_ZONE.maxZ) &&
+    // Nor into the diving tower's legs.
+    !(at.x > DIVE.minX - 0.4 && at.x < DIVE.maxX + 0.4 && at.z < POOL.minZ);
   return [...ways].sort((a, b) => a.d - b.d).find((w) => free(w.at))!.at;
 }
 
@@ -90,29 +93,35 @@ export function floatAt(i: number, t: number): { x: number; z: number; turn: num
  * round the tower and down into the water, as points along its bottom (the first leaving the platform,
  * the last in the water).
  */
-export const SLIDE = {
-  x: 10.2,
-  z: -3.8,
-  half: 0.4,
-  top: 3.6,
-  foot: { x: 10.2, z: -4.75 },
-  path: [
-    [10.2, 3.6, -3.8],
-    [10.2, 3.5, -4.55],
-    [10.8, 3.3, -4.4],
-    [11.05, 3.05, -3.8],
-    [10.8, 2.85, -3.2],
-    [10.2, 2.65, -2.95],
-    [9.6, 2.4, -3.2],
-    [9.35, 2.05, -3.8],
-    [9.1, 1.65, -4.5],
-    [8.5, 1.2, -5.1],
-    [7.6, 0.9, -5.6],
-  ] as readonly (readonly [number, number, number])[],
-} as const;
+export const SLIDE = (() => {
+  const x = POOL_DECK.maxX - 0.4;
+  const z = POOL_DECK.maxZ - 0.4;
+  // From the tower's middle: once round it clockwise from the north, then off north-west into the water.
+  const round: [number, number, number][] = [
+    [0, 3.6, 0],
+    [0, 3.5, -0.75],
+    [0.6, 3.3, -0.6],
+    [0.85, 3.05, 0],
+    [0.6, 2.85, 0.6],
+    [0, 2.65, 0.85],
+    [-0.6, 2.4, 0.6],
+    [-0.85, 2.05, 0],
+    [-1.1, 1.65, -0.7],
+    [-1.7, 1.2, -1.3],
+    [-2.6, 0.9, -1.8],
+  ];
+  return {
+    x,
+    z,
+    half: 0.4,
+    top: 3.6,
+    foot: { x, z: z - 0.95 },
+    path: round.map(([dx, y, dz]) => [x + dx, y, z + dz] as const) as readonly (readonly [number, number, number])[],
+  };
+})();
 
 /** Where the slide runs low over the deck: nobody stands there (its colliders keep them off). */
-export const SLIDE_ZONE = { minX: 8.6, maxX: SLIDE.x - SLIDE.half, minZ: POOL.maxZ, maxZ: POOL_DECK.maxZ } as const;
+export const SLIDE_ZONE = { minX: SLIDE.x - 1.6, maxX: SLIDE.x - SLIDE.half, minZ: POOL.maxZ, maxZ: POOL_DECK.maxZ } as const;
 
 /** A point `s` (0 the platform … 1 the water) along the slide, straight between its points. */
 export function slideAt(s: number): { x: number; y: number; z: number } {
@@ -132,4 +141,31 @@ export function slidingAt(x: number, y: number, z: number): boolean {
     if (Math.abs(p.y - y) < 0.5 && Math.hypot(p.x - x, p.z - z) < 0.55) return true;
   }
   return false;
+}
+
+// ---- The diving tower (flrnoh fork, see FORK.md "Pool party on the roof") -------------------------
+
+/**
+ * The diving tower on the deck's north side: its legs on the deck, its platform `top` up reaching out
+ * over the water to `front`, a board on out from it to `board`, a ladder up its west side (you stand at
+ * `foot` to climb; up top you come out at `up`).
+ */
+export const DIVE = {
+  minX: 13.0,
+  maxX: 14.6,
+  minZ: POOL_DECK.minZ,
+  front: POOL.minZ + 0.8,
+  board: { minX: 13.5, maxX: 14.1, to: POOL.minZ + 1.6 },
+  top: 4.5,
+  foot: { x: 12.4, z: POOL_DECK.minZ + 0.4 },
+  up: { x: 13.8, z: POOL_DECK.minZ + 0.5 },
+} as const;
+
+/** What you walk on up the diving tower: its platform and its board, as boxes, tops `top` up. */
+export function diveFloors(): { minX: number; maxX: number; minZ: number; maxZ: number; top: number; bottom: number }[] {
+  const d = DIVE;
+  return [
+    { minX: d.minX, maxX: d.maxX, minZ: d.minZ, maxZ: d.front, top: d.top, bottom: d.top - 0.2 },
+    { minX: d.board.minX, maxX: d.board.maxX, minZ: d.front, maxZ: d.board.to, top: d.top + 0.05, bottom: d.top - 0.1 },
+  ];
 }

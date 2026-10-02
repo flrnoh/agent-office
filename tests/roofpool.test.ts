@@ -19,7 +19,8 @@ test('the pool stands on the roof, clear of everything else up there, with room 
   const things: [string, Box, number][] = [
     ['the stage', STAGE, 1],
     ['the dance floor', DANCE_FLOOR, 1],
-    ["the elevator's doors", { minX: ELEVATOR.x - ELEVATOR.width / 2, maxX: ELEVATOR.x + ELEVATOR.width / 2, minZ: FLOOR.minZ, maxZ: ELEVATOR_FRONT + 1 }, 0.4],
+    // Room all round the elevator, not just in front of its doors.
+    ["the elevator", { minX: ELEVATOR.x - ELEVATOR.width / 2, maxX: ELEVATOR.x + ELEVATOR.width / 2, minZ: FLOOR.minZ, maxZ: ELEVATOR_FRONT + 1.5 }, 0.75],
     ['the bar', { minX: ROOF_BAR.x - ROOF_BAR.depth / 2 - 0.9, maxX: FLOOR.maxX, minZ: ROOF_BAR.minZ - 0.8, maxZ: ROOF_BAR.maxZ + 0.8 }, 0.9],
     ['the fire pit', around(FIRE_PIT.x, FIRE_PIT.z, 3.5), 1],
     ['the axe lane', { minX: FLOOR.minX, maxX: AXE_LANE.maxX + 1, minZ: FLOOR.minZ, maxZ: FLOOR.minZ + AXE_LANE.depth + 1 }, 1],
@@ -73,7 +74,7 @@ test('the floats stay on the water', () => {
   }
 });
 
-test('the water slide ends in the water, with headroom over everywhere people walk, clear of the bar', async () => {
+test('the water slide ends in the water, with headroom over everywhere people walk, on the roof', async () => {
   const { SLIDE, SLIDE_ZONE, slideAt, slidingAt } = await import('../src/shared/roofpool.js');
   const R = 0.42; // the tube's radius round its line (features/roofpool/slide.ts)
   const end = slideAt(1);
@@ -83,7 +84,7 @@ test('the water slide ends in the water, with headroom over everywhere people wa
   const tower = { minX: SLIDE.x - SLIDE.half - 0.1, maxX: SLIDE.x + SLIDE.half + 0.1, minZ: SLIDE.z - SLIDE.half - 0.1, maxZ: SLIDE.z + SLIDE.half + 0.1 };
   for (let s = 0; s <= 1; s += 0.01) {
     const p = slideAt(s);
-    assert.ok(p.x + R < ROOF_BAR.x - ROOF_BAR.depth / 2 - 0.9, `into the bar's way at ${p.x.toFixed(2)}`);
+    assert.ok(p.x + R < FLOOR.maxX && p.z - R > FLOOR.minZ, `over the roof's edge at ${p.x.toFixed(2)},${p.z.toFixed(2)}`);
     if (overPool(p.x, p.z) || inBox(p.x, p.z, SLIDE_ZONE) || inBox(p.x, p.z, tower)) continue;
     const floor = poolDeck().some((b) => inBox(p.x, p.z, b)) ? POOL_DECK.top : Math.max(0, ...poolSteps().filter((b) => inBox(p.x, p.z, b)).map((b) => b.top));
     assert.ok(p.y - R - floor >= 1.75, `only ${(p.y - R - floor).toFixed(2)} m over the floor at ${p.x.toFixed(2)},${p.z.toFixed(2)}`);
@@ -118,4 +119,20 @@ test('the sky bar stands at the south end of the terrace, its pergola clear of t
   assert.equal(stools.length, 6);
   for (const s of stools) assert.ok(s.z > ROOF_BAR.minZ && s.z < ROOF_BAR.maxZ, `${s.id} along the counter`);
   assert.ok(ROOF_BAR.maxZ + 0.8 < BUNGEE.startZ, "the pergola's posts stop before the jetty starts");
+});
+
+test('the diving tower stands on the deck, its board out over the water, with a ladder you can reach', async () => {
+  const { DIVE, diveFloors } = await import('../src/shared/roofpool.js');
+  const [platform, board] = diveFloors();
+  assert.ok(platform.minZ >= POOL_DECK.minZ && platform.minX > POOL_DECK.minX && platform.maxX < POOL_DECK.maxX, 'over the deck');
+  assert.ok(overPool((board.minX + board.maxX) / 2, board.maxZ - 0.01, 0.5), 'its board ends well over the water');
+  assert.ok(board.maxZ - POOL.minZ < (POOL.maxZ - POOL.minZ) / 2, 'with room to land in front of it');
+  assert.ok(DIVE.top - POOL.surface > 3, 'high enough for a proper splash');
+  // Its ladder's foot on the deck, clear of its legs; up top you come out on the platform.
+  assert.ok(poolDeck().some((b) => DIVE.foot.x > b.minX + 0.3 && DIVE.foot.x < b.maxX && DIVE.foot.z > b.minZ + 0.3 && DIVE.foot.z < b.maxZ - 0.3));
+  assert.ok(DIVE.foot.x + 0.32 < DIVE.minX - 0.12, "standing at the ladder isn't standing in the tower");
+  assert.ok(DIVE.up.x > platform.minX + 0.3 && DIVE.up.x < platform.maxX - 0.3 && DIVE.up.z > platform.minZ + 0.3 && DIVE.up.z < platform.maxZ);
+  // Climbing out under it puts you somewhere you can stand.
+  const out = climbOutAt((DIVE.minX + DIVE.maxX) / 2, POOL.minZ + 0.3);
+  assert.ok(!(out.x > DIVE.minX - 0.4 && out.x < DIVE.maxX + 0.4 && out.z < POOL.minZ), `out under the tower at ${out.x},${out.z}`);
 });

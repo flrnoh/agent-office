@@ -5,7 +5,7 @@
  * out. Everyone up there sees who's swimming from where they are, posed as in the sea, with a splash as
  * they go in; the floats drift where the office's clock says, the same on every page.
  */
-import { POOL, POOL_DECK, SLIDE, inPoolAt, overPool, slideAt, slidingAt } from '../../../shared/roofpool';
+import { DIVE, POOL, POOL_DECK, SLIDE, inPoolAt, overPool, slideAt, slidingAt } from '../../../shared/roofpool';
 import type { Ctx } from '../../core/context';
 import { aside, hintTitle, key } from '../../core/hint';
 import { store } from '../../state';
@@ -15,6 +15,7 @@ import type { Interactable } from '../../world/types';
 import { SeaFx } from '../beach/fx';
 import { ridePose, seaPose } from '../beach/poses';
 import { SlideRide } from './slide';
+import { DiveClimb } from './dive';
 import type { Rooftop } from '../rooftop/world';
 import { PoolSwim } from './swim';
 import { buildRoofPool, type RoofPool } from './world';
@@ -23,6 +24,7 @@ declare module '../../world/types' {
   interface InteractKinds {
     pool: true;
     slide: true;
+    dive: true;
   }
 }
 
@@ -55,7 +57,10 @@ export function installRoofPool(ctx: Ctx, deps: RoofPoolDeps) {
       roof.colliders.push(...pool.colliders);
       const it: Interactable = { kind: 'pool', x: (POOL.minX + POOL.maxX) / 2, z: (POOL.minZ + POOL.maxZ) / 2, y: POOL_DECK.top, radius: 4.2 };
       const ladder: Interactable = { kind: 'slide', x: SLIDE.foot.x, z: SLIDE.foot.z, y: POOL_DECK.top, radius: 1.3 };
-      roof.interactables.push(ladder, it);
+      const diveUp: Interactable = { kind: 'dive', x: DIVE.foot.x, z: DIVE.foot.z, y: POOL_DECK.top, radius: 1.3 };
+      const diveDown: Interactable = { kind: 'dive', x: DIVE.up.x, z: DIVE.up.z, y: DIVE.top, radius: 1.0 };
+      roof.interactables.push(ladder, diveUp, diveDown, it);
+      pool.diving.userData.interact = diveUp;
       // Looking at the water or the slide is looking at them (the pointer's ray: input/pointer.ts).
       pool.surface.userData.interact = it;
       pool.tower.userData.interact = ladder;
@@ -101,16 +106,43 @@ export function installRoofPool(ctx: Ctx, deps: RoofPoolDeps) {
     hidesHands: true,
   });
 
+  // The diving tower: E at its ladder climbs up, E by the ladder up top climbs back down; off the board is the way in.
+  const climb = new DiveClimb(ctx.player);
+  const upTop = () => ctx.player.pos.y > DIVE.top - 0.3;
+  ctx.interactions.define('dive', {
+    reach: 1.8,
+    hint: () =>
+      climb.active || swim.active
+        ? { k: '', parts: [] }
+        : upTop()
+          ? { k: 'dive-down', parts: [hintTitle('🤿 Diving tower'), aside('3.5 m: off the board into the pool'), key('E', 'Climb down')] }
+          : { k: 'dive-up', parts: [hintTitle('🤿 Diving tower'), aside('3.5 m over the water'), key('E', 'Climb up')] },
+    use: (_it, k) => {
+      if (k === 'E' && !climb.active && !swim.active) climb.start(!upTop());
+    },
+  });
+  ctx.activities.add({
+    id: 'dive',
+    active: () => climb.active,
+    stop: (why) => {
+      if (why !== 'walk' && why !== 'errand') climb.stop();
+    },
+    key: () => true,
+    hint: (el) => ctx.hint.draw(el, 'dive', () => [h('span.title', {}, '🪜 On the ladder'), aside('the diving tower')]),
+    hidesHands: true,
+  });
+
   // E on the deck: a cannonball into the middle of it.
   ctx.interactions.define('pool', {
     reach: 4.6,
     hint: () => {
-      const up = ctx.player.pos.y > POOL_DECK.top - 0.2 && !swim.active;
+      const y = ctx.player.pos.y;
+      const up = y > POOL_DECK.top - 0.2 && y < POOL_DECK.top + 0.5 && !swim.active; // on the deck (not up the diving tower)
       return up ? { k: 'pool', parts: [hintTitle('🏊 Pool'), aside('Pool party on the roof'), key('E', 'Cannonball!')] } : { k: '', parts: [] };
     },
     use: (_it, k) => {
       const p = ctx.player;
-      if (k !== 'E' || swim.active || p.pos.y < POOL_DECK.top - 0.2) return;
+      if (k !== 'E' || swim.active || p.pos.y < POOL_DECK.top - 0.2 || p.pos.y > POOL_DECK.top + 0.5) return;
       // Up and out over the water toward its middle.
       const x = Math.min(POOL.maxX - 1, Math.max(POOL.minX + 1, p.pos.x));
       const z = Math.min(POOL.maxZ - 1, Math.max(POOL.minZ + 1, p.pos.z));
@@ -153,10 +185,11 @@ export function installRoofPool(ctx: Ctx, deps: RoofPoolDeps) {
     if (!ctx.upTop()) {
       if (swim.active) swim.leave();
       if (ride.active) ride.stop();
+      if (climb.active) climb.stop();
       return;
     }
     placed();
-    if (swim.active || ride.active) return;
+    if (swim.active || ride.active || climb.active) return;
     if (p.rig || p.seat) {
       peak = p.pos.y;
       return;
