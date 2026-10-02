@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { analyse, FeatureStream, RATE } from '../src/server/djbeats/analyse.js';
 import { BEAT_PARTS, beatTimes, fromBase64, isDjBeats, type DjBeats } from '../src/shared/djbeats.js';
 import { BeatsError } from '../src/server/djbeats/fetch.js';
+import { GUEST_MSGS, TEAM_ONLY_MSGS } from '../src/server/guests.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -204,4 +205,32 @@ test("the roof's frame follows the heard set: the beat, the parts, the drop land
   // A tapped grid: on its beats, in time.
   const g = gridFrame(10, 120, 0, 0);
   assert.ok(g.beat > 0.99 && g.bpm === 120);
+});
+
+test("the party's volume: the team sets it from anywhere, for everyone on the roof, and it's kept", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ao-djvolume-'));
+  try {
+    const booth = new DjBooth(dir, async () => undefined, () => new Promise(() => {}));
+    assert.equal(booth.state().volume, undefined);
+    const sent: ServerMsg[] = [];
+    const hooks = { id: 'a', who: 'Flo', onRoof: false, toRoof: (m: ServerMsg) => sent.push(m), warn: () => assert.fail('no warning') };
+    djMessage(booth, { t: 'dj.volume', volume: 0.456 }, hooks);
+    assert.equal(booth.state().volume, 0.46);
+    assert.equal(booth.state().volumeBy, 'Flo');
+    assert.equal(sent.length, 1);
+    // The same again, or no volume at all: nothing sent.
+    djMessage(booth, { t: 'dj.volume', volume: 0.46 }, hooks);
+    djMessage(booth, { t: 'dj.volume', volume: 7 }, hooks);
+    djMessage(booth, { t: 'dj.volume', volume: Number.NaN }, hooks);
+    assert.equal(sent.length, 1);
+    djMessage(booth, { t: 'dj.volume', volume: 0 }, hooks);
+    assert.equal(booth.state().volume, 0);
+    // After a restart, still silent.
+    const again = new DjBooth(dir, async () => undefined, () => new Promise(() => {}));
+    assert.equal(again.state().volume, 0);
+    // Guests and party guests can't touch it.
+    assert.ok(TEAM_ONLY_MSGS.has('dj.volume') && !GUEST_MSGS.has('dj.volume'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

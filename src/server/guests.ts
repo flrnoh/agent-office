@@ -47,6 +47,7 @@ const TEAM_ONLY = [
   'decor.add', 'decor.remove', 'decor.update', 'desk.label', 'dog.name',
   'floor.add', 'floor.cancel', 'floor.expand', 'floor.interior', 'floor.order', 'floor.projectsDir', 'floor.remove', 'floor.shrink',
   'gh.close', 'gh.comment', 'gh.labels', 'gh.merge', 'jukebox.speakers', 'leaveOnMerge.set',
+  'dj.volume', // fork: the party's volume on the roof is the host's
   'machine.limit', 'map.set', 'meeting.clear', 'meeting.start', 'meeting.stop',
   'notify.test', 'notify.webhook', 'prompts.agent', 'prompts.set', 'queue.add',
   'queue.clear', 'queue.limit', 'queue.move', 'queue.remove', 'queue.retry',

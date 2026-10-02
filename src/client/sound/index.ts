@@ -358,9 +358,16 @@ export class OfficeSound {
     return this.music.speakers.level;
   }
 
-  /** How loud a DJ set in an embedded player (client/djset.ts) is where you stand, 0–1 (screens.ts). */
+  /** The party's volume on the roof (0–1), set at the DJ booth for everyone: the house DJ's and the sets'. */
+  setPartyVolume(v: number) {
+    this.partyLevel = v;
+    this.dj.setPartyVolume(v);
+  }
+  private partyLevel = 1;
+
+  /** How loud a DJ set in an embedded player (client/djset.ts) is where you stand, 0–1 (screens.ts), at the party's volume. */
   djSetVolume(): number {
-    return djSetVolume(this.a, this.music.musicGain());
+    return djSetVolume(this.a, this.music.musicGain()) * this.partyLevel ** 2;
   }
 
   /** How loud a stream on the office TV (client/tv.ts) at `at` is where you stand, 0–1 (screens.ts). */
