@@ -50,7 +50,7 @@ export class Recorders {
 
   rec(room: RehearsalRoomId): RecView | null {
     const r = this.recs.get(room);
-    return r ? { by: r.by, byId: r.byId, startAt: r.startAt, bpm: r.bpm, click: r.click, over: r.over } : null;
+    return r ? { by: r.by, byId: r.byId, startAt: r.startAt, bpm: r.bpm, click: r.click, countIn: r.countIn, over: r.over } : null;
   }
   recording(room: RehearsalRoomId): boolean {
     return this.recs.has(room);
@@ -83,7 +83,7 @@ export class Recorders {
       if (!base) return '🎚️ Die Aufnahme gibt es hier nicht (mehr)';
     }
     const startAt = now + 300 + (countIn ? Math.round((COUNT_IN_BEATS * 60_000) / bpm) : 0);
-    this.recs.set(room, { by: p.name, byId: p.id, owner: p.owner, startAt, bpm, click: opts.click === true, over: base?.id ?? null, evs: [], base: base ? { ...meta(base), evs: base.evs } : null });
+    this.recs.set(room, { by: p.name, byId: p.id, owner: p.owner, startAt, bpm, click: opts.click === true, countIn, over: base?.id ?? null, evs: [], base: base ? { ...meta(base), evs: base.evs } : null });
     if (base) this.playing.set(room, { take: base.id, startAt, loop: false, by: p.name, dur: base.dur });
     else this.playing.delete(room);
     return { startAt, over: base ? { ...meta(base), evs: base.evs } : null };

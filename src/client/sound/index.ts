@@ -64,6 +64,7 @@ import { KaraokeSound } from '../features/karaoke/sound'; // fork: the bowling c
 import { BowlingAmbience, bowlingSound, type BowlingSound } from '../bowling/sound'; // fork: the bowling centre
 import { minigolf, MinigolfLoops, type MinigolfSound } from '../features/minigolf/sound'; // fork: the bowling centre's mini golf
 import { BallRolls, bowlSound, type BowlSound } from '../features/bowlinggame/sound'; // fork: the bowling centre's lanes
+import { proberaumSound, type ProberaumSound } from '../features/proberaum/sound'; // fork: the Schallwerk's rehearsal wing
 
 // What the rest of the client imports from here.
 export type { Hall, Listener } from './core';
@@ -579,5 +580,9 @@ export class OfficeSound {
   /** Ball `id` rolling at `speed` m/s (in the gutter or not), every frame it rolls: it fades away without a call. */
   bowlRoll(id: number, at: Pos, speed: number, gutter: boolean) {
     this.bowlRolls.set(id, at, speed, gutter);
+  }
+  /** fork: the Schallwerk's rehearsal wing (features/proberaum/sound.ts): doors, knocks, coins, the click track (`delay` s), a room through its walls. */
+  proberaum(kind: ProberaumSound, at?: Pos, strength = 0.6, delay = 0, pitch = 48) {
+    proberaumSound(this.a, kind, at, strength, delay, pitch);
   }
 }

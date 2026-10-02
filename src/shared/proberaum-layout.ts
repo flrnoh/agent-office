@@ -67,6 +67,7 @@ function roomSolids(r: RehearsalRoom): Solid[] {
     s('pa-n', -20.85, -20.35, I.minZ + 0.1, I.minZ + 0.6, 1.9),
     s('pa-s', -20.85, -20.35, I.maxZ - 0.6, I.maxZ - 0.1, 1.9),
   ];
+  if (r.id === 'probe1') out.push(s('crate', I.minX + 0.1, I.minX + 0.6, I.minZ + 0.1, I.minZ + 0.45, 0.6));
   if (r.id === 'probe2') out.push(s('lamp', I.minX + 0.15, I.minX + 0.65, I.minZ + 0.15, I.minZ + 0.65, 1.7), s('plant', I.minX + 0.15, I.minX + 0.65, I.maxZ - 0.65, I.maxZ - 0.15, 1.2));
   if (r.id === 'probe3') out.push(s('crates', I.minX + 0.1, I.minX + 0.75, I.maxZ - 0.55, I.maxZ - 0.1, 0.9), s('case', I.minX + 0.1, I.minX + 1.0, I.minZ + 0.1, I.minZ + 0.6, 0.75));
   return out;
@@ -79,6 +80,7 @@ const STUDIO_SOLIDS: Solid[] = [
   { id: 'studio-desk', where: 'studio', minX: STUDIO_REGIE_X + 0.15, maxX: STUDIO_REGIE_X + 1.1, minZ: 11.3, maxZ: 14.0, top: 0.95 },
   { id: 'studio-rack', where: 'studio', minX: SI.maxX - 0.95, maxX: SI.maxX - 0.35, minZ: SI.minZ, maxZ: SI.minZ + 0.6, top: 1.35 },
   { id: 'studio-couch', where: 'studio', minX: SI.maxX - 2.5, maxX: SI.maxX - 0.7, minZ: SI.maxZ - 0.9, maxZ: SI.maxZ, top: 0.5 },
+  { id: 'studio-amp', where: 'studio', minX: STUDIO_REGIE_X - 0.82, maxX: STUDIO_REGIE_X - 0.18, minZ: SI.maxZ - 0.47, maxZ: SI.maxZ, top: 0.55 },
   { id: 'studio-fridge', where: 'studio', minX: SI.maxX - 0.55, maxX: SI.maxX, minZ: SI.maxZ - 0.6, maxZ: SI.maxZ, top: 0.85 },
 ];
 
@@ -90,6 +92,8 @@ const LOBBY_SOLIDS: Solid[] = [
   { id: 'counter', where: 'lobby', minX: -18.2, maxX: -14.8, minZ: LOBBY.minZ, maxZ: LOBBY.minZ + 1.35, top: 1.05 },
   { id: 'sofa', where: 'lobby', minX: -22.9, maxX: -20.7, minZ: LOBBY.maxZ - 0.85, maxZ: LOBBY.maxZ, top: 0.5 },
   { id: 'amp', where: 'lobby', minX: -20.55, maxX: -20.0, minZ: LOBBY.maxZ - 0.6, maxZ: LOBBY.maxZ, top: 0.62 },
+  { id: 'kicker', where: 'lobby', minX: -19.9, maxX: -18.5, minZ: -12.45, maxZ: -11.65, top: 0.95 },
+  { id: 'plant', where: 'lobby', minX: LOBBY.minX, maxX: LOBBY.minX + 0.6, minZ: LOBBY.maxZ - 0.65, maxZ: LOBBY.maxZ, top: 1.2 },
   { id: 'table', where: 'lobby', minX: -22.4, maxX: -21.2, minZ: LOBBY.maxZ - 2.0, maxZ: LOBBY.maxZ - 1.4, top: 0.45 },
 ];
 
@@ -106,7 +110,7 @@ export const solid = (id: string): Solid => WING_SOLIDS.find((s) => s.id === id)
  * Schwarzes Brett, the polaroids, the band name generator, the machines, the backline counter, the
  * tip jar and the lockers.
  */
-export type WingThing = 'door' | 'doorin' | 'panel' | 'mixer' | 'setlist' | 'fridge' | 'board' | 'notes' | 'polaroids' | 'bandname' | 'vending' | 'strings' | 'rental' | 'tip' | 'lockers' | 'lava';
+export type WingThing = 'door' | 'doorin' | 'panel' | 'mixer' | 'setlist' | 'fridge' | 'board' | 'notes' | 'polaroids' | 'bandname' | 'vending' | 'strings' | 'rental' | 'tip' | 'lockers' | 'lava' | 'kicker';
 
 export interface WingSpot {
   what: WingThing;
@@ -150,6 +154,7 @@ export const WING_SPOTS: readonly WingSpot[] = [
   { what: 'rental', x: -17.0, z: LOBBY.minZ + 1.8, radius: 0.8 },
   { what: 'tip', x: -15.35, z: LOBBY.minZ + 1.75, radius: 0.45 },
   { what: 'lockers', x: LOBBY.minX + 1.25, z: LOBBY.minZ + 0.95, radius: 0.9 },
+  { what: 'kicker', x: -19.2, z: -11.15, radius: 0.8 },
   ...REHEARSAL_ROOMS.flatMap(roomSpots),
 ];
 

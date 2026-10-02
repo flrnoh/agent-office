@@ -208,6 +208,8 @@ export interface RecView {
   startAt: number;
   bpm: number;
   click: boolean;
+  /** Counted in: COUNT_IN_BEATS clicks before `startAt`. */
+  countIn: boolean;
   /** Recording over this take (it plays along and ends up in the new one). */
   over: string | null;
 }
