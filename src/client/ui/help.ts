@@ -85,4 +85,6 @@ export const HELP_ROWS: readonly (readonly [string, string])[] = [
   // flrnoh fork: the minimap (features/minimap).
   ['🧭', 'The minimap, bottom right, turns with you: the office, the places and the shops round about, and who’s out there. Once the office is out of sight an arrow at its rim points the way back, with how far (the mouse wheel over it zooms). ☰ hides it'],
   ['J', 'The big map (or click the minimap): the whole town and the loop, north up. Drag to look about, the wheel zooms. Click a place or a shop and the minimap points you there; “Zum Büro” for the way back'],
+  // flrnoh fork: the bowling centre's black-light mini golf (features/minigolf).
+  ['⛳', 'Black-light mini golf in the bowling centre (the door past the lounge): E at “Schläger & Bälle” takes a putter and a ball in a colour of your own. E at the first tee starts a round, with everyone there who has a putter (you take turns), or just putt away alone. E along your hole puts you over your ball: the mouse or A D aims, hold Space and let go to putt. Nine holes, from a windmill and a loop to a volcano and a pinball table; 7 strokes at most, then it’s a “+” (Q picks the ball up). Tab: the scorecard, best rounds and holes in one'],
 ];
