@@ -74,7 +74,7 @@ const TURN_V = 12.5;
 const LAUNCH_V = 16.5;
 
 /** How hard each kind of zone speeds the train up or slows it down (m/s²); the trims on the drop are gentler. */
-const ACCEL: Record<ZoneKind, number> = { tires: 1.4, chain: 1.4, trim: 7, boost: 11, brake: 4, stop: 1, tunnel: 0 };
+const ACCEL: Record<ZoneKind, number> = { tires: 1.4, chain: 1.4, trim: 7, boost: 12.5, brake: 4, stop: 1, tunnel: 0 };
 
 /**
  * The drop, straight down: over the top with the radius growing from 3 to 16 m (as the 2.5th power of
@@ -89,7 +89,7 @@ const LOOP_TOP_R = 4;
 const LOOP_SHIFT = 2.4;
 const LOOP_SHAPE = 1;
 /** The tube through the ground floor: in through the south wall heading north at TUBE_X, left at TUBE_TURN_Z, along the desks, out north at TUBE_OUT_X. */
-const TUBE_X = 5;
+const TUBE_X = 4.8;
 const TUBE_TURN_Z = -0.5;
 const TUBE_OUT_X = -16;
 const WALL_Z_SOUTH = 13.3;
@@ -369,13 +369,13 @@ export function coasterRoute(storeys: number): Route {
   t.marks.dropFrom = dropFrom;
   // On along the plaza's edge to where the U-turn starts, whatever's left of the run.
   const run = over.ahead + out.ahead;
-  const flat = Math.max(0.5, 35 - 2.9 - run);
+  const flat = Math.max(0.5, 34.1 - 2.9 - run);
   const trimFrom = t.u - 9;
   t.line(flat);
   t.zone('trim', trimFrom, t.u + 6, TURN_V);
   // The U-turn over the road, and the launch into the loop: long enough that the left turn after the
   // loop comes out heading north on the tube's line.
-  t.plan([{ arc: 4, deg: 180 - tilt, side: 'L' }]);
+  t.plan([{ arc: 3.9, deg: 180 - tilt, side: 'L' }]);
   const shape = loopShape();
   const launch = TUBE_X - TURN_IN_R - AFTER_LOOP - shape[shape.length - 1].u - t.p.x;
   const boost = t.u;
@@ -392,8 +392,8 @@ export function coasterRoute(storeys: number): Route {
   const ramp = t.u;
   t.plan([{ line: t.p.z - WALL_Z_SOUTH }]);
   t.zone('trim', ramp, t.u, 11);
-  // The tube under the ground floor's ceiling: north past the stairs, left along the desks, right and out.
-  const inFrom = t.u;
+  // The tube under the ground floor's ceiling (from just outside the fins): north past the stairs, left along the desks, right and out.
+  const inFrom = t.u - 1.2;
   t.mark('tunnel');
   t.plan([{ line: t.p.z - TUBE_TURN_Z }, { arc: 6, deg: 90, side: 'L' }]);
   t.plan([{ line: t.p.x - TUBE_OUT_X - 4 }]);
