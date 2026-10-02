@@ -1,7 +1,8 @@
 /**
  * flrnoh fork (see FORK.md): a DJ set someone put on at the roof's booth, from YouTube, SoundCloud or
  * Mixcloud, in place of the house DJ, for everyone up there (djset.ts, ui/djbooth.ts). The booth
- * itself, its hint and E, are features/bar's; it asks here what's on.
+ * itself, its hint and E, are features/bar's; it asks here what's on. While a set plays, the roof's
+ * lights, LED wall and DJ go by its beats (`frame`, see frame.ts and server/djbeats/).
  */
 import type { Ctx } from '../../core/context';
 import { djFrame } from '../../dnb';
@@ -11,6 +12,9 @@ import { toast } from '../../ui/dom';
 import { openDjBooth } from '../../ui/djbooth';
 import type { SettingsPane } from '../../ui/settings';
 import type { Interactable } from '../../world/types';
+import { isDjBeats } from '../../../shared/djbeats';
+import type { DjSetState } from '../../../shared/djset';
+import { gridFrame, SetBeats, setHue, type SetFrame } from './frame';
 
 export interface DjSetDeps {
   /** How far into the house DJ's set it is (see features/rooftop). */
@@ -35,9 +39,15 @@ export function installDjSets(ctx: Ctx, deps: DjSetDeps) {
     djSets.setUp(up);
     houseDj();
   }
-  ctx.messages.on('welcome', (msg) => void (msg.dj && djSets.set(msg.dj)));
-  ctx.messages.on('floor.enter', (msg) => void (msg.dj && djSets.set(msg.dj)));
-  ctx.messages.on('dj', (msg) => djSets.set(msg.state));
+  /** What's on, from the office; the booth's window and the beats (below) look again, as the set's tempo may have come with it. */
+  const onState = (state: DjSetState) => {
+    djSets.set(state);
+    ctx.sound.setPartyVolume(state.volume ?? 1);
+    watchers.forEach((fn) => fn());
+  };
+  ctx.messages.on('welcome', (msg) => void (msg.dj && onState(msg.dj)));
+  ctx.messages.on('floor.enter', (msg) => void (msg.dj && onState(msg.dj)));
+  ctx.messages.on('dj', (msg) => onState(msg.state));
   // At the DJ booth on the roof, H is the air horn (elsewhere it's the controls, see features/hud).
   ctx.keys.add('activity', (e) => {
     if (e.code !== 'KeyH' || !ctx.upTop() || deps.target()?.kind !== 'dj') return false;
@@ -45,9 +55,88 @@ export function installDjSets(ctx: Ctx, deps: DjSetDeps) {
     return true;
   });
 
+  // ---- The set's beats, for the lights ----------------------------------------------------------
+  /** What the office heard in the set that's on, once it's here. */
+  let heard: SetBeats | null = null;
+  /** Which set's beats are on their way. */
+  let fetching = '';
+  /** How far the set's own player is ahead of where everyone should be (s): Mixcloud may start a show from its top. */
+  let drift = 0;
+  let driftFor = '';
+  /** Fetches the set's beats once the office has heard it. */
+  function fetchBeats() {
+    const s = djSets.current();
+    const url = s.set?.url;
+    if (!url || s.beats?.status !== 'ready' || heard?.url === url || fetching === url) return;
+    fetching = url;
+    void fetch('/api/dj/beats', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b: unknown) => {
+        // Only if it's still the one on.
+        if (isDjBeats(b) && b.url === djSets.current().set?.url) heard = new SetBeats(b);
+      })
+      .catch(() => {})
+      .finally(() => fetching === url && (fetching = ''));
+  }
+  watchers.add(fetchBeats);
+  // Every couple of seconds, while it plays here: how far off its player is.
+  window.setInterval(() => {
+    const url = djSets.current().set?.url;
+    if (!url || !ctx.upTop()) return;
+    if (driftFor !== url) (drift = 0), (driftFor = url);
+    void djSets.heardAt().then((pos) => {
+      if (pos === undefined || djSets.current().set?.url !== url) return;
+      const off = pos - djSets.expectedAt(store.officeNow());
+      // A big jump (it started from the top) at once; small wobbles smoothed.
+      drift = Math.abs(off - drift) > 3 ? off : drift + (off - drift) * 0.3;
+    });
+  }, 2000);
+
+  /** Where the set is, for the roof's lights, LED wall and DJ; null while the house DJ plays. */
+  function frame(): SetFrame | null {
+    const s = djSets.current();
+    const set = s.set;
+    if (!set || !djSets.silencesHouse()) return null;
+    const hue = setHue(set.url);
+    const title = djSets.titleNow();
+    const now = store.officeNow();
+    // A tapped tempo goes before what was heard (someone put it right); then what was heard; then a guess.
+    if (s.tap) return { ...gridFrame((now - s.tap.at) / 1000, s.tap.bpm, 0, hue), title };
+    const at = djSets.expectedAt(now) + (driftFor === set.url ? drift : 0);
+    if (heard?.url === set.url) return { ...heard.frame(at, hue), title };
+    return { ...gridFrame(at, 124, 0, hue), title };
+  }
+
+  /** Taps at the booth, a beat each: four or more in time set the tempo, for everyone once you stop tapping. */
+  let taps: number[] = [];
+  let tapTimer = 0;
+  function tap(): number | null {
+    const now = store.officeNow();
+    if (taps.length && now - taps[taps.length - 1] > 2000) taps = [];
+    taps.push(now);
+    taps = taps.slice(-12);
+    clearTimeout(tapTimer);
+    if (taps.length < 4) return null;
+    const bpm = Math.round(((60_000 * (taps.length - 1)) / (now - taps[0])) * 10) / 10;
+    if (bpm < 60 || bpm > 200) return null;
+    // The last tap is a beat: the grid runs on from it.
+    tapTimer = window.setTimeout(() => ctx.net.send({ t: 'dj.tap', bpm, at: now }), 1200);
+    return bpm;
+  }
+
   /** E at the DJ booth: what's playing, a set of your own, the air horn. */
   function showDjBooth() {
-    openDjBooth({ net: ctx.net, player: djSets, house: () => djFrame(deps.djAt()).part, horn: deps.horn, openVolume: () => deps.showSettings('sound'), watch: (fn) => (watchers.add(fn), () => watchers.delete(fn)) });
+    openDjBooth({
+      net: ctx.net,
+      player: djSets,
+      house: () => djFrame(deps.djAt()).part,
+      horn: deps.horn,
+      openVolume: () => deps.showSettings('sound'),
+      watch: (fn) => (watchers.add(fn), () => watchers.delete(fn)),
+      tap,
+      untap: () => ctx.net.send({ t: 'dj.tap', bpm: 0, at: store.officeNow() }),
+      setVolume: (volume) => ctx.net.send({ t: 'dj.volume', volume }),
+    });
   }
 
   /** What the booth's hint says is on, when it's a set of someone's (else the house DJ's). */
@@ -56,5 +145,5 @@ export function installDjSets(ctx: Ctx, deps: DjSetDeps) {
     return `🎶 ${djSets.titleNow()}${djSets.phase() === 'blocked' ? ' · click to hear it' : ''}`;
   }
 
-  return { djSets, setUp, showDjBooth, playing };
+  return { djSets, setUp, showDjBooth, playing, frame };
 }

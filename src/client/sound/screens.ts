@@ -1,6 +1,7 @@
 import { DJ_BOOTH } from '../../shared/layout';
 import type { AudioCore } from './core';
 import type { Pos } from './places';
+import { partyEmbed, partyFalloff } from './party';
 
 // flrnoh fork: how loud the players that play outside Web Audio should be where you stand.
 
@@ -8,10 +9,12 @@ import type { Pos } from './places';
  * How loud a DJ set playing in an embedded player (see client/djset.ts) is where you stand, 0–1:
  * `musicGain` (your music volume), fading with distance from the booth as the house DJ does.
  */
-export function djSetVolume(a: AudioCore, musicGain: number): number {
+export function djSetVolume(a: AudioCore, musicGain: number, party = 1): number {
   const l = a.listener;
-  const d = Math.max(7, Math.hypot(l.x - DJ_BOOTH.x, l.y - 2.2, l.z - DJ_BOOTH.z));
-  return Math.min(1, musicGain * (7 / (7 + 0.8 * (d - 7))));
+  // The party's volume (sound/party.ts): louder, and fading less, past 100%.
+  const { ref, rolloff } = partyFalloff(party);
+  const d = Math.max(ref, Math.hypot(l.x - DJ_BOOTH.x, l.y - 2.2, l.z - DJ_BOOTH.z));
+  return Math.min(1, musicGain * partyEmbed(party, musicGain) * (ref / (ref + rolloff * (d - ref))));
 }
 
 /**

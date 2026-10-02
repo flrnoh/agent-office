@@ -1,4 +1,5 @@
 import { GOAL, PITCH, PITCH_CX, type BallHitKind, type GoalSide, type SoccerEvent, type SoccerPhase, type SoccerView, type Team } from '../../../shared/soccer';
+import { OFFICE_SIGN } from '../../../shared/brand';
 
 /*
  * The soccer hall's matchday (flrnoh fork, see FORK.md "The soccer hall"): the pure part of its
@@ -143,7 +144,7 @@ export const ADS: readonly (readonly [string, string, string])[] = [
   ['SIGNAL & STILLE · Florian Obermeier', '#e8e6df', '#11151c'],
   ['CASINO GEGENÜBER · Glück auf!', '#ffd166', '#3a0d16'],
   ['PADEL HALL · Café & Courts nebenan', '#8be28b', '#0e2a1c'],
-  ['AGENT OFFICE · build · ship · score', '#8ecae6', '#0b1d2c'],
+  [`${OFFICE_SIGN} · build · ship · score`, '#8ecae6', '#0b1d2c'],
   ['FLOGGE FC · fair play', '#ffffff', '#1d3b2c'],
 ];
 

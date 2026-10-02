@@ -1,6 +1,7 @@
-import { DJ_SET_HINT, DJ_SET_SITES, parseDjSetUrl } from '../../shared/djset';
+import { DJ_SET_HINT, DJ_SET_SITES, PARTY_VOLUME_MAX, parseDjSetUrl } from '../../shared/djset';
 import type { DjSetPlayer } from '../djset';
 import type { Net } from '../net';
+import { store } from '../state';
 import { h, openModal, toast } from './dom';
 
 /*
@@ -17,6 +18,12 @@ export interface DjBoothOptions {
   openVolume(): void;
   /** Called when anything the window shows changes; returns how to stop listening. */
   watch(fn: () => void): () => void;
+  /** A tap on the beat; the tempo once there are enough in time (sent to everyone), else null. */
+  tap(): number | null;
+  /** Back to the set's own beat, as the office heard it. */
+  untap(): void;
+  /** The party's volume (0–2, 2 is Disco) for everyone on the roof: the team's to set. */
+  setVolume(v: number): void;
 }
 
 const STATUS: Record<string, string> = {
@@ -32,11 +39,72 @@ const STATUS: Record<string, string> = {
 export function openDjBooth(o: DjBoothOptions) {
   const close = h('button.btn.close', { 'aria-label': 'Close' }, '✕');
   const now = h('div.jb-now');
+  const tempo = h('div.svc-meta', { style: 'white-space:normal;margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center' });
+  /** The tempo you're tapping, till it's sent. */
+  let tapping = '';
+  let tapDone = 0;
   const actions = h('div', { style: 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px' });
   const url = h('input', { type: 'text', placeholder: 'https://youtube.com/watch?v=… · soundcloud.com/… · mixcloud.com/…', 'aria-label': 'Link to a DJ set', spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
   const play = h('button.btn.primary', { type: 'button' }, '▶️ Play set');
   const horn = h('button.btn', { type: 'button', title: 'Everyone on the roof hears it (H at the booth)' }, '📯 Air horn');
   const volume = h('button.btn', { type: 'button' }, '🔈 Your volume');
+  // The party's volume, for everyone on the roof: the team sets it, guests see it.
+  const host = !store.me.guest;
+  const party = h('input', { type: 'range', min: 0, max: PARTY_VOLUME_MAX * 100, step: 1, 'aria-label': 'Party volume, for everyone on the roof', ...(host ? {} : { disabled: '' }) }) as HTMLInputElement;
+  const partyPct = h('span.vol-pct');
+  const partyMute = h('button.btn', { type: 'button', ...(host ? {} : { disabled: '' }) });
+  // Disco: as loud as it goes, across the whole terrace; again, back to where it was.
+  const disco = h('button.btn', { type: 'button', title: 'As loud as it goes, across the whole terrace', ...(host ? {} : { disabled: '' }) });
+  /** Where it was before Disco, to go back to. */
+  let beforeDisco = 1;
+  const partyNote = h('p.setting-note');
+  /** The level before muting, to come back to. */
+  let unmuted = 1;
+  /** While you drag it (and a moment after), the office's echo doesn't move it under your hand. */
+  let handsOnUntil = 0;
+  let sentAt = 0;
+  let trailing = 0;
+  const sendVolume = (v: number) => {
+    handsOnUntil = Date.now() + 800;
+    clearTimeout(trailing);
+    const wait = 120 - (Date.now() - sentAt);
+    if (wait <= 0) {
+      sentAt = Date.now();
+      o.setVolume(v);
+    } else trailing = window.setTimeout(() => ((sentAt = Date.now()), o.setVolume(v)), wait);
+  };
+  const paintParty = (v: number) => {
+    const pct = Math.round(v * 100);
+    party.value = String(pct);
+    party.style.setProperty('--fill', `${(pct / PARTY_VOLUME_MAX).toFixed(1)}%`);
+    partyPct.textContent = pct ? `${pct}%${pct > 100 ? ' 🔥' : ''}` : 'Silent';
+    partyMute.textContent = pct ? '🔇 Silence' : '🔊 Back on';
+    const full = v >= PARTY_VOLUME_MAX;
+    disco.textContent = full ? '↩︎ Back to normal' : '🪩 Disco!';
+    disco.classList.toggle('primary', !full);
+    // Past 100% the slider glows hot.
+    if (v > 1) party.style.setProperty('--accent', '#ff3d81');
+    else party.style.removeProperty('--accent');
+  };
+  disco.addEventListener('click', () => {
+    const now = Number(party.value) / 100;
+    const v = now >= PARTY_VOLUME_MAX ? Math.min(1, beforeDisco) : PARTY_VOLUME_MAX;
+    if (v === PARTY_VOLUME_MAX) beforeDisco = now || 1;
+    if (v > 0) unmuted = v;
+    paintParty(v);
+    sendVolume(v);
+  });
+  party.addEventListener('input', () => {
+    const v = Number(party.value) / 100;
+    if (v > 0) unmuted = v;
+    paintParty(v);
+    sendVolume(v);
+  });
+  partyMute.addEventListener('click', () => {
+    const v = Number(party.value) > 0 ? 0 : unmuted || 1;
+    paintParty(v);
+    sendVolume(v);
+  });
   const el = h(
     'div.modal.jukebox',
     { role: 'dialog', 'aria-label': 'DJ booth' },
@@ -46,6 +114,10 @@ export function openDjBooth(o: DjBoothOptions) {
       {},
       now,
       actions,
+      tempo,
+      h('div', { style: 'display:flex;align-items:center;gap:8px;margin-top:16px' }, h('label', { style: 'flex:1;margin:0' }, '🔊 Party volume, for everyone on the roof'), disco),
+      h('div.volume', {}, partyMute, party, partyPct),
+      partyNote,
       h('label', { style: 'margin-top:16px' }, 'Put on a set'),
       h('div.webhook', {}, url, play),
       h('p.setting-note', {}, `${DJ_SET_HINT}. It plays from the booth for everyone on the roof, from the same moment.`),
@@ -82,7 +154,35 @@ export function openDjBooth(o: DjBoothOptions) {
         : []),
     );
     actions.classList.toggle('hidden', !set);
+    // The tempo the lights go by: heard from the set, or tapped.
+    const b = s.beats;
+    const heard =
+      s.tap ? `🥁 ${Math.round(s.tap.bpm)} BPM, tapped at the booth`
+      : b?.status === 'ready' ? `🥁 ${Math.round(b.bpm ?? 0)} BPM: the lights go by the set's own beat`
+      : b?.status === 'pending' ? '🥁 listening to the set for its beat…'
+      : b?.status === 'failed' ? `🥁 couldn't hear the set's beat (${b.why ?? 'no reason'}): tap it in`
+      : '🥁 tap the beat in for the lights';
+    tempo.replaceChildren(
+      h('span.grow', {}, tapping || heard),
+      h('button.btn', { type: 'button', title: 'Tap on every beat, four times or more (T)', onclick: tapOnce }, '🥁 Tap'),
+      ...(s.tap ? [h('button.btn', { type: 'button', title: "Back to the beat the office heard in the set", onclick: () => o.untap() }, "↺ The set's own beat")] : []),
+    );
+    tempo.classList.toggle('hidden', !set);
+    // The party's volume, unless it's under your hand right now.
+    const level = s.volume ?? 1;
+    if (level > 0) unmuted = level;
+    if (Date.now() > handsOnUntil) paintParty(level);
+    partyNote.textContent = [s.volumeBy && `Set by ${s.volumeBy}.`, host ? 'The house DJ and every set play at this for everyone up here; your own volume comes on top. Past 100% it gets louder for everyone and carries across the whole terrace; 200% is Disco.' : 'The hosts set it for everyone up here.']
+      .filter(Boolean)
+      .join(' ');
   };
+  function tapOnce() {
+    const bpm = o.tap();
+    tapping = bpm ? `🥁 ${Math.round(bpm)} BPM… (stop tapping to send it)` : 'keep tapping on the beat…';
+    clearTimeout(tapDone);
+    tapDone = window.setTimeout(() => ((tapping = ''), render()), 2000);
+    render();
+  }
 
   const send = () => {
     const r = parseDjSetUrl(url.value);
@@ -98,11 +198,15 @@ export function openDjBooth(o: DjBoothOptions) {
     if (e.key === 'Enter') send();
   });
   horn.addEventListener('click', () => o.horn());
-  // H blows it here too, as at the booth (not while typing a link).
+  // H blows it here too, as at the booth, and T taps the tempo (not while typing a link).
   el.addEventListener('keydown', (e) => {
-    if (e.code === 'KeyH' && e.target !== url && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    if (e.target === url || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.code === 'KeyH') {
       e.preventDefault();
       o.horn();
+    } else if (e.code === 'KeyT' && !e.repeat && o.player.current().set) {
+      e.preventDefault();
+      tapOnce();
     }
   });
 

@@ -8,6 +8,7 @@ import { normalizeRepo, sameRepo } from '../shared/floors.js';
 import type { RepoChoice } from '../shared/protocol.js';
 import { Building, tildify } from './building.js';
 import { officeHome, type Config } from './config.js';
+import { OFFICE_NAME } from '../shared/brand.js'; // flrnoh fork
 
 // Setting up an office from its terminal: where projects are cloned, signing the GitHub CLI in, and
 // picking the first repositories to clone as floors. A new office walks you through it the first time
@@ -56,7 +57,7 @@ export async function welcome(cfg: Config): Promise<void> {
   // --projects is the answer to the first question (the office applies it again as it starts).
   const folderGiven = !!cfg.projects && !building.setProjectsDir(cfg.projects, 'the command line');
   console.log(`
-  👋 Welcome to Agent Office!
+  👋 Welcome to ${OFFICE_NAME}!
 
   Every project is a floor of the building, and this one doesn't have any yet.
   Let's add your first: pick one of your GitHub repositories and the office

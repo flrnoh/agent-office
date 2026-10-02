@@ -21,7 +21,7 @@ Back to the [README](../README.md).
 | F | Hang a picture from the web on a wall (scroll to size it, click to hang it); falling on the bungee rope, a salto |
 | Q | Put back the issue card you're carrying, or drop the basketball; on the pitch in the soccer hall, a slide tackle (so does **Ctrl**) |
 | H | These controls; in a car, honk the horn; on a jetski, the motorboat or the Baumarkt’s forklift, its horn; at the DJ booth on the roof, blow the air horn |
-| T / Enter | Chat |
+| T / Enter | Chat; in the DJ booth's window, T taps the set's tempo in for the lights |
 | G / 1–6 | Emote: hold G for the wheel (point and let go) or press 1–6 to wave, give a thumbs up, clap, dance, point or facepalm; everyone on your floor sees it |
 | / | Search the chat and every terminal on your floor |
 | Ctrl + K (⌘K on a Mac) | Command palette: find a worker, issue, PR, service, board, teammate or action; Enter opens it, Shift+Enter walks you there first |

@@ -206,6 +206,8 @@ export const roofExtras = (ctx: Ctx): Partial<FloorView> => ({ dj: ctx.djBooth.s
 export function startFork(ctx: Ctx) {
   ctx.turn.start();
   ctx.minigolf.start();
+  // The office has heard the DJ set that's on (or couldn't): the roof's lights go by its beats.
+  ctx.djBooth.onBeats = () => ctx.toRoof({ t: 'dj', state: ctx.djBooth.state() });
 }
 
 export function stopFork(ctx: Ctx) {

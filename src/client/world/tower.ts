@@ -5,6 +5,7 @@ import type { Collider } from './types';
 import type { Fixture } from './office/fixture';
 import { bulb, type NightParts } from './outside';
 import { mergeByMaterial, mesh, toon, toonUnique } from './toon';
+import { PALETTE } from './office/materials'; // fork
 
 // The rest of the building, from outside: a floor per project, stacked into a tower. Only the floor
 // you're on is really there; the others are its outside (walls, windows, a balcony off each, a
@@ -66,7 +67,7 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
     m.userData.outlineParameters = { visible: false };
     return m;
   };
-  const paint = flat('#e07a5f');
+  const paint = flat(PALETTE.exterior); // fork: the facade's anthracite (world/facade/)
   const band = flat('#e8a87c');
   const frame = toon('#ffffff');
   const alu = toon('#aab4be');
@@ -266,7 +267,7 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
 
     // Parasols along the south edge, over the sun loungers.
     for (const x of [-0.8, 2]) {
-      const z = FLOOR.maxZ - 1.1;
+      const z = FLOOR.maxZ - 1.9; // fork: clear of the letters on the parapet (world/facade/)
       box(0.08, 2.6, 0.08, counter, x, y, z);
       parts.add(mesh(new THREE.ConeGeometry(1.5, 0.5, 12), parasol, x, y + 2.6, z, false));
     }

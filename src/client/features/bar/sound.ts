@@ -3,6 +3,7 @@ import { DjPlayer } from '../../dnb';
 import type { AudioCore } from '../../sound/core';
 import { biquad, envelope, rand } from '../../sound/dsp';
 import type { Pos } from '../../sound/places';
+import { partyDrive, partyFalloff, partyLift } from '../../sound/party'; // flrnoh fork
 
 // The rooftop bar: the DJ's set, the air horn, drinks poured, and one too many.
 
@@ -13,6 +14,11 @@ export class Dj {
   /** How far into the DJ's set it is (see djTime), while you're up there. */
   private djClock: (() => number) | null = null;
   private djTimer = 0;
+  /** flrnoh fork: the party's volume, set at the booth for everyone on the roof. */
+  private party!: GainNode;
+  private lift!: GainNode;
+  private partyLevel = 1;
+  private partyMusic = 0.25;
 
   constructor(private readonly a: AudioCore) {}
 
@@ -20,7 +26,37 @@ export class Dj {
   connect(musicBus: GainNode) {
     // Loud enough to hear from anywhere on the roof, and loudest on the dance floor.
     this.djIn = this.a.panner({ x: DJ_BOOTH.x, y: 2.2, z: DJ_BOOTH.z }, 7, 0.8);
-    this.djIn.connect(musicBus);
+    // fork: the party's volume, a limiter, and the lift past 100% (sound/party.ts).
+    const ctx = this.a.ctx!;
+    this.party = ctx.createGain();
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -1;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.002;
+    limiter.release.value = 0.12;
+    this.lift = ctx.createGain();
+    this.djIn.connect(this.party).connect(limiter).connect(this.lift).connect(musicBus);
+    this.applyParty(true);
+  }
+
+  /** flrnoh fork: the party's volume (0–2, see sound/party.ts), set at the booth for everyone; `musicGain` is your own music volume. */
+  setPartyVolume(level: number, musicGain: number) {
+    this.partyLevel = level;
+    this.partyMusic = musicGain;
+    this.applyParty(false);
+  }
+
+  /** Eased in, so a slider doesn't crackle. */
+  private applyParty(now: boolean) {
+    if (!this.party) return;
+    const t = this.a.ctx!.currentTime;
+    const set = (p: AudioParam, v: number) => (now ? (p.value = v) : p.setTargetAtTime(v, t, 0.05));
+    set(this.party.gain, partyDrive(this.partyLevel));
+    set(this.lift.gain, partyLift(this.partyLevel, this.partyMusic));
+    const f = partyFalloff(this.partyLevel);
+    this.djIn.refDistance = f.ref;
+    this.djIn.rolloffFactor = f.rolloff;
   }
 
   /** The DJ's set on the roof, `clock` saying how far into it it is (see djTime); null stops it. */

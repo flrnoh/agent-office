@@ -32,6 +32,8 @@ import type { Fixture, Gives, Site } from './fixture';
 import { casinoOut, gymOut, hallOut, rig, soccerOut } from './fork'; // flrnoh fork
 import { town } from '../town'; // flrnoh fork: the city round the office
 import { interior } from './interior'; // flrnoh fork: each storey its own interior
+import { facade } from '../facade'; // flrnoh fork: the building's outside, for creatives
+import { poolFromBelow } from '../../features/roofpool/below'; // flrnoh fork: the roof's pool, from down here
 import { baumarkt } from '../baumarkt'; // flrnoh fork: the Baumarkt on its block
 import { kino } from '../kino'; // flrnoh fork: the cinema
 import { tankstelle } from '../tankstelle'; // flrnoh fork: the petrol station
@@ -57,6 +59,8 @@ function floorPlan() {
     ...downstairs(cars, street, town, kino, baumarkt, casinoOut, gymOut, hallOut, soccerOut, bowlingOut, green, scenic, tankstelle, church), // fork: town, kino, baumarkt, casinoOut … soccerOut, bowlingOut, tankstelle, church
     plug,
     tower,
+    facade, // fork: murals, fins, the storeys' bands, the signs on the building
+    poolFromBelow, // fork
     desks,
     beanbags,
     kiosks,

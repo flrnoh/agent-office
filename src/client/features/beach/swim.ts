@@ -114,8 +114,15 @@ export class Sea {
       const swim = this.depth >= SWIM_SINK * 0.75;
       const speed = swim ? (fast ? SWIM_FAST : SWIM) : WALK * (1 - (0.55 * this.depth) / SWIM_SINK) * (fast ? 1.3 : 1);
       p.grounded = false;
+      // What's in your way as at the surface: down in the water your feet are in the ground under
+      // the street (a slab right across the world, the sea too), and stuck in it you could only
+      // ever get out toward its far edge, out to sea, never back ashore. The pier, the lighthouse,
+      // the buoys' line and the like stand up out of the water and still stop you.
+      const sunk = p.pos.y;
+      p.pos.y = this.street;
       stepTo(p, p.pos.x + dx * speed * dt, p.pos.z);
       stepTo(p, p.pos.x, p.pos.z + dz * speed * dt);
+      p.pos.y = sunk;
       if (p.view === 'third') {
         const want = Math.atan2(dx, dz);
         p.facing += Math.atan2(Math.sin(want - p.facing), Math.cos(want - p.facing)) * Math.min(1, dt * 8);

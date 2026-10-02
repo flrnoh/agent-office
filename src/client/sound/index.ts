@@ -340,6 +340,7 @@ export class OfficeSound {
   /** Your own jukebox volume, 0–1, apart from the office sounds'. */
   setMusicVolume(volume: number, muted: boolean) {
     this.music.setMusicVolume(volume, muted);
+    this.dj.setPartyVolume(this.partyLevel, this.music.musicGain()); // flrnoh fork: the lift past 100% goes by it
   }
 
   /** 1 on each beat of the tune, falling to 0 before the next, for the jukebox's lights. */
@@ -364,9 +365,16 @@ export class OfficeSound {
     return this.music.speakers.level;
   }
 
-  /** How loud a DJ set in an embedded player (client/djset.ts) is where you stand, 0–1 (screens.ts). */
+  /** The party's volume on the roof (0–1), set at the DJ booth for everyone: the house DJ's and the sets'. */
+  setPartyVolume(v: number) {
+    this.partyLevel = v;
+    this.dj.setPartyVolume(v, this.music.musicGain());
+  }
+  private partyLevel = 1;
+
+  /** How loud a DJ set in an embedded player (client/djset.ts) is where you stand, 0–1 (screens.ts), at the party's volume. */
   djSetVolume(): number {
-    return djSetVolume(this.a, this.music.musicGain());
+    return djSetVolume(this.a, this.music.musicGain(), this.partyLevel);
   }
 
   /** How loud a stream on the office TV (client/tv.ts) at `at` is where you stand, 0–1 (screens.ts). */

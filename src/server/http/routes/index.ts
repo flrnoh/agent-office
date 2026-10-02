@@ -30,6 +30,7 @@ export const routes: readonly Route[] = [
   agentRoutes.openCodeModels,
   agentRoutes.grokModels,
   forkRoutes.radio, // flrnoh fork: the jukebox's radio
+  forkRoutes.djBeats, // flrnoh fork: the DJ set's beats, for the roof's lights
   fileRoutes.image,
   fileRoutes.whiteboardFile,
   fileRoutes.termDrop,
