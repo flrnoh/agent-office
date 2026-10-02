@@ -23,32 +23,37 @@ declare module '../types' {
     machineScreen: THREE.Mesh;
     /** The potted plants round the room, in PLANTS' order. At Christmas world/holiday.ts hides their leaves (plantLeaves()) and stands a little tree in each pot. */
     plants: THREE.Group[];
+    /** flrnoh fork: what lies under each desk pod, in DESKS' pod order, moved under its pod on every storey (the interior fills them). */
+    rugs: THREE.Group[];
+    /** flrnoh fork: the cone lamps hanging over the pods and the lounge (an interior with lamps of its own hides them), and where they hang. */
+    pendants: { group: THREE.Group; at: readonly (readonly [number, number])[]; y: number };
   }
 }
 
 /** Rugs under each desk cluster. */
-export const rugs: Fixture = (site) => {
+export const rugs: Fixture<'rugs'> = (site) => {
+  // flrnoh fork: each storey lays its desks out its own way (shared/storey.ts), and each rug goes under
+  // its four (turned with them, when the storey turns their pod). What lies there is the storey's
+  // interior's (world/office/interior/), which fills these.
   const laid = [
     [-10.5, -4],
     [-1.5, -4],
     [-10.5, 4],
     [-1.5, 4],
   ].map(([x, z], i) => {
-    const rug = mesh(roundedBox(6.2, 0.02, 4.6, 0.6), toon(PALETTE.rugs[i]), x, 0.011, z, false);
+    const rug = new THREE.Group();
+    rug.position.set(x, 0, z);
+    rug.add(mesh(roundedBox(6.2, 0.02, 4.6, 0.6), toon(PALETTE.rugs[i]), 0, 0.011, 0, false));
     site.group.add(rug);
     return rug;
   });
-  // flrnoh fork: each storey lays its desks out its own way (shared/storey.ts), and each rug goes under
-  // its four (turned with them, when the storey turns their pod), in that storey's colors.
   const setLevel = (index: number) =>
     laid.forEach((rug, i) => {
-      const plan = storeyPlan(index);
       const [x, z] = podMiddle(index, i);
-      rug.position.set(x, 0.011, z);
-      rug.rotation.y = plan.podTurns[i];
-      rug.material = toon(PALETTE.rugs[(i + plan.rugShift) % PALETTE.rugs.length]);
+      rug.position.set(x, 0, z);
+      rug.rotation.y = storeyPlan(index).podTurns[i];
     });
-  return { setLevel };
+  return { setLevel, handle: { rugs: laid } };
 };
 
 /** flrnoh fork: the middle of pod `i` (four desks, see DESKS) on floor `index`, as that storey lays it out. */
@@ -192,22 +197,25 @@ export const plants: Fixture<'plants'> = (site) => {
 };
 
 /** Ceiling lamps (cartoon pendants), hung on long cords down from the high ceiling. */
-export const lamps: Fixture = (site) => {
+export const lamps: Fixture<'pendants'> = (site) => {
   const night = site.get('night');
   const lampY = 4.05;
-  for (const [x, z] of [
+  const group = new THREE.Group(); // flrnoh fork: together, for an interior to swap
+  const at = [
     [-10.5, -4],
     [-1.5, -4],
     [-10.5, 4],
     [-1.5, 4],
     [13, 0],
-  ]) {
+  ] as const;
+  for (const [x, z] of at) {
     const lamp = pendant(WALL_HEIGHT - lampY);
     lamp.position.set(x, lampY, z);
-    site.group.add(lamp);
+    group.add(lamp);
     night.halos.push({ at: new THREE.Vector3(x, lampY - 0.12, z), size: 1.3, color: '#ffe08a' });
   }
-  return {};
+  site.group.add(group);
+  return { handle: { pendants: { group, at, y: lampY } } };
 };
 
 /**

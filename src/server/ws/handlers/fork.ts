@@ -5,6 +5,7 @@ import { ROOF } from '../../../shared/rooftop.js';
 import { HALL } from '../../../shared/hall.js';
 import { OFFICE_MAP } from '../../../shared/maps/index.js';
 import { reorderMap } from '../../../shared/floor-order.js';
+import { interiorFor } from '../../../shared/interiors.js';
 import type { Ctx } from '../../office/context.js';
 import type { Client } from '../../office/client.js';
 import { djMessage } from '../../djset.js';
@@ -187,6 +188,16 @@ export const forkHandlers = {
     reorderMap(ctx.floors, ids);
     ctx.floorsChanged();
     ctx.toastAll(`🛗 ${c.peer.name} rearranged the floors`);
+  },
+  'floor.interior'(ctx, c, msg) {
+    // Each storey its own interior (see FORK.md): interiors.json keeps the pick, everyone's elevator list carries it.
+    if (!ctx.meOf(c.accountId).admin) return ctx.warn(c, 'Only admins can refurnish a floor');
+    const floor = typeof msg.id === 'string' ? ctx.floors.get(msg.id) : undefined;
+    const interior = msg.interior === null ? null : typeof msg.interior === 'string' ? msg.interior : undefined;
+    if (!floor || interior === undefined || !ctx.interiors.set(floor.id, interior)) return ctx.sendTo(c, { t: 'floors', floors: ctx.floorInfos() });
+    ctx.floorsChanged();
+    const style = interiorFor(0, interior);
+    ctx.toastAll(interior ? `${style.emoji} ${c.peer.name} furnished ${floor.def.name} as ${style.name}` : `🛋️ ${c.peer.name} put ${floor.def.name} back to its own furnishing`);
   },
 } satisfies HandlerMap<ForkClientMsg>;
 

@@ -18,7 +18,7 @@ import { hoop } from '../../features/basketball/world';
 import { kitchen } from '../kitchen';
 import { signs } from '../desksigns';
 import type { Collider, DeskView, Interactable, Office, OfficeHandles } from '../types';
-import { PALETTE, floorTexture, paintPlanks, type Looks } from './materials';
+import { PALETTE, floorTexture, type Looks } from './materials';
 import { boards, clearOfStairs, lamps, lounge, machineMonitor, nightLights, plants, rugs, tv } from './room';
 import { plug, type Door } from './shell';
 import { storeyWalls } from './storey-walls'; // flrnoh fork: each storey's windows, balcony doors and accent wall
@@ -31,6 +31,7 @@ import { loft } from './loft';
 import type { Fixture, Gives, Site } from './fixture';
 import { casinoOut, gymOut, hallOut, rig, soccerOut } from './fork'; // flrnoh fork
 import { town } from '../town'; // flrnoh fork: the city round the office
+import { interior } from './interior'; // flrnoh fork: each storey its own interior
 import { baumarkt } from '../baumarkt'; // flrnoh fork: the Baumarkt on its block
 import { kino } from '../kino'; // flrnoh fork: the cinema
 import { tankstelle } from '../tankstelle'; // flrnoh fork: the petrol station
@@ -80,6 +81,7 @@ function floorPlan() {
     hoop,
     whiteboard,
     clearOfStairs,
+    interior, // fork: last, so everything it furnishes is built
   ] as const;
 }
 
@@ -140,14 +142,8 @@ export function buildOffice(): Office {
     if (built.setLevel) levels.push(built.setLevel);
   }
 
-  const setLook = (p: FloorPalette) => {
-    looks.wall.color.set(p.wall);
-    looks.trim.color.set(p.trim);
-    for (const t of looks.planks) {
-      paintPlanks(t.image as HTMLCanvasElement, p);
-      t.needsUpdate = true;
-    }
-  };
+  // flrnoh fork: the floor's interior paints over its palette (world/office/interior/).
+  const setLook = (p: FloorPalette) => given.interior!.setLook(p);
 
   const setLevel = (index: number, count: number, wings: readonly number[] = []) => {
     for (const level of levels) level(index, count, wings);

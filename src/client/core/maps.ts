@@ -20,13 +20,16 @@ export function installMaps(ctx: Ctx, core: CoreState, parts: MapsParts) {
   const { holiday } = parts.stage;
   const { inOffice, plan } = parts.worlds;
 
-  /** Which of the floor palettes the walls are painted in now. */
-  let painted = -1;
+  /** Which of the floor palettes the walls are painted in now, and (fork) which interior was picked for the floor. */
+  let painted = '';
   function paintFloor() {
-    const p = store.currentFloor()?.palette ?? 0;
-    if (p === painted) return;
-    painted = p;
+    const f = store.currentFloor();
+    const p = f?.palette ?? 0;
+    const key = `${p}|${f?.interior ?? ''}`;
+    if (key === painted) return;
+    painted = key;
     ctx.world().setLook(floorPalette(p));
+    ctx.world().setInterior?.(f?.interior); // fork: shared/interiors.ts
   }
   // A brand-new floor can arrive before the elevator's list says what color it is.
   store.on('floors', paintFloor);
@@ -80,7 +83,7 @@ export function installMaps(ctx: Ctx, core: CoreState, parts: MapsParts) {
     parts.dog.root.visible = inOffice() && !!store.dog;
     parts.jukebox.playJukebox();
     boards.dressBoards(world);
-    painted = -1;
+    painted = '';
     paintFloor();
     parts.arrival.renderProject();
     views.dressUp();

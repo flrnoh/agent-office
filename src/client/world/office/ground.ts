@@ -21,6 +21,7 @@ export function downstairs<P extends Fixture<never, StreetSite>[]>(...parts: P):
   /** The exit door and the steps down from it, the posts under the balcony, and the garage. */
   const down: Fixture = (site) => {
     const ground = new THREE.Group();
+    ground.userData.outdoors = true; // fork: no interior recolors it (world/office/interior/)
     const groundColliders: Collider[] = [];
     const outlook = new THREE.Group(); // fork: what the roof borrows to look out at (world/town/)
     ground.add(outlook);

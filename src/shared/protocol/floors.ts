@@ -51,6 +51,8 @@ export interface FloorInfo {
   branch?: string;
   /** Which of FLOOR_PALETTES it's painted in. */
   palette: number;
+  /** flrnoh fork: the interior an admin picked for it (shared/interiors.ts, kept in interiors.json); none, the one its place in the stack gives it. */
+  interior?: string;
   /** Being cloned: on the elevator panel, but nobody can go there yet. */
   cloning?: boolean;
   /** How the clone is getting on, once git says. */
