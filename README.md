@@ -337,6 +337,7 @@ deploy/dokploy.sh ssh 'node /opt/agent-office/bin/agent-office.js accounts invit
 | T / Enter | Chat |
 | V | Join voice; then hold V to talk |
 | M | Mute / unmute in voice |
+| B (on the roof) | Dance on the beat: 1–0, Q / E pick a move, F Freestyle, B stops |
 | , / . | Your Hörkreis smaller / bigger: only who stands in it hears you |
 | Tab | The ☰ menu: every window |
 | Esc | Close any window |

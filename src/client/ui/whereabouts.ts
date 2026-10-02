@@ -8,6 +8,7 @@ import { GALLERY, HALL } from '../../shared/hall'; // fork
 import { SOCCER } from '../../shared/soccer'; // fork
 import { BOWLING } from '../../shared/bowling'; // fork
 import { bowlingWhereabouts } from '../../shared/bowling-house'; // fork
+import { danceWhereabouts } from '../../shared/dance'; // fork
 import { CARS, type CarSeat } from '../../shared/garage';
 import { seatOn, type MapPlan } from '../../shared/maps';
 import { store } from '../state';
@@ -42,6 +43,7 @@ export function whereabouts(p: PeerInfo, car?: { car: number; seat: CarSeat }, p
     return `${icon} ${seat.game ? 'in' : 'on'} the ${name.join(' ').toLowerCase()}`;
   }
   // The roof is the office's size, but none of its rooms are up there.
+  if (p.floor === ROOF && p.dance) return danceWhereabouts(p.dance); // fork: dancing on the roof
   if (p.floor === ROOF) return onTheRoof(p);
   if (p.floor === CASINO) return '🎰 in the casino'; // fork (client/casino.ts)
   if (p.floor === GYM) return '🏋️ in the gym'; // fork (client/gym.ts)

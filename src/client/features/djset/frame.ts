@@ -1,5 +1,6 @@
 import { BEAT_PARTS, beatTimes, fromBase64, type BeatPart, type DjBeats } from '../../../shared/djbeats';
 import type { DjFrame } from '../../dnb';
+import type { WallVideo } from '../rooftop/ledwall';
 
 /*
  * The roof's frame for a DJ set someone put on (flrnoh fork, see FORK.md): the same DjFrame the house
@@ -8,8 +9,8 @@ import type { DjFrame } from '../../dnb';
  * until either, a steady groove at a house tempo.
  */
 
-/** The frame, with the set's tempo and title for the LED wall (rooftop/ledwall.ts). */
-export type SetFrame = DjFrame & { bpm: number; title?: string };
+/** The frame, with the set's tempo, title and video for the LED wall (rooftop/ledwall.ts). */
+export type SetFrame = DjFrame & { bpm: number; title?: string; video?: WallVideo };
 
 /** A tempo when nothing better's known. */
 const GUESS_BPM = 124;
