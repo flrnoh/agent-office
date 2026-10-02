@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { LANE_Y } from '../../../shared/minigolf';
 import { BRIDGE, BUMPERS, PLANET, TOWER, VOLCANO } from '../../../shared/minigolf-holes';
 import { BALL_R, heightAt, loopPoint, sailAngle, slideAt, spinAngle, type Loop } from '../../../shared/minigolf-physics';
 import type { Collider } from '../../world/types';
@@ -55,7 +54,7 @@ export function buildObstacles(holes: HoleView[]): Obstacles {
           [2.6, -3.6, 1.8],
         ] as const) {
           const trunk = new THREE.CylinderGeometry(0.06, 0.1, h, 8, 4);
-          trunk.translate(x, h / 2 - LANE_Y, z);
+          trunk.translate(x, h / 2 - v.def.base, z);
           add.baked(trunk, '#3b2a12');
           for (let i = 0; i < 4; i++) {
             const ring = new THREE.TorusGeometry(0.085 - i * 0.006, 0.01, 4, 12);
@@ -69,12 +68,12 @@ export function buildObstacles(holes: HoleView[]): Obstacles {
             leaf.rotateX(Math.PI / 2 + 0.5);
             leaf.translate(0, -0.1, 0.5);
             leaf.rotateY(a);
-            leaf.translate(x, h - LANE_Y, z);
+            leaf.translate(x, h - v.def.base, z);
             add.add(leaf, unlit(i % 2 ? '#39ff14' : '#00ffb3'));
           }
         }
         const tiki = new THREE.BoxGeometry(0.4, 0.7, 0.2);
-        tiki.translate(0.3, 0.35 - LANE_Y, -3.2);
+        tiki.translate(0.3, 0.35 - v.def.base, -3.2);
         add.baked(tiki, '#1c1206');
         for (const [ex, color] of [
           [-0.09, '#fffb00'],
@@ -82,7 +81,7 @@ export function buildObstacles(holes: HoleView[]): Obstacles {
         ] as const) {
           const eye = new THREE.CircleGeometry(0.05, 12);
           eye.rotateY(-Math.PI / 2);
-          eye.translate(0.3 - 0.101, 0.48 - LANE_Y, -3.2 + ex);
+          eye.translate(0.3 - 0.101, 0.48 - v.def.base, -3.2 + ex);
           add.add(eye, unlit(color));
         }
         colliders.push(boxIn(v, 1.35, 1.65, -4.45, -4.15, 2), boxIn(v, 2.45, 2.75, -3.75, -3.45, 2));
@@ -100,8 +99,8 @@ export function buildObstacles(holes: HoleView[]): Obstacles {
           g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
           body.baked(g, color, glowK);
         };
-        wall(-0.75, -0.13, -LANE_Y, 0.95, back, front, '#3a1a8c');
-        wall(0.13, 0.75, -LANE_Y, 0.95, back, front, '#3a1a8c');
+        wall(-0.75, -0.13, -v.def.base, 0.95, back, front, '#3a1a8c');
+        wall(0.13, 0.75, -v.def.base, 0.95, back, front, '#3a1a8c');
         wall(-0.13, 0.13, 0.32, 0.95, back, front, '#3a1a8c');
         // A roof, glowing windows and a door frame.
         const roof = new THREE.ConeGeometry(0.85, 0.55, 4, 1);
@@ -162,11 +161,11 @@ export function buildObstacles(holes: HoleView[]): Obstacles {
         const lava = lavaTexture();
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.8), new THREE.MeshBasicMaterial({ map: lava }));
         floor.rotation.x = -Math.PI / 2;
-        floor.position.set(0, -LANE_Y + 0.01, -4.4);
+        floor.position.set(0, -v.def.base + 0.022, -4.4);
         pit.add(floor);
         const glowBox = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.8), halo('#ff7a00', 0.4));
         glowBox.rotation.x = -Math.PI / 2;
-        glowBox.position.set(0, -LANE_Y + 0.06, -4.4);
+        glowBox.position.set(0, -v.def.base + 0.06, -4.4);
         pit.add(glowBox);
         v.group.add(pit);
         ticks.push((t) => (lava.offset.set(Math.sin(t * 0.3) * 0.05, t * 0.04)));
@@ -275,7 +274,7 @@ export function buildObstacles(holes: HoleView[]): Obstacles {
         const { from, to } = BRIDGE;
         const bed = new THREE.Mesh(new THREE.PlaneGeometry(1.0, from - to), new THREE.MeshBasicMaterial({ map: reefTexture() }));
         bed.rotation.x = -Math.PI / 2;
-        bed.position.set(0, -LANE_Y + 0.01, (from + to) / 2);
+        bed.position.set(0, -v.def.base + 0.022, (from + to) / 2);
         v.group.add(bed);
         const sea = new THREE.Mesh(new THREE.PlaneGeometry(1.0, from - to), halo('#00e5ff', 0.22));
         sea.rotation.x = -Math.PI / 2;
@@ -316,8 +315,8 @@ export function buildObstacles(holes: HoleView[]): Obstacles {
           [-0.5, -5.6],
           [0.5, -5.6],
         ] as const) {
-          const pillar = new THREE.BoxGeometry(0.05, TOWER.deck + LANE_Y, 0.05);
-          pillar.translate(x, (TOWER.deck - LANE_Y) / 2, z);
+          const pillar = new THREE.BoxGeometry(0.05, TOWER.deck + v.def.base, 0.05);
+          pillar.translate(x, (TOWER.deck - v.def.base) / 2, z);
           add.add(pillar, unlit(glow));
         }
         colliders.push(boxIn(v, -0.55, 0.55, TOWER.end, TOWER.rampTo, 0.5));
@@ -327,8 +326,8 @@ export function buildObstacles(holes: HoleView[]): Obstacles {
         // Mushroom bumpers that flash when they kick, the spinner, lights in the table.
         for (const b of BUMPERS) {
           const y = heightAt(c.surfaces[0].h, b.x, b.z)[0];
-          const stem = new THREE.CylinderGeometry(b.r * 0.8, b.r * 0.9, 0.1 + LANE_Y, 20);
-          stem.translate(b.x, y + 0.05 - LANE_Y / 2, b.z);
+          const stem = new THREE.CylinderGeometry(b.r * 0.8, b.r * 0.9, 0.1 + v.def.base, 20);
+          stem.translate(b.x, y + 0.05 - v.def.base / 2, b.z);
           add.baked(stem, '#2a0d3a');
           const mat = new THREE.MeshBasicMaterial({ color: '#ff2bd6' });
           const capGeo = new THREE.CylinderGeometry(b.r * 1.15, b.r * 1.2, 0.05, 20);

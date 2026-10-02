@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import { HOLES, toRoom } from '../../../shared/minigolf-holes';
-import { LANE_Y, cardTotal, toPar, type MgEvent, type MgView } from '../../../shared/minigolf';
+import { cardTotal, toPar, type MgEvent, type MgView } from '../../../shared/minigolf';
 import type { BallEvent } from '../../../shared/minigolf-physics';
 import type { OfficeSound } from '../../sound';
 import type { Confetti } from '../../world/confetti';
@@ -66,7 +66,7 @@ export function showEvent(e: MgEvent, view: MgView, d: ShowDeps) {
   const cupOf = (hole: number) => {
     const def = HOLES[hole - 1];
     const at = toRoom(def, def.course.cup.x, def.course.cup.z);
-    return d.toWorld(at.x, LANE_Y + 0.3, at.z);
+    return d.toWorld(at.x, def.base + 0.3, at.z);
   };
   switch (e.k) {
     case 'ace': {

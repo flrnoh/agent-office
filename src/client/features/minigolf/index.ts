@@ -6,9 +6,9 @@
  */
 import * as THREE from 'three';
 import { BOWLING } from '../../../shared/bowling';
-import { HOLES, toHole, toRoom, type HoleDef } from '../../../shared/minigolf-holes';
+import { HOLES, toRoom, type HoleDef } from '../../../shared/minigolf-holes';
 import { inPoly, sailAngle, simulate } from '../../../shared/minigolf-physics';
-import { LANE_Y, MG_BOARD, MG_ROOM, MG_STAND, clockSec, type MgMine, type MgPlayer, type MgShot, type MgView } from '../../../shared/minigolf';
+import { MG_BOARD, MG_ROOM, MG_STAND, clockSec, type MgMine, type MgPlayer, type MgShot, type MgView } from '../../../shared/minigolf';
 import type { Ctx } from '../../core/context';
 import { aside, hintTitle, key } from '../../core/hint';
 import { DESK_KEYS } from '../../interaction';
@@ -19,7 +19,7 @@ import type { Interactable } from '../../world/types';
 import { addBowlingPart, type BowlingRoom } from '../../world/bowling/parts';
 import { drawBoard } from './board';
 import { Balls } from './balls';
-import { buildHole, feltAt, type HoleView } from './course';
+import { buildHole, type HoleView } from './course';
 import { buildObstacles, type Obstacles } from './obstacles';
 import { Putter } from './putting';
 import { buildRoom, type MinigolfRoom } from './room';
@@ -121,7 +121,7 @@ export function installMinigolf(ctx: Ctx, deps: MinigolfDeps) {
       built.balls.shoot(shot, true);
       ctx.net.send({ t: 'mg.putt', hole: def.n, dir, power, at });
       const p = toRoom(def, from.x, from.z);
-      ctx.sound.minigolf('putt', toWorld(new THREE.Vector3(p.x, LANE_Y, p.z)), power);
+      ctx.sound.minigolf('putt', toWorld(new THREE.Vector3(p.x, def.base, p.z)), power);
     },
     pickup: () => ctx.net.send({ t: 'mg.pickup' }),
     toWorld,
@@ -369,7 +369,7 @@ export function installMinigolf(ctx: Ctx, deps: MinigolfDeps) {
     }
     const def = HOLES[s.hole - 1];
     const at = toRoom(def, s.from.x, s.from.z);
-    setTimeout(() => ctx.sound.minigolf('putt', toWorld(new THREE.Vector3(at.x, LANE_Y, at.z)), s.power), 380);
+    setTimeout(() => ctx.sound.minigolf('putt', toWorld(new THREE.Vector3(at.x, def.base, at.z)), s.power), 380);
   });
 
   // ---- Every frame ------------------------------------------------------------------------------------
@@ -394,7 +394,7 @@ export function installMinigolf(ctx: Ctx, deps: MinigolfDeps) {
       if (!p) return null;
       const def = HOLES[pipe.hole - 1];
       const at = toRoom(def, p.x, p.z);
-      return new THREE.Vector3(at.x, LANE_Y + p.y, at.z);
+      return new THREE.Vector3(at.x, def.base + p.y, at.z);
     })());
     for (const p of view?.players ?? []) {
       if (p.id === store.you) continue;
@@ -404,7 +404,7 @@ export function installMinigolf(ctx: Ctx, deps: MinigolfDeps) {
       if (q) {
         const def = HOLES[ip.hole - 1];
         const at = toRoom(def, q.x, q.z);
-        built.balls.showInPipe(p.id, new THREE.Vector3(at.x, LANE_Y + q.y, at.z));
+        built.balls.showInPipe(p.id, new THREE.Vector3(at.x, def.base + q.y, at.z));
       }
     }
     const myBall = built.balls.where(store.you);
@@ -457,7 +457,7 @@ export function installMinigolf(ctx: Ctx, deps: MinigolfDeps) {
       const q = Math.floor(sailAngle(m, t) / (Math.PI / 2));
       if (q !== sailQuarter) {
         const hub = toRoom(mill, m.x, m.z);
-        if (sailQuarter >= 0 && Math.hypot(hub.x - p.x, hub.z - p.z) < 7) ctx.sound.minigolf('whoosh', toWorld(new THREE.Vector3(hub.x, LANE_Y + 0.3, hub.z)), 0.6);
+        if (sailQuarter >= 0 && Math.hypot(hub.x - p.x, hub.z - p.z) < 7) ctx.sound.minigolf('whoosh', toWorld(new THREE.Vector3(hub.x, mill.base + 0.3, hub.z)), 0.6);
         sailQuarter = q;
       }
     }
@@ -469,7 +469,9 @@ export function installMinigolf(ctx: Ctx, deps: MinigolfDeps) {
       return view;
     },
     lie,
-    feltAt,
-    toHole,
+    /** Over your ball (as E along your hole does), and the putter (for checks from the console). */
+    address,
+    putter,
+    ui,
   };
 }

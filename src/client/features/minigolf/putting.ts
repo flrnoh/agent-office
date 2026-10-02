@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LANE_Y, MG_ROOM } from '../../../shared/minigolf';
+import { MG_ROOM } from '../../../shared/minigolf';
 import { headingToHole, headingToRoom, toRoom, type HoleDef } from '../../../shared/minigolf-holes';
 import { BALL_R, wrapAngle } from '../../../shared/minigolf-physics';
 import { isTyping, type PlayerController } from '../../player';
@@ -61,6 +61,9 @@ export class Putter {
   private camPos = new THREE.Vector3();
   private camQuat = new THREE.Quaternion();
   private chaseDir = 0;
+  /** Where the ball was last seen while watching it. */
+  private seen = new THREE.Vector3();
+  private seenAny = false;
   /** The aim line on the felt: shown while aiming. */
   readonly guide: THREE.Mesh;
 
@@ -196,6 +199,7 @@ export class Putter {
       this.stage = 'watch';
       this.watchedAt = 0;
       this.chaseDir = this.aim;
+      this.seenAny = false;
       if (this.def) this.hooks.putt(this.def, wrap(headingToHole(this.def, this.aim)), power);
       this.hooks.changed();
     }
@@ -219,7 +223,7 @@ export class Putter {
     this.guide.visible = !!lie;
     if (!lie) return;
     const at = toRoom(lie.def, lie.x, lie.z);
-    this.guide.position.set(at.x, LANE_Y + feltAt(lie.def, lie.x, lie.z) + 0.006, at.z);
+    this.guide.position.set(at.x, lie.def.base + feltAt(lie.def, lie.x, lie.z) + 0.006, at.z);
     this.guide.rotation.y = this.aim;
     const k = this.stage === 'charge' ? this.power : 0;
     this.guide.scale.set(1, 1, 0.5 + k * 2.2);
@@ -231,20 +235,31 @@ export class Putter {
     const target = new THREE.Vector3();
     const b = this.stage === 'watch' ? this.hooks.ball() : null;
     if (b) {
-      // Behind the ball the way it's going, a little above it.
+      this.seen.copy(b.at);
+      this.seenAny = true;
+    }
+    if (b || (this.stage === 'watch' && this.seenAny)) {
+      // Behind the ball the way it's going, a little above it; while it's out of sight (in a tunnel,
+      // down a pipe) further back and higher, over where it went in.
       const sin = Math.sin(this.chaseDir);
       const cos = Math.cos(this.chaseDir);
-      want.set(b.at.x - sin * 1.5, b.at.y + 1.05, b.at.z - cos * 1.5);
-      target.copy(b.at);
+      if (b) {
+        want.set(this.seen.x - sin * 1.6, this.seen.y + 1.2, this.seen.z - cos * 1.6);
+        target.copy(this.seen);
+      } else {
+        want.set(this.seen.x - sin * 0.8, this.seen.y + 3, this.seen.z - cos * 0.8);
+        target.set(this.seen.x + sin * 2.6, this.seen.y, this.seen.z + cos * 2.6);
+      }
     } else {
       const lie = this.hooks.lie();
       if (!lie) return;
       const at = toRoom(lie.def, lie.x, lie.z);
-      const y = LANE_Y + feltAt(lie.def, lie.x, lie.z) + BALL_R;
+      const y = lie.def.base + feltAt(lie.def, lie.x, lie.z) + BALL_R;
       const sin = Math.sin(this.aim);
       const cos = Math.cos(this.aim);
-      want.set(at.x - sin * 1.35, y + 0.8, at.z - cos * 1.35);
-      target.set(at.x + sin * 2.2, y, at.z + cos * 2.2);
+      // Behind the ball, a little to the side away from you (you stand on its left), looking down the line.
+      want.set(at.x - sin * 1.3 - cos * 0.32, y + 0.95, at.z - cos * 1.3 + sin * 0.32);
+      target.set(at.x + sin * 2.2 - cos * 0.12, y, at.z + cos * 2.2 + sin * 0.12);
     }
     // In the room, under its ceiling.
     want.x = THREE.MathUtils.clamp(want.x, MG_ROOM.minX + 0.2, MG_ROOM.maxX - 0.2);

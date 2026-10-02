@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { LANE_Y } from '../../../shared/minigolf';
 import { type HoleDef, type LookedRail } from '../../../shared/minigolf-holes';
 import { CUP_R, heightAt, inPoly, type Height, type Surface } from '../../../shared/minigolf-physics';
 import { Batch, halo, stripGeo, unlit } from './look';
@@ -50,9 +49,10 @@ function shadeFelt(g: THREE.BufferGeometry, color: THREE.Color, h: Height | null
       n.set(-gx, 1, -gz).normalize();
       k = 0.72 + 0.28 * Math.max(0, n.dot(LIGHT)) / LIGHT.y;
     }
-    colors[i * 3] = color.r * k;
-    colors[i * 3 + 1] = color.g * k;
-    colors[i * 3 + 2] = color.b * k;
+    // Felt under UV glows: brighter than its paint.
+    colors[i * 3] = color.r * k * 1.45;
+    colors[i * 3 + 1] = color.g * k * 1.45;
+    colors[i * 3 + 2] = color.b * k * 1.45;
     uvs[i * 2] = x * 1.6;
     uvs[i * 2 + 1] = z * 1.6;
   }
@@ -119,7 +119,7 @@ export function radialFelt(h: Extract<Height, { k: 'radial' }>, color: THREE.Col
 }
 
 /** The frame round a surface: from its felt's edge down to the floor. */
-function skirt(s: Surface, out: Batch, color: string) {
+function skirt(s: Surface, out: Batch, color: string, base: number) {
   const pts = s.h.k === 'radial' ? [] : s.poly;
   for (let i = 0; i < pts.length; i++) {
     const [ax, az] = pts[i];
@@ -127,7 +127,7 @@ function skirt(s: Surface, out: Batch, color: string) {
     const ya = heightAt(s.h, ax, az)[0];
     const yb = heightAt(s.h, bx, bz)[0];
     const g = new THREE.BufferGeometry();
-    const bottom = -LANE_Y;
+    const bottom = -base;
     g.setAttribute('position', new THREE.Float32BufferAttribute([ax, ya, az, bx, yb, bz, bx, bottom, bz, ax, ya, az, bx, bottom, bz, ax, bottom, az], 3));
     g.computeVertexNormals();
     out.baked(g, color);
@@ -157,14 +157,14 @@ export function feltAt(def: HoleDef, x: number, z: number): number {
 }
 
 /** A rail: a dark body down to the floor, a glowing top and its halo (or clear glass, or nothing). */
-export function railInto(r: LookedRail, out: Batch, glow: string) {
+export function railInto(r: LookedRail, out: Batch, glow: string, base: number) {
   if (r.look === 'hidden') return;
   const [ax, az] = r.a;
   const [bx, bz] = r.b;
   const len = Math.hypot(bx - ax, bz - az);
   const w = Math.max(0.04, (r.w ?? 0.02) * 2);
   const top = r.y1;
-  const bottom = Math.max(-LANE_Y, r.y0);
+  const bottom = Math.max(-base, r.y0);
   const ang = -Math.atan2(bz - az, bx - ax);
   const at = (geo: THREE.BufferGeometry, y: number) => {
     geo.rotateY(ang);
@@ -203,12 +203,13 @@ function holeSign(def: HoleDef): THREE.Group {
   const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.48, 0.6), new THREE.MeshBasicMaterial({ map: tex }));
   panel.position.y = 1.25;
   sign.add(panel);
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.64), unlit('#0a0614'));
-  back.position.set(0, 1.25, -0.005);
+  // The same on the back, so it reads from both ways along the walkway.
+  const back = panel.clone();
+  back.position.z = -0.012;
   back.rotation.y = Math.PI;
   sign.add(back);
-  const frame = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 0.66), unlit(def.glow));
-  frame.position.set(0, 1.25, -0.003);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.66, 0.012), unlit(def.glow));
+  frame.position.set(0, 1.25, -0.006);
   sign.add(frame);
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.95, 8), unlit('#2b2440'));
   post.position.y = 0.47;
@@ -220,7 +221,7 @@ function holeSign(def: HoleDef): THREE.Group {
 export function buildHole(def: HoleDef): HoleView {
   const group = new THREE.Group();
   group.name = `minigolf-hole-${def.n}`;
-  group.position.set(def.at.x, LANE_Y, def.at.z);
+  group.position.set(def.at.x, def.base, def.at.z);
   group.rotation.y = def.at.rot;
   const c = def.course;
   const color = new THREE.Color(def.felt);
@@ -235,21 +236,21 @@ export function buildHole(def: HoleDef): HoleView {
     }
     const inside = radial.filter((r) => r.h.k === 'radial' && inPoly(s.poly, r.h.cx, r.h.cz));
     target.add(flatFelt(s, inside, color), felt());
-    skirt(s, target, '#1d1230');
+    skirt(s, target, '#1d1230', def.base);
     if (s.slide) {
       const g = new THREE.Group();
-      for (const r of c.rails) if (r.slide) railInto(r, target, def.glow);
+      for (const r of c.rails) if (r.slide) railInto(r, target, def.glow, def.base);
       target.build(g);
       moving.set(s.id, g);
       group.add(g);
     }
   }
-  for (const r of c.rails) if (!r.slide) railInto(r, still, def.glow);
+  for (const r of c.rails) if (!r.slide) railInto(r, still, def.glow, def.base);
   for (const p of c.posts ?? []) {
     if (p.tag === 'bumper' && def.theme === 'pinball') continue; // the pinball's mushrooms are obstacles.ts's
     const top = Math.min(p.y1, feltAt(def, p.x, p.z) + 0.12);
-    const body = new THREE.CylinderGeometry(p.r, p.r * 1.05, top + LANE_Y, 20);
-    body.translate(p.x, (top - LANE_Y) / 2, p.z);
+    const body = new THREE.CylinderGeometry(p.r, p.r * 1.05, top + def.base, 20);
+    body.translate(p.x, (top - def.base) / 2, p.z);
     still.baked(body, '#2a0d3a');
     const ring = new THREE.TorusGeometry(p.r * 0.92, 0.012, 6, 24);
     ring.rotateX(Math.PI / 2);
@@ -292,7 +293,7 @@ export function buildHole(def: HoleDef): HoleView {
   still.build(group);
   const sign = holeSign(def);
   const b = c.bounds;
-  sign.position.set(b.minX - 0.25, -LANE_Y, 0.55);
+  sign.position.set(b.minX - 0.25, -def.base, 0.55);
   group.add(sign);
   return { def, group, moving };
 }

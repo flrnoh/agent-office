@@ -3,7 +3,10 @@
 // frame stands in the bowling centre (interior coordinates, inside ZONES.minigolf). The page builds
 // each hole's felt, rails and obstacles from these; the office and the pages roll the ball over them.
 
-import type { Course, Pipe, Post, Rail, Surface } from './minigolf-physics.js';
+import { heightAt, type Course, type Pipe, type Post, type Rail, type Surface } from './minigolf-physics.js';
+
+/** The felt stands at least this high over the floor on every hole (a hole that goes lower stands that much higher: see `base`). */
+export const LANE_Y = 0.07;
 
 type P = readonly [number, number];
 
@@ -26,6 +29,8 @@ export interface HoleDef {
   /** What the rails glow. */
   glow: string;
   course: Course;
+  /** How high its frame's y 0 stands over the floor: LANE_Y, or more where its felt goes below 0 (the bridge's far side). */
+  base: number;
 }
 
 // ---- Building blocks -------------------------------------------------------------------------------
@@ -326,8 +331,8 @@ function pinball(): Course {
 
 const PI = Math.PI;
 
-/** The course, in the order it's played. */
-export const HOLES: readonly HoleDef[] = [
+/** The holes as they're laid out. */
+const DEFS: Omit<HoleDef, 'base'>[] = [
   { n: 1, name: 'Dschungel-Kurve', par: 2, theme: 'jungle', tip: 'Über die Bande in der Ecke', at: { x: -3.85, z: -3.05, rot: 0 }, tee: { x: 0, z: 0 }, felt: '#0b6b3a', glow: '#39ff14', course: jungle() },
   { n: 2, name: 'Windmühle', par: 3, theme: 'mill', tip: 'Warte, bis die Flügel die Tür freigeben', at: { x: 1.8, z: -11.4, rot: PI }, tee: { x: 0, z: 0 }, felt: '#3a1a8c', glow: '#ff2bd6', course: mill() },
   { n: 3, name: 'Looping', par: 2, theme: 'loop', tip: 'Mit Schwung durch die Schleife', at: { x: 4.3, z: -3.05, rot: 0 }, tee: { x: 0, z: 0 }, felt: '#0a4f8f', glow: '#00e5ff', course: loop() },
@@ -338,6 +343,19 @@ export const HOLES: readonly HoleDef[] = [
   { n: 8, name: 'Zwei Etagen', par: 3, theme: 'tower', tip: 'Oben ins Loch, unten ins Ziel', at: { x: 19.6, z: -15.0, rot: PI / 2 }, tee: { x: 0, z: 0 }, felt: '#2b2b8f', glow: '#ff3b3b', course: tower() },
   { n: 9, name: 'Flipper', par: 3, theme: 'pinball', tip: 'Die Pilze kicken zurück', at: { x: 12.2, z: -17.0, rot: PI / 2 }, tee: { x: 0, z: 0 }, felt: '#3d0a5c', glow: '#ff9bf0', course: pinball() },
 ];
+
+/** The lowest the felt goes on a course. */
+function lowest(c: Course): number {
+  let y = 0;
+  for (const s of c.surfaces) {
+    if (s.h.k === 'radial') y = Math.min(y, ...s.h.prof.map((p) => p[1]));
+    else for (const [x, z] of s.poly) y = Math.min(y, heightAt(s.h, x, z)[0]);
+  }
+  return y;
+}
+
+/** The course, in the order it's played. */
+export const HOLES: readonly HoleDef[] = DEFS.map((d) => ({ ...d, base: LANE_Y - lowest(d.course) }));
 
 export const HOLE_COUNT = HOLES.length;
 /** The course's par. */

@@ -111,7 +111,8 @@ export class MinigolfUi {
         `tr${p.id === you ? '.you' : ''}`,
         {},
         h('td.name', {}, h('i.dot', { style: `background:${MG_COLORS[p.color % MG_COLORS.length][0]}` }), p.name, p.group ? h('small', {}, ' 👥') : ''),
-        ...p.card.map((n, i) => h(`td${p.hole === i + 1 ? '.now' : ''}${n !== null && n === 1 ? '.ace' : ''}${n !== null && n < HOLES[i].par ? '.under' : ''}`, {}, cardText(n))),
+        // The hole being played shows its strokes so far, faintly, until it's down.
+        ...p.card.map((n, i) => h(`td${p.hole === i + 1 ? '.now' : ''}${n !== null && n === 1 ? '.ace' : ''}${n !== null && n < HOLES[i].par ? '.under' : ''}`, {}, n === null && p.hole === i + 1 && p.strokes > 0 ? h('span.live', {}, String(p.strokes)) : cardText(n))),
         h('td.sum', {}, String(cardTotal(p.card))),
         h('td.par', {}, toPar(p.card)),
       );

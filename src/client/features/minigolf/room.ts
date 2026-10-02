@@ -43,7 +43,7 @@ export function buildRoom(): MinigolfRoom {
   carpet.repeat.set(W / 2, D / 2);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshBasicMaterial({ map: carpet }));
   floor.rotation.x = -Math.PI / 2;
-  floor.position.set(cx, 0.005, cz);
+  floor.position.set(cx, 0.012, cz);
   group.add(floor);
 
   // The ceiling: black, with rows of UV tubes and their glow.

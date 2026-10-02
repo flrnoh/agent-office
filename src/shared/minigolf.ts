@@ -15,8 +15,7 @@ export const MG_WALL = 0.2;
 export const MG_ROOM = { minX: ZONES.minigolf.minX + MG_WALL, maxX: ZONES.minigolf.maxX, minZ: ZONES.minigolf.minZ, maxZ: ZONES.minigolf.maxZ - MG_WALL, ceiling: 3.4 } as const;
 /** The doorway in the south wall: from x0 to x1, this tall. */
 export const MG_DOOR = { x0: MINIGOLF_DOOR.x - MINIGOLF_DOOR.width / 2, x1: MINIGOLF_DOOR.x + MINIGOLF_DOOR.width / 2, height: 2.4 } as const;
-/** The felt stands this high over the floor on every hole. */
-export const LANE_Y = 0.07;
+export { LANE_Y } from './minigolf-holes.js';
 /** "Schläger & Bälle": the stand just inside the door (west of it), its counter against the south wall. */
 export const MG_STAND = { x: -1.65, z: MG_ROOM.maxZ - 0.3, width: 1.5, depth: 0.55 } as const;
 /** The scorecard board on the south wall east of the door, facing into the room. */
@@ -87,7 +86,7 @@ export const clockSec = (ms: number) => (((ms % 3_600_000) + 3_600_000) % 3_600_
 /** Where a player's ball sits on the tee before their first putt: side by side, by colour. */
 export function teeSpot(hole: number, color: number): { x: number; z: number } {
   const h = HOLES[Math.max(0, Math.min(HOLE_COUNT, hole) - 1)];
-  const k = (color % 3) - 1;
+  const k = (((color % 3) + 1) % 3) - 1; // the first colour right on the tee, the next either side of it
   return { x: h.tee.x + k * 0.08, z: h.tee.z - Math.floor((color % 6) / 3) * 0.08 };
 }
 

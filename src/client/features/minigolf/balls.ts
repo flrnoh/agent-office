@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LANE_Y, MG_COLORS, clockSec, type MgShot, type MgView } from '../../../shared/minigolf';
+import { MG_COLORS, clockSec, type MgShot, type MgView } from '../../../shared/minigolf';
 import { HOLES, toRoom, type HoleDef } from '../../../shared/minigolf-holes';
 import { BALL_R, putt, settled, step, support, type Ball, type BallEvent } from '../../../shared/minigolf-physics';
 import { feltAt } from './course';
@@ -178,7 +178,7 @@ export class Balls {
       v.trail.visible = false;
       if (!shown) continue;
       const at = toRoom(def, pl.ball.x, pl.ball.z);
-      v.mesh.position.set(at.x, LANE_Y + feltAt(def, pl.ball.x, pl.ball.z) + BALL_R, at.z);
+      v.mesh.position.set(at.x, def.base + feltAt(def, pl.ball.x, pl.ball.z) + BALL_R, at.z);
       v.glow.position.copy(v.mesh.position);
     }
   }
@@ -217,7 +217,7 @@ export class Balls {
       const back = !p.endedAt || now - p.endedAt > 700;
       if (back) {
         const at = toRoom(p.def, p.shot.from.x, p.shot.from.z);
-        this.pos.set(at.x, LANE_Y + feltAt(p.def, p.shot.from.x, p.shot.from.z) + BALL_R, at.z);
+        this.pos.set(at.x, p.def.base + feltAt(p.def, p.shot.from.x, p.shot.from.z) + BALL_R, at.z);
       } else shown = false;
     }
     if (b.mode !== 'out') this.pos.copy(this.roomPoint(p.def, b.x, b.y, b.z, b.mode === 'loop'));
@@ -241,7 +241,7 @@ export class Balls {
   /** A point on hole `def` (its frame; `centre`: y is the ball's middle already, as round the loop) in the room. */
   roomPoint(def: HoleDef, x: number, y: number, z: number, centre = false): THREE.Vector3 {
     const at = toRoom(def, x, z);
-    return new THREE.Vector3(at.x, LANE_Y + y + (centre ? 0 : BALL_R), at.z);
+    return new THREE.Vector3(at.x, def.base + y + (centre ? 0 : BALL_R), at.z);
   }
 
   /** How far `id`'s ball is through its pipe, if it's in one (for the tower's clear pipe). */

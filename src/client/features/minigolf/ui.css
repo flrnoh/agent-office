@@ -26,6 +26,7 @@
 .mg-table td.now { outline: 2px solid #00e5ff; outline-offset: -2px; border-radius: 4px; }
 .mg-table td.under { color: #39ff14; font-weight: 900; }
 .mg-table td.ace { color: #fffb00; text-shadow: 0 0 6px #fffb00; }
+.mg-table td .live { opacity: .55; font-style: italic; }
 .mg-table td.sum { font-weight: 900; color: #fffb00; }
 .mg-table td.par { font-weight: 700; opacity: .85; }
 .mg-table td.empty { opacity: .7; padding: 10px; }
