@@ -16,6 +16,7 @@
 // Pure, from the track alone, so the page draws it and the tests check it the same.
 
 import { HEART } from './coaster-route.js';
+import { carOffset } from './coaster.js';
 import { DS, poseAt, type CoasterTrack } from './coaster-track.js';
 import { ROAD_Z, SIDEWALKS_Z, TOWER, levels, outsideKeepouts, roofKeepouts, type Box3 } from './coaster-keepout.js';
 import { FLOOR, STOREY, WALL_HEIGHT, WALL_T, type Side } from './layout.js';
@@ -44,10 +45,36 @@ export interface Bracket extends Strut {
   wall: Side;
 }
 
+/** The ride photo's camera on its own slim post by the U-turn: where it stands, the camera (the flash and the photo come from there) and what it's aimed at. */
+export interface PhotoMount {
+  post: Column;
+  cam: P3;
+  aim: P3;
+  /** Where along the track the front car is when it fires. */
+  s: number;
+}
+
 export interface Supports {
   columns: Column[];
   struts: Strut[];
   brackets: Bracket[];
+  photo: PhotoMount;
+}
+
+/** The photo camera's post on the plaza's edge (x, z), just in from the sidewalk, and the train it waits for (the middle of it at x). */
+const PHOTO_POST = [-15, 19.75] as const;
+const PHOTO_AT_X = -9.6;
+
+/** The ride photo's mount: a post up to just over the pull-out, the camera on top looking down the track at the train. */
+export function photoMount(track: CoasterTrack): PhotoMount {
+  const at = poseAt(track, track.marks.photo);
+  const [x, z] = PHOTO_POST;
+  const cam: P3 = [x, at.y + 2.6, z];
+  let s = track.marks.photo;
+  const off = (k: number) => Math.abs(poseAt(track, k + carOffset(0)).x - PHOTO_AT_X);
+  for (let k = track.marks.photo - 6; k < track.marks.photo + 14; k += 0.25) if (off(k) < off(s)) s = k;
+  const mid = poseAt(track, s + carOffset(1));
+  return { post: { x, z, y0: levels(track.storeys).street, y1: cam[1] - 0.22, w: 0.16 }, cam, aim: [mid.x, mid.y + 0.4, mid.z], s };
 }
 
 /** How far below the heartline the track's spine is, and the bottom of it. */
@@ -343,5 +370,5 @@ function build(track: CoasterTrack): Supports {
     last = s;
   }
 
-  return { columns, struts, brackets };
+  return { columns, struts, brackets, photo: photoMount(track) };
 }

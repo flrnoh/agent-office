@@ -144,3 +144,28 @@ test('coaster supports: every piece carries track, and a portal is two posts and
     assert.deepEqual(bad, [], `${N} storeys`);
   }
 });
+
+test('coaster photo camera: on its own slim post on the plaza, clear of everything, the photo taken from it', async () => {
+  const { outsideKeepouts, SIDEWALKS_Z, TOWER } = await import('../src/shared/coaster-keepout.js');
+  for (const N of STOREYS) {
+    const track = coasterTrack(N);
+    const { photo } = coasterSupports(track);
+    const { post, cam, aim } = photo;
+    const { street } = levels(N);
+    const bad: string[] = [];
+    // The camera sits on top of the post.
+    if (Math.abs(post.x - cam[0]) > 1e-6 || Math.abs(post.z - cam[2]) > 1e-6 || cam[1] - post.y1 < 0 || cam[1] - post.y1 > 0.3) bad.push('the camera off its post');
+    if (Math.abs(post.y0 - street) > 1e-6) bad.push('the post off the street');
+    // Like any column: off the road and the sidewalks, clear of the keep-outs and the building, and of the track.
+    const r = post.w / 2;
+    if (post.z + r > ROAD_Z.min && post.z - r < ROAD_Z.max) bad.push('in the road');
+    if (SIDEWALKS_Z.some((w) => post.z + r > w.min && post.z - r < w.max)) bad.push('on a sidewalk');
+    if (post.x + r > TOWER.minX && post.x - r < TOWER.maxX && post.z + r > TOWER.minZ && post.z - r < TOWER.maxZ) bad.push('in the building');
+    for (const k of outsideKeepouts(N)) if (post.x + r > k.minX && post.x - r < k.maxX && post.y1 > k.minY && post.y0 < k.maxY && post.z + r > k.minZ && post.z - r < k.maxZ) bad.push(k.name);
+    for (let y = post.y0 + 0.3; y < cam[1] + 0.3; y += 0.2) if (inTrack(track, [post.x, y, post.z])) bad.push(`the track through it at ${y.toFixed(1)}`);
+    // It looks at the train as the photo's taken: the middle car within a few metres, ahead of it.
+    const d = Math.hypot(aim[0] - cam[0], aim[1] - cam[1], aim[2] - cam[2]);
+    if (d < 3 || d > 9) bad.push(`aimed ${d.toFixed(1)} m away`);
+    assert.deepEqual([...new Set(bad)], [], `${N} storeys`);
+  }
+});

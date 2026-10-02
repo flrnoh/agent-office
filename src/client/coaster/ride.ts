@@ -14,6 +14,7 @@ import { buildTrack, type TrackView } from '../world/coaster/track';
 import { buildSupports, type SupportsView } from '../world/coaster/supports';
 import { buildTrain, type TrainView } from '../world/coaster/train';
 import { buildStation, type StationView } from '../world/coaster/station';
+import { canvasTexture } from '../world/texture';
 import { Riders } from './riders';
 import { CoasterTunnel } from './tunnel';
 import { openPhoto, showOnMonitor, takePhoto, type RidePhoto } from './photo';
@@ -120,7 +121,16 @@ export class CoasterRide {
     this.station = buildStation(d.night);
     this.group.add(this.station.group);
     this.tunnel = new CoasterTunnel({ world: d.world, bottom: d.bottom });
-    const flashMat = new THREE.SpriteMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+    // A round burst of light, bright in the middle, fading out (not a square).
+    const glow = canvasTexture(64, 64, (g) => {
+      const r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      r.addColorStop(0, 'rgba(255,255,255,1)');
+      r.addColorStop(0.25, 'rgba(255,250,225,0.8)');
+      r.addColorStop(1, 'rgba(255,250,225,0)');
+      g.fillStyle = r;
+      g.fillRect(0, 0, 64, 64);
+    });
+    const flashMat = new THREE.SpriteMaterial({ map: glow, color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
     this.flash = new THREE.Sprite(flashMat);
     this.flash.scale.setScalar(6);
     this.flash.visible = false;
@@ -166,16 +176,14 @@ export class CoasterRide {
     }
     const track = coasterTrack(n);
     const view = buildTrack(track);
-    const supports = buildSupports(coasterSupports(track));
+    const held = coasterSupports(track);
+    const supports = buildSupports(held);
     this.group.add(view.group, supports.group);
     this.d.noOutline(view.group);
-    // The photo: from the camera by the U-turn, as the front car comes at it.
-    const at = poseAt(track, track.marks.photo);
-    const from = new THREE.Vector3(-15, at.y + 2.6, 19.75);
-    let s = track.marks.photo;
-    for (let k = track.marks.photo - 6; k < track.marks.photo + 14; k += 0.25) if (Math.abs(poseAt(track, k + carOffset(0)).x - -9.6) < Math.abs(poseAt(track, s + carOffset(0)).x - -9.6)) s = k;
-    const mid = poseAt(track, s + carOffset(1));
-    const to = new THREE.Vector3(mid.x, mid.y + 0.4, mid.z);
+    // The photo: from the camera on its post by the U-turn, as the front car comes at it.
+    const from = new THREE.Vector3(...held.photo.cam);
+    const to = new THREE.Vector3(...held.photo.aim);
+    const s = held.photo.s;
     const screams = [track.marks.dropFrom + 6, track.marks.loop + 14, track.marks.tunnel + 6];
     this.built = { storeys: track.storeys, track, view, supports, photo: { from, to, s }, screams };
     this.flash.position.copy(from);

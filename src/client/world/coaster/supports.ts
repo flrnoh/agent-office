@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Side } from '../../../shared/layout';
-import type { Supports } from '../../../shared/coaster-supports';
+import type { PhotoMount, Supports } from '../../../shared/coaster-supports';
 import { toonUnique } from '../toon';
 
 // flrnoh fork (see FORK.md "Der Brecher"): DER BRECHER's supports as they're drawn (shared/
@@ -85,6 +85,37 @@ const OUT: Record<Side, THREE.Vector3> = {
   east: new THREE.Vector3(1, 0, 0),
 };
 
+/** The ride photo's camera on top of its post: a housing aimed at the train, its lens, the flash over it. */
+function photoCamera(pm: PhotoMount, noOutline: <M extends THREE.Material>(m: M) => M): THREE.Group {
+  const g = new THREE.Group();
+  g.name = 'coaster-photo-camera';
+  g.position.set(...pm.cam);
+  // Turned toward the train (yaw, then pitched down at it).
+  const d = new THREE.Vector3(pm.aim[0] - pm.cam[0], pm.aim[1] - pm.cam[1], pm.aim[2] - pm.cam[2]);
+  const head = new THREE.Group();
+  head.rotation.set(Math.atan2(d.y, Math.hypot(d.x, d.z)), Math.atan2(-d.x, -d.z), 0, 'YXZ');
+  const body = noOutline(toonUnique('#2b2d42'));
+  const glass = noOutline(toonUnique('#0d0f18'));
+  const flash = noOutline(new THREE.MeshBasicMaterial({ color: '#fffbe8' }));
+  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D = head) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.raycast = () => {};
+    m.castShadow = true;
+    parent.add(m);
+    return m;
+  };
+  // A little saddle on the post, the housing, a hood over the lens, the flash on top.
+  add(new THREE.CylinderGeometry(0.11, 0.11, 0.14, 12), body, 0, -0.16, 0, g);
+  add(new THREE.BoxGeometry(0.3, 0.24, 0.42), body, 0, 0, 0);
+  add(new THREE.CylinderGeometry(0.08, 0.08, 0.12, 14).rotateX(Math.PI / 2), glass, 0, 0, -0.26);
+  add(new THREE.BoxGeometry(0.26, 0.02, 0.16), body, 0, 0.13, -0.26);
+  add(new THREE.BoxGeometry(0.2, 0.09, 0.07), body, 0, 0.17, -0.12);
+  add(new THREE.PlaneGeometry(0.17, 0.06).rotateY(Math.PI), flash, 0, 0.17, -0.156);
+  g.add(head);
+  return g;
+}
+
 export interface SupportsView {
   group: THREE.Group;
   dispose(): void;
@@ -100,6 +131,9 @@ export function buildSupports(s: Supports): SupportsView {
     tube(steel, new THREE.Vector3(c.x, c.y0, c.z), new THREE.Vector3(c.x, c.y1, c.z), c.w);
   }
   for (const b of s.struts) tube(steel, v(b.a), v(b.b), b.w);
+  // The photo camera's slim post.
+  const pm = s.photo;
+  tube(steel, new THREE.Vector3(pm.post.x, pm.post.y0, pm.post.z), new THREE.Vector3(pm.post.x, pm.post.y1, pm.post.z), pm.post.w);
   for (const b of s.brackets) {
     // Starting a hand's breadth out of the wall (from the plate), a collar where it meets the spine.
     const out = OUT[b.wall];
@@ -120,7 +154,7 @@ export function buildSupports(s: Supports): SupportsView {
   const plateMat = noOutline(toonUnique('#c7ccd4'));
   const concrete = noOutline(toonUnique('#b9bec7'));
   const plates = new THREE.InstancedMesh(box, plateMat, Math.max(1, s.brackets.length * 2));
-  const feet = new THREE.InstancedMesh(disc, concrete, Math.max(1, s.columns.length));
+  const feet = new THREE.InstancedMesh(disc, concrete, s.columns.length + 1);
   const mm = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   let n = 0;
@@ -142,7 +176,10 @@ export function buildSupports(s: Supports): SupportsView {
     mm.compose(new THREE.Vector3(c.x, c.y0 + 0.1, c.z), q.identity(), new THREE.Vector3(w, 0.2, w));
     feet.setMatrixAt(n++, mm);
   }
+  mm.compose(new THREE.Vector3(pm.post.x, pm.post.y0 + 0.08, pm.post.z), q.identity(), new THREE.Vector3(0.5, 0.16, 0.5));
+  feet.setMatrixAt(n++, mm);
   feet.count = n;
+  group.add(photoCamera(pm, noOutline));
   for (const m of [plates, feet]) {
     m.raycast = () => {};
     m.castShadow = true;
@@ -152,7 +189,9 @@ export function buildSupports(s: Supports): SupportsView {
   return {
     group,
     dispose() {
-      for (const c of group.children) if (c instanceof THREE.Mesh && c.geometry !== box && c.geometry !== disc) c.geometry.dispose();
+      group.traverse((c) => {
+        if (c instanceof THREE.Mesh && !(c instanceof THREE.InstancedMesh)) c.geometry.dispose();
+      });
       box.dispose();
       disc.dispose();
       plates.dispose();
