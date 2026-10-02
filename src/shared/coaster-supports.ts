@@ -7,10 +7,11 @@
 //   clear of its balcony) up and out to the track, a triangle in plan, like a cantilevered mount.
 // - Where the track runs straight up or down the facade (the first drop, the vertical lift): a tie back
 //   to the facade at every storey's slab it passes.
-// - Down on the street, where it runs low (the pull-out, the U-turn, the launch and the loop, the way
-//   in to the tube): single round columns on the plaza's edge in an even rhythm, each with a Y head under
-//   the spine, and three strong portals over the street (the U-turn's, and the loop's two, which go on up
-//   into its gate) instead of legs everywhere. Never on a sidewalk, never in the road.
+// - Down on the street, where it runs low (the pull-out, the way in to the tube): single round columns
+//   on the plaza's edge, straight under the spine with a Y head. Where the track's over the road (the
+//   U-turn, the launch, the loop's way out) nothing can stand under it, so there a plain portal: a post
+//   on the plaza, one past the far sidewalk, and ONE beam between them right under the track, nothing
+//   else. Never on a sidewalk, never in the road; every piece carries track.
 //
 // Pure, from the track alone, so the page draws it and the tests check it the same.
 
@@ -59,10 +60,19 @@ const BRACKET_REACH = 7.6;
 const BRACKET_SPREAD = 1.1;
 /** Down on the street: a column this often, at most. */
 const COLUMN_EVERY = 9;
-/** The portals over the street (x), their legs either side of the road. */
-const PORTALS = [-19.4, -15, 1];
-const LEG_NEAR = 19.4;
-const LEG_FAR = 33.6;
+/**
+ * Where the track's over the road a column can't stand under it: a portal at x, its near post on the
+ * plaza (NEAR_Z) and its far one just past the far sidewalk (clear of the lamps, the tree there and the
+ * golf), one beam between them under the track. The U-turn's (both its arms), the launch's (with the
+ * pull-out on the near side) and the loop's way out.
+ */
+const PORTALS: readonly (readonly [number, number])[] = [
+  [-18, 33.6],
+  [-12, 34.6],
+  [1, 33.6],
+];
+const NEAR_Z = 20.4;
+const BEAM_W = 0.5;
 
 const B = { minX: FLOOR.minX - WALL_T, maxX: FLOOR.maxX + WALL_T, minZ: FLOOR.minZ - WALL_T, maxZ: FLOOR.maxZ + WALL_T } as const;
 
@@ -78,6 +88,24 @@ export function coasterSupports(track: CoasterTrack): Supports {
 }
 
 /** The track's underside (the spine's bottom) at `s`. */
+export const undersideAt = (track: CoasterTrack, s: number): P3 => under(track, s);
+
+/** Whether point `q` is in the track (its spine, its rails and the train over them), anywhere along it. */
+export function inTrack(track: CoasterTrack, q: P3): boolean {
+  for (let s = 0; s < track.length; s += 0.25) {
+    const p = poseAt(track, s);
+    const d = [q[0] - p.x, q[1] - p.y, q[2] - p.z];
+    if (d[0] * d[0] + d[1] * d[1] + d[2] * d[2] > 9) continue;
+    const dot = (v: readonly number[]) => d[0] * v[0] + d[1] * v[1] + d[2] * v[2];
+    if (Math.abs(dot(p.t)) > 0.15) continue;
+    // The spine down the middle at the bottom, the rails and ties and the train over it.
+    const up = dot(p.n);
+    const lat = Math.abs(dot(p.b));
+    if (up > -UNDER + 0.02 && up < 2 && lat < (up < -HEART - 0.2 ? 0.32 : 0.85)) return true;
+  }
+  return false;
+}
+
 function under(track: CoasterTrack, s: number): P3 {
   const p = poseAt(track, s);
   return [p.x - p.n[0] * UNDER, p.y - p.n[1] * UNDER, p.z - p.n[2] * UNDER];
@@ -165,29 +193,42 @@ function build(track: CoasterTrack): Supports {
     [track.marks.dropFrom, track.marks.photo],
     [track.marks.tunnelEnd, track.marks.vlift],
   ]) {
-    let vx = 0;
-    let vz = 0;
-    let lo = 1e9;
-    let hi = -1e9;
-    let n = 0;
+    const up: { spine: P3; heart: P3; n: P3 }[] = [];
     for (let s = from; s < to; s += DS) {
       const p = poseAt(track, s);
-      if (Math.abs(p.t[1]) < 0.97) continue;
-      vx += p.x - p.n[0] * SPINE;
-      vz += p.z - p.n[2] * SPINE;
-      lo = Math.min(lo, p.y);
-      hi = Math.max(hi, p.y);
-      n++;
+      if (Math.abs(p.t[1]) >= 0.97) up.push({ spine: [p.x - p.n[0] * SPINE, p.y - p.n[1] * SPINE, p.z - p.n[2] * SPINE], heart: [p.x, p.y, p.z], n: [p.n[0], p.n[1], p.n[2]] });
     }
-    if (!n) continue;
+    if (!up.length) continue;
     steep.push([from, to]);
-    vx /= n;
-    vz /= n;
-    const wallZ = vz > 0 ? B.maxZ + FIN.depth + 0.05 : B.minZ;
+    const clearOf = (a: P3, b: P3) => {
+      for (let d = 0.04; d < 0.97; d += 0.03) if (inTrack(track, [a[0] + (b[0] - a[0]) * d, a[1], a[2] + (b[2] - a[2]) * d])) return false;
+      return true;
+    };
     for (let k = 1; k <= N; k++) {
+      // Level from the slab's edge to the spine where the track passes it (it turns on the way up).
       const y = ground + k * STOREY - 0.15;
-      if (y > hi + 0.5 || y < lo - 0.5) continue;
-      struts.push({ a: [vx, y, wallZ], b: [vx, y, vz], w: 0.26 });
+      const at = up.reduce((a, b) => (Math.abs(b.spine[1] - y) < Math.abs(a.spine[1] - y) ? b : a));
+      if (Math.abs(at.spine[1] - y) > 0.3) continue;
+      const [x, , z] = at.spine;
+      const wallZ = z > 0 ? B.maxZ + FIN.depth + 0.05 : B.minZ;
+      // Straight back to the wall where the spine's on the wall's side or off to one side of the track…
+      if (clearOf([x, y, wallZ], [x, y, z])) {
+        struts.push({ a: [x, y, wallZ], b: [x, y, z], w: 0.26 });
+        tied.push(y);
+        continue;
+      }
+      // …or, where it's round the back (the riders face the wall), a yoke: a bar across behind the
+      // spine, its ends tied back to the wall either side of the train.
+      const nl = Math.hypot(at.n[0], at.n[2]);
+      const nx = at.n[0] / nl;
+      const nz = at.n[2] / nl;
+      const back: P3 = [at.heart[0] - nx * (UNDER + 0.15), y, at.heart[2] - nz * (UNDER + 0.15)];
+      const ends: P3[] = [-1, 1].map((side) => [back[0] - nz * side * 1.3, y, back[2] + nx * side * 1.3]);
+      // (as the track turns on the way up, one of them would run through it: then just the other)
+      const arms = ends.map((e): [P3, P3] => [[e[0], y, wallZ], e]).filter(([a, e]) => clearOf(a, e));
+      if (!arms.length || !clearOf(ends[0], ends[1])) continue;
+      struts.push({ a: ends[0], b: ends[1], w: 0.26 });
+      for (const [a, e] of arms) struts.push({ a, b: e, w: 0.22 });
       tied.push(y);
     }
   }
@@ -249,9 +290,39 @@ function build(track: CoasterTrack): Supports {
     if (keep.some((k) => b.minX < k.maxX && b.maxX > k.minX && b.minY < k.maxY && b.maxY > k.minY && b.minZ < k.maxZ && b.maxZ > k.minZ)) return false;
     if (b.maxX > TOWER.minX && b.minX < TOWER.maxX && b.maxZ > TOWER.minZ && b.minZ < TOWER.maxZ) return false;
     if (SIDEWALKS_Z.some((w) => b.maxZ > w.min - 0.2 && b.minZ < w.max + 0.2) || (b.maxZ > ROAD_Z.min && b.minZ < ROAD_Z.max)) return false;
+    if (sAt < 0) {
+      // A portal's post: nothing of the track in its way below the beam (the ring round it, too).
+      for (let y = c.y0 + 0.5; y < c.y1 - 0.1; y += 0.25) for (const [dx, dz] of [[0, 0], [c.w / 2, 0], [-c.w / 2, 0], [0, c.w / 2], [0, -c.w / 2]]) if (inTrack(track, [c.x + dx, y, c.z + dz])) return false;
+      return true;
+    }
     for (let y = c.y0 + 0.5; y < c.y1 - 0.6; y += 0.5) if (nearTrack(c.x, y, c.z, sAt, c.w / 2 + 1)) return false;
     return true;
   };
+  // ---- Portals where the track's over the road: two posts and one beam right under it ----------------
+  for (const [x, far] of PORTALS) {
+    // As high as the lowest bit of the track over the beam's line (a banked rail, or the spine).
+    let top = Infinity;
+    for (let s = 0; s < track.length; s += 0.25) {
+      if (s > tunnel.from - 2 && s < tunnel.to + 2) continue;
+      const p = poseAt(track, s);
+      const u = under(track, s);
+      if (Math.abs(u[0] - x) > 0.4 || u[2] < NEAR_Z - 0.4 || u[2] > far) continue;
+      top = Math.min(top, u[1]);
+      for (const side of [-1, 1]) top = Math.min(top, p.y - p.n[1] * HEART + p.b[1] * side * 0.6 - 0.12);
+    }
+    if (!Number.isFinite(top)) continue;
+    // …and down a bit more wherever the beam would touch the track anywhere but on top.
+    const beamClear = (y: number) => {
+      for (let z = NEAR_Z; z <= far; z += 0.1) for (const dx of [-BEAM_W / 2, 0, BEAM_W / 2]) if (inTrack(track, [x + dx, y, z])) return false;
+      return true;
+    };
+    while (!beamClear(top - 0.01) && top > S + 5.5 + BEAM_W) top -= 0.05;
+    const posts: Column[] = [NEAR_Z, far].map((z) => ({ x, z, y0: S, y1: top, w: 0.56 }));
+    if (!posts.every((c) => clearColumn(c, -1))) continue;
+    columns.push(...posts);
+    struts.push({ a: [x, top - BEAM_W / 2, NEAR_Z], b: [x, top - BEAM_W / 2, far], w: BEAM_W });
+  }
+
   last = -1e9;
   for (let s = 6; s < track.length - 1; s += 0.5) {
     if (s > tunnel.from - 2 && s < tunnel.to + 2) continue;
@@ -262,6 +333,8 @@ function build(track: CoasterTrack): Supports {
     // Only where it runs low: no towers up to the roof.
     if (u[1] - S > 13 || u[1] - S < 1.2) continue;
     if (u[2] < B.minZ) continue; // behind the building it's the brackets' and the vertical lift's
+    // Not next to a portal's post (that's holding it already).
+    if (columns.some((c) => Math.hypot(c.x - u[0], c.z - u[2]) < COLUMN_EVERY * 0.5)) continue;
     const c: Column = { x: u[0], z: u[2], y0: S, y1: u[1], w: 0.46 };
     if (!clearColumn(c, s)) continue;
     columns.push(c);
@@ -270,25 +343,5 @@ function build(track: CoasterTrack): Supports {
     last = s;
   }
 
-  // ---- Portals over the street, two of them going up into the loop's gate ----------------------------
-  const loopFrom = track.marks.loop;
-  const loopTo = track.marks.loopEnd;
-  let topS = loopFrom;
-  for (let s = loopFrom; s < loopTo; s += 0.25) if (poseAt(track, s).y > poseAt(track, topS).y) topS = s;
-  const loopTop = poseAt(track, topS);
-  const spineTop: P3 = [loopTop.x - loopTop.n[0] * SPINE, loopTop.y - loopTop.n[1] * SPINE, loopTop.z - loopTop.n[2] * SPINE];
-  const gateY = spineTop[1] + 1.6;
-  PORTALS.forEach((x, i) => {
-    const over = pts.filter((q) => Math.abs(q[0] - x) < 1.2 && q[2] > ROAD_Z.min - 2 && q[2] < ROAD_Z.max + 1.5);
-    if (!over.length) return;
-    const low = Math.min(...over.map((q) => q[1])) - 0.15;
-    const gate = i > 0;
-    for (const z of [LEG_NEAR, LEG_FAR]) columns.push({ x, z, y0: S, y1: gate ? gateY : low, w: gate ? 0.7 : 0.6 });
-    struts.push({ a: [x, low, LEG_NEAR], b: [x, low, LEG_FAR], w: 0.5 });
-    if (gate) struts.push({ a: [x, gateY, LEG_NEAR], b: [x, gateY, LEG_FAR], w: 0.5 });
-  });
-  for (const z of [LEG_NEAR, LEG_FAR]) struts.push({ a: [PORTALS[1], gateY, z], b: [PORTALS[2], gateY, z], w: 0.5 });
-  struts.push({ a: [spineTop[0], gateY, LEG_NEAR], b: [spineTop[0], gateY, LEG_FAR], w: 0.42 });
-  struts.push({ a: [spineTop[0], gateY, spineTop[2]], b: spineTop, w: 0.2 });
   return { columns, struts, brackets };
 }

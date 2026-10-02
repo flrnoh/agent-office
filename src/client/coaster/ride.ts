@@ -169,7 +169,7 @@ export class CoasterRide {
     const supports = buildSupports(coasterSupports(track));
     this.group.add(view.group, supports.group);
     this.d.noOutline(view.group);
-    // The photo: from the camera on the portal's leg by the U-turn, as the front car comes at it.
+    // The photo: from the camera by the U-turn, as the front car comes at it.
     const at = poseAt(track, track.marks.photo);
     const from = new THREE.Vector3(-15, at.y + 2.6, 19.75);
     let s = track.marks.photo;
