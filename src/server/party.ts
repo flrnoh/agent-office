@@ -78,6 +78,7 @@ const PARTY_SEES = [
   'bike.rode', 'bike.bell', // fork: bikes from the city's bike shop
   'voice.ranged', // fork: how far someone's voice carries
   'tankstelle', // fork: the petrol station and its car wash
+  'coaster', // fork: DER BRECHER (its typists are the ground floor's workers by name, as party guests see them at their desks)
   'karaoke', 'karaoke.cheer', 'karaoke.rated', // fork: the bowling centre's karaoke bar
   'bowling.lights', 'bowling.shoes', 'bowling.house', // fork: the bowling centre's lights and rental shoes
   'mg', 'mg.putt', // fork: the bowling centre's mini golf
@@ -188,7 +189,7 @@ export function partyFloorView<V extends FloorView>(v: V): V {
  * `partyFloorView`. A field upstream adds to FloorView is in neither, and then the server doesn't
  * compile (the error names it) until someone decides: blank it in partyFloorView, or list it here.
  */
-const VIEW_AS_IS = ['floor', 'decor', 'dog', 'jukebox', 'cabinet', 'ball', 'cars', 'jail', 'dj', 'rig', 'tv', 'tables', 'bungee', 'boats', 'kino', 'trolleys', 'tankstelle', 'baumarkt'] as const satisfies readonly (keyof FloorView)[];
+const VIEW_AS_IS = ['floor', 'decor', 'dog', 'jukebox', 'cabinet', 'ball', 'cars', 'jail', 'dj', 'rig', 'tv', 'tables', 'bungee', 'boats', 'kino', 'trolleys', 'tankstelle', 'baumarkt', 'coaster'] as const satisfies readonly (keyof FloorView)[];
 const VIEW_BLANKED = ['project', 'workers', 'issues', 'pulls', 'queue', 'plan', 'services', 'whiteboard', 'meeting'] as const satisfies readonly (keyof FloorView)[];
 type UnsortedView = Exclude<keyof FloorView, (typeof VIEW_AS_IS)[number] | (typeof VIEW_BLANKED)[number]>;
 export const partyViewSorted: [UnsortedView] extends [never] ? true : { unsortedFloorViewField: UnsortedView } = true;

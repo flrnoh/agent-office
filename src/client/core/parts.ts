@@ -49,6 +49,7 @@ import type { installBeach } from '../features/beach';
 import type { installTankstelle } from '../features/tankstelle'; // flrnoh fork
 import type { installBossDesk } from '../features/bossdesk';
 import type { installBungee } from '../features/bungee';
+import type { installCoaster } from '../features/coaster'; // flrnoh fork
 import type { installDjSets } from '../features/djset';
 import type { installFridge } from '../features/fridge';
 import type { installGuests } from '../features/guests';
@@ -145,6 +146,7 @@ export interface Parts {
   bossDesk: Made<typeof installBossDesk>;
   tables: Made<typeof installTableGames>;
   bungee: Made<typeof installBungee>;
+  coaster: Made<typeof installCoaster>; // flrnoh fork: DER BRECHER
   guests: Made<typeof installGuests>;
   beach: Made<typeof installBeach>;
   shops: Made<typeof installShops>;

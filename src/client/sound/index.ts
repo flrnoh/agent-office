@@ -43,6 +43,7 @@ import { kino, type KinoSound } from '../features/kino/sound'; // fork: the cine
 import { Headphones, shopSound, type ShopSound } from '../features/shops/sound';
 import { rideSound, type RideSound } from '../features/ride/sound'; // fork: bikes, pets, laundry
 import { bungee, BungeeWind } from './bungee';
+import { CoasterLoops, coasterSound, type CoasterFrame, type CoasterSoundKind } from './coaster'; // fork: DER BRECHER
 import { casino, type CasinoSound } from './casino';
 import { doorbell } from './doorbell';
 import { fridgeDoor, opener } from './fridge';
@@ -88,6 +89,7 @@ export class OfficeSound {
   private readonly fidgets = fidgeting(this.a, this.typing);
   private readonly spa = new GymSpa(this.a); // fork
   private readonly bungeeAir = new BungeeWind(this.a); // fork
+  private readonly coasterLoops = new CoasterLoops(this.a); // fork: DER BRECHER
   private readonly outboards = new Outboards(this.a); // fork
   private readonly forkliftHum = new ForkliftHum(this.a); // fork
   private readonly headset = new Headphones(this.a); // fork
@@ -535,6 +537,16 @@ export class OfficeSound {
   /** A siren going by far off (sound/citybells.ts). */
   citySiren(pass: SirenPass) {
     if (this.city.out) siren(this.a, this.city.out, pass);
+  }
+
+  /** DER BRECHER (sound/coaster.ts): a scream, the flash, the bell, the brakes, the lap bars, the countdown; from `at`, or in your own ears. */
+  coaster(kind: CoasterSoundKind, at?: Pos, pitch?: number) {
+    coasterSound(this.a, kind, at, pitch);
+  }
+
+  /** DER BRECHER's wind, rumble and chain, every frame while it's to be heard (null: quiet). */
+  setCoaster(frame: CoasterFrame | null) {
+    this.coasterLoops.set(frame);
   }
 
   /** The bowling centre's doors, the cosmic switch, the tap, the fryer, the till, the shoes (client/bowling/sound.ts). */

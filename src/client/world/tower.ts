@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ELEVATOR, ELEVATOR_FRONT, EXIT_DOOR, FLOOR, ROOF_BAR, SLAB, STAGE, STOREY, STREET_Y, WALL_HEIGHT, WALL_T, WING, wingMinZ, wingRowZ, type Opening, type Side } from '../../shared/layout';
 import { storeyPlan, type Balcony } from '../../shared/storey'; // flrnoh fork: each storey its own balconies, on their own walls
+import { tubePortals } from '../../shared/coaster'; // flrnoh fork: DER BRECHER
 import type { Collider } from './types';
 import type { Fixture } from './office/fixture';
 import { bulb, type NightParts } from './outside';
@@ -348,6 +349,7 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
         const holes: Opening[] = [...plan.windows, ...plan.balconies.map((b) => b.door)].filter((o) => o.wall === side);
         // Only the bottom floor has a way out on the west side; its door stands in the hole (see world/office/shell.ts).
         if (side === 'west' && k === 0) holes.push(EXIT_DOOR);
+        holes.push(...tubePortals(k).filter((o) => o.wall === side)); // flrnoh fork: DER BRECHER's tube
         facade(parts, side, y0, holes);
       }
       for (const o of plan.windows) glazing(parts, o, y0, false);

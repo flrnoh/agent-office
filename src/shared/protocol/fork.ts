@@ -18,6 +18,7 @@ import type { ClawClientMsg, ClawServerMsg, PostClientMsg, PostServerMsg } from 
 import type { TrolleyClientMsg, TrolleyServerMsg } from '../trolley.js';
 import type { RideClientMsg, RideServerMsg } from '../ride.js';
 import type { TankClientMsg, TankServerMsg } from '../tankstelle-play.js';
+import type { CoasterClientMsg, CoasterServerMsg } from '../coaster.js';
 import type { KaraokeClientMsg, KaraokeServerMsg } from '../karaoke.js';
 import type { BowlingHouseClientMsg, BowlingHouseServerMsg } from '../bowling-house.js';
 import type { VoiceRangeClientMsg, VoiceRangeServerMsg } from '../voicerange.js';
@@ -36,6 +37,7 @@ export type ForkClientMsg =
   | TrolleyClientMsg // the supermarket's shopping trolley (shared/trolley.ts)
   | RideClientMsg // a bike from the city's bike shop (shared/ride.ts)
   | TankClientMsg // the petrol station and its car wash (shared/tankstelle-play.ts)
+  | CoasterClientMsg // DER BRECHER, the roller coaster round the tower (shared/coaster.ts)
   | KaraokeClientMsg // the bowling centre's karaoke bar (shared/karaoke.ts)
   | BowlingHouseClientMsg // the bowling centre's cosmic switch and rental shoes (shared/bowling-house.ts)
   | VoiceRangeClientMsg // how far your voice carries (shared/voicerange.ts)
@@ -84,6 +86,7 @@ export type ForkServerMsg =
   | TrolleyServerMsg
   | RideServerMsg
   | TankServerMsg
+  | CoasterServerMsg
   | KaraokeServerMsg // the bowling centre's karaoke bar
   | BowlingHouseServerMsg
   | VoiceRangeServerMsg // how far someone's voice carries

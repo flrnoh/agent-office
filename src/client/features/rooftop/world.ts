@@ -7,6 +7,7 @@ import { Dj } from './dancer'; // fork: the DJ's moves
 import { buildLedWall, type WallInfo } from './ledwall'; // fork: the LED wall's visuals
 import { buildRoofTables, type RoofTablesView } from '../../tablegames/models'; // fork: games on the roof
 import { BUNGEE } from '../../../shared/bungee'; // fork: bungee off the roof
+import { COASTER_GAP } from '../../../shared/coaster'; // fork: DER BRECHER's station
 import { buildBungeeJetty, type BungeeJetty } from '../../world/bungee'; // fork: bungee off the roof
 import { Worker } from '../../world/character';
 import { buildCity, type City } from '../../world/city';
@@ -197,7 +198,7 @@ export function buildRooftop(night: NightParts, floors: number): Rooftop {
   const steel = toon('#aeb6bf');
   const glassMat = new THREE.MeshBasicMaterial({ color: '#d6f1ff', transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
   const edges: [number, number, number, number][] = [
-    [B.minX, B.maxX, B.minZ, FLOOR.minZ],
+    [B.minX, COASTER_GAP.x0, B.minZ, FLOOR.minZ], [COASTER_GAP.x1, B.maxX, B.minZ, FLOOR.minZ], // fork: a gap onto DER BRECHER's station
     [B.minX, BUNGEE.x - BUNGEE.halfWidth, FLOOR.maxZ, B.maxZ], // fork: a gap for the bungee jetty
     [BUNGEE.x + BUNGEE.halfWidth, B.maxX, FLOOR.maxZ, B.maxZ],
     [B.minX, FLOOR.minX, B.minZ, B.maxZ],

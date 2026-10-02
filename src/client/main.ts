@@ -67,6 +67,7 @@ import { installBaumarkt } from './features/baumarkt';
 import { installTankstelle } from './features/tankstelle'; // flrnoh fork: the petrol station
 import { installBossDesk } from './features/bossdesk';
 import { installBungee } from './features/bungee';
+import { installCoaster } from './features/coaster'; // flrnoh fork: DER BRECHER
 import { installTown } from './features/town'; // flrnoh fork: the city round the office
 import { installCitySound } from './features/citysound'; // flrnoh fork: the sounds of the city
 import { installKino } from './features/kino'; // flrnoh fork: the cinema
@@ -231,6 +232,7 @@ parts.ride = installRide(ctx, { personOf, booze: () => parts.bar.booze, serve: (
 parts.tankstelle = installTankstelle(ctx, parts, { booze: () => parts.bar.booze, caffeine: () => parts.coffee.caffeine, reach });
 (window as any).__citybus = installCityBus(ctx, { free: () => (standUp(), stopWalking()) }); // fork: riding the city bus
 (window as any).__minimap = installMinimap(ctx); // fork: the minimap, J for the big map
+parts.coaster = installCoaster(ctx, { roof: parts.rooftop.roof, roofFloors: parts.rooftop.roofFloors, bodyOf: (id) => personOf(id)?.root }); // fork: DER BRECHER
 (window as any).__karaoke = installKaraoke(ctx, { personOf }); // fork: the bowling centre's karaoke bar
 (window as any).__minigolf = installMinigolf(ctx, { standUp, stopWalking, personOf }); // fork: the bowling centre's mini golf
 (window as any).__bowlinggame = installBowlingGame(ctx, { personOf }); // fork: the bowling centre's lanes and league
@@ -297,6 +299,7 @@ const { worlds, views, rooftop, bar, coffee, golf, bargames, hanging, climbing, 
 (window as any).__office = { world: () => worlds.world(), court: () => worlds.court(), sendoffs: views.sendoffs, jail: views.jail, plan: worlds.plan, applyMap: parts.maps.applyMap, roof: rooftop.roof, booze: bar.booze, dj: () => djFrame(rooftop.djAt()), store, player: parts.player, caffeine: coffee.caffeine, camera: ctx.camera, arcade: parts.arcade, cabinet: parts.cabinet, workerViews: views.workerViews, departures: views.departures, arrivals: views.arrivals, scene: ctx.scene, net: parts.net, renderer: ctx.renderer, hands: parts.hands, me: parts.me, remotes: parts.peers.remotes, settings: parts.settings, gallery: parts.gallery, hanger: hanging.hanger, office: ctx.office, ride: parts.travel.ride, switchFloor: parts.travel.switchFloor, climber: climbing.climber, driver: cars.driver, getIn: cars.getIn, getOut: cars.getOut, golf: golf.golf, balls: golf.balls, thrower: bargames.thrower, elevatorPanelOpen, confetti: parts.confetti, dog: parts.dog, sky: ctx.sky, holiday: parts.stage.holiday, carried: () => core.carrying, emoteWheel: emotes.emoteWheel, emote: emotes.emote, ball: hoops.ball, rig: rig.rig, tables, padel: places.padel, bungee, soccer: places.soccer, beach: parts.beach, shops: parts.shops, funshops: parts.funshops, bowling: places.bowling }; // rig … shops, bowling: flrnoh fork
 (window as any).__office.tankstelle = parts.tankstelle; // flrnoh fork: the petrol station
 (window as any).__office.bikes = parts.ride; // flrnoh fork: bikes, pets, laundry
+(window as any).__office.coaster = parts.coaster; // flrnoh fork: DER BRECHER
 (window as any).__voice = parts.voice;
 (window as any).__sound = parts.sound;
 (window as any).__notify = parts.notifier;

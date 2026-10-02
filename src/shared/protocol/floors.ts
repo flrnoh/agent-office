@@ -9,6 +9,7 @@ import type { BallState } from '../hoop.js';
 import type { JukeboxState } from '../jukebox.js';
 import type { WhiteboardView } from '../whiteboard.js';
 import type { BungeeState } from '../bungee.js'; // flrnoh fork
+import type { CoasterState } from '../coaster.js'; // flrnoh fork
 import type { DjSetState } from '../djset.js'; // flrnoh fork
 import type { RigView } from '../rig.js'; // flrnoh fork
 import type { CraftState } from '../boats.js'; // flrnoh fork: the jetty's boats
@@ -155,6 +156,8 @@ export interface FloorView {
   tables?: TableSeat[];
   /** Who's on the bungee rope, and the day's jumps (flrnoh fork, see shared/bungee.ts), in every view: the jump's seen from below too. */
   bungee?: BungeeState;
+  /** DER BRECHER's train (flrnoh fork, see shared/coaster.ts), in every view: it's seen from every floor too. */
+  coaster?: CoasterState;
 }
 
 export type FloorClientMsg =

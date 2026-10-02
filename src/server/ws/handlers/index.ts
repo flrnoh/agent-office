@@ -23,6 +23,7 @@ import { usageHandlers } from './usage.js';
 import { whiteboardHandlers, whiteboardHooks, whiteboardView } from './whiteboard.js';
 import { jailView, workerHandlers, workerHooks, workersView } from './workers.js';
 import { baumarktView, trolleysView, boatsView, bungeeView, forkHandlers, forkHooks, kinoView, noView, rigView, tankView, tvView } from './fork.js'; // flrnoh fork
+import { coasterView } from './coaster.js'; // flrnoh fork
 import { karaokeHooks } from './karaoke.js'; // flrnoh fork: the bowling centre's karaoke bar
 import { bowlingHooks } from './bowling.js'; // flrnoh fork: the bowling centre's rental shoes go back
 import { minigolfHandlers, minigolfHooks } from './minigolf.js'; // flrnoh fork: the bowling centre's mini golf
@@ -92,4 +93,5 @@ export const views: ViewPieces = {
   tables: noView,
   bungee: bungeeView,
   baumarkt: baumarktView, // flrnoh fork: the Baumarkt
+  coaster: coasterView, // flrnoh fork: DER BRECHER, seen from every floor
 };
