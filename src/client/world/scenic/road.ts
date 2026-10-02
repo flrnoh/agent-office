@@ -104,7 +104,8 @@ function signpost(into: THREE.Group, labels: THREE.Group, x: number, z: number, 
   const face = textPlane(text, { color: '#3d2b1f', size: 64 });
   const w = (face.geometry.parameters as { width: number }).width;
   face.scale.setScalar(Math.min(1.9, (width - 0.4) / w));
-  face.position.set(x + Math.sin(rotY) * 0.09, G + 2.45, z + Math.cos(rotY) * 0.09);
+  // 3 cm off the board (its face at 0.08), so it doesn't flicker into it from down the road.
+  face.position.set(x + Math.sin(rotY) * 0.11, G + 2.45, z + Math.cos(rotY) * 0.11);
   face.rotation.y = rotY;
   labels.add(face);
 }
@@ -128,12 +129,13 @@ export function buildSigns(kit: ScenicKit) {
     colliders.push({ minX: bx - 3.4, maxX: bx + 3.4, minZ: bz - 0.2, maxZ: bz + 0.2, bottom: by, top: by + 5.6 });
     const title = textPlane('🏎️ SCENIC LOOP', { color: '#ffd166', size: 72 });
     title.scale.setScalar(1.35);
-    title.position.set(bx, by + 4.75, bz - 0.15);
+    // Clear of the posts' faces (0.15 out), not only the board's (0.125).
+    title.position.set(bx, by + 4.75, bz - 0.18);
     title.rotation.y = Math.PI;
     const sub = textPlane('🌾 farm · 🌲 pines · 🏔️ mountains · 🏖️ beach — 1.4 km, either way ⟷', { color: '#f1faee', size: 44 });
     const w = (sub.geometry.parameters as { width: number }).width;
     sub.scale.setScalar(7.8 / w);
-    sub.position.set(bx, by + 3.55, bz - 0.15);
+    sub.position.set(bx, by + 3.55, bz - 0.18);
     sub.rotation.y = Math.PI;
     labels.add(title, sub);
   }

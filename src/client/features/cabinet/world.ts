@@ -109,11 +109,11 @@ export function buildCabinet(): CabinetModel {
   const [bu, bv] = SCREEN_BOTTOM;
   const [tu, tv] = SCREEN_TOP;
   const out = new THREE.Vector2(Math.cos(LEAN), Math.sin(LEAN));
-  const bezel = mesh(new THREE.PlaneGeometry(inner - 0.04, 0.5), toon('#0b1320'), 0, (bv + tv) / 2 + out.y * 0.002, (bu + tu) / 2 + out.x * 0.002, false);
+  const bezel = mesh(new THREE.PlaneGeometry(inner - 0.04, 0.5), toon('#0b1320'), 0, (bv + tv) / 2 + out.y * 0.005, (bu + tu) / 2 + out.x * 0.005, false);
   bezel.rotation.x = -LEAN;
   group.add(bezel);
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.42), new THREE.MeshBasicMaterial({ color: '#070b14', toneMapped: false }));
-  screen.position.set(0, (bv + tv) / 2 + out.y * 0.005, (bu + tu) / 2 + out.x * 0.005);
+  screen.position.set(0, (bv + tv) / 2 + out.y * 0.01, (bu + tu) / 2 + out.x * 0.01);
   screen.rotation.x = -LEAN;
   group.add(screen);
 

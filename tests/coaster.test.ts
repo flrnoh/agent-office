@@ -4,7 +4,7 @@ import { coasterRoute, HEART } from '../src/shared/coaster-route.js';
 import { DS, coasterTrack, poseAt, rideDuration, sAtTime } from '../src/shared/coaster-track.js';
 import { coasterSupports } from '../src/shared/coaster-supports.js';
 import { ROAD_Z, SIDEWALKS_Z, TOWER, groundFloorKeepouts, inBox, levels, outsideKeepouts, roofKeepouts, type Box3 } from '../src/shared/coaster-keepout.js';
-import { CARS, SEATS, STATION, carOffset } from '../src/shared/coaster.js';
+import { CARS, SEATS, STATION, TUBE_PORTALS, TUBE_RADIUS, TUBE_RING, TUBE_UP, carOffset } from '../src/shared/coaster.js';
 import { ANCHOR, BODY, bungeePlan, bungeePose } from '../src/shared/bungee.js';
 import { FLOOR, WALL_HEIGHT, WALL_T, roofDrop } from '../src/shared/layout.js';
 import { storeyPlan } from '../src/shared/storey.js';
@@ -29,7 +29,7 @@ const ENVELOPE: [number, number][] = [
   [0.4, 1.4],
 ];
 /** The glass tube through the ground floor: round, about the heartline (a little above it). */
-const TUBE: [number, number][] = Array.from({ length: 16 }, (_, k) => [1.32 * Math.cos((k / 16) * 2 * Math.PI), 0.1 + 1.32 * Math.sin((k / 16) * 2 * Math.PI)]);
+const TUBE: [number, number][] = Array.from({ length: 24 }, (_, k) => [TUBE_RADIUS * Math.cos((k / 24) * 2 * Math.PI), TUBE_UP + TUBE_RADIUS * Math.sin((k / 24) * 2 * Math.PI)]);
 
 function tunnelOf(storeys: number) {
   const z = coasterTrack(storeys).zones.find((q) => q.kind === 'tunnel')!;
@@ -177,14 +177,15 @@ test('coaster tunnel: through the ground floor under its ceiling, in and out thr
       if (room) {
         inside++;
         if (y > WALL_HEIGHT - 0.02) hits.add(`the ceiling at ${p.s} m`);
-        if (y < 3.8) hits.add(`too low at ${p.s} m (${y.toFixed(2)})`);
+        // Over the heads of everyone walking (or jumping) about under it.
+        if (y < 3.2) hits.add(`too low at ${p.s} m (${y.toFixed(2)})`);
         for (const k of inner) if (inBox(k, p.x, y, p.z)) hits.add(`${k.name} at ${p.s} m`);
       }
       // Through the walls, only at the two portals: the south wall at the tube's line in, the north wall out.
       const inWall = (p.z > FLOOR.maxZ && p.z < FLOOR.maxZ + WALL_T + 0.8) || (p.z < FLOOR.minZ && p.z > FLOOR.minZ - WALL_T) || p.x < FLOOR.minX || p.x > FLOOR.maxX;
       if (inWall && p.x > FLOOR.minX - WALL_T && p.x < FLOOR.maxX + WALL_T && p.z > FLOOR.minZ - WALL_T && p.z < FLOOR.maxZ + WALL_T + 0.8) {
-        const south = p.z > 0 && Math.abs(p.x - 4.8) < 1.5;
-        const north = p.z < 0 && Math.abs(p.x + 16) < 1.5;
+        const south = p.z > 0 && Math.abs(p.x - TUBE_PORTALS[0].u) < TUBE_PORTALS[0].width / 2 && y > TUBE_PORTALS[0].y0 && y < TUBE_PORTALS[0].y1;
+        const north = p.z < 0 && Math.abs(p.x - TUBE_PORTALS[1].u) < TUBE_PORTALS[1].width / 2 && y > TUBE_PORTALS[1].y0 && y < TUBE_PORTALS[1].y1;
         if (!south && !north) hits.add(`a wall at ${p.s} m (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`);
       }
     }

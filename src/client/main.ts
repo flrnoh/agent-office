@@ -1,7 +1,7 @@
 import './style.css';
 import { Net } from './net';
 import { DesktopNotifier } from './notify';
-import { store, loadProfile, loadSettings } from './state';
+import { store, accountProfile, loadProfile, loadSettings } from './state'; // accountProfile: flrnoh fork
 import { PlayerController, groundAt } from './player';
 import { Hands } from './world/hands';
 import { Confetti } from './world/confetti';
@@ -263,7 +263,7 @@ async function whoami() {
 }
 
 void whoami().then(() => {
-  const saved = loadProfile();
+  const saved = accountProfile(store.me) ?? loadProfile(); // accountProfile: flrnoh fork, your account's look from any browser
   if (saved && store.me.account) saved.name = store.me.account.name;
   if (store.me.account) store.profile.name = store.me.account.name;
   store.emit('me');

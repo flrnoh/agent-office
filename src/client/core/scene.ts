@@ -37,7 +37,10 @@ export interface Stage {
 
 export function makeRenderer(canvas: HTMLCanvasElement): THREE.WebGLRenderer | null {
   try {
-    return new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    // reversedDepthBuffer (flrnoh fork): depth stays about as precise at 300 m as at 3 m, so signs, stripes
+    // and trim a centimetre off a wall don't flicker against it from across the city or the roof. Where
+    // the GPU lacks EXT_clip_control, three falls back to the ordinary depth buffer by itself.
+    return new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', reversedDepthBuffer: true });
   } catch (err) {
     console.error(err);
     return null;

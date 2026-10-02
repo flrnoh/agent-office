@@ -65,10 +65,10 @@ export function buildElevator(height = WALL_HEIGHT): Elevator {
   }
   const header = height - doorHeight;
   group.add(mesh(new THREE.BoxGeometry(doorWidth, header, wall), steel, x, doorHeight + header / 2, front - wall / 2));
-  // A brass frame round the doorway, and a kick plate along the bottom of the shaft.
+  // A brass frame round the doorway, on the front (not sunk into it, where it would fight the jambs), and a kick plate along the bottom of the shaft.
   const frameT = 0.08;
-  group.add(mesh(new THREE.BoxGeometry(doorWidth + frameT * 2, frameT, 0.05), brass, x, doorHeight + frameT / 2, front + 0.02, false));
-  for (const sx of [-1, 1]) group.add(mesh(new THREE.BoxGeometry(frameT, doorHeight, 0.05), brass, x + sx * (doorWidth / 2 + frameT / 2), doorHeight / 2, front + 0.02, false));
+  group.add(mesh(new THREE.BoxGeometry(doorWidth + frameT * 2, frameT, 0.05), brass, x, doorHeight + frameT / 2, front + 0.025, false));
+  for (const sx of [-1, 1]) group.add(mesh(new THREE.BoxGeometry(frameT, doorHeight, 0.05), brass, x + sx * (doorWidth / 2 + frameT / 2), doorHeight / 2, front + 0.025, false));
   group.add(mesh(new THREE.BoxGeometry(width + 0.02, 0.25, wall + 0.04), steelDark, x, 0.125, front - wall / 2, false));
 
   // Inside: a dark floor, a mirror on the back wall, handrails, a strip light over the doors.
@@ -133,7 +133,8 @@ export function buildElevator(height = WALL_HEIGHT): Elevator {
     const d = new THREE.Group();
     d.add(mesh(new THREE.BoxGeometry(half, doorHeight - 0.02, 0.05), doorMat, 0, 0, 0));
     // A seam line and a porthole of light, so they read as elevator doors from across the room.
-    d.add(mesh(new THREE.BoxGeometry(0.02, doorHeight - 0.1, 0.055), steelDark, (-side * half) / 2 + side * 0.01, 0, 0, false));
+    // (Half a centimeter proud of the leaf's edge, so it doesn't fight it there; shut, the two seams overlap into one line.)
+    d.add(mesh(new THREE.BoxGeometry(0.02, doorHeight - 0.1, 0.055), steelDark, (-side * half) / 2 + side * 0.005, 0, 0, false));
     d.add(mesh(new THREE.BoxGeometry(half - 0.2, 0.05, 0.055), steelDark, 0, 0.35, 0, false));
     d.position.set(x + (side * half) / 2, doorHeight / 2, doorZ);
     group.add(d);

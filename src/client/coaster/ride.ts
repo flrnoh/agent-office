@@ -11,7 +11,7 @@ import type { NightParts } from '../world/outside';
 import type { World } from '../world/world';
 import type { Collider, Interactable } from '../world/types';
 import { buildTrack, type TrackView } from '../world/coaster/track';
-import { buildSupports, type SupportsView } from '../world/coaster/supports';
+import { PHOTO_CAMERA, buildSupports, type SupportsView } from '../world/coaster/supports';
 import { buildTrain, type TrainView } from '../world/coaster/train';
 import { buildStation, type StationView } from '../world/coaster/station';
 import { canvasTexture } from '../world/texture';
@@ -181,12 +181,12 @@ export class CoasterRide {
     this.group.add(view.group, supports.group);
     this.d.noOutline(view.group);
     // The photo: from the camera on its post by the U-turn, as the front car comes at it.
-    const from = new THREE.Vector3(...held.photo.cam);
+    const from = new THREE.Vector3(...held.photo.shot);
     const to = new THREE.Vector3(...held.photo.aim);
     const s = held.photo.s;
     const screams = [track.marks.dropFrom + 6, track.marks.loop + 14, track.marks.tunnel + 6];
     this.built = { storeys: track.storeys, track, view, supports, photo: { from, to, s }, screams };
-    this.flash.position.copy(from);
+    this.flash.position.set(...held.photo.cam).y += 0.17;
     return this.built;
   }
 
@@ -387,7 +387,12 @@ export class CoasterRide {
     this.riders.showAll(true, st.seats);
     this.group.updateMatrixWorld(true);
     const names = st.seats.filter((r) => r).map((r) => (r!.hands ? `🙌 ${r!.name}` : r!.name));
+    // Nothing of the camera itself (its housing, lens and flash) between it and the train.
+    const own = [b.supports.group.getObjectByName(PHOTO_CAMERA), this.flash].filter((o): o is THREE.Object3D => !!o);
+    const shown = own.map((o) => o.visible);
+    for (const o of own) o.visible = false;
     this.photo = takePhoto(this.d.renderer, this.d.scene, b.photo.from, b.photo.to, { ride: st.ride, names, at: this.d.officeNow() });
+    own.forEach((o, i) => (o.visible = shown[i]));
     showOnMonitor(this.photo, this.station.monitor);
     me.visible = meWas;
   }

@@ -146,7 +146,7 @@ export function bands(parts: THREE.Group, y0: number, style: InteriorStyle, ligh
   // Four sides of a frame round the building, and a thin light under it a little further in.
   for (const [mat, h, out, yy] of [
     [color, H, OUT, y],
-    [light, 0.08, OUT - 0.04, y0 - H - 0.06],
+    [light, 0.08, OUT - 0.05, y0 - H - 0.06], // just inside the corner lights' posts (0.16 out, landmarks.ts)
   ] as const) {
     const ww = B.maxX - B.minX + 2 * out;
     const dd = B.maxZ - B.minZ + 2 * out;
@@ -161,6 +161,8 @@ export function bands(parts: THREE.Group, y0: number, style: InteriorStyle, ligh
 export function drips(parts: THREE.Group, top: number, windows: readonly Opening[]) {
   const rnd = mulberry32(77);
   const tall = windows.filter((o) => o.wall === 'south');
+  /** The runs down the cornice's front so far, and how far out each stands: where two cross, the later one stands out further. */
+  const runs: { u: number; half: number; out: number }[] = [];
   for (let i = 0; i < 22; i++) {
     const u = B.minX + 0.8 + rnd() * (B.maxX - B.minX - 1.6);
     const len = 0.6 + rnd() * 1.8;
@@ -172,8 +174,14 @@ export function drips(parts: THREE.Group, top: number, windows: readonly Opening
     const z = B.maxZ + 0.04 + r;
     parts.add(mesh(new THREE.CylinderGeometry(r, r, len, 8), mat, u, top - len / 2, z, false));
     parts.add(mesh(new THREE.SphereGeometry(r * 1.45, 10, 8), mat, u, top - len, z, false));
-    // Spilt over the cornice's edge, and down its front.
+    // Spilt over the cornice's edge, and down its front: from inside the cornice (its front 0.22 out)
+    // to 0.24 out, a centimeter further for each run it crosses, all of them behind its band (0.28 out).
     parts.add(mesh(new THREE.SphereGeometry(r * 2.4, 10, 6).scale(1, 0.35, 1), mat, u, top + 0.45, B.maxZ + 0.12, false));
-    parts.add(mesh(new THREE.BoxGeometry(r * 2.2, 0.45, 0.04), mat, u, top + 0.22, B.maxZ + 0.24, false));
+    const half = r * 1.1;
+    const crossed = runs.filter((o) => Math.abs(o.u - u) < o.half + half).map((o) => o.out);
+    let out = 0.24;
+    while (crossed.some((o) => Math.abs(o - out) < 0.005)) out += 0.01;
+    runs.push({ u, half, out });
+    parts.add(mesh(new THREE.BoxGeometry(r * 2.2, 0.45, out - 0.21), mat, u, top + 0.22, B.maxZ + (out + 0.21) / 2, false));
   }
 }

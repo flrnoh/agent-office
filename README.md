@@ -267,6 +267,8 @@ For HTTPS on your own domain, point a DNS record at the server and add `bash -s 
 
 Everyone gets their own account, so their name is on their character, in chat and on every terminal they type into.
 
+An account's character looks the same from any browser or device: the office keeps each account's look (`.agent-office/account-looks.json`) and puts it on wherever they sign in. Admins also have a top nobody else can wear, the host's smoking jacket.
+
 **1. On a server, let them in first.** On a [Tailscale](docs/aws.md#tailscale) office, everyone on your tailnet can already open it. For someone who isn't, share the machine with them from Tailscale's Machines page: **☰ → 👥 Invite teammates** says how. Skip to step 2.
 
 Otherwise the office is only reachable through an SSH tunnel, so a teammate needs their SSH key on the machine. In the office, open **☰ → 👥 Invite teammates** and type their GitHub username. On AWS, Railway, Fly.io or Dokploy you can also do it from your terminal:

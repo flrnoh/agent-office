@@ -71,7 +71,7 @@ export function buildGymRooms(p: GymParts, showCeiling: boolean): GymRooms {
   const juiceWood = planks('#a8743f', 10, 5);
   juiceWood.wrapS = juiceWood.wrapT = THREE.RepeatWrapping;
   juiceWood.repeat.set(1.3, 3);
-  decal(p, { minX: R.minX, maxX: 8.9, minZ: 40.9, maxZ: 47.1 }, tex(juiceWood), 0.004);
+  decal(p, { minX: R.minX, maxX: 8.9, minZ: 40.9, maxZ: 47.1 }, tex(juiceWood), 0.005); // over the weight tiles' west edge
 
   // ---- The walls: a dark band below, a lime line, lighter above ----------------------------------
   const wallMat = toon('#66737c');

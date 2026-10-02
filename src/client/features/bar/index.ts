@@ -62,7 +62,7 @@ export function installBar(ctx: Ctx, deps: BarDeps) {
     if (!r || !ctx.upTop()) return;
     const cut = d.strength > 0 && booze.cutOff(performance.now() / 1000);
     const drink = cut ? DRINK_BY_ID.get('water')! : d;
-    r.serve(ctx.player.pos.z);
+    r.serve(ctx.player.pos.x, ctx.player.pos.z);
     ctx.sound.pour(r.pourAt);
     if (cut) toast("🙅 The bartender slides you a water instead: you've had enough", 'warn');
     setTimeout(() => {

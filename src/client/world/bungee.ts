@@ -112,7 +112,7 @@ export function buildBungeeJetty(): BungeeJetty {
   // The gantry: a post either side at the front, a beam across, and an arm out to the anchor.
   const gz = edgeZ - 0.2;
   const beamY = ANCHOR.y + 0.45;
-  for (const sx of [-1, 1]) platform.add(mesh(new THREE.BoxGeometry(0.14, beamY + 0.1 - deckY, 0.14), black, x + sx * (hw + 0.08), (beamY + 0.1 + deckY) / 2, gz));
+  for (const sx of [-1, 1]) platform.add(mesh(new THREE.BoxGeometry(0.14, beamY + 0.09 - deckY, 0.14), black, x + sx * (hw + 0.08), (beamY + 0.09 + deckY) / 2, gz)); // just under the beam's top
   platform.add(mesh(new THREE.BoxGeometry(hw * 2 + 0.44, 0.2, 0.2), yellow, x, beamY, gz));
   const armLen = ANCHOR.z - gz + 0.15;
   platform.add(mesh(new THREE.BoxGeometry(0.16, 0.16, armLen), yellow, x, beamY, gz + armLen / 2));

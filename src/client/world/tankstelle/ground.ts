@@ -60,8 +60,9 @@ export function buildStationGround(group: THREE.Group) {
   // South, the office's street has raised sidewalks: the driveways cross them as lowered aprons.
   const apron = toon('#6b6f78');
   for (const d of DRIVEWAYS.slice(0, 2)) {
-    const z1 = d.minX < -110 ? 22.3 : 23; // west of the town the scenic loop's road starts sooner
-    block(solid, d.maxX - d.minX, 0.1, z1 - b.maxZ, apron, (d.minX + d.maxX) / 2, (b.maxZ + z1) / 2, -0.05, false);
+    // A centimeter out past the sidewalk's edges at both ends, so its ends and the sidewalk's aren't one plane.
+    const z1 = (d.minX < -110 ? 22.3 : 23) + 0.01; // west of the town the scenic loop's road starts sooner
+    block(solid, d.maxX - d.minX, 0.1, z1 - b.maxZ + 0.01, apron, (d.minX + d.maxX) / 2, (b.maxZ - 0.01 + z1) / 2, -0.05, false);
   }
 
   // Curbs along the grass (low enough to step over; a car's wheels don't notice them either).

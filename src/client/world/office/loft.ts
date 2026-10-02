@@ -77,7 +77,7 @@ export function buildLoft(group: THREE.Group, colliders: Collider[], interactabl
   colliders.push({ minX, maxX: minX + T, minZ, maxZ: doorZ, bottom: floorY, top: 99 });
   // Over the door at the top of the stairs.
   const doorTop = floorY + 2.3;
-  group.add(mesh(box(T + 0.04, roofY - doorTop, maxZ - doorZ), wallMat, westX, (roofY + doorTop) / 2, (doorZ + maxZ) / 2, false));
+  group.add(mesh(box(T + 0.02, roofY - doorTop, maxZ - doorZ), wallMat, westX, (roofY + doorTop) / 2, (doorZ + maxZ) / 2, false)); // a centimeter inside the frame's faces
   colliders.push({ minX, maxX: minX + T, minZ: doorZ, maxZ, bottom: doorTop, top: roofY });
 
   // Stairs: a solid run of steps up the south wall, wood treads, a handrail on the open side.
@@ -95,8 +95,11 @@ export function buildLoft(group: THREE.Group, colliders: Collider[], interactabl
   profile.closePath();
   const stairs = mesh(new THREE.ExtrudeGeometry(profile, { depth: sw, bevelEnabled: false }), wallMat, fromX, 0, STAIRS.minZ);
   group.add(stairs);
+  // Each tread overhangs its riser, runs a centimeter on into the next one (the top one into the loft's
+  // slab) and stands a centimeter proud of the open side, so none of its faces fight the steps'.
   for (let i = 1; i <= steps; i++) {
-    group.add(mesh(box(run + 0.04, 0.06, sw), woodMat, fromX + (i - 0.5) * run - 0.02, i * rise - 0.03, STAIRS.minZ + sw / 2, false));
+    const into = i < steps ? 0.01 : 0; // the top one stops at the slab, whose top it would share
+    group.add(mesh(box(run + 0.04 + into, 0.06, sw + 0.01), woodMat, fromX + (i - 0.5) * run - 0.02 + into / 2, i * rise - 0.03, STAIRS.minZ + sw / 2 - 0.005, false));
     colliders.push({ minX: fromX + (i - 1) * run, maxX: fromX + i * run, minZ: STAIRS.minZ, maxZ: STAIRS.maxZ, top: i * rise });
   }
   const railZ = STAIRS.minZ + 0.06;

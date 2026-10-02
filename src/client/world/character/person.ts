@@ -222,7 +222,7 @@ export class Person {
 
     this.rig = { root: this.root, body: this.body, head: this.head, armL: this.armL, armR: this.armR, legL: this.legL, legR: this.legR };
     this.setLabel(name, false);
-    this.marks = new Marks({ head, left: this.armR, right: this.armL, skin, shirt: this.shirt, body: this.body, pants, hair: this.hair }, look); // flrnoh fork: armR is their left
+    this.marks = new Marks({ head, left: this.armR, right: this.armL, legs: [this.legL, this.legR], skin, shirt: this.shirt, body: this.body, pants, hair: this.hair }, look); // flrnoh fork: armR is their left
   }
 
   /** Fork: the body and limbs, for a pose laid over the frame's after update (soccer/kit.ts: kicks, celebrations, dives, the kit). */
