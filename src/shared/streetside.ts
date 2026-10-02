@@ -1,5 +1,6 @@
 import { CITY_ROAD, CITY_WALK, LOTS, STREETS, stretchRect, type Stretch } from './city.js';
 import { mulberry32 } from './rng.js';
+import { onTankstelle } from './tankstelle.js';
 
 // flrnoh fork (see FORK.md): what stands along the city's streets, laid out once so the page that
 // draws it (client/world/town/furniture.ts, ground.ts) and the passers-by who sit on its benches and
@@ -111,7 +112,10 @@ function layLamps(): Lamp[] {
     for (let a = from + 12 + (Math.abs(s.a * 7 + s.b * 3) % 3) * 4; a < to - 10; a += LAMP_EVERY) {
       for (const side of [-1, 1] as const) {
         const off = side * LAMP_OFF;
-        out.push({ x: s.alongX ? a : line + off, z: s.alongX ? line + off : a, street: s, side, along: a });
+        const x = s.alongX ? a : line + off;
+        const z = s.alongX ? line + off : a;
+        if (onTankstelle(x, z)) continue; // fork: none in the petrol station's driveways
+        out.push({ x, z, street: s, side, along: a });
       }
     }
   }
