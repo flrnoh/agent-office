@@ -60,6 +60,7 @@ import { BusEngines, busDoorHiss } from '../features/citybus/sound'; // fork: th
 import { CitySound, type CityScene } from './city'; // fork: the sounds of the city
 import { bells, siren, type SirenPass } from './citybells';
 import { KaraokeSound } from '../features/karaoke/sound'; // fork: the bowling centre's karaoke bar
+import { BowlingAmbience, bowlingSound, type BowlingSound } from '../bowling/sound'; // fork: the bowling centre
 
 // What the rest of the client imports from here.
 export type { Hall, Listener } from './core';
@@ -524,5 +525,15 @@ export class OfficeSound {
   /** A siren going by far off (sound/citybells.ts). */
   citySiren(pass: SirenPass) {
     if (this.city.out) siren(this.a, this.city.out, pass);
+  }
+
+  /** The bowling centre's doors, the cosmic switch, the tap, the fryer, the till, the shoes (client/bowling/sound.ts). */
+  bowling(kind: BowlingSound) {
+    bowlingSound(this.a, kind);
+  }
+  private readonly bowlingAir = new BowlingAmbience(this.a);
+  /** Every frame in the bowling centre: its murmur, far-off balls, muzak, and (0..1) cosmic bowling's pulse. */
+  setBowling(level: number, cosmic: number) {
+    this.bowlingAir.set(level, cosmic);
   }
 }

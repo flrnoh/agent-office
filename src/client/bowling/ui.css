@@ -1,0 +1,11 @@
+/* The bowling centre's windows (client/bowling/ui.ts). */
+.bw-counter .svc-list li.bw-off { opacity: 0.45; cursor: not-allowed; }
+.bw-shoes { width: min(420px, calc(100vw - 32px)); }
+.bw-shoes .bw-note { margin: 0 0 12px; }
+.bw-shoes .bw-sizes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.bw-shoes .bw-size { font-size: 18px; font-weight: 900; padding: 10px 0; }
+.bw-shoes .bw-size.on { background: #e63946; color: #fff; }
+.bw-shoes .bw-back { margin-top: 14px; width: 100%; }
+@media (max-width: 420px) {
+  .bw-shoes .bw-sizes { grid-template-columns: repeat(4, 1fr); }
+}

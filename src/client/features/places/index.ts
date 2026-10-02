@@ -1,7 +1,7 @@
 /**
  * flrnoh fork (see FORK.md): the places across the street, each a place of its own like the roof:
  * the casino (casino.ts), the gym (gym.ts), the padel hall with its café and courts (hall.ts,
- * hall/padel.ts) and the soccer hall (soccer/place.ts). Their doors are on the office's street; inside,
+ * hall/padel.ts), the soccer hall (soccer/place.ts) and the bowling centre (client/bowling). Their doors are on the office's street; inside,
  * only what's in there is there to use.
  */
 import type * as THREE from 'three';
@@ -10,6 +10,8 @@ import { CASINO } from '../../../shared/casino';
 import { GYM } from '../../../shared/gym';
 import { HALL } from '../../../shared/hall';
 import { SOCCER } from '../../../shared/soccer';
+import { BOWLING } from '../../../shared/bowling';
+import type { Drink } from '../../../shared/rooftop';
 import type { ServerMsg } from '../../../shared/protocol';
 import type { Ctx, Hint } from '../../core/context';
 import type { CoreState } from '../../core/ctx';
@@ -24,6 +26,9 @@ import { buildCourts } from '../../hall/courts';
 import { PadelPlay } from '../../hall/padel';
 import { SoccerPlace } from '../../soccer/place';
 import { soccerLook } from '../../world/soccer/look';
+import { BowlingPlace } from '../../bowling/place';
+import type { Booze } from '../bar/booze';
+import { toast } from '../../ui/dom';
 import { store } from '../../state';
 import type { DeskKey } from '../../interaction';
 import type { Interactable } from '../../world/types';
@@ -40,12 +45,21 @@ declare module '../../world/types' {
     padel: true;
     soccer: true;
     soccerpitch: true;
+    bowling: true;
+    bowlingcounter: true;
+    bowlingshoes: true;
+    bowlingswitch: true;
+    bowlingseat: true;
+    bowlingpart: true;
   }
 }
 
 export interface PlacesDeps {
   /** Handed over the padel hall café's counter (see features/fridge). */
   served(d: CafeItem): void;
+  /** The bar's booze, and your hand reaching out: for what the bowling centre's counter hands over. */
+  booze(): Booze;
+  reach(): void;
 }
 
 export type PlacesParts = Pick<Parts, 'stage' | 'worlds' | 'place' | 'travel' | 'peers' | 'confetti'>;
@@ -106,7 +120,28 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     },
   });
   const padel = new PadelPlay({ net, camera, canvas, player, sound: ctx.sound });
-  const all = [casino, gym, hall, soccer] as const;
+  // The bowling centre next door (client/bowling): its house, and the lanes, karaoke and mini golf as its parts.
+  const bowling = new BowlingPlace({
+    ...host,
+    player,
+    sound: (k) => ctx.sound.bowling(k),
+    ambience: (level, cosmic) => ctx.sound.setBowling(level, cosmic),
+    served: (d: Drink) => {
+      deps.booze().drink(d, performance.now() / 1000);
+      deps.reach();
+      ctx.sound.opener(d.glass === 'pint' ? 'bottle' : d.glass === 'fries' || d.glass === 'currywurst' || d.glass === 'nachos' ? 'bite' : 'can');
+      if (ctx.player.view === 'first') ctx.hands.sip();
+      toast(`${d.emoji} ${d.name}. ${(d as Drink & { says?: string }).says ?? 'Bitteschön!'}`); // (the fridge's, kiosk's, cinema's and shops' things all say something)
+    },
+    cutOff: () => deps.booze().cutOff(performance.now() / 1000),
+    you: () => store.you,
+    people: () => {
+      const list = [...store.peers.values()].filter((p) => p.floor === BOWLING);
+      return list.map((p) => ({ id: p.id, name: p.name, x: p.x, y: p.y, z: p.z, moving: p.moving, seated: !!p.seat, person: p.id === store.you ? ctx.me : parts.peers.remotes.get(p.id)?.person }));
+    },
+    me: () => ctx.me,
+  });
+  const all = [casino, gym, hall, soccer, bowling] as const;
 
   /** The place you're in, if any. */
   const inside = () => all.find((p) => p.active) ?? null;
@@ -134,6 +169,13 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   ctx.interactions.define('cafe', { reach: 3.5, hint: hintIn(hall), use });
   ctx.interactions.define('soccer', { reach: 4, hint: hintIn(soccer), use });
   ctx.interactions.define('soccerpitch', { reach: 3.5, hint: hintIn(soccer), use });
+  ctx.interactions.define('bowling', { reach: 4, hint: hintIn(bowling), use });
+  ctx.interactions.define('bowlingcounter', { reach: 3.5, hint: hintIn(bowling), use });
+  ctx.interactions.define('bowlingshoes', { reach: 3.5, hint: hintIn(bowling), use });
+  ctx.interactions.define('bowlingswitch', { reach: 3, hint: hintIn(bowling), use });
+  ctx.interactions.define('bowlingseat', { reach: 3, hint: hintIn(bowling), use });
+  // Anything of the lanes', the karaoke bar's or the mini golf's that has no kind of its own: its part's use and hint (world/bowling/parts.ts).
+  ctx.interactions.define('bowlingpart', { reach: 3.5, hint: hintIn(bowling), use });
   ctx.interactions.define('padel', {
     reach: 5,
     hint: (it) => {
@@ -179,10 +221,11 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     hall,
     soccer,
     padel,
+    bowling,
   };
 }
 
 /** The floor id each place is. */
-function placeOf(p: CasinoPlace | GymPlace | HallPlace | SoccerPlace): string {
-  return p instanceof CasinoPlace ? CASINO : p instanceof GymPlace ? GYM : p instanceof HallPlace ? HALL : SOCCER;
+function placeOf(p: CasinoPlace | GymPlace | HallPlace | SoccerPlace | BowlingPlace): string {
+  return p instanceof CasinoPlace ? CASINO : p instanceof GymPlace ? GYM : p instanceof HallPlace ? HALL : p instanceof BowlingPlace ? BOWLING : SOCCER;
 }

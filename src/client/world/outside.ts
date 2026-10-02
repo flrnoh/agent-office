@@ -4,6 +4,7 @@ import { LOT, SIDE_LOT } from '../../shared/garage';
 import { STREET_END, STREET_Z, shoreX } from '../../shared/scenic';
 import { CROSSINGS, CROSSING_HALF, LOTS, pavedCorners } from '../../shared/city'; // fork: the city round the office
 import { CASINO_BOX, CASINO_HEIGHT } from '../../shared/casino'; // fork
+import { BOWLING_BOX, BOWLING_HEIGHT } from '../../shared/bowling'; // fork
 import { GYM_HEIGHT, GYM_STREET_BOX } from '../../shared/gym'; // fork
 import { HALL_BOX, HALL_HEIGHT, HALL_ROOF_RISE } from '../../shared/hall'; // fork
 import { SOCCER_BOX, SOCCER_HEIGHT } from '../../shared/soccer'; // fork
@@ -244,7 +245,7 @@ export function roadTexture(): THREE.CanvasTexture {
 export function neighbourBoxes(): { minX: number; maxX: number; minZ: number; maxZ: number; top: number }[] {
   return LOTS.filter((l) => Math.hypot(l.x, l.z) < 160)
     .map((l) => ({ minX: l.x - l.w / 2, maxX: l.x + l.w / 2, minZ: l.z - l.d / 2, maxZ: l.z + l.d / 2, top: l.h + (l.step?.up ?? 0) }))
-    .concat({ ...CASINO_BOX, top: CASINO_HEIGHT + 0.5 }, { ...HALL_BOX, top: HALL_HEIGHT + HALL_ROOF_RISE }, { ...SOCCER_BOX, top: SOCCER_HEIGHT + 6 }, { ...GYM_STREET_BOX, top: GYM_HEIGHT + 0.5 }); // fork: the casino, the padel hall, the soccer hall (and the billboard on its roof)
+    .concat({ ...CASINO_BOX, top: CASINO_HEIGHT + 0.5 }, { ...HALL_BOX, top: HALL_HEIGHT + HALL_ROOF_RISE }, { ...SOCCER_BOX, top: SOCCER_HEIGHT + 6 }, { ...GYM_STREET_BOX, top: GYM_HEIGHT + 0.5 }, { ...BOWLING_BOX, top: BOWLING_HEIGHT + 7 }); // fork: the casino, the padel hall, the soccer hall (and the billboard on its roof), the bowling centre (and its pin)
 }
 
 /** fork: the office's street's sidewalks stop where a city street comes in, and at the paved corners of its crossing. */

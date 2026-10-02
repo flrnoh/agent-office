@@ -7,7 +7,7 @@ import { CASINO, CASINO_ENTRY } from '../../shared/casino.js';
 import { GYM, GYM_ENTRY } from '../../shared/gym.js';
 import { HALL } from '../../shared/hall.js';
 import { SOCCER } from '../../shared/soccer.js';
-import { BOWLING, BOWLING_ENTRY } from '../../shared/bowling.js';
+import { BOWLING } from '../../shared/bowling.js';
 import type { Ctx } from '../office/context.js';
 import type { Client } from '../office/client.js';
 import type { Spot } from '../office/input.js';
@@ -34,6 +34,7 @@ import { Karaoke } from '../bowling/karaoke.js';
 import { tvTitleLookup } from '../tv.js';
 import { HALL_ARRIVAL, backInHall, hallView } from '../hall.js';
 import { SOCCER_ARRIVAL, backInSoccer, soccerView } from '../soccer/place.js';
+import { BOWLING_ARRIVAL, BowlingHouse, backInBowling, bowlingView } from '../bowling/place.js';
 
 /** Made last, once upstream's stages are all there (see server.ts). */
 export interface Fork {
@@ -56,6 +57,7 @@ export interface Fork {
   soccer: Soccer; // the soccer hall's ball and match
   radio: RadioProxy; // radio stations on the jukebox
   karaoke: Karaoke; // the bowling centre's karaoke bar (bowling/karaoke.ts)
+  bowling: BowlingHouse; // the bowling centre's lights (cosmic bowling) and rental shoes
   /** To everyone up on the roof (or everyone but `except`). */
   toRoof(m: ServerMsg, except?: string, droppable?: boolean): void;
   /** To everyone in the padel hall. */
@@ -126,6 +128,7 @@ export function createFork(ctx: Ctx): Fork {
       dataDir: cfg.dataDir, // the week's karaoke kings (karaoke.json)
       lookup: tvTitleLookup,
     }),
+    bowling: new BowlingHouse(),
     toRoof: to(ROOF),
     toHall: to(HALL),
     toBowling: to(BOWLING),
@@ -144,6 +147,7 @@ export function placeView(ctx: Ctx, place: (typeof PLACES)[number]): FloorView {
   const empty = floorView(ctx, undefined);
   if (place === HALL) return hallView(empty);
   if (place === SOCCER) return soccerView(empty);
+  if (place === BOWLING) return bowlingView(empty);
   return { ...empty, floor: place };
 }
 
@@ -153,7 +157,7 @@ const ENTRY: Record<(typeof PLACES)[number], Spot> = {
   [GYM]: { x: GYM_ENTRY.x, y: 0, z: GYM_ENTRY.z, rotY: GYM_ENTRY.rotY },
   [HALL]: HALL_ARRIVAL,
   [SOCCER]: SOCCER_ARRIVAL,
-  [BOWLING]: { x: BOWLING_ENTRY.x, y: 0, z: BOWLING_ENTRY.z, rotY: BOWLING_ENTRY.rotY },
+  [BOWLING]: BOWLING_ARRIVAL,
 };
 
 /** Into one of the places once they're in: the casino, the gym and the soccer hall keep a list of who's there. */
@@ -161,6 +165,7 @@ export function enteredPlace(ctx: Ctx, c: Client, place: string | undefined) {
   if (place === CASINO) ctx.casino.enter(ctx.casinoPlayer(c));
   if (place === GYM) ctx.gym.enter(ctx.gymPlayer(c));
   if (place === SOCCER) ctx.soccer.enter({ id: c.id, name: c.peer.name, owner: owner(c), send: (m) => ctx.sendTo(c, m) });
+  if (place === BOWLING) ctx.sendTo(c, ctx.bowling.state()); // the lights and who's in rental shoes
 }
 
 /** `floor.go` to one of the places, just inside its door. Whether it was one (else upstream's floors and roof). */
@@ -176,6 +181,7 @@ export function backInPlace(wanted: string | null, floors: number): (typeof PLAC
   if (!isPlace(wanted) || floors === 0) return undefined;
   if (wanted === HALL) return backInHall(wanted, floors) ? HALL : undefined;
   if (wanted === SOCCER) return backInSoccer(wanted, floors) ? SOCCER : undefined;
+  if (wanted === BOWLING) return backInBowling(wanted, floors) ? BOWLING : undefined;
   return wanted;
 }
 
