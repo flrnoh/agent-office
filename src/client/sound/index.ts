@@ -45,6 +45,7 @@ import { fridgeDoor, opener } from './fridge';
 import { gym, gymAt, GymSpa, type GymMachineSound, type GymSound } from './gym';
 import { padelHall, type PadelHallSound } from './hall';
 import { padel, type PadelSound } from './padel';
+import { passerbyChat, passerbyStep } from './passersby';
 import { rig } from './rig';
 import { djSetVolume, tvVolume } from './screens';
 import { soccer, type SoccerSound } from './soccer';
@@ -364,6 +365,11 @@ export class OfficeSound {
 
   doorbell() {
     doorbell(this.a);
+  }
+
+  /** The city's passers-by close to you: a footstep, or two of them talking (passersby.ts). */
+  passerby(kind: 'step' | 'chat', at: Pos) {
+    (kind === 'step' ? passerbyStep : passerbyChat)(this.a, at);
   }
 
   /** A day at the beach: splashes, strokes, the kiosk's bell and fryer, a gull, the boats' horns (features/beach/sound.ts). */
