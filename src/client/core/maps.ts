@@ -33,6 +33,16 @@ export function installMaps(ctx: Ctx, core: CoreState, parts: MapsParts) {
   }
   // A brand-new floor can arrive before the elevator's list says what color it is.
   store.on('floors', paintFloor);
+  // Fork: how every floor is furnished shows on the building's outside (world/facade/).
+  let furnished = '';
+  function furnishBuilding() {
+    const picks = store.floors.filter((f) => !f.cloning).map((f) => f.interior);
+    const key = picks.join(',');
+    if (key === furnished) return;
+    furnished = key;
+    ctx.world().setBuilding?.(picks);
+  }
+  store.on('floors', furnishBuilding);
 
   /**
    * The building changed maps (or you arrived and it's not the office): the old world goes, the new
@@ -85,6 +95,8 @@ export function installMaps(ctx: Ctx, core: CoreState, parts: MapsParts) {
     boards.dressBoards(world);
     painted = '';
     paintFloor();
+    furnished = ''; // fork
+    furnishBuilding();
     parts.arrival.renderProject();
     views.dressUp();
     views.syncPlan();

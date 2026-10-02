@@ -5,6 +5,7 @@ import type { Collider } from './types';
 import type { Fixture } from './office/fixture';
 import { bulb, type NightParts } from './outside';
 import { mergeByMaterial, mesh, toon, toonUnique } from './toon';
+import { PALETTE } from './office/materials'; // fork
 
 // The rest of the building, from outside: a floor per project, stacked into a tower. Only the floor
 // you're on is really there; the others are its outside (walls, windows, a balcony off each, a
@@ -66,7 +67,7 @@ export function buildTower(colliders: Collider[], night: NightParts): Tower {
     m.userData.outlineParameters = { visible: false };
     return m;
   };
-  const paint = flat('#e07a5f');
+  const paint = flat(PALETTE.exterior); // fork: the facade's anthracite (world/facade/)
   const band = flat('#e8a87c');
   const frame = toon('#ffffff');
   const alu = toon('#aab4be');
