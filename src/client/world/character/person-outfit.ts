@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { GLASSES, HEADWEAR, LEG_COLORS, TOP_STYLES, outfitKey, type LookOutfit } from '../../../shared/avatar';
+import { GLASSES, HEADWEAR, LEG_COLORS, OWNER_TOP, TOP_STYLES, outfitKey, type LookOutfit } from '../../../shared/avatar';
+import { smokingJacket } from './person-smoking';
 import { mesh, toon, toonUnique } from '../toon';
 
 // flrnoh fork (see FORK.md "Shops to walk into", the boutique and the optician): what a Person wears
@@ -16,6 +17,8 @@ import { mesh, toon, toonUnique } from '../toon';
 export interface OutfitParts {
   head: THREE.Object3D;
   body: THREE.Object3D;
+  /** The legs, pivots at the hips hanging down -y (a capsule of 0.1 by 0.22 centred at y -0.16): shoes go on their ends. */
+  legs: THREE.Object3D[];
   /** The character's own left and right arm. */
   left: THREE.Object3D;
   right: THREE.Object3D;
@@ -58,6 +61,8 @@ export class Outfit {
   private head = new THREE.Group();
   private left = new THREE.Group();
   private right = new THREE.Group();
+  /** On the legs: shoes (and the smoking's satin stripes), one group a leg. */
+  private feet: THREE.Group[];
   private key: string | null = null;
 
   constructor(private parts: OutfitParts) {
@@ -65,15 +70,21 @@ export class Outfit {
     parts.head.add(this.head);
     parts.left.add(this.left);
     parts.right.add(this.right);
+    this.feet = parts.legs.map((leg) => {
+      const g = new THREE.Group();
+      leg.add(g);
+      return g;
+    });
   }
 
   /** Puts on `o`'s clothes, hat and glasses, redrawing only when they changed. */
   set(o: LookOutfit) {
-    this.parts.pants.color.set(LEG_COLORS[o.legs ?? 0] ?? LEG_COLORS[0]);
+    // The smoking comes with its own black trousers, whatever color was picked.
+    this.parts.pants.color.set(o.top === OWNER_TOP ? '#16161d' : (LEG_COLORS[o.legs ?? 0] ?? LEG_COLORS[0]));
     const key = outfitKey(o);
     if (key === this.key) return;
     this.key = key;
-    for (const g of [this.torso, this.head, this.left, this.right]) {
+    for (const g of [this.torso, this.head, this.left, this.right, ...this.feet]) {
       g.traverse((x) => (x as THREE.Mesh).geometry?.dispose());
       g.clear();
     }
@@ -145,6 +156,9 @@ export class Outfit {
         collar.rotation.x = Math.PI / 2 - 0.2;
         return;
       }
+      case 'Smoking jacket':
+        smokingJacket({ torso: this.torso, left: this.left, right: this.right, feet: this.feet }, (mat) => this.shell(mat), (mat, w, y0, y1, out) => this.front(mat, w, y0, y1, out));
+        return;
       case 'Dress': {
         // A skirt flaring out from the waist, a ribbon round it.
         this.add(this.torso, new THREE.CylinderGeometry(TORSO_R + 0.01, 0.38, 0.38, 22, 1, true), shirt, 0, 0.36, 0, true);

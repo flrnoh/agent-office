@@ -12,6 +12,7 @@ import { heldDrink } from '../../held.js';
 import { isBarGame } from '../../../shared/bargames.js';
 import { throttle } from '../../office/client.js';
 import { COLOR_RE, issueNumber, num, str } from '../../office/input.js';
+import { settleLook } from '../../fork/looks.js'; // flrnoh fork
 import type { HandlerMap } from './types.js';
 
 export const presenceHandlers = {
@@ -97,6 +98,7 @@ export const presenceHandlers = {
     if (name && !c.accountId) c.peer.name = name;
     if (COLOR_RE.test(msg.color)) c.peer.color = msg.color;
     c.peer.look = sanitizeLook(msg.look, c.peer.look);
+    settleLook(ctx, c); // flrnoh fork: saved for the account, the smoking jacket an admin's alone
     ctx.broadcast({ t: 'peer.update', peer: c.peer });
   },
   voice(ctx, c, msg) {

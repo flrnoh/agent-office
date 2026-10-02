@@ -2,6 +2,7 @@
 // you were last on and the spot you were standing in. Every read and write shrugs off blocked storage.
 
 import { randomLook, sanitizeLook, type Look } from '../../shared/avatar';
+import type { Me } from '../../shared/protocol'; // flrnoh fork: accountProfile
 
 export interface Profile {
   name: string;
@@ -32,6 +33,17 @@ export function saveProfile(p: Omit<Profile, 'look'> & { look?: Look }) {
   } catch {
     // storage blocked
   }
+}
+
+/**
+ * flrnoh fork (see FORK.md "Your look follows your account"): the look your account last wore, kept by
+ * the office (whoami's `me.profile`), saved here too, so it's the same in a browser it's never been in.
+ */
+export function accountProfile(me: Me): Profile | null {
+  if (!me.account || !me.profile) return null;
+  const p = { name: me.account.name, color: me.profile.color, look: sanitizeLook(me.profile.look, randomLook()) };
+  saveProfile(p);
+  return p;
 }
 
 export type ViewMode = 'first' | 'third';

@@ -9,6 +9,7 @@ import {
   LEG_COLOR_NAMES,
   TINTS,
   TINTS_DE,
+  OWNER_TOP,
   TOP_COLORS,
   TOP_STYLES,
   TOP_STYLES_DE,
@@ -18,6 +19,7 @@ import {
   type Look,
   type LookOutfit,
 } from '../../shared/avatar';
+import { store } from '../state';
 import { Preview } from './character';
 import { h, openModal } from './dom';
 import { framePreview, segButtons, swatch } from './lookpick';
@@ -48,6 +50,7 @@ interface Row {
  * `get` is the look and color as they are now, `set` changes them.
  */
 export function outfitRows(which: ('top' | 'color' | 'legs' | 'hat' | 'specs' | 'tint')[], get: () => { look: Look; color: string }, set: (change: LookOutfit, color?: string) => void, de = true): Row[] {
+  const tops = () => (store.me.admin ? TOP_STYLES.length : OWNER_TOP);
   const seg = (label: string, names: string[], other: string[], cur: () => number, pick: (i: number) => void): Row => {
     const el = h('div.seg', { role: 'radiogroup', 'aria-label': label });
     return { label, el, paint: () => el.replaceChildren(...segButtons(de ? names : other, cur(), pick, de ? other : names)) };
@@ -57,7 +60,8 @@ export function outfitRows(which: ('top' | 'color' | 'legs' | 'hat' | 'specs' | 
     return { label, el, paint: () => el.replaceChildren(...colors.map((c, i) => swatch(c, names[i] ?? c, on(c, i), () => pick(c, i)))) };
   };
   const rows: Record<string, () => Row> = {
-    top: () => seg(de ? 'Oberteil' : 'Top', TOP_STYLES_DE, TOP_STYLES, () => get().look.top ?? 0, (i) => set({ top: i })),
+    // The smoking jacket (OWNER_TOP, last) is only on offer to the office's admins; the server keeps it theirs too.
+    top: () => seg(de ? 'Oberteil' : 'Top', TOP_STYLES_DE.slice(0, tops()), TOP_STYLES.slice(0, tops()), () => get().look.top ?? 0, (i) => set({ top: i })),
     color: () => swatches(de ? 'Farbe oben' : 'Top color', TOP_COLORS, [], (c) => c.toLowerCase() === get().color.toLowerCase(), (c) => set({}, c)),
     legs: () => swatches(de ? 'Hose' : 'Trousers', LEG_COLORS, LEG_COLOR_NAMES, (_c, i) => i === (get().look.legs ?? 0), (_c, i) => set({ legs: i })),
     hat: () => seg(de ? 'Auf dem Kopf' : 'On your head', HEADWEAR_DE, HEADWEAR, () => get().look.hat ?? 0, (i) => set({ hat: i })),
