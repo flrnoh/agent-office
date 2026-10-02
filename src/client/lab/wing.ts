@@ -111,6 +111,7 @@ const views: Record<string, [number, number, number, number, number, number]> = 
   studio: [-14.2, 2.0, 11.6, -22, 1.0, 13],
   control: [-20.5, 1.8, 11.0, -13.6, 1.1, 13.4],
   top: [-17, 26, 0.2, -17.2, 0, 0],
+  north: [-12.4, 1.6, -8.0, -12.6, 1.4, -15.5],
 };
 const [x, y, z, lx, ly, lz] = views[view] ?? views.lobby;
 camera.position.set(x, y, z);

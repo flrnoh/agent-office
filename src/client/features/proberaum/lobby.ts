@@ -205,11 +205,11 @@ export function buildLobby(): LobbyBuilt {
   deco.add(pl);
   // Posters over the lockers and by the door.
   const p1 = picture(posterTexture(POSTERS[2], 9), 0.62, 0.88);
-  p1.position.set(-14.1, 2.45, LOBBY.maxZ - 0.012);
+  p1.position.set(-14.1, 2.35, LOBBY.maxZ - 0.012);
   p1.rotation.y = Math.PI;
   deco.add(p1);
   const p2 = picture(posterTexture(POSTERS[4], 10), 0.62, 0.88);
-  p2.position.set(-12.6, 1.6, LOBBY.maxZ - 0.012);
+  p2.position.set(-14.1, 1.3, LOBBY.maxZ - 0.012);
   p2.rotation.y = Math.PI;
   deco.add(p2);
   // A neon "OPEN 24/7"-ish sign over the counter: PROBEN BIS DER ARZT KOMMT.
