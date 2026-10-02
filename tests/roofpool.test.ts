@@ -72,3 +72,31 @@ test('the floats stay on the water', () => {
     }
   }
 });
+
+test('the water slide ends in the water, with headroom over everywhere people walk, clear of the bar', async () => {
+  const { SLIDE, SLIDE_ZONE, slideAt, slidingAt } = await import('../src/shared/roofpool.js');
+  const R = 0.42; // the tube's radius round its line (features/roofpool/slide.ts)
+  const end = slideAt(1);
+  assert.ok(overPool(end.x, end.z, 0.8), 'it comes down well inside the water');
+  assert.ok(end.y - POOL.surface < 0.2, 'right at the surface');
+  const inBox = (x: number, z: number, b: { minX: number; maxX: number; minZ: number; maxZ: number }) => x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ;
+  const tower = { minX: SLIDE.x - SLIDE.half - 0.1, maxX: SLIDE.x + SLIDE.half + 0.1, minZ: SLIDE.z - SLIDE.half - 0.1, maxZ: SLIDE.z + SLIDE.half + 0.1 };
+  for (let s = 0; s <= 1; s += 0.01) {
+    const p = slideAt(s);
+    assert.ok(p.x + R < ROOF_BAR.x - ROOF_BAR.depth / 2 - 0.9, `into the bar's way at ${p.x.toFixed(2)}`);
+    if (overPool(p.x, p.z) || inBox(p.x, p.z, SLIDE_ZONE) || inBox(p.x, p.z, tower)) continue;
+    const floor = poolDeck().some((b) => inBox(p.x, p.z, b)) ? POOL_DECK.top : Math.max(0, ...poolSteps().filter((b) => inBox(p.x, p.z, b)).map((b) => b.top));
+    assert.ok(p.y - R - floor >= 1.75, `only ${(p.y - R - floor).toFixed(2)} m over the floor at ${p.x.toFixed(2)},${p.z.toFixed(2)}`);
+  }
+  // Its ladder's foot is on the deck, and someone half way down is seen sliding.
+  assert.ok(poolDeck().some((b) => inBox(SLIDE.foot.x, SLIDE.foot.z, b)));
+  const mid = slideAt(0.5);
+  assert.ok(slidingAt(mid.x, mid.y, mid.z));
+  assert.ok(!slidingAt(mid.x, 0, mid.z), 'not someone walking under it');
+  assert.ok(!slidingAt(SLIDE.foot.x, POOL_DECK.top, SLIDE.foot.z), 'not someone at the ladder');
+  // Climbing out by the slide puts you somewhere you can stand, not under it.
+  for (const [x, z] of [[9.2, POOL.maxZ - 0.3], [POOL.maxX - 0.3, POOL.maxZ - 0.3]]) {
+    const out = climbOutAt(x, z);
+    assert.ok(!inBox(out.x, out.z, SLIDE_ZONE) && !inBox(out.x, out.z, tower), `out at ${out.x},${out.z}`);
+  }
+});
