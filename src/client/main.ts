@@ -70,6 +70,7 @@ import { installBungee } from './features/bungee';
 import { installTown } from './features/town'; // flrnoh fork: the city round the office
 import { installKino } from './features/kino'; // flrnoh fork: the cinema
 import { installShops } from './features/shops'; // flrnoh fork: the city's shops, to walk into
+import { installShopFronts } from './features/shopfronts'; // flrnoh fork: the shops from outside
 import { installDjSets } from './features/djset';
 import { installDoorbell } from './features/doorbell';
 import { installFogbox } from './features/fogbox';
@@ -211,6 +212,7 @@ installFogbox(ctx, { officeWing: () => parts.worlds.officeWing() });
 parts.beach = installBeach(ctx, parts, { booze: () => parts.bar.booze, reach, standUp, stopWalking });
 installBaumarkt(ctx, parts, { standUp, stopWalking }); // fork: the Baumarkt (features/baumarkt)
 (window as any).__kino = installKino(ctx, parts, { booze: () => parts.bar.booze, reach, showSettings: (pane) => parts.hud.showSettings(pane) }); // fork: the cinema
+(window as any).__fronts = installShopFronts(ctx, parts); // fork: the shops from outside
 parts.shops = installShops(ctx, { booze: () => parts.bar.booze, caffeine: () => parts.coffee.caffeine, serveFromCafe: (d) => parts.fridge.serveFromCafe(d), reach, personOf, showMyProfile: (p) => parts.you.showMyProfile(p), target: () => parts.pointer.target(), inPlace: () => parts.places.active() });
 parts.tankstelle = installTankstelle(ctx, parts, { booze: () => parts.bar.booze, caffeine: () => parts.coffee.caffeine, reach });
 
