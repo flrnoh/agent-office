@@ -93,7 +93,8 @@ export function outsideKeepouts(storeys: number): Box3[] {
   // The facade's landmarks (world/facade/landmarks.ts).
   const B = { minX: FLOOR.minX - WALL_T, maxX: FLOOR.maxX + WALL_T, minZ: FLOOR.minZ - WALL_T, maxZ: FLOOR.maxZ + WALL_T };
   out.push(box('CREATE blade', B.minX - 2.4, B.minX, ground + 0.6, ground + 7.4, B.maxZ, B.maxZ + 2.4));
-  out.push(box('FLOGGE OFFICE letters', -17.2, 17.2, top + 0.2, top + 4.6, B.maxZ - 0.3, B.maxZ + 0.35));
+  // On the roof's parapet west of the bungee jetty (world/facade/landmarks.ts rooftopLetters).
+  out.push(box('FLOGGE OFFICE letters', -18, 9.7, top + 0.2, top + 4.3, B.maxZ - 0.45, B.maxZ + 0.15));
   // The bulb and its rays fan out across the corner's diagonal; its arm reaches back to the corner below it.
   out.push(box('light bulb', B.minX - 5.3, B.minX + 0.1, top - 3.3, top + 6, B.minZ - 5.3, B.minZ + 0.1));
   out.push(box('light bulb arm', B.minX - 2.8, B.minX, top - 3.3, top - 1.6, B.minZ - 2.8, B.minZ));

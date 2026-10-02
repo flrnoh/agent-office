@@ -1,20 +1,28 @@
-// What holds DER BRECHER up (flrnoh fork, see FORK.md "Der Brecher"): lattice columns down to the plaza
-// and the lots round the building, wherever nothing stands (coaster-keepout.ts) and nobody walks (not
-// on the sidewalks, never in the road), portals striding over the street with their legs either side of
-// it, a gantry framing the loop, the vertical drop braced back to the facade storey by storey, the
-// vertical lift's tower behind the building, brackets off the roof's edge for the lift hill, and the
-// station's legs. Inside the ground floor nothing stands: the tube hangs from the ceiling. Pure, from
-// the track alone, so the page draws it and the tests check it the same.
+// What holds DER BRECHER up (flrnoh fork, see FORK.md "Der Brecher"), calm and deliberate rather than a
+// forest of towers:
+//
+// - Up along the building (the station, the brake run, the lift hill, the crest round the south-east
+//   corner): angled brackets off the TOP storey, whatever storey that is. Each is a pair of steel
+//   struts from the top storey's wall (just under the roof's slab, between its fins, over its windows,
+//   clear of its balcony) up and out to the track, a triangle in plan, like a cantilevered mount.
+// - Where the track runs straight up or down the facade (the first drop, the vertical lift): a tie back
+//   to the facade at every storey's slab it passes.
+// - Down on the street, where it runs low (the pull-out, the U-turn, the launch and the loop, the way
+//   in to the tube): single round columns on the plaza's edge in an even rhythm, each with a Y head under
+//   the spine, and three strong portals over the street (the U-turn's, and the loop's two, which go on up
+//   into its gate) instead of legs everywhere. Never on a sidewalk, never in the road.
+//
+// Pure, from the track alone, so the page draws it and the tests check it the same.
 
 import { HEART } from './coaster-route.js';
 import { DS, poseAt, type CoasterTrack } from './coaster-track.js';
-import { STATION } from './coaster.js';
-import { ROAD_Z, SIDEWALKS_Z, TOWER, levels, outsideKeepouts, type Box3 } from './coaster-keepout.js';
-import { FLOOR, STOREY, WALL_T } from './layout.js';
+import { ROAD_Z, SIDEWALKS_Z, TOWER, levels, outsideKeepouts, roofKeepouts, type Box3 } from './coaster-keepout.js';
+import { FLOOR, STOREY, WALL_HEIGHT, WALL_T, type Side } from './layout.js';
+import { FIN, storeyFins, storeyHoles } from './facade-fins.js';
 
 export type P3 = [number, number, number];
 
-/** An upright lattice column, `w` square, from `y0` up to `y1`. */
+/** An upright round column, `w` across, from `y0` up to `y1`. */
 export interface Column {
   x: number;
   z: number;
@@ -23,33 +31,40 @@ export interface Column {
   w: number;
 }
 
-/** A beam or brace from `a` to `b`, `w` thick. */
+/** A round strut or beam from `a` to `b`, `w` thick. */
 export interface Strut {
   a: P3;
   b: P3;
   w: number;
 }
 
+/** A bracket's strut: from `a` on wall `wall` of the top storey up and out to the track at `b`. */
+export interface Bracket extends Strut {
+  wall: Side;
+}
+
 export interface Supports {
   columns: Column[];
   struts: Strut[];
+  brackets: Bracket[];
 }
 
 /** How far below the heartline the track's spine is, and the bottom of it. */
 const SPINE = HEART + 0.45;
 const UNDER = HEART + 0.62;
-/** A column every this many metres along the track, at most. */
-const EVERY = 7.5;
-/** The portals over the street: where they stand (x), their legs either side of the road. */
+/** A bracket every this many metres along the track, and the farthest out from the wall it reaches. */
+const BRACKET_EVERY = 6;
+const BRACKET_REACH = 7.6;
+/** Its two struts' feet this far either side along the wall, under the roof's slab. */
+const BRACKET_SPREAD = 1.1;
+/** Down on the street: a column this often, at most. */
+const COLUMN_EVERY = 9;
+/** The portals over the street (x), their legs either side of the road. */
 const PORTALS = [-19.4, -15, 1];
 const LEG_NEAR = 19.4;
 const LEG_FAR = 33.6;
-/** Brackets off the roof's edge for the lift hill: a column on the deck at (x, z), out to the track. */
-const ROOF_BRACKETS: readonly [number, number][] = [
-  [17.6, -9.0],
-  [17.6, -3.4],
-  [17.6, 11.4],
-];
+
+const B = { minX: FLOOR.minX - WALL_T, maxX: FLOOR.maxX + WALL_T, minZ: FLOOR.minZ - WALL_T, maxZ: FLOOR.maxZ + WALL_T } as const;
 
 const cache = new Map<CoasterTrack, Supports>();
 
@@ -68,48 +83,194 @@ function under(track: CoasterTrack, s: number): P3 {
   return [p.x - p.n[0] * UNDER, p.y - p.n[1] * UNDER, p.z - p.n[2] * UNDER];
 }
 
+/** How far (x, z) is out from the building's walls, seen from above (0 inside). */
+const outFrom = (x: number, z: number) => Math.hypot(Math.max(0, B.minX - x, x - B.maxX), Math.max(0, B.minZ - z, z - B.maxZ));
+
+/** The top storey's floor in the roof's frame (the roof's deck is a storey over it). */
+export const topFloor = () => -STOREY;
+
+/** Everything a bracket's strut keeps clear of: what's outside, the roof's things, the top storey's fins. */
+export function bracketKeepouts(storeys: number): Box3[] {
+  const top = topFloor();
+  const fins = storeyFins(storeys - 1).map((x): Box3 => ({ name: 'fin', minX: x - FIN.width / 2, maxX: x + FIN.width / 2, minY: top, maxY: top + WALL_HEIGHT, minZ: B.maxZ - 0.01, maxZ: B.maxZ + FIN.depth + 0.03 }));
+  return [...outsideKeepouts(storeys), ...roofKeepouts(), ...fins];
+}
+
 function build(track: CoasterTrack): Supports {
   const N = track.storeys;
   const { street: S, ground } = levels(N);
+  const top = topFloor();
   const keep = outsideKeepouts(N);
+  const strutKeep = bracketKeepouts(N);
   const columns: Column[] = [];
   const struts: Strut[] = [];
+  const brackets: Bracket[] = [];
   const tunnel = track.zones.find((z) => z.kind === 'tunnel')!;
-  // The track's own points, to keep a column from going up through another bit of it.
+  // The track's own points, to keep a support out of another bit of it.
   const pts: P3[] = [];
   for (let s = 0; s < track.length; s += 1) pts.push(under(track, s));
-  const clearOf = (c: Column, sAt: number) => {
+  const nearTrack = (x: number, y: number, z: number, sAt: number, r: number) =>
+    pts.some((p, i) => Math.min(Math.abs(i - sAt), track.length - Math.abs(i - sAt)) > 5 && Math.abs(p[0] - x) < r && Math.abs(p[2] - z) < r && Math.abs(p[1] - y) < r + 0.9);
+  const inKeep = (x: number, y: number, z: number, boxes: readonly Box3[], pad: number) => boxes.some((k) => x > k.minX - pad && x < k.maxX + pad && y > k.minY - pad && y < k.maxY + pad && z > k.minZ - pad && z < k.maxZ + pad);
+
+  /** Whether a strut from the wall at `a` to the track at `b` (track point `sAt`) is clear all the way. */
+  const strutClear = (a: P3, b: P3, sAt: number) => {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    for (let d = 0.2; d < len - 0.6; d += 0.25) {
+      const k = d / len;
+      const x = a[0] + (b[0] - a[0]) * k;
+      const y = a[1] + (b[1] - a[1]) * k;
+      const z = a[2] + (b[2] - a[2]) * k;
+      if (x > B.minX + 0.05 && x < B.maxX - 0.05 && z > B.minZ + 0.05 && z < B.maxZ - 0.05) return false;
+      if (inKeep(x, y, z, strutKeep, 0.12)) return false;
+      if (nearTrack(x, y, z, sAt, 1.1)) return false;
+    }
+    return true;
+  };
+
+  /** A wall foot for a strut at `u` along wall `wall`, `y` up, if the wall's there and nothing's open there. */
+  const foot = (wall: Side, u: number, y: number): P3 | null => {
+    const along = wall === 'north' || wall === 'south';
+    const [lo, hi] = along ? [B.minX + 0.6, B.maxX - 0.6] : [B.minZ + 0.6, B.maxZ - 0.6];
+    if (u < lo || u > hi) return null;
+    // Not in the back office's way (a floor can be built out behind the north wall's east end).
+    if (wall === 'north' && u > 12.6) return null;
+    // Not over a window, a door or the tube's hole.
+    for (const o of storeyHoles(N - 1, wall)) if (Math.abs(u - o.u) < o.width / 2 + 0.4 && y > top + o.y0 - 0.3 && y < top + o.y1 + 0.3) return null;
+    // On the street side, between two fins.
+    if (wall === 'south') {
+      const fins = storeyFins(N - 1);
+      if (fins.some((x) => Math.abs(x - u) < FIN.width / 2 + 0.16)) return null;
+    }
+    return wall === 'north' ? [u, y, B.minZ] : wall === 'south' ? [u, y, B.maxZ] : wall === 'west' ? [B.minX, y, u] : [B.maxX, y, u];
+  };
+  /** The two feet either side of `u` on `wall`, nudged into the gaps between the fins on the street side. */
+  const feet = (wall: Side, u: number, y: number): [P3, P3] | null => {
+    const pick = (want: number): P3 | null => {
+      for (const d of [0, 0.2, -0.2, 0.4, -0.4]) {
+        const f = foot(wall, want + d, y);
+        if (f) return f;
+      }
+      return null;
+    };
+    const a = pick(u - BRACKET_SPREAD);
+    const b = pick(u + BRACKET_SPREAD);
+    return a && b ? [a, b] : null;
+  };
+
+  // ---- Ties back to the facade, where the track runs straight up or down it ---------------------------
+  const tied: number[] = [];
+  const steep: [number, number][] = [];
+  for (const [from, to] of [
+    [track.marks.dropFrom, track.marks.photo],
+    [track.marks.tunnelEnd, track.marks.vlift],
+  ]) {
+    let vx = 0;
+    let vz = 0;
+    let lo = 1e9;
+    let hi = -1e9;
+    let n = 0;
+    for (let s = from; s < to; s += DS) {
+      const p = poseAt(track, s);
+      if (Math.abs(p.t[1]) < 0.97) continue;
+      vx += p.x - p.n[0] * SPINE;
+      vz += p.z - p.n[2] * SPINE;
+      lo = Math.min(lo, p.y);
+      hi = Math.max(hi, p.y);
+      n++;
+    }
+    if (!n) continue;
+    steep.push([from, to]);
+    vx /= n;
+    vz /= n;
+    const wallZ = vz > 0 ? B.maxZ + FIN.depth + 0.05 : B.minZ;
+    for (let k = 1; k <= N; k++) {
+      const y = ground + k * STOREY - 0.15;
+      if (y > hi + 0.5 || y < lo - 0.5) continue;
+      struts.push({ a: [vx, y, wallZ], b: [vx, y, vz], w: 0.26 });
+      tied.push(y);
+    }
+  }
+
+  // ---- Brackets off the top storey, along the building where the track runs high -------------------
+  const braced = new Set<number>();
+  let last = -1e9;
+  for (let s = 0; s < track.length; s += 0.5) {
+    if (s > tunnel.from - 2 && s < tunnel.to + 2) continue;
+    const p = poseAt(track, s);
+    const u = under(track, s);
+    // Straight up or down (the drop, the vertical lift): only where no slab's tie holds it already.
+    const vertical = Math.abs(p.t[1]) > 0.9;
+    if (vertical ? !steep.some(([a, b]) => s > a && s < b) || tied.some((y) => Math.abs(y - u[1]) < 3.5) : p.n[1] < 0.3) continue;
+    const out = outFrom(u[0], u[2]);
+    // Off the wall under the roof's slab, or lower for a track that's itself low (the station), but over
+    // the windows; and up to the track from there, never level with it or down.
+    const y = Math.max(top + 3.6, Math.min(top + WALL_HEIGHT - 0.55, u[1] - 1.6));
+    if (out > BRACKET_REACH || u[1] < y + 1.5) continue;
+    braced.add(Math.round(s));
+    if (s - last < BRACKET_EVERY) continue;
+    // The wall it's off: the one it's furthest out from (round a corner, the side it's going along),
+    // else the other one round the corner.
+    const dx = Math.max(B.minX - u[0], u[0] - B.maxX);
+    const dz = Math.max(B.minZ - u[2], u[2] - B.maxZ);
+    const xWall: Side = u[0] > 0 ? 'east' : 'west';
+    const zWall: Side = u[2] > 0 ? 'south' : 'north';
+    let f: [P3, P3] | null = null;
+    let wall: Side = xWall;
+    for (const w of dx > dz ? [xWall, zWall] : [zWall, xWall]) {
+      const along = w === 'north' || w === 'south' ? u[0] : u[2];
+      const [lo, hi] = w === 'north' || w === 'south' ? [B.minX + 0.6 + BRACKET_SPREAD, B.maxX - 0.6 - BRACKET_SPREAD] : [B.minZ + 0.6 + BRACKET_SPREAD, B.maxZ - 0.6 - BRACKET_SPREAD];
+      // Not too far round the corner (the struts would lie along the wall), though further the higher it is.
+      const round = 3 + Math.max(0, u[1] - y - 6) * 0.5;
+      if (along < lo - round || along > hi + round) continue;
+      // Right behind it, or slid along the wall a little to get past what's in the way (the bungee's jetty).
+      const at = Math.max(lo, Math.min(hi, along));
+      for (const shift of [0, -1.5, 1.5, -3, 3, -4.5, 4.5]) {
+        if (at + shift < lo || at + shift > hi) continue;
+        const g = feet(w, at + shift, y);
+        if (g && g.every((a) => strutClear(a, u, s))) {
+          f = g;
+          break;
+        }
+      }
+      if (f) {
+        wall = w;
+        break;
+      }
+    }
+    if (!f) continue;
+    for (const a of f) brackets.push({ a, b: u, wall, w: 0.2 });
+    last = s;
+  }
+
+  // ---- Down on the street: round columns in an even rhythm where it runs low -------------------------
+  const clearColumn = (c: Column, sAt: number) => {
     const b: Box3 = { name: 'column', minX: c.x - c.w / 2, maxX: c.x + c.w / 2, minY: c.y0, maxY: c.y1, minZ: c.z - c.w / 2, maxZ: c.z + c.w / 2 };
     if (keep.some((k) => b.minX < k.maxX && b.maxX > k.minX && b.minY < k.maxY && b.maxY > k.minY && b.minZ < k.maxZ && b.maxZ > k.minZ)) return false;
     if (b.maxX > TOWER.minX && b.minX < TOWER.maxX && b.maxZ > TOWER.minZ && b.minZ < TOWER.maxZ) return false;
     if (SIDEWALKS_Z.some((w) => b.maxZ > w.min - 0.2 && b.minZ < w.max + 0.2) || (b.maxZ > ROAD_Z.min && b.minZ < ROAD_Z.max)) return false;
-    // Nothing of the track itself in the way below the top (but the bit it holds).
-    return !pts.some((p, i) => Math.abs(i - sAt) > 4 && Math.abs(i - sAt - track.length) > 4 && Math.abs(p[0] - c.x) < c.w / 2 + 1 && Math.abs(p[2] - c.z) < c.w / 2 + 1 && p[1] < c.y1 + 0.5 && p[1] > c.y0);
+    for (let y = c.y0 + 0.5; y < c.y1 - 0.6; y += 0.5) if (nearTrack(c.x, y, c.z, sAt, c.w / 2 + 1)) return false;
+    return true;
   };
-
-  // Columns down from the track to the ground, every so often where it's upright and nothing's in the way.
-  let last = -1e9;
+  last = -1e9;
   for (let s = 6; s < track.length - 1; s += 0.5) {
     if (s > tunnel.from - 2 && s < tunnel.to + 2) continue;
+    if (braced.has(Math.round(s)) || s - last < COLUMN_EVERY) continue;
     const p = poseAt(track, s);
-    if (Math.abs(p.t[1]) > 0.35 || p.n[1] < 0.55) continue;
-    if (s - last < EVERY) continue;
+    if (Math.abs(p.t[1]) > 0.3 || p.n[1] < 0.6) continue;
     const u = under(track, s);
-    const c: Column = { x: u[0], z: u[2], y0: S, y1: u[1], w: 0.5 };
-    // On the station's side the station has legs of its own.
-    if (u[2] < STATION.wallZ && u[0] > STATION.x0 - 1 && u[0] < STATION.x1 + 1) continue;
-    if (c.y1 - c.y0 < 1.2 || !clearOf(c, s)) continue;
+    // Only where it runs low: no towers up to the roof.
+    if (u[1] - S > 13 || u[1] - S < 1.2) continue;
+    if (u[2] < B.minZ) continue; // behind the building it's the brackets' and the vertical lift's
+    const c: Column = { x: u[0], z: u[2], y0: S, y1: u[1], w: 0.46 };
+    if (!clearColumn(c, s)) continue;
     columns.push(c);
+    // The Y head under the spine.
+    for (const side of [-1, 1]) struts.push({ a: [u[0], u[1] - 0.9, u[2]], b: [u[0] + p.b[0] * side * 0.55, u[1] + 0.12, u[2] + p.b[2] * side * 0.55], w: 0.16 });
     last = s;
   }
 
-  // The station's legs, at its far edge, and its brackets back to the facade.
-  for (const x of [STATION.x0 + 0.6, STATION.stopX, STATION.x1 - 0.6]) {
-    columns.push({ x, z: STATION.farZ + 0.25, y0: S, y1: -0.35, w: 0.45 });
-    struts.push({ a: [x, -0.35, STATION.farZ + 0.25], b: [x, -2.6, STATION.wallZ - 0.05], w: 0.22 });
-  }
-
-  // The loop's top, which a gate over the street holds from above.
+  // ---- Portals over the street, two of them going up into the loop's gate ----------------------------
   const loopFrom = track.marks.loop;
   const loopTo = track.marks.loopEnd;
   let topS = loopFrom;
@@ -117,69 +278,17 @@ function build(track: CoasterTrack): Supports {
   const loopTop = poseAt(track, topS);
   const spineTop: P3 = [loopTop.x - loopTop.n[0] * SPINE, loopTop.y - loopTop.n[1] * SPINE, loopTop.z - loopTop.n[2] * SPINE];
   const gateY = spineTop[1] + 1.6;
-  // Portals over the street: legs either side of the road, a beam under the track where it crosses;
-  // the two either side of the loop go on up into its gate.
   PORTALS.forEach((x, i) => {
     const over = pts.filter((q) => Math.abs(q[0] - x) < 1.2 && q[2] > ROAD_Z.min - 2 && q[2] < ROAD_Z.max + 1.5);
     if (!over.length) return;
     const low = Math.min(...over.map((q) => q[1])) - 0.15;
     const gate = i > 0;
-    for (const z of [LEG_NEAR, LEG_FAR]) columns.push({ x, z, y0: S, y1: gate ? gateY : low, w: gate ? 0.6 : 0.55 });
-    struts.push({ a: [x, low, LEG_NEAR], b: [x, low, LEG_FAR], w: 0.42 });
-    if (gate) struts.push({ a: [x, gateY, LEG_NEAR], b: [x, gateY, LEG_FAR], w: 0.42 });
+    for (const z of [LEG_NEAR, LEG_FAR]) columns.push({ x, z, y0: S, y1: gate ? gateY : low, w: gate ? 0.7 : 0.6 });
+    struts.push({ a: [x, low, LEG_NEAR], b: [x, low, LEG_FAR], w: 0.5 });
+    if (gate) struts.push({ a: [x, gateY, LEG_NEAR], b: [x, gateY, LEG_FAR], w: 0.5 });
   });
-  // The gate's beams along the street over the loop, one across over its top, and a hanger down to it.
-  for (const z of [LEG_NEAR, LEG_FAR]) struts.push({ a: [PORTALS[1], gateY, z], b: [PORTALS[2], gateY, z], w: 0.42 });
-  struts.push({ a: [spineTop[0], gateY, LEG_NEAR], b: [spineTop[0], gateY, LEG_FAR], w: 0.4 });
-  struts.push({ a: [spineTop[0], gateY, spineTop[2]], b: spineTop, w: 0.18 });
-
-  // The vertical drop braced back to the facade at every storey's slab it passes.
-  const dropFrom = track.marks.dropFrom;
-  const photo = track.marks.photo;
-  let vx = 0;
-  let vz = 0;
-  let vTop = -1e9;
-  let vBottom = 1e9;
-  let vn = 0;
-  for (let s = dropFrom; s < photo; s += DS) {
-    const p = poseAt(track, s);
-    if (p.t[1] > -0.97) continue;
-    vx += p.x - p.n[0] * SPINE;
-    vz += p.z - p.n[2] * SPINE;
-    vTop = Math.max(vTop, p.y);
-    vBottom = Math.min(vBottom, p.y);
-    vn++;
-  }
-  if (vn) {
-    vx /= vn;
-    vz /= vn;
-    for (let k = 1; k <= N; k++) {
-      const y = ground + k * STOREY - 0.2;
-      if (y > vTop + 1 || y < vBottom - 1) continue;
-      struts.push({ a: [vx, y, FLOOR.maxZ + WALL_T + 0.75], b: [vx, y, vz], w: 0.3 });
-    }
-  }
-
-  // The vertical lift's tower behind the building, its spine side.
-  const vliftAt = track.marks.vlift - 4;
-  const lift = poseAt(track, vliftAt);
-  columns.push({ x: lift.x, z: STATION.trackZ - 1.35, y0: S, y1: lift.y + 0.2, w: 1.5 });
-
-  // Brackets off the roof's edge for the lift hill: a column on the deck, and an arm out to the track.
-  for (const [x, z] of ROOF_BRACKETS) {
-    let best = 0;
-    let bestD = 1e9;
-    for (let s = 0; s < track.marks.dropFrom; s += 0.5) {
-      const p = poseAt(track, s);
-      const d = Math.hypot(p.x - (FLOOR.maxX + WALL_T + 3.2), p.z - z) + (p.x < FLOOR.maxX ? 50 : 0);
-      if (d < bestD) {
-        bestD = d;
-        best = s;
-      }
-    }
-    const u = under(track, best);
-    columns.push({ x, z, y0: 0, y1: u[1], w: 0.4 });
-    struts.push({ a: [x, u[1], z], b: u, w: 0.3 });
-  }
-  return { columns, struts };
+  for (const z of [LEG_NEAR, LEG_FAR]) struts.push({ a: [PORTALS[1], gateY, z], b: [PORTALS[2], gateY, z], w: 0.5 });
+  struts.push({ a: [spineTop[0], gateY, LEG_NEAR], b: [spineTop[0], gateY, LEG_FAR], w: 0.42 });
+  struts.push({ a: [spineTop[0], gateY, spineTop[2]], b: spineTop, w: 0.2 });
+  return { columns, struts, brackets };
 }

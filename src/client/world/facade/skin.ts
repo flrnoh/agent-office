@@ -7,6 +7,7 @@ import type { NightParts } from '../outside';
 import { mesh, toon } from '../toon';
 import { B } from './frame';
 import { MURAL, mural } from './mural';
+import { FIN, finXs } from '../../../shared/facade-fins';
 
 // flrnoh fork (see FORK.md, "A facade for creatives"): what goes over the tower's walls a storey at a
 // time: the murals, the fins, the bands round each storey and the paint dripping off the top.
@@ -78,14 +79,11 @@ const FIN_COLORS = ['#ef476f', '#ff8a5b', '#ffd166', '#06d6a0', '#4cc9f0', '#118
  * on a little from the one below, so the colors climb the building in a slant.
  */
 export function fins(parts: THREE.Group, y0: number, holes: readonly Opening[], balconies: readonly Balcony[], k: number, night: NightParts) {
-  const DEPTH = 0.7;
-  const W = 0.24;
-  const STEP = 0.85;
-  const blocked: [number, number][] = holes.map((o) => [o.u - o.width / 2 - 0.35, o.u + o.width / 2 + 0.35]);
-  for (const b of balconies) if (b.wall === 'south') blocked.push([b.rect.minX - 0.35, b.rect.maxX + 0.35]);
-  let n = 0;
-  for (let u = B.minX + 0.5; u <= B.maxX - 0.5; u += STEP, n++) {
-    if (blocked.some(([a, b]) => u + W > a && u - W < b)) continue;
+  const DEPTH = FIN.depth;
+  const W = FIN.width;
+  // Where they stand is shared (shared/facade-fins.ts): DER BRECHER's brackets keep clear of them.
+  for (const u of finXs(holes, balconies)) {
+    const n = Math.round((u - (B.minX + 0.5)) / FIN.step);
     const color = FIN_COLORS[(n + k) % FIN_COLORS.length];
     const h = WALL_HEIGHT - 0.3;
     parts.add(mesh(new THREE.BoxGeometry(W, h, DEPTH), toon(color), u, y0 + 0.15 + h / 2, B.maxZ + DEPTH / 2, false));

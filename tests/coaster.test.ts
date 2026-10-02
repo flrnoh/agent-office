@@ -198,7 +198,8 @@ test('coaster supports: on the ground or the deck, clear of everything, never on
     const keep = outsideKeepouts(N);
     const { street } = levels(N);
     const sup = coasterSupports(coasterTrack(N));
-    assert.ok(sup.columns.length > 15, `${N}: ${sup.columns.length} columns`);
+    // A few, not a forest: the plaza edge's columns and the portals' legs.
+    assert.ok(sup.columns.length >= 6 && sup.columns.length <= 14, `${N}: ${sup.columns.length} columns`);
     const bad: string[] = [];
     for (const c of sup.columns) {
       const b: Box3 = { name: 'column', minX: c.x - c.w / 2, maxX: c.x + c.w / 2, minY: c.y0, maxY: c.y1, minZ: c.z - c.w / 2, maxZ: c.z + c.w / 2 };
