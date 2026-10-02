@@ -15,8 +15,8 @@ const overlaps = (a: Rect, b: Rect, pad = 0) => a.minX < b.maxX + pad && a.maxX 
 const inRect = (r: Rect, x: number, z: number, pad = 0) => x > r.minX - pad && x < r.maxX + pad && z > r.minZ - pad && z < r.maxZ + pad;
 
 test('every kind of shop has a front of its own, and a kind still to come gets the default', () => {
-  // The fourteen first kinds have rows of their own; any kind added since gets one or the default.
-  for (const id of ['baeckerei', 'cafe', 'pizza', 'apotheke', 'blumen', 'buchladen', 'kiosk', 'bar', 'spaeti', 'friseur', 'tattoo', 'doener', 'spielzeug', 'platten']) assert.ok(FRONT_STYLES[id], `${id} has a front style`);
+  // The kinds there are so far have rows of their own; any kind added since gets one or the default.
+  for (const id of ['baeckerei', 'cafe', 'pizza', 'apotheke', 'blumen', 'buchladen', 'kiosk', 'bar', 'spaeti', 'friseur', 'tattoo', 'doener', 'spielzeug', 'platten', 'spielhalle', 'post', 'boutique', 'optiker']) assert.ok(FRONT_STYLES[id], `${id} has a front style`);
   for (const k of SHOP_KINDS) assert.ok(frontStyle(k.id).close > frontStyle(k.id).open, `${k.id} has a front, its own or the default`);
   assert.equal(frontStyle('gibtsnochnicht'), DEFAULT_FRONT);
   assert.equal(frontStyle('cafe'), FRONT_STYLES.cafe);

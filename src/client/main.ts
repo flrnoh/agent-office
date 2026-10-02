@@ -70,8 +70,8 @@ import { installBungee } from './features/bungee';
 import { installTown } from './features/town'; // flrnoh fork: the city round the office
 import { installKino } from './features/kino'; // flrnoh fork: the cinema
 import { installShops } from './features/shops'; // flrnoh fork: the city's shops, to walk into
-import { installFunShops } from './features/funshops'; // flrnoh fork: the Spielhalle and the Post
 import { installShopFronts } from './features/shopfronts'; // flrnoh fork: the shops from outside
+import { installFunShops } from './features/funshops'; // flrnoh fork: the Spielhalle and the Post
 import { installDjSets } from './features/djset';
 import { installDoorbell } from './features/doorbell';
 import { installFogbox } from './features/fogbox';
