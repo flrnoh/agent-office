@@ -76,11 +76,14 @@ const LAUNCH_V = 16.5;
 /** How hard each kind of zone speeds the train up or slows it down (m/s²); the trims on the drop are gentler. */
 const ACCEL: Record<ZoneKind, number> = { tires: 1.4, chain: 1.4, trim: 7, boost: 11, brake: 4, stop: 1, tunnel: 0 };
 
-/** The drop: how steep, and its pitch-over at the top and pull-out at the bottom. */
-const DROP_ANGLE = (84 * Math.PI) / 180;
-const DROP_TOP_R = 4.5;
-const DROP_TOP_R1 = 14;
-const DROP_PULL_R = 12;
+/**
+ * The drop, straight down: over the top with the radius growing from 3 to 16 m (as the 2.5th power of
+ * how far round it is), and out at the bottom with it shrinking from 20 to 10 m.
+ */
+const DROP_OVER = [3, 16, 2.5] as const;
+const DROP_OUT = [20, 10, 1] as const;
+/** At least this much of the drop is straight down, however low the building (the crest goes up for it). */
+const DROP_MIN = 1.5;
 /** The loop over the street: its turning the way an Euler spiral does (curvature 0 at either end), how tight at the top, how far it steps aside. */
 const LOOP_TOP_R = 4;
 const LOOP_SHIFT = 2.4;
@@ -221,32 +224,19 @@ class Turtle {
   }
 
   /**
-   * Pitches down `deg` from level, ever less sharply: the radius growing from `r0` to `r1` as it steepens
-   * (the way over the top of a drop, so the riders float rather than being flung out of their seats as it picks up speed).
+   * Pitches from `from` to `to` (radians, 0 level, -pi/2 straight down) in the upright plane toward
+   * `f`, its radius going from `r0` to `r1` (as the progress to the power `exp`): over the top of the
+   * drop ever less sharply (so the riders float rather than being flung out of their seats as it picks
+   * up speed), and out at the bottom ever more sharply (so it builds rather than slams).
    */
-  pitchDown(r0: number, r1: number, deg: number) {
-    const f = { x: this.d.x, z: this.d.z };
+  pitchSpiral(from: number, to: number, r0: number, r1: number, exp: number, f: { x: number; z: number }) {
     const fl = Math.hypot(f.x, f.z) || 1;
-    f.x /= fl;
-    f.z /= fl;
-    const total = (deg * Math.PI) / 180;
-    const k = 400;
+    const fx = f.x / fl;
+    const fz = f.z / fl;
+    const { pts } = spiralPath(from, to, r0, r1, exp);
     const o = this.p;
-    let u = 0;
-    let v = 0;
-    let since = 0;
-    for (let i = 0; i < k; i++) {
-      const th = (total * (i + 0.5)) / k;
-      const ds = (r0 + ((r1 - r0) * (i + 0.5)) / k) * (total / k);
-      u += Math.cos(th) * ds;
-      v -= Math.sin(th) * ds;
-      since += ds;
-      if (since >= STEP || i === k - 1) {
-        this.put({ x: o.x + f.x * u, y: o.y + v, z: o.z + f.z * u });
-        since = 0;
-      }
-    }
-    this.d = { x: f.x * Math.cos(total), y: -Math.sin(total), z: f.z * Math.cos(total) };
+    for (const q of pts) this.put({ x: o.x + fx * q.u, y: o.y + q.v, z: o.z + fz * q.u });
+    this.d = { x: fx * Math.cos(to), y: Math.sin(to), z: fz * Math.cos(to) };
   }
 
   /** Straight up (or on), turning `deg` round itself on the way (a twist). */
@@ -303,25 +293,39 @@ function norm(v: V3): V3 {
   return { x: v.x / l, y: v.y / l, z: v.z / l };
 }
 
-/** How far ahead and down Turtle.pitchDown(r0, r1, angle) takes the track. */
-function spiralSpan(r0: number, r1: number, angle: number): { ahead: number; down: number } {
-  let ahead = 0;
-  let down = 0;
-  const k = 400;
+/** The points of Turtle.pitchSpiral (a point every STEP, ahead u and up v from where it starts), and how far it takes the track. */
+function spiralPath(from: number, to: number, r0: number, r1: number, exp: number): { pts: { u: number; v: number }[]; ahead: number; up: number } {
+  const k = 2000;
+  const sweep = to - from;
+  let u = 0;
+  let v = 0;
+  let since = 0;
+  const pts: { u: number; v: number }[] = [];
   for (let i = 0; i < k; i++) {
-    const th = (angle * (i + 0.5)) / k;
-    const ds = (r0 + ((r1 - r0) * (i + 0.5)) / k) * (angle / k);
-    ahead += Math.cos(th) * ds;
-    down += Math.sin(th) * ds;
+    const p = (i + 0.5) / k;
+    const th = from + sweep * p;
+    const ds = (r0 + (r1 - r0) * Math.pow(p, exp)) * Math.abs(sweep / k);
+    u += Math.cos(th) * ds;
+    v += Math.sin(th) * ds;
+    since += ds;
+    if (since >= STEP || i === k - 1) {
+      pts.push({ u, v });
+      since = 0;
+    }
   }
-  return { ahead, down };
+  return { pts, ahead: u, up: v };
 }
 
 /** The building's height the route's laid for: whole storeys, 1 to 12. */
 export const routeStoreys = (n: number) => Math.max(1, Math.min(12, Math.round(Number.isFinite(n) ? n : 1)));
 
-/** How high the lift hill's crest is over the deck: high enough that the drop's 19 m or more, however low the building. */
-export const crestOf = (storeys: number) => Math.max(9, 26.5 - roofDrop(routeStoreys(storeys))) + HEART;
+/** How high the lift hill's crest is over the deck: 9 m, or higher on a low building, so the drop's straight down for DROP_MIN at least. */
+export function crestOf(storeys: number): number {
+  const low = -roofDrop(routeStoreys(storeys)) + 7.3;
+  const over = spiralPath(0, -Math.PI / 2, DROP_OVER[0], DROP_OVER[1], DROP_OVER[2]);
+  const out = spiralPath(-Math.PI / 2, 0, DROP_OUT[0], DROP_OUT[1], DROP_OUT[2]);
+  return Math.max(9, low - over.up - out.up + DROP_MIN) + HEART;
+}
 
 /** The route for a building `storeys` storeys tall. */
 export function coasterRoute(storeys: number): Route {
@@ -347,23 +351,25 @@ export function coasterRoute(storeys: number): Route {
   t.plan([{ line: 14.4 }]);
   // Round the south-east corner over the letters, heading on down the street side.
   const tilt = 2.9; // a little south of west, so the pull-out ends over the plaza's edge
-  t.plan([{ arc: 6, deg: 90 - tilt, side: 'R' }, { line: 2.4 }]);
+  t.plan([{ arc: 6, deg: 90 - tilt, side: 'R' }, { line: 2.9 }]);
   t.zone('chain', lift, t.u, CHAIN_V);
   // The first drop: over, straight down past the balconies, and out.
   const dropFrom = t.u;
   const D = crest - low;
-  const over = spiralSpan(DROP_TOP_R, DROP_TOP_R1, DROP_ANGLE);
-  const Ls = Math.max(0, (D - over.down - DROP_PULL_R * (1 - Math.cos(DROP_ANGLE))) / Math.sin(DROP_ANGLE));
-  t.pitchDown(DROP_TOP_R, DROP_TOP_R1, (DROP_ANGLE * 180) / Math.PI);
+  const over = spiralPath(0, -Math.PI / 2, DROP_OVER[0], DROP_OVER[1], DROP_OVER[2]);
+  const out = spiralPath(-Math.PI / 2, 0, DROP_OUT[0], DROP_OUT[1], DROP_OUT[2]);
+  const Ls = Math.max(0, D + over.up + out.up);
+  const heading = { x: t.d.x, z: t.d.z };
+  t.pitchSpiral(0, -Math.PI / 2, DROP_OVER[0], DROP_OVER[1], DROP_OVER[2], heading);
   const steep = t.u;
   t.line(Ls);
-  t.pitch(DROP_PULL_R, (DROP_ANGLE * 180) / Math.PI);
+  t.pitchSpiral(-Math.PI / 2, 0, DROP_OUT[0], DROP_OUT[1], DROP_OUT[2], heading);
   t.mark('photo');
   t.zone('trim', steep, t.u, DROP_V, 4.5);
   t.marks.dropFrom = dropFrom;
   // On along the plaza's edge to where the U-turn starts, whatever's left of the run.
-  const run = over.ahead + DROP_PULL_R * Math.sin(DROP_ANGLE) + Ls * Math.cos(DROP_ANGLE);
-  const flat = Math.max(0.5, 35 - 2.4 - run);
+  const run = over.ahead + out.ahead;
+  const flat = Math.max(0.5, 35 - 2.9 - run);
   const trimFrom = t.u - 9;
   t.line(flat);
   t.zone('trim', trimFrom, t.u + 6, TURN_V);
