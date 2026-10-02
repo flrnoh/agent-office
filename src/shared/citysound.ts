@@ -126,15 +126,16 @@ export function summerish(temp: number | undefined, ms: number): boolean {
 
 // ---- The church's bells -------------------------------------------------------------------------
 
-/** The bells keep quiet at night: from this hour… */
-export const BELLS_QUIET_FROM = 22;
-/** …until this one. */
-export const BELLS_QUIET_TO = 7;
+/**
+ * The hours the bells ring: morning, noon and evening. The office's day goes by in an hour, so ringing
+ * every hour would be every two and a half minutes; three times a day is about every twenty.
+ */
+export const BELL_HOURS: readonly number[] = [8, 12, 18];
 
-/** How many times the bell strikes at `hour` (0–23): the hour on a twelve-hour clock, or 0 at night. */
+/** How many times the bell strikes at `hour` (0–23): the hour on a twelve-hour clock at BELL_HOURS, else 0. */
 export function bellStrikes(hour: number): number {
   const h = Math.floor(hour) % 24;
-  if (h >= BELLS_QUIET_FROM || h < BELLS_QUIET_TO) return 0;
+  if (!BELL_HOURS.includes(h)) return 0;
   return h % 12 || 12;
 }
 

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BLOCKS, BLOCK_INNER, LOTS, PARK_TREES, STREETS, onCityStreet, stretchRect } from '../src/shared/city.js';
 import { CHURCH, CHURCH_RANGE } from '../src/shared/church.js';
-import { BELLS_QUIET_FROM, BELLS_QUIET_TO, SIREN_EVERY, awningLevel, bellDue, bellStrikes, murmurLevel, roadLevel, siren, sirenDue, streetDistance, summerish } from '../src/shared/citysound.js';
+import { BELL_HOURS, SIREN_EVERY, awningLevel, bellDue, bellStrikes, murmurLevel, roadLevel, siren, sirenDue, streetDistance, summerish } from '../src/shared/citysound.js';
 import { SKY_DAY_MS } from '../src/shared/sun.js';
 import { FURNITURE } from '../src/shared/streetside.js';
 import { SHOPS } from '../src/shared/shops.js';
@@ -35,15 +35,12 @@ test('the church stands on a park 80–200 m from the office, clear of the stree
 });
 
 test('the bell strikes the hour on a twelve-hour clock, and keeps quiet at night', () => {
+  // Morning, noon and evening only: the office's day is an hour, so not every two and a half minutes.
+  assert.deepEqual(BELL_HOURS, [8, 12, 18]);
+  assert.equal(bellStrikes(8), 8);
   assert.equal(bellStrikes(12), 12);
-  assert.equal(bellStrikes(13), 1);
-  assert.equal(bellStrikes(9.5), 9);
-  assert.equal(bellStrikes(BELLS_QUIET_TO), BELLS_QUIET_TO);
-  for (let h = 0; h < 24; h++) {
-    const quiet = h >= BELLS_QUIET_FROM || h < BELLS_QUIET_TO;
-    assert.equal(bellStrikes(h) === 0, quiet, `at ${h}:00`);
-    if (!quiet) assert.ok(bellStrikes(h) >= 1 && bellStrikes(h) <= 12);
-  }
+  assert.equal(bellStrikes(18.5), 6);
+  for (let h = 0; h < 24; h++) assert.equal(bellStrikes(h) > 0, BELL_HOURS.includes(h), `at ${h}:00`);
 });
 
 test('the bell rings once on each full hour of the office sky, at the moment it comes round', () => {
@@ -56,11 +53,12 @@ test('the bell rings once on each full hour of the office sky, at the moment it 
     const k = bellDue(t, t + 60, utcOffset);
     if (k) rings.push({ at: t + 60, strikes: k });
   }
-  // Every hour from seven in the morning to nine at night, each day: fifteen a day.
-  assert.equal(rings.length, 30);
+  // At eight, noon and six, each day: three a day, four or six sky hours apart (or fourteen overnight).
+  assert.equal(rings.length, 6);
+  assert.deepEqual(rings.map((r) => r.strikes), [8, 12, 6, 8, 12, 6]);
   for (let i = 1; i < rings.length; i++) {
-    const gap = rings[i].at - rings[i - 1].at;
-    assert.ok(Math.abs(gap - hour) < 120 || gap > hour * 9, `${gap} ms between rings`);
+    const gap = (rings[i].at - rings[i - 1].at) / hour;
+    assert.ok([4, 6, 14].some((g) => Math.abs(gap - g) < 0.01), `${gap.toFixed(2)} sky hours between rings`);
   }
   // A jump (the tab was hidden) rings nothing, nor does standing still.
   assert.equal(bellDue(start, start + hour * 3, utcOffset), 0);
