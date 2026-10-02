@@ -123,8 +123,10 @@ export function buildCounter(group: THREE.Group, colliders: Collider[], interact
     parts.add(mesh(box(w + 0.02, 0.1, d + 0.02), chrome, cx, 0.62, cz, false));
     parts.add(mesh(box(w, 0.12, d - 0.06), dark, cx, 0.06, cz, false));
     top.repeat.set(w / 1.2, d / 1.2);
-    group.add(mesh(box(w + 0.16, 0.06, d + 0.16), topMat, cx, b.top - 0.03, cz));
-    group.add(mesh(box(w, 0.03, d + 0.04), underglow, cx, 0.16, cz, false));
+    // The counter's top stops at its east end, where the shoe desk's (which overhangs the corner) takes over.
+    const east = b === COUNTER ? -0.08 : 0.08;
+    group.add(mesh(box(w + 0.08 + east, 0.06, d + 0.16), topMat, cx + (east - 0.08) / 2, b.top - 0.03, cz));
+    group.add(mesh(box(w + 0.04, 0.03, d + 0.04), underglow, cx, 0.16, cz, false));
     solid(b, colliders);
   }
   // Ribbed chrome strips down the counter's front, every metre, and three starbursts on it.
@@ -133,7 +135,7 @@ export function buildCounter(group: THREE.Group, colliders: Collider[], interact
   const starMat = new THREE.MeshToonMaterial({ map: starTex, transparent: true, alphaTest: 0.1, gradientMap, emissive: new THREE.Color('#ffe14d') });
   lighting.level((v) => (starMat.emissiveIntensity = v), 0.05, 1.3);
   for (const x of [-17.5, -14.4, -11.3]) {
-    const st = mesh(new THREE.PlaneGeometry(0.42, 0.42), starMat, x, 0.36, COUNTER.minZ - 0.02, false);
+    const st = mesh(new THREE.PlaneGeometry(0.42, 0.42), starMat, x, 0.36, COUNTER.minZ - 0.03, false); // in front of the underglow
     st.rotation.y = Math.PI;
     group.add(st);
   }

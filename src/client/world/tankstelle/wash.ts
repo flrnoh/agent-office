@@ -90,7 +90,8 @@ export function buildWash(group: THREE.Group, night: NightParts): WashView {
     block(solid, side, WASH.h, t, wall, H.minX + side / 2, z);
     block(solid, side, WASH.h, t, wall, H.maxX - side / 2, z);
     block(solid, dw, WASH.h - WASH.door.h, t, toon(TEAL), WASH.lane, z, WASH.door.h);
-    const drum = mesh(new THREE.CylinderGeometry(0.22, 0.22, dw, 12), toon(STEEL), WASH.lane, G + WASH.door.h - 0.2, z + (z < cz ? 0.3 : -0.3), false);
+    // A hair short of the door's width, so its ends don't share a plane with the posts' sides.
+    const drum = mesh(new THREE.CylinderGeometry(0.22, 0.22, dw - 0.02, 12), toon(STEEL), WASH.lane, G + WASH.door.h - 0.2, z + (z < cz ? 0.3 : -0.3), false);
     drum.rotation.z = Math.PI / 2;
     solid.add(drum);
     for (const sx of [-1, 1]) block(solid, 0.12, WASH.door.h, 0.12, toon(YELLOW), WASH.lane + sx * (dw / 2 - 0.06), z + (z < cz ? 0.2 : -0.2), 0);
@@ -106,7 +107,7 @@ export function buildWash(group: THREE.Group, night: NightParts): WashView {
     g.textBaseline = 'middle';
     g.fillText(`${BRAND} CAR WASH`, 135, 68);
   });
-  name.position.set(H.maxX + 0.01, G + 4.1, cz);
+  name.position.set(H.maxX + 0.03, G + 4.1, cz); // clear of the window posts' faces (H.maxX + 0.01)
   name.rotation.y = Math.PI / 2;
   group.add(name);
   const over = signPlane(512, 128, 3.6, (g) => {

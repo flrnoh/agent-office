@@ -40,6 +40,8 @@ export function openDjBooth(o: DjBoothOptions) {
   const close = h('button.btn.close', { 'aria-label': 'Close' }, '✕');
   const now = h('div.jb-now');
   const tempo = h('div.svc-meta', { style: 'white-space:normal;margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center' });
+  // How the set's video for the LED wall is coming on (YouTube sets only).
+  const wallVideo = h('div.svc-meta', { style: 'white-space:normal;margin-top:6px' });
   /** The tempo you're tapping, till it's sent. */
   let tapping = '';
   let tapDone = 0;
@@ -115,6 +117,7 @@ export function openDjBooth(o: DjBoothOptions) {
       now,
       actions,
       tempo,
+      wallVideo,
       h('div', { style: 'display:flex;align-items:center;gap:8px;margin-top:16px' }, h('label', { style: 'flex:1;margin:0' }, '🔊 Party volume, for everyone on the roof'), disco),
       h('div.volume', {}, partyMute, party, partyPct),
       partyNote,
@@ -168,6 +171,13 @@ export function openDjBooth(o: DjBoothOptions) {
       ...(s.tap ? [h('button.btn', { type: 'button', title: "Back to the beat the office heard in the set", onclick: () => o.untap() }, "↺ The set's own beat")] : []),
     );
     tempo.classList.toggle('hidden', !set);
+    const v = s.video;
+    wallVideo.textContent =
+      v?.status === 'ready' ? "📺 the set's video comes on the LED wall now and then"
+      : v?.status === 'pending' ? "📺 fetching the set's video for the LED wall…"
+      : v?.status === 'failed' ? `📺 no video on the LED wall (${v.why ?? 'no reason'})`
+      : '';
+    wallVideo.classList.toggle('hidden', !set || !v);
     // The party's volume, unless it's under your hand right now.
     const level = s.volume ?? 1;
     if (level > 0) unmuted = level;

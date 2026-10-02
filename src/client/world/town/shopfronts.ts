@@ -159,8 +159,9 @@ export function buildShopFronts(group: THREE.Group, colliders: Collider[]): Shop
       const sy = SHOP_H - 0.44;
       const depth = style.sign === 'lightbox' ? 0.18 : style.sign === 'board' ? 0.06 : 0;
       if (depth) sb(statics, L / 2 - sw / 2 - 0.04, L / 2 + sw / 2 + 0.04, -depth, 0, sy - hgt / 2 - 0.04, sy + hgt / 2 + 0.04, style.sign === 'board' ? trim : '#2b2d33');
-      textured.push(new THREE.Mesh(placed(new THREE.PlaneGeometry(sw, hgt), s, L / 2, -depth - 0.012, sy), sign));
-      if (glow) textured.push(new THREE.Mesh(placed(new THREE.PlaneGeometry(sw * 1.25, hgt * 2.6), s, L / 2, -0.05, sy), glow));
+      // A hair out from its board or box, or for neon from the cladding (itself at v); the glow clear of the frames' faces (-0.05).
+      textured.push(new THREE.Mesh(placed(new THREE.PlaneGeometry(sw, hgt), s, L / 2, (depth ? -depth : v) - 0.012, sy), sign));
+      if (glow) textured.push(new THREE.Mesh(placed(new THREE.PlaneGeometry(sw * 1.25, hgt * 2.6), s, L / 2, -0.07, sy), glow));
       // The door's lock: a collider in its gap, there only while it's shut.
       const door = shopRect(s, d0, d1, -0.02, 0.25);
       const c: Collider = { minX: FAR, maxX: FAR, minZ: FAR, maxZ: FAR, bottom: G, top: G + DOOR_H, fence: true };

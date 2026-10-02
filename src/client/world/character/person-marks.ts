@@ -21,8 +21,9 @@ export interface MarkParts {
   /** The person's own skin and shirt, for a bared arm and its rolled-up sleeve. */
   skin: THREE.Material;
   shirt: THREE.Material;
-  /** For the outfit (person-outfit.ts): the body the torso's on, and the trousers. */
+  /** For the outfit (person-outfit.ts): the body the torso's on, the legs (for shoes), and the trousers. */
   body: THREE.Object3D;
+  legs: THREE.Object3D[];
   pants: THREE.MeshToonMaterial;
   /** The hair, hidden from the start under a hat it would poke through (later, person.ts' dress asks hairShows). */
   hair: THREE.Object3D;

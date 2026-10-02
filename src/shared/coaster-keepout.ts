@@ -21,6 +21,7 @@ import { BOWLING_BOX } from './bowling.js';
 import { VENUE_BOX } from './venue.js';
 import { DIVE, POOL_DECK, SLIDE } from './roofpool.js';
 import { ROOF_BAR, STAGE } from './layout.js';
+import { ROOF_BAR_END } from './skybar.js'; // flrnoh fork: the sky bar's short leg
 
 export interface Box3 {
   name: string;
@@ -145,7 +146,7 @@ export function roofKeepouts(): Box3[] {
   const zs = SLIDE.path.map((p) => p[2]);
   out.push(box('water slide', Math.min(...xs) - 0.7, Math.max(...xs) + 0.7, 0, SLIDE.top + 1.6, Math.min(...zs) - 0.7, Math.max(...zs) + 0.7));
   out.push(box('diving tower', DIVE.minX - 0.3, DIVE.maxX + 0.3, 0, DIVE.top + 1.4, DIVE.minZ, DIVE.board.to));
-  out.push(box('sky bar', ROOF_BAR.x - 1.4, FLOOR.maxX, 0, 3.7, ROOF_BAR.minZ - 0.9, ROOF_BAR.maxZ + 0.9));
+  out.push(box('sky bar', ROOF_BAR.x - 1.4, FLOOR.maxX, 0, 3.7, ROOF_BAR_END.minZ - 1.3, ROOF_BAR.maxZ + 0.9)); // fork: the L's short leg and its stools
   out.push(box('stage', STAGE.minX - 0.5, STAGE.maxX + 0.8, 0, 7, STAGE.minZ, STAGE.maxZ + 1.2));
   return out;
 }

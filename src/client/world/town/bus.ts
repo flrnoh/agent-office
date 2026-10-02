@@ -12,6 +12,8 @@ import { G } from './kit';
 
 /** The bus's walls are this thick, so you see their inside from in there. */
 const T = 0.06;
+/** How far the front's and the back's panels stand proud of the sides and the roof they wrap, so their faces never share a plane. */
+const PROUD = 0.01;
 const FLOOR_Y = 0.36;
 const DOOR_W = 1.25;
 
@@ -83,25 +85,26 @@ function buildBus(line: BusLine, glass: THREE.Material, dark: THREE.Material, in
       add(box(w, 0.86, T, m, FLOOR_Y + 0.43, z), paint, true);
       add(box(w, 0.3, T, m, BUS_H - 0.3, z), white);
       add(box(w, 1.12, T * 0.5, m, FLOOR_Y + 1.42, z), glass);
-      add(box(w, 0.12, T + 0.02, m, FLOOR_Y + 0.86, z), dark);
+      add(box(w, 0.12, T + 0.03, m, FLOOR_Y + 0.86, z), dark); // proud of the end panels too (PROUD)
     }
     // Over the doors.
     if (side > 0) for (const [a, b] of doorAt) add(box(b - a, 0.42, T, (a + b) / 2, BUS_H - 0.36, z), white);
   }
   // The front: the windscreen down low, the display over it; the back: a panel and a small window.
-  add(box(T, 0.62, BUS_W, hl - T / 2, FLOOR_Y + 0.31, 0), paint, true);
+  // The panels wrap the ends of the sides and the roof, a hair proud of them (PROUD).
+  add(box(T + PROUD, 0.62, BUS_W + 2 * PROUD, hl - (T - PROUD) / 2, FLOOR_Y + 0.31, 0), paint, true);
   add(box(T * 0.5, 1.5, BUS_W - 0.1, hl - T / 2, FLOOR_Y + 1.38, 0), glass);
-  add(box(T, 0.5, BUS_W, hl - T / 2, BUS_H - 0.25, 0), dark);
+  add(box(T + PROUD, 0.5 - PROUD, BUS_W + 2 * PROUD, hl - (T - PROUD) / 2, BUS_H - 0.25 - PROUD / 2, 0), dark);
   const disp = new THREE.Mesh(new THREE.PlaneGeometry(BUS_W - 0.4, 0.3), new THREE.MeshBasicMaterial({ map: displayTexture(line) }));
-  disp.position.set(hl + 0.002, BUS_H - 0.25, 0);
+  disp.position.set(hl + PROUD + 0.01, BUS_H - 0.25, 0);
   disp.rotation.y = Math.PI / 2;
   group.add(disp);
   // The number on the back and over the front door on the side too.
   const num = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.28), new THREE.MeshBasicMaterial({ map: displayTexture(line) }));
-  num.position.set(DOORS[0] - 1.4, BUS_H - 0.3, hw + 0.002);
+  num.position.set(DOORS[0] - 1.4, BUS_H - 0.3, hw + 0.01);
   group.add(num);
-  add(box(T, BUS_H - FLOOR_Y, BUS_W, -hl + T / 2, (BUS_H + FLOOR_Y) / 2, 0), white, true);
-  add(box(T * 0.5, 0.8, BUS_W - 0.6, -hl + T / 2 - 0.01, FLOOR_Y + 1.6, 0), glass);
+  add(box(T + PROUD, BUS_H - FLOOR_Y - PROUD, BUS_W + 2 * PROUD, -hl + (T - PROUD) / 2, (BUS_H + FLOOR_Y - PROUD) / 2, 0), white, true);
+  add(box(0.01, 0.8, BUS_W - 0.6, -hl - PROUD - 0.01, FLOOR_Y + 1.6, 0), glass);
   add(box(T * 0.5, 0.26, BUS_W - 0.3, -hl - 0.01, FLOOR_Y + 0.65, 0), paint);
   // Headlights, tail lights.
   for (const s of [-1, 1]) {
@@ -149,7 +152,11 @@ export function buildBuses(parent: THREE.Group): Buses {
   const buses = BUS_LINES.map((line) => {
     const built = buildBus(line, glass, dark, inner);
     parent.add(built.group);
-    return { line, group: built.group, leaves: built.leaves, pose: busAt(line, 0), box: { minX: 0, maxX: 0, minZ: 0, maxZ: 0, bottom: 0, top: 0 } as Collider };
+    const pose = busAt(line, 0);
+    // Where it is at 0 till the first update, not all of them in a heap in one place.
+    built.group.position.set(pose.x, G, pose.z);
+    built.group.rotation.y = pose.yaw;
+    return { line, group: built.group, leaves: built.leaves, pose, box: { minX: 0, maxX: 0, minZ: 0, maxZ: 0, bottom: 0, top: 0 } as Collider };
   });
   return {
     buses,

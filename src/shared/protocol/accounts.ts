@@ -1,5 +1,7 @@
 // Who is signed in: accounts and invites, people's own sign-ins, and the SSH team.
 
+import type { Look } from '../avatar.js'; // flrnoh fork: Me.profile
+
 /**
  * A guest looks around, chats, plays and watches the terminals, but can't type in them or run anything.
  * A party guest (flrnoh fork, see server/party.ts) only parties: no terminals, boards or anything else of the work.
@@ -23,6 +25,8 @@ export interface Me {
   bulli?: boolean;
   /** A party guest (flrnoh fork): a guest who doesn't even watch; sees none of the work. Always with `guest`. */
   party?: boolean;
+  /** flrnoh fork: the account's saved look, so it's the same in a browser it's never been in (server/fork/looks.ts). */
+  profile?: { color: string; look: Look };
 }
 
 /** What someone signs in to for their own workers: Claude Code, and the GitHub CLI. */

@@ -9,9 +9,11 @@
 
 import type { Look } from './avatar.js';
 
-/** Top styles, by index; 0 is the T-shirt everyone wore before. */
-export const TOP_STYLES = ['T-shirt', 'Hoodie', 'Shirt', 'Blazer', 'Leather jacket', 'Dress'];
-export const TOP_STYLES_DE = ['T-Shirt', 'Hoodie', 'Hemd', 'Sakko', 'Lederjacke', 'Kleid'];
+/** Top styles, by index; 0 is the T-shirt everyone wore before. The last, the smoking jacket, is the office's admins' alone (OWNER_TOP). */
+export const TOP_STYLES = ['T-shirt', 'Hoodie', 'Shirt', 'Blazer', 'Leather jacket', 'Dress', 'Smoking jacket'];
+export const TOP_STYLES_DE = ['T-Shirt', 'Hoodie', 'Hemd', 'Sakko', 'Lederjacke', 'Kleid', 'Smoking'];
+/** The host's own: midnight-blue velvet, satin lapels, gold cufflinks, patent shoes. Only an admin's look keeps it (forOwner). */
+export const OWNER_TOP = 6;
 /** The boutique's colors for a top (the profile's shirt color): the character window's eight and a few more. */
 export const TOP_COLORS = ['#ff8a5b', '#4f86f7', '#06d6a0', '#ef476f', '#ffd166', '#9d4edd', '#00b4d8', '#f77f00', '#ffffff', '#2b2d42', '#8d99ae', '#6a994e', '#9b2226', '#f4acb7'];
 /** Trousers, by index; 0 is the dark blue everyone wore before. */
@@ -66,6 +68,13 @@ export function sanitizeOutfit<L extends object>(o: Record<string, unknown>, fal
   }
   if (!out.specs) delete out.tint;
   return out;
+}
+
+/** `look` as someone who isn't an admin may wear it: the owner's smoking jacket comes off (back to a T-shirt). */
+export function forOwner<L extends LookOutfit>(look: L, owner: boolean): L {
+  if (owner || look.top !== OWNER_TOP) return look;
+  const { top: _top, ...rest } = look;
+  return rest as L;
 }
 
 /** One string for the outfit (for sameLook, and to know when to redraw). */

@@ -159,7 +159,7 @@ export function buildGarage(group: THREE.Group, colliders: Collider[]) {
   const wallH = ceiling - G;
   const yellow = toon('#ffd166');
   const walls: [number, number, number, number][] = [
-    [B.minX, B.maxX, B.minZ, B.minZ + WALL_T],
+    [B.minX, B.maxX - 0.5, B.minZ, B.minZ + WALL_T], // up to the corner column, not through it
     [B.minX, B.minX + WALL_T, B.minZ, B.maxZ],
   ];
   for (const [x0, x1, z0, z1] of walls) {

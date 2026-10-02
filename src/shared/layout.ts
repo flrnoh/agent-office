@@ -5,6 +5,7 @@
 import { RIG, RIG_SEAT } from './rig.js'; // flrnoh fork: the racing rig
 import { HALL_SEATING } from './hall-building.js'; // flrnoh fork: the padel hall
 import { GYM_SEATING } from './gym-rooms.js'; // flrnoh fork: the gym's benches, loungers and stools
+import { SKYBAR_STOOLS } from './skybar.js'; // flrnoh fork: the sky bar's stools
 
 export const FLOOR = { minX: -18, maxX: 18, minZ: -13, maxZ: 13 } as const;
 /** How high the ceiling is: a meter over the loft's roof (LOFT.y + LOFT.height), all the way across the room. */
@@ -416,7 +417,7 @@ export const DJ_BOOTH = { x: -3, z: -11.3 } as const;
 /** LED tiles, a meter each, lighting up with the music. */
 export const DANCE_FLOOR = { minX: -8, maxX: 2, minZ: -9.2, maxZ: -2.2 } as const;
 /** The bar along the east side: its counter (x is its middle), the bartender and bottles behind it (fork: by the bungee jetty, room for the pool). */
-export const ROOF_BAR = { x: 12.95, minZ: -0.6, maxZ: 9.2, depth: 0.7, height: 1.1 } as const;
+export { ROOF_BAR } from './skybar.js'; // flrnoh fork: the sky bar's an L now, with its stools there
 /** The fire pit in the lounge, in the south-west corner, with sofas round three sides of it. */
 export const FIRE_PIT = { x: -12, z: 8.2, r: 0.9 } as const;
 /** Tall tables to stand at, between the elevator and the bar. */
@@ -482,7 +483,7 @@ export const SEATING: SeatDef[] = [
   { id: 'stool-1', label: '🪑 Stool', x: -0.6, y: 0, z: (BALCONY.minZ + BALCONY.maxZ) / 2 + 0.2, rotY: Math.PI / 2, places: [0], hips: 0.5, depth: 0, out: -0.7 },
   { id: 'stool-2', label: '🪑 Stool', x: 1, y: 0, z: (BALCONY.minZ + BALCONY.maxZ) / 2 + 0.2, rotY: -Math.PI / 2, places: [0], hips: 0.5, depth: 0, out: -0.7 },
   // On the roof: bar stools along the counter, facing the bar…
-  ...[0, 1, 2, 3, 4, 5].map((i) => ({ id: `roof-stool-${i + 1}`, label: '🪑 Bar stool', x: ROOF_BAR.x - ROOF_BAR.depth / 2 - 0.45, y: 0, z: ROOF_BAR.minZ + 0.9 + i * 1.64, rotY: Math.PI / 2, places: [0], hips: 0.78, depth: 0, out: -0.75, roof: true, bar: true })),
+  ...SKYBAR_STOOLS, // fork: round the corner of the L too (shared/skybar.ts)
   // …sofas round the fire pit, open to the view on the south…
   { id: 'roof-sofa-1', label: '🛋️ Sofa', x: FIRE_PIT.x, y: 0, z: FIRE_PIT.z - 2.3, rotY: 0, places: [-1.1, 0, 1.1], hips: 0.5, depth: -0.05, out: 0.8, roof: true },
   { id: 'roof-sofa-2', label: '🛋️ Sofa', x: FIRE_PIT.x - 2.9, y: 0, z: FIRE_PIT.z + 0.4, rotY: Math.PI / 2, places: [-0.6, 0.6], hips: 0.5, depth: -0.05, out: 0.8, roof: true },

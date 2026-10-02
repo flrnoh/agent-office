@@ -18,6 +18,7 @@ import { Casino, type CasinoPlayer } from '../casino/index.js';
 import { Gym, type GymPlayer } from '../gym/index.js';
 import { Turn, readTurnKey } from '../turn.js';
 import { CarKeys } from '../carkeys.js';
+import { AccountLooks } from './looks.js';
 import { Interiors } from '../interiors.js';
 import { RigTable, Rigs } from '../rig.js';
 import { Marinas } from '../boats.js';
@@ -49,6 +50,7 @@ export interface Fork {
   gym: Gym; // the gym across the street (gym/)
   turn: Turn; // TURN so voice gets through from outside (turn.ts)
   carKeys: CarKeys; // who drives the Bulli
+  looks: AccountLooks; // what each account looks like, from any browser (looks.ts)
   interiors: Interiors; // how admins had floors furnished (interiors.json)
   rigs: Rigs; // the racing rig in the lounge, one driver a floor, one table for the building
   marinas: Marinas; // the jetskis and the motorboat at each floor's jetty on the beach
@@ -107,6 +109,7 @@ export function createFork(ctx: Ctx): Fork {
     gym: new Gym(cfg.dataDir),
     turn: new Turn(readTurnKey(cfg.dataDir), cfg.iceServers),
     carKeys: new CarKeys(cfg.dataDir),
+    looks: new AccountLooks(cfg.dataDir),
     interiors: new Interiors(cfg.dataDir),
     rigs,
     marinas: new Marinas(),

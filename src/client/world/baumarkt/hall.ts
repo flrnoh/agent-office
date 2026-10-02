@@ -95,7 +95,8 @@ export function buildHall(group: THREE.Group, colliders: Collider[], night: Nigh
     [gx0, ex0],
     [ex1, gx1],
   ]) {
-    out.add(mesh(new THREE.BoxGeometry(b - a, GLASS_H, 0.05), glass, (a + b) / 2, G + GLASS_H / 2, maxZ, false));
+    // Its top tucked into the head below (not flush with it).
+    out.add(mesh(new THREE.BoxGeometry(b - a, GLASS_H - 0.06, 0.05), glass, (a + b) / 2, G + (GLASS_H - 0.06) / 2, maxZ, false));
     for (let x = a; x <= b + 0.01; x += (b - a) / 3) out.add(box(0.08, GLASS_H, 0.12, frame, x, G, maxZ));
   }
   out.add(slab(gx0, gx1, maxZ - 0.08, maxZ + 0.08, G + GLASS_H - 0.12, G + GLASS_H, frame));
@@ -103,7 +104,8 @@ export function buildHall(group: THREE.Group, colliders: Collider[], night: Nigh
   const leaves: THREE.Group[] = [];
   for (const s of [-1, 1]) {
     const leaf = new THREE.Group();
-    leaf.add(mesh(new THREE.BoxGeometry(ENTRANCE.width / 2, DOOR_H, 0.04), glass, 0, DOOR_H / 2, 0, false));
+    // The pane a little inside its rails, so their ends and edges don't share its faces.
+    leaf.add(mesh(new THREE.BoxGeometry(ENTRANCE.width / 2 - 0.02, DOOR_H - 0.04, 0.04), glass, 0, DOOR_H / 2, 0, false));
     leaf.add(box(ENTRANCE.width / 2, 0.08, 0.06, frame, 0, 0, 0, false), box(ENTRANCE.width / 2, 0.08, 0.06, frame, 0, DOOR_H - 0.08, 0, false));
     leaf.add(box(0.06, DOOR_H, 0.06, frame, (s * ENTRANCE.width) / 4, 0, 0, false));
     leaf.position.set(ENTRANCE.x + (s * ENTRANCE.width) / 4, G, maxZ);
@@ -113,7 +115,7 @@ export function buildHall(group: THREE.Group, colliders: Collider[], night: Nigh
   // The canopy over the doors on two posts, lights under it.
   const cz1 = maxZ + 3.6;
   out.add(slab(gx0 - 0.5, gx1 + 0.5, maxZ, cz1, G + 3.5, G + 3.8, blue));
-  out.add(slab(gx0 - 0.5, gx1 + 0.5, cz1 - 0.05, cz1 + 0.05, G + 3.5, G + 3.95, toon(ORANGE)));
+  out.add(slab(gx0 - 0.51, gx1 + 0.51, cz1 - 0.05, cz1 + 0.05, G + 3.49, G + 3.95, toon(ORANGE)));
   for (const x of [gx0 - 0.2, gx1 + 0.2]) {
     out.add(box(0.22, 3.5, 0.22, toon('#3d405b'), x, G, cz1 - 0.25));
     colliders.push({ minX: x - 0.15, maxX: x + 0.15, minZ: cz1 - 0.4, maxZ: cz1 - 0.1, bottom: G, top: G + 3.5 });

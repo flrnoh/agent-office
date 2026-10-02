@@ -8,11 +8,12 @@ import { GUEST_MSGS, GUEST_QUIET } from '../guests.js';
 import { PARTY_MSGS, PARTY_QUIET, PARTY_REFUSED } from '../party.js';
 import { whiteboardHooks } from '../ws/handlers/whiteboard.js';
 
-/** What a connection's role adds to upstream's Me: guest, party guest, and the Bulli's keys (carkeys.ts). */
+/** What a connection's role adds to upstream's Me: guest, party guest, the Bulli's keys (carkeys.ts), the account's look (looks.ts). */
 export function roleOf(ctx: Ctx, a: ReturnType<Accounts['get']>, accountId: string | undefined): Partial<Me> {
   const keys = ctx.carKeys.mayDrive(a?.id ?? accountId, a ? a.role === 'admin' : !accountId) ? { bulli: true } : {};
   if (!a) return keys;
-  return { ...(a.role === 'guest' ? { guest: true } : a.role === 'party' ? { guest: true, party: true } : {}), ...keys };
+  const profile = ctx.looks.get(a.id); // the account's look, for a browser it's new to (looks.ts)
+  return { ...(a.role === 'guest' ? { guest: true } : a.role === 'party' ? { guest: true, party: true } : {}), ...keys, ...(profile ? { profile } : {}) };
 }
 
 /** Whether what `c` was last told about their role is out of date. */

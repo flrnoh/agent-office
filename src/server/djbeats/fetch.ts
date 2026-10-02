@@ -45,8 +45,8 @@ const DECODE_MS = 6 * 60_000;
 /** A failure worth saying as it is (it's shown at the booth). */
 export class BeatsError extends Error {}
 
-/** Runs a program to the end; rejects with the last of what it said on stderr. */
-function run(cmd: string, args: string[], signal: AbortSignal, ms: number, onOut?: (b: Buffer) => void): Promise<void> {
+/** Runs a program to the end; rejects with the last of what it said on stderr (also the set's video's, djvideo/). */
+export function run(cmd: string, args: string[], signal: AbortSignal, ms: number, onOut?: (b: Buffer) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     // yt-dlp finds deno (for YouTube) and ffmpeg on the PATH: give it Homebrew's too.
     const env = { ...process.env, PATH: [...DIRS, process.env.PATH ?? ''].join(path.delimiter) };

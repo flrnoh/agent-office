@@ -3,7 +3,7 @@ import { COASTER_NAME, type CoasterLeader } from '../../shared/coaster';
 import { h, openModal } from '../ui/dom';
 
 // DER BRECHER's ride photo (flrnoh fork, see FORK.md "Der Brecher"). At the bottom of the first drop a
-// camera on the portal's leg flashes as the train comes at it; every page up on the roof (riders and
+// camera by the U-turn flashes as the train comes at it; every page up on the roof (riders and
 // whoever's watching) draws that moment from there, the whole train with everyone in it, hands up or
 // not, the same on every page because the train's where its clock says. The picture goes on the
 // station's monitor, and E there opens it big, to save.

@@ -111,11 +111,12 @@ export function cornerLights(night: NightParts) {
   const c = new THREE.Color();
   return {
     group,
-    /** From the street (`from` up) to the top of the cornice (`to` up). */
+    /** From the street (`from` up) to the top of the cornice (`to` up): just under it, so their tops don't fight its. */
     place(from: number, to: number) {
+      const end = to - 0.01;
       for (const p of posts) {
-        p.scale.y = to - from;
-        p.position.y = (from + to) / 2;
+        p.scale.y = end - from;
+        p.position.y = (from + end) / 2;
       }
       top.position.y = to + 0.04;
     },
@@ -149,7 +150,7 @@ export function blade(night: NightParts) {
     const mat = litSign(night, glyph(ch, color, true), 0.9);
     letters.push(mat);
     for (const side of [1, -1]) {
-      const p = mesh(new THREE.PlaneGeometry(W - 0.2, LH), mat, 0, H - 0.3 - LH * (i + 0.5), side * 0.115, false);
+      const p = mesh(new THREE.PlaneGeometry(W - 0.2, LH), mat, 0, H - 0.3 - LH * (i + 0.5), side * 0.125, false); // 1.5 cm off the board, inside the rim
       if (side < 0) p.rotation.y = Math.PI;
       group.add(p);
     }
@@ -190,9 +191,11 @@ export function rooftopLetters(night: NightParts) {
     if (ch === ' ') return;
     const x = x0 + i * LW;
     const color = COLORS[i % COLORS.length];
-    // Either side of the glass on the parapet: the street's way round, and the deck's, mirrored.
-    const front = mesh(new THREE.PlaneGeometry(LW * 1.05, LH), litSign(night, glyph(ch, color, false), 0.18), x, CURB + LH / 2, z + 0.09, false);
-    const back = mesh(new THREE.PlaneGeometry(LW * 1.05, LH), litSign(night, glyph(ch, color, false, 160, 220, true), 0.18), x, CURB + LH / 2, z - 0.09, false);
+    // Either side of the glass on the parapet: the street's way round, and the deck's, mirrored. They
+    // overlap their neighbors a little, so every other one stands a centimeter further out.
+    const off = 0.09 + (i % 2) * 0.01;
+    const front = mesh(new THREE.PlaneGeometry(LW * 1.05, LH), litSign(night, glyph(ch, color, false), 0.18), x, CURB + LH / 2, z + off, false);
+    const back = mesh(new THREE.PlaneGeometry(LW * 1.05, LH), litSign(night, glyph(ch, color, false, 160, 220, true), 0.18), x, CURB + LH / 2, z - off, false);
     back.rotation.y = Math.PI;
     group.add(front, back);
     // A post up through each letter.
@@ -301,7 +304,7 @@ export function pencil(): THREE.Group {
   body.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 6), toon(INK), 0, L + 0.91, 0, false));
   // The point, sunk into the wall.
   body.add(mesh(new THREE.ConeGeometry(R, 1.0, 6).rotateX(Math.PI), toon('#f6d7a7'), 0, -0.5, 0));
-  body.add(mesh(new THREE.ConeGeometry(R * 0.35, 0.35, 6).rotateX(Math.PI), toon(INK), 0, -0.85, 0));
+  body.add(mesh(new THREE.ConeGeometry(R * 0.38, 0.35, 6).rotateX(Math.PI), toon(INK), 0, -0.85, 0)); // a shade fatter than the wood's taper, so it stands out of it
   // Up and out from the wall, pointing in.
   body.rotation.z = -Math.PI / 2 + 0.55;
   body.position.set(B.maxX + 0.35, 2.8, 5.4);

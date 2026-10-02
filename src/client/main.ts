@@ -1,7 +1,7 @@
 import './style.css';
 import { Net } from './net';
 import { DesktopNotifier } from './notify';
-import { store, loadProfile, loadSettings } from './state';
+import { store, accountProfile, loadProfile, loadSettings } from './state'; // accountProfile: flrnoh fork
 import { PlayerController, groundAt } from './player';
 import { Hands } from './world/hands';
 import { Confetti } from './world/confetti';
@@ -84,6 +84,7 @@ import { installVenueShow } from './features/venueshow'; // flrnoh fork: the Sch
 import { installProberaum } from './features/proberaum'; // flrnoh fork: the Schallwerk's rehearsal wing
 import { installVoiceRange } from './features/voicerange'; // flrnoh fork: Hörkreise
 import { installInstruments } from './features/instruments'; // flrnoh fork: the Schallwerk's instruments
+import { installDance } from './features/dance'; // flrnoh fork: dancing on the roof
 import { installDjSets } from './features/djset';
 import { installDoorbell } from './features/doorbell';
 import { installFogbox } from './features/fogbox';
@@ -243,6 +244,7 @@ parts.coaster = installCoaster(ctx, { roof: parts.rooftop.roof, roofFloors: part
 (window as any).__proberaum = installProberaum(ctx, { booze: () => parts.bar.booze, reach }); // fork: the Schallwerk's rehearsal wing
 (window as any).__voicerange = installVoiceRange(ctx, { bodies: () => parts.peers.remotes }); // fork: Hörkreise, how far each voice carries
 (window as any).__instruments = installInstruments(ctx, { personOf }); // fork: the Schallwerk's instruments
+(window as any).__dance = installDance(ctx, { frame: parts.rooftop.frame, remotes: () => parts.peers.remotes }); // fork: dancing on the roof, on the beat
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);
@@ -267,7 +269,7 @@ async function whoami() {
 }
 
 void whoami().then(() => {
-  const saved = loadProfile();
+  const saved = accountProfile(store.me) ?? loadProfile(); // accountProfile: flrnoh fork, your account's look from any browser
   if (saved && store.me.account) saved.name = store.me.account.name;
   if (store.me.account) store.profile.name = store.me.account.name;
   store.emit('me');

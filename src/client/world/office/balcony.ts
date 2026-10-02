@@ -224,7 +224,7 @@ export function buildBalcony(group: THREE.Group, colliders: Collider[], interact
 
   const sign = textPlane('🚬 Smoke break', { bg: '#2b2d42', color: '#fffaf3', size: 56, border: '#fffaf3' });
   sign.scale.multiplyScalar(0.8);
-  sign.position.set(SIGN_X, 2.2, minZ + 0.02);
+  sign.position.set(SIGN_X, 2.2, minZ + 0.04); // clear of the window frames, which stand 0.02 out of the wall
   group.add(sign);
 }
 
@@ -343,16 +343,18 @@ export function buildExitStairs(group: THREE.Group, colliders: Collider[]) {
   }
   profile.lineTo(L + treads * run, STREET_Y);
   profile.closePath();
-  const block = mesh(new THREE.ExtrudeGeometry(profile, { depth: width, bevelEnabled: false }), toon('#d3d6dd'), maxX, 0, landingZ0);
+  // A couple of centimeters into the wall, so its side there doesn't fight the facade's.
+  const block = mesh(new THREE.ExtrudeGeometry(profile, { depth: width + 0.02, bevelEnabled: false }), toon('#d3d6dd'), maxX + 0.02, 0, landingZ0);
   block.rotation.y = -Math.PI / 2;
   group.add(block);
+  // The treads stand a centimeter proud of the block at the open side and at their fronts.
   const tread = toon('#b9bdc6');
   const cx = (minX + maxX) / 2;
-  group.add(mesh(box(width, 0.04, L), tread, cx, -0.015, landingZ0 + L / 2, false));
+  group.add(mesh(box(width + 0.02, 0.04, L + 0.02), tread, cx, -0.015, landingZ0 + L / 2, false));
   colliders.push({ minX, maxX, minZ: landingZ0, maxZ: landingZ1, bottom: STREET_Y, top: 0 });
   for (let i = 1; i <= treads; i++) {
     const z0 = landingZ1 + (i - 1) * run;
-    group.add(mesh(box(width, 0.04, run + 0.02), tread, cx, -i * rise - 0.015, z0 + run / 2, false));
+    group.add(mesh(box(width + 0.02, 0.04, run + 0.02), tread, cx, -i * rise - 0.015, z0 + run / 2, false));
     colliders.push({ minX, maxX, minZ: z0, maxZ: z0 + run, bottom: STREET_Y, top: -i * rise });
   }
 

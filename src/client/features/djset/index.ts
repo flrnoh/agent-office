@@ -2,7 +2,8 @@
  * flrnoh fork (see FORK.md): a DJ set someone put on at the roof's booth, from YouTube, SoundCloud or
  * Mixcloud, in place of the house DJ, for everyone up there (djset.ts, ui/djbooth.ts). The booth
  * itself, its hint and E, are features/bar's; it asks here what's on. While a set plays, the roof's
- * lights, LED wall and DJ go by its beats (`frame`, see frame.ts and server/djbeats/).
+ * lights, LED wall and DJ go by its beats (`frame`, see frame.ts and server/djbeats/), and a YouTube
+ * set's own video comes on the LED wall now and then (video.ts).
  */
 import type { Ctx } from '../../core/context';
 import { djFrame } from '../../dnb';
@@ -15,6 +16,7 @@ import type { Interactable } from '../../world/types';
 import { isDjBeats } from '../../../shared/djbeats';
 import type { DjSetState } from '../../../shared/djset';
 import { gridFrame, SetBeats, setHue, type SetFrame } from './frame';
+import { SetVideo } from './video';
 
 export interface DjSetDeps {
   /** How far into the house DJ's set it is (see features/rooftop). */
@@ -34,10 +36,13 @@ export function installDjSets(ctx: Ctx, deps: DjSetDeps) {
   function houseDj() {
     ctx.sound.setDj(ctx.upTop() && !djSets.silencesHouse() ? deps.djAt : null);
   }
+  /** The set's video for the LED wall, while you're up there. */
+  const video = new SetVideo();
   /** Up on the roof, or back down (see setPlace in core/travel.ts). */
   function setUp(up: boolean) {
     djSets.setUp(up);
     houseDj();
+    if (!up) video.release();
   }
   /** What's on, from the office; the booth's window and the beats (below) look again, as the set's tempo may have come with it. */
   const onState = (state: DjSetState) => {
@@ -96,15 +101,17 @@ export function installDjSets(ctx: Ctx, deps: DjSetDeps) {
   function frame(): SetFrame | null {
     const s = djSets.current();
     const set = s.set;
-    if (!set || !djSets.silencesHouse()) return null;
+    if (!set || !djSets.silencesHouse()) return (video.release(), null);
     const hue = setHue(set.url);
-    const title = djSets.titleNow();
     const now = store.officeNow();
-    // A tapped tempo goes before what was heard (someone put it right); then what was heard; then a guess.
-    if (s.tap) return { ...gridFrame((now - s.tap.at) / 1000, s.tap.bpm, 0, hue), title };
+    // Where the set you hear is: everyone's point in it, put right by how far its player here is off.
     const at = djSets.expectedAt(now) + (driftFor === set.url ? drift : 0);
-    if (heard?.url === set.url) return { ...heard.frame(at, hue), title };
-    return { ...gridFrame(at, 124, 0, hue), title };
+    const shown = video.update(s.video?.status === 'ready' ? (s.video.key ?? null) : null, at, djSets.phase() === 'playing');
+    const wall = { title: djSets.titleNow(), ...(shown ? { video: shown } : {}) };
+    // A tapped tempo goes before what was heard (someone put it right); then what was heard; then a guess.
+    if (s.tap) return { ...gridFrame((now - s.tap.at) / 1000, s.tap.bpm, 0, hue), ...wall };
+    if (heard?.url === set.url) return { ...heard.frame(at, hue), ...wall };
+    return { ...gridFrame(at, 124, 0, hue), ...wall };
   }
 
   /** Taps at the booth, a beat each: four or more in time set the tempo, for everyone once you stop tapping. */

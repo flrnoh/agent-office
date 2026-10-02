@@ -33,6 +33,7 @@ const GUEST = [
   'trolley.set', // fork: the supermarket's shopping trolley
   'bike.ride', 'bike.bell', // fork: bikes from the city's bike shop
   'voice.range', // fork: how far your voice carries
+  'dance.set', // fork: dancing on the roof
   'tank.fill', 'tank.wash', // fork: the petrol station and its car wash
   'coaster.board', 'coaster.leave', 'coaster.hands', // fork: DER BRECHER, the roller coaster round the tower
   'karaoke.hello', 'karaoke.queue', 'karaoke.unqueue', 'karaoke.mic', 'karaoke.stop', 'karaoke.done', 'karaoke.rate', 'karaoke.cheer', // fork: the bowling centre's karaoke bar
@@ -96,5 +97,6 @@ export function guestMayFetch(p: string, url: URL, onAWall: (imageUrl: string) =
   if (p === '/api/radio') return radioRequestShape(url.searchParams);
   if (p === '/api/dj/beats') return true; // fork: the roof's lights, to the DJ set that's on
   if (p === '/api/venue/beats') return true; // fork: the Schallwerk's lights and crowd, to its DJ set
+  if (p === '/api/dj/video') return true; // fork: the DJ set's video on the roof's LED wall
   return false;
 }

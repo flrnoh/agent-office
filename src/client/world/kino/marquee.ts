@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ENTRANCE, FOYER, KINO } from '../../../shared/kino-plan';
+import { ENTRANCE, FOYER, KINO, KT } from '../../../shared/kino-plan';
 import { canvasTexture } from '../texture';
 import { toon } from '../toon';
 import { G, fit, glowing, plane, slab } from './kit';
@@ -28,9 +28,10 @@ export function buildMarquee(g: THREE.Group): Marquee {
   const z = ENTRANCE.z;
   const brass = toon('#c9a227');
   const red = toon('#8d1b1b');
-  // The canopy: a deep slab with a brass edge, its underside lit.
-  slab(g, red, x0, x1, UNDER, UNDER + 0.45, z - HALF, z + HALF, true);
-  slab(g, brass, x0, x1 + 0.04, UNDER + 0.45, UNDER + 0.55, z - HALF - 0.04, z + HALF + 0.04);
+  // The canopy: a deep slab with a brass edge, its underside lit; it starts at the wall's face (inside
+  // the wall its ends would share a plane with the stucco's).
+  slab(g, red, x0 + KT / 2, x1, UNDER, UNDER + 0.45, z - HALF, z + HALF, true);
+  slab(g, brass, x0 + KT / 2, x1 + 0.04, UNDER + 0.45, UNDER + 0.55, z - HALF - 0.04, z + HALF + 0.04);
   const under = glowing('#fff1c1');
   plane(g, under, (x0 + x1) / 2, UNDER - 0.01, z, OUT - 0.2, 2 * HALF - 0.2, 0).rotation.x = Math.PI / 2;
 
