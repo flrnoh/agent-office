@@ -1,7 +1,7 @@
 // flrnoh fork (see FORK.md): which blocks the city's landmarks stand on (see shared/landmarks.ts).
 // No imports, so shared/city.ts can read it while it lays itself out without an import cycle.
 
-export type LandmarkId = 'tankstelle' | 'kino' | 'baumarkt';
+export type LandmarkId = 'tankstelle' | 'kino' | 'baumarkt' | 'bowling';
 
 export interface Landmark {
   id: LandmarkId;
@@ -17,6 +17,8 @@ export const LANDMARKS: readonly Landmark[] = [
   { id: 'kino', i: -1, j: -1 },
   // North-east, a block further out: room for its car park and garden centre.
   { id: 'baumarkt', i: 1, j: -2 },
+  // Right next to the office to the east, across the side street: the bowling centre (shared/bowling.ts).
+  { id: 'bowling', i: 1, j: 0 },
 ];
 
 /** The landmark on block (i, j), if any. */

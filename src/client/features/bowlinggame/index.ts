@@ -252,7 +252,7 @@ export function installBowlingGame(ctx: Ctx, deps: BowlingGameDeps) {
         root: room.group,
         machines,
         furniture,
-        sound: (k, at, s) => ctx.sound.bowling(k, at, s),
+        sound: (k, at, s) => ctx.sound.bowlingLane(k, at, s),
         rolling: (lane, at, speed, gutter) => ctx.sound.bowlRoll(lane, at, speed, gutter),
         person,
         confetti: (x, y, z, n, power) => {

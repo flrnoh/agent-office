@@ -45,8 +45,8 @@ test('every kind (14 and more) is all over the city, and the nearest shops are o
   for (const s of SHOPS) byKind.set(s.kind, [...(byKind.get(s.kind) ?? []), s]);
   for (const k of SHOP_KINDS) {
     const list = byKind.get(k.id) ?? [];
-    // 22 kinds over about 128 shops (the supermarkets take two or three each): at least five of every kind.
-    assert.ok(list.length >= 5, `${k.id}: ${list.length}`);
+    // 24 dealt kinds over about 118 shops (the supermarkets take two or three each, the bowling centre's block has none): at least four of every kind.
+    assert.ok(list.length >= 4, `${k.id}: ${list.length}`);
     // In every quarter round the office.
     const quarters = new Set(list.map((s) => `${Math.sign(s.ox)}${Math.sign(s.oz - 27)}`));
     assert.ok(quarters.size >= 3, `${k.id} only in ${[...quarters]}`);

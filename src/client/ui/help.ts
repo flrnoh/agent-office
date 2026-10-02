@@ -85,6 +85,8 @@ export const HELP_ROWS: readonly (readonly [string, string])[] = [
   // flrnoh fork: the minimap (features/minimap).
   ['🧭', 'The minimap, bottom right, turns with you: the office, the places and the shops round about, and who’s out there. Once the office is out of sight an arrow at its rim points the way back, with how far (the mouse wheel over it zooms). ☰ hides it'],
   ['J', 'The big map (or click the minimap): the whole town and the loop, north up. Drag to look about, the wheel zooms. Click a place or a shop and the minimap points you there; “Zum Büro” for the way back'],
+  // flrnoh fork: the bowling centre (client/bowling).
+  ['🎳', 'Right next to the office to the east, the bowling centre: E at its glass doors goes in, E at the doors inside back out (everyone from every floor meets in there). E at the counter for a beer from the tap, a Spezi, Pommes rot-weiß or a Currywurst; E at the end of the counter rents bowling shoes in your size (they stay there when you leave). E on a sofa in the lounge sits you down. The big lever by the lounge switches cosmic bowling on and off for everyone: house lights down, black light, mirror ball'],
   // flrnoh fork: the bowling centre's lanes (features/bowlinggame).
   ['🎳', 'Bowling: E at a lane’s console joins its game (up to six; X leaves), E at the ball return picks a house ball (8–16 lbs). When you’re up, E on the approach: the mouse sets the line, A D and W S move your mark, hold Space (or the mouse button) and let go in the meter, moving the mouse while you hold winds in the hook. Step over the foul line and it’s a foul. The office counts every pin; strikes, spares and splits on the monitors, the week’s league and the all-time records on the board by the wall (E there)'],
 ];

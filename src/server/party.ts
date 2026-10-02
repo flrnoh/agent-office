@@ -77,6 +77,7 @@ const PARTY_SEES = [
   'trolley', // fork: the supermarket's shopping trolley
   'bike.rode', 'bike.bell', // fork: bikes from the city's bike shop
   'tankstelle', // fork: the petrol station and its car wash
+  'bowling.lights', 'bowling.shoes', 'bowling.house', // fork: the bowling centre's lights and rental shoes
   'bowl.lanes', 'bowl.lane', 'bowl.roll', 'bowl.board', 'bowl.stats', 'bowl.over', // fork: the bowling centre's lanes and league
 ] as const satisfies readonly T[];
 
