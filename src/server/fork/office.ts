@@ -27,6 +27,7 @@ import { Trolleys } from '../../shared/trolley.js';
 import { RoofTables } from '../tablegames.js';
 import { PadelCourts } from '../padel.js';
 import { BungeeRope } from '../bungee.js';
+import { Coaster } from '../coaster.js';
 import { Soccer } from '../soccer/index.js';
 import { RadioProxy } from '../radio.js';
 import { HALL_ARRIVAL, backInHall, hallView } from '../hall.js';
@@ -50,6 +51,7 @@ export interface Fork {
   roofTables: RoofTables; // the table games on the roof
   padelCourts: PadelCourts; // padel in the hall
   bungeeRope: BungeeRope; // bungee off the roof
+  coaster: Coaster; // DER BRECHER, the roller coaster round the tower (coaster.ts)
   soccer: Soccer; // the soccer hall's ball and match
   radio: RadioProxy; // radio stations on the jukebox
   /** To everyone up on the roof (or everyone but `except`). */
@@ -102,6 +104,13 @@ export function createFork(ctx: Ctx): Fork {
     roofTables: new RoofTables(),
     padelCourts: new PadelCourts(),
     bungeeRope: new BungeeRope(),
+    coaster: new Coaster({
+      dataDir: cfg.dataDir, // the rides and records (coaster.json)
+      changed: (state) => ctx.broadcast({ t: 'coaster', state }), // the whole building: it's seen from every floor
+      storeys: () => floors.size,
+      // The ground floor's workers at their desks: the tube runs over their heads.
+      typists: () => [...([...floors.values()][0]?.workers.list() ?? [])].map((w) => ({ desk: w.deskId, name: w.name, color: w.color })),
+    }),
     soccer: new Soccer({
       where: (id) => {
         const c = clients.get(id);
@@ -169,6 +178,7 @@ export function startFork(ctx: Ctx) {
 }
 
 export function stopFork(ctx: Ctx) {
+  ctx.coaster.stop();
   ctx.casino.stop();
   ctx.soccer.stop();
   ctx.gym.stop();

@@ -19,6 +19,7 @@ import { baumarktMessage } from '../../baumarkt.js';
 import { kinoMessage } from '../../kino.js';
 import { toyUse } from '../../../shared/shopwares.js';
 import { funshopHandlers } from './funshops.js';
+import { coasterHandlers, coasterHooks } from './coaster.js';
 import { rideMessage } from '../../fork/ride.js';
 import { here } from './common.js';
 import { jukeboxChanged } from './jukebox.js';
@@ -166,6 +167,7 @@ export const forkHandlers = {
     if (used) ctx.toNeighbors(c, used);
   },
   ...funshopHandlers, // the Spielhalle's claw machine and the Post's postcards
+  ...coasterHandlers, // DER BRECHER, the roller coaster round the tower
   'bike.ride': rideMessage, // a bike from the city's bike shop (fork/ride.ts)
   'bike.bell': rideMessage,
   'tank.fill': tank,
@@ -214,6 +216,7 @@ export const forkHooks: FeatureHooks = {
     boatLeft(ctx, c, was?.id); // out of a boat at the beach
     baumarktLeft(ctx, c, was?.id); // off the Baumarkt's forklift, trolleys and tools
     trolleyLeft(ctx, c, was?.id); // the supermarket's trolley stays behind
+    coasterHooks.leaving?.(ctx, c, was); // out of DER BRECHER's train, off the roof
   },
   closed(ctx, c) {
     ctx.casino.leave(c.id);
@@ -223,6 +226,7 @@ export const forkHooks: FeatureHooks = {
     ctx.soccer.leave(c.id);
     offRope(ctx, c.id);
     rigLeft(ctx, c);
+    coasterHooks.closed?.(ctx, c);
   },
   closedOn(ctx, c, floor) {
     boatLeft(ctx, c, floor.id); // out of a boat at the beach

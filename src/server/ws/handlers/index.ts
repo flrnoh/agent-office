@@ -23,6 +23,7 @@ import { usageHandlers } from './usage.js';
 import { whiteboardHandlers, whiteboardHooks, whiteboardView } from './whiteboard.js';
 import { jailView, workerHandlers, workerHooks, workersView } from './workers.js';
 import { baumarktView, trolleysView, boatsView, bungeeView, forkHandlers, forkHooks, kinoView, noView, rigView, tankView, tvView } from './fork.js'; // flrnoh fork
+import { coasterView } from './coaster.js'; // flrnoh fork
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
 
 /** Each domain's handlers put together, in alphabetical order. */
@@ -86,4 +87,5 @@ export const views: ViewPieces = {
   tables: noView,
   bungee: bungeeView,
   baumarkt: baumarktView, // flrnoh fork: the Baumarkt
+  coaster: coasterView, // flrnoh fork: DER BRECHER, seen from every floor
 };
