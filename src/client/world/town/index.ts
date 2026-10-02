@@ -11,6 +11,7 @@ import { buildFurniture } from './furniture';
 import { buildShops } from './shops';
 import { LAID_OUT, glowTexture } from './kit';
 import { buildTraffic, type Obstacle } from './traffic';
+import { buildPassersby, type Passersby } from './people'; // fork: passers-by
 
 export type { Obstacle } from './traffic';
 
@@ -39,7 +40,9 @@ export interface Town {
   setFloors(floors: number): void;
   /** Where the street is in the frame the traffic's colliders are in (the floor you're on's). */
   setStreet(street: number): void;
-  /** The cars along the streets, stopping for `obstacles`; the lights: `dark` is how dark it is (0–1). */
+  /** The passers-by on the sidewalks (town/people.ts). */
+  people: Passersby;
+  /** The cars along the streets, stopping for `obstacles` (and the passers-by crossing); the lights: `dark` is how dark it is (0–1). */
   update(t: number, dt: number, dark: number, obstacles: Iterable<Obstacle>): void;
 }
 
@@ -58,12 +61,16 @@ export function buildTown(night: NightParts): Town {
   buildShops(group, LOTS, night);
   buildFurniture(group, colliders);
   const cars = buildTraffic(group, r);
+  const people = buildPassersby();
+  group.add(people.group);
+  const crossing: Obstacle[] = [];
   let riseNow = -1;
   const obstacleList: Obstacle[] = [];
   return {
     group,
     colliders,
     traffic: cars.traffic,
+    people,
     setFloors(floors) {
       // The buildings only change height up to six floors (see rise).
       const drop = roofDrop(Math.max(1, floors));
@@ -78,6 +85,10 @@ export function buildTown(night: NightParts): Town {
     update(t, dt, dark, obstacles) {
       obstacleList.length = 0;
       for (const o of obstacles) obstacleList.push(o);
+      // The passers-by step aside for the same; the cars stop for those out in the road.
+      crossing.length = 0;
+      people.update(Math.min(dt, 0.1), obstacleList, crossing);
+      obstacleList.push(...crossing);
       cars.move(Math.min(dt, 0.1), obstacleList);
       lamps.visible = dark > 0.02;
       lamps.material.opacity = dark;

@@ -9,6 +9,7 @@ import { roofDrop } from '../../../shared/layout';
 import type { Ctx } from '../../core/context';
 import type { Obstacle } from '../../world/town';
 import type { Rooftop } from '../rooftop/world';
+import { drivePassersby } from './people';
 
 export interface TownFeatureDeps {
   /** The roof, once it's built (see features/rooftop). */
@@ -24,6 +25,8 @@ export function installTown(ctx: Ctx, deps: TownFeatureDeps) {
   /** Whether the outlook is lent to the roof right now. */
   let lent = false;
   const obstacles: Obstacle[] = [];
+  /** The passers-by on the office's clock (see people.ts). */
+  const passersby = drivePassersby(ctx);
 
   /** Who and what the city's cars stop for, down on the street: people on foot, and the garage's cars. */
   function inTheRoad(): Obstacle[] {
@@ -44,6 +47,7 @@ export function installTown(ctx: Ctx, deps: TownFeatureDeps) {
       lent = up;
     }
     const dark = ctx.sky.lampsOn;
+    passersby();
     if (up) {
       // The roof looks out at the same country, as far below as the building is tall.
       office.scenic.cull(ctx.camera.position, -roofDrop(deps.roofFloors()), (ctx.scene.fog as THREE.Fog).far);

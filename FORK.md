@@ -511,6 +511,22 @@ The roof doesn't build a city of its own any more: while you're up there, the of
   - `src/client/main.ts`: `installTown(...)`.
   - `tests/size.test.ts`, `tests/fork-sizes.ts`: `world/city.ts` is off the ceilings (it's 102 lines now).
 
+### People in the streets
+
+Passers-by on the city's sidewalks (60 to 150 round you by day, about a third of that at night): out of a shop door, round the blocks (alone, two together chatting, or with a dog on a lead), across the zebras (the city's cars stop for them), sitting on benches, waiting at bus stops, looking into shop windows, and into another shop; umbrellas when it rains, now and then a shopping bag. Everyone sees the same people at the same places without anything on the wire: each is a slot at a crossing whose walk in each 200-second epoch comes from a seed and the office's clock (`store.officeNow`), and how many are out from how light it was then (the sun from the office's place). Only your page's: they step aside for you, other people and the garage's cars (waiting a moment and catching up when there's no room), glance at you, stumble when bumped. No colliders, so nobody gets stuck on them. Drawn as a few dozen instanced meshes (people, hair per style, dogs, bags, umbrellas, leads), only within 122 m, faces and hands within 45 m; about 0.5 ms of script a frame.
+
+- Own files:
+  - `src/shared/streetside.ts`: where the street furniture and the city's lamps stand (moved out of `world/town/furniture.ts` and `ground.ts`, same numbers in the same order), so the passers-by know the benches, stops, lamps and bollards.
+  - `src/shared/sidewalks.ts`: the walkable graph: `WALKS` (each sidewalk, crossing to crossing, the office's street's too), `CORNERS` (joined by the walks, the zebras and straight on), what stands on a walk (`posts`, gone round by `detour`) and the spots beside it (benches, bus stops, shop windows and doors, `shopFaces` the same fronts `world/town/shops.ts` draws); `onRoad`. Nothing on the office's own ground (its building, the lot in front of the garage, the side lot).
+  - `src/shared/passersby.ts`: `SLOTS`, `epochOf`, `planFor` (one outing, door to door), `bodyAt` (where each of the party is at a time), `density`.
+  - `src/client/world/town/people.ts` (`buildPassersby`: the page's side, stepping aside, bumps, heads, walk cycle, LOD, the obstacles for the cars; `stats`, `shift` and `list()` for a look from the console), `src/client/world/town/people-models.ts` (the instanced parts and the colors).
+  - `src/client/features/town/people.ts`: `drivePassersby` (the clock, the daylight, the rain, the sounds). `src/client/sound/passersby.ts`: footsteps and chatter.
+  - `tests/passersby.test.ts`.
+- Hooks in upstream files:
+  - `src/client/sound/index.ts`: `passerby(kind, at)` in the fork's section.
+  - Fork files from "One city round the office": `src/client/world/town/index.ts` (`Town.people`, built with the town, updated before the cars, whose obstacles get the passers-by out in the road), `src/client/features/town/index.ts` (`drivePassersby` each frame before the town's update), `src/client/world/town/furniture.ts`, `ground.ts`, `kit.ts` (laid out by `shared/streetside.ts` now).
+  - `docs/features.md`: "People in the streets".
+
 ### Each storey its own cut (#20, and the balconies round the building)
 
 No two floors of the building are laid out alike, inside or from the street. It's all worked out from the floor's place in the stack alone (`storeyPlan(index)`), the same on the server and every page, so the dog, golf, the basketball, workers walking out and the parachutes stay in step; the bottom floor is exactly as before. Every storey has the same seats by id, so seating doesn't care. Reordering the floors re-lays them.
