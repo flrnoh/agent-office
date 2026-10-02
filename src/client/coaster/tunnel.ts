@@ -1,6 +1,5 @@
 import { floorPalette } from '../../shared/floors';
 import type { CoasterTypist } from '../../shared/coaster';
-import { FLOOR, WALL_HEIGHT } from '../../shared/layout';
 import type { FloorInfo } from '../../shared/protocol';
 import { Worker } from '../world/character';
 import type { World } from '../world/world';
@@ -9,9 +8,9 @@ import type { World } from '../world/world';
 // Brecher"). Riders are up on the roof as far as the office goes (that's where the station is), and up
 // there only the roof is in the scene: the floors are the tower's outside. But the office's own world
 // is still there, hidden, laid out as the bottom floor's (core/travel.ts's syncStack has it at index 0
-// on the roof). So while a rider's eyes are in the tube it's shown, lowered to where the ground floor is
-// under the roof, painted and furnished the way the ground floor is, with the ground floor's workers
-// (CoasterState.typists, as the train went) typing at their desks below; out of the tube it's hidden
+// on the roof). So while a rider can see into it (from the top of the first drop till over the top of
+// the vertical lift) it's shown, lowered to where the ground floor is under the roof, painted and furnished the way the ground floor is, with the ground floor's workers
+// (CoasterState.typists, as the train went) typing at their desks below; after that it's hidden
 // again, put back where it was and painted the way the roof left it.
 
 export interface TunnelDeps {
@@ -52,19 +51,20 @@ export class CoasterTunnel {
   }
 
   /**
-   * Each frame of the ride, with the rider's eyes at (x, y, z) in the roof's frame and the ground floor's
-   * floor `ground` down there: shows the floor while they're in it.
+   * Each frame of the ride, `near` while the rider can see into the ground floor (from the top of the
+   * first drop, past its windows and in at the south hole, till the vertical lift has them over the
+   * top), the ground floor's floor `ground` down there: shows the floor all that while, so it's never
+   * empty or see-through from the train, and doesn't pop in as they go in.
    */
-  update(eye: { x: number; y: number; z: number }, ground: number, dt: number, t: number) {
-    const inside = eye.x > FLOOR.minX - 1.5 && eye.x < FLOOR.maxX + 1.5 && eye.z > FLOOR.minZ - 1.5 && eye.z < FLOOR.maxZ + 1.5 && eye.y > ground - 1 && eye.y < ground + WALL_HEIGHT + 0.5;
+  update(near: boolean, ground: number, dt: number, t: number) {
     const w = this.d.world();
-    if (inside !== this.shown) {
-      this.shown = inside;
-      w.group.visible = inside;
-      w.group.position.y = inside ? ground : 0;
+    if (near !== this.shown) {
+      this.shown = near;
+      w.group.visible = near;
+      w.group.position.y = near ? ground : 0;
       w.group.updateMatrixWorld(true);
     }
-    if (inside) for (const m of this.workers) m.update(dt, t);
+    if (near) for (const m of this.workers) m.update(dt, t);
   }
 
   /** The ride's over (or never was): the world hidden and put back, painted as the roof had it, the workers gone. */

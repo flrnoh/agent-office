@@ -492,9 +492,11 @@ export class CoasterRide {
     const dir = new THREE.Vector3();
     cam.getWorldDirection(dir);
     this.d.sound.update({ x: EYE.x, y: EYE.y, z: EYE.z, fx: dir.x, fz: dir.z });
-    // Through the ground floor: its room is borrowed while your eyes are in it.
+    // Through the ground floor: its room is borrowed from the top of the drop (past its windows, in at
+    // the south hole) till the vertical lift's over the top, so it's there before you can see in.
+    const at = (((s + carOffset(seatCar(i))) % tr.length) + tr.length) % tr.length;
     if (up && this.out) this.tunnel.dress(this.state.typists);
-    if (up && this.out) this.tunnel.update({ x: EYE.x, y: EYE.y - lift, z: EYE.z }, tr.ground, dt, performance.now() / 1000);
+    if (up && this.out) this.tunnel.update(at > tr.marks.dropFrom && at < tr.marks.vlift, tr.ground, dt, performance.now() / 1000);
     else if (!this.out) this.tunnel.undress();
   }
 
