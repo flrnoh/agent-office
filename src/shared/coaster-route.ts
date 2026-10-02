@@ -14,7 +14,7 @@
 //   behind the building, over the top and down the brake run into the station.
 
 import { roofDrop } from './layout.js';
-import { STATION } from './coaster.js';
+import { STATION, TUBE_OUT_X, TUBE_X } from './coaster.js';
 
 export interface V3 {
   x: number;
@@ -89,9 +89,7 @@ const LOOP_TOP_R = 4;
 const LOOP_SHIFT = 2.4;
 const LOOP_SHAPE = 1;
 /** The tube through the ground floor: in through the south wall heading north at TUBE_X, left at TUBE_TURN_Z, along the desks, out north at TUBE_OUT_X. */
-const TUBE_X = 4.8;
 const TUBE_TURN_Z = -0.5;
-const TUBE_OUT_X = -16;
 const WALL_Z_SOUTH = 13.3;
 /** After the loop: a breath for the track to roll into the turn, and the turn up to the tube. */
 const AFTER_LOOP = 1.5;

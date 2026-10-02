@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { EXIT_DOOR, SLAB, STOREY, STREET_Y, WALL_HEIGHT, type Opening, type Side } from '../../../shared/layout';
 import { interiorFor } from '../../../shared/interiors';
 import { storeyPlan } from '../../../shared/storey';
+import { tubePortals } from '../../../shared/coaster'; // flrnoh fork: DER BRECHER's tube
 import type { Fixture } from '../office/fixture';
 import type { NightParts } from '../outside';
 import { mergeByMaterial } from '../toon';
@@ -88,7 +89,7 @@ export function buildFacade(night: NightParts): BuiltFacade {
     for (let k = 0; k < count; k++) {
       const y0 = (k - index) * STOREY;
       const plan = storeyPlan(k);
-      const holes = (side: Side): Opening[] => [...plan.windows, ...plan.balconies.map((b) => b.door), ...(k === 0 && side === 'west' ? [EXIT_DOOR] : [])].filter((o) => o.wall === side);
+      const holes = (side: Side): Opening[] => [...plan.windows, ...plan.balconies.map((b) => b.door), ...(k === 0 && side === 'west' ? [EXIT_DOOR] : []), ...tubePortals(k)].filter((o) => o.wall === side);
       muralWall(murals, 'north', y0, holes('north'), k);
       muralWall(murals, 'east', y0, holes('east'), k + 2);
       muralWall(murals, 'west', y0, holes('west'), k + 1);

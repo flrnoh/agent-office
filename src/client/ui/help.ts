@@ -85,4 +85,6 @@ export const HELP_ROWS: readonly (readonly [string, string])[] = [
   // flrnoh fork: the minimap (features/minimap).
   ['🧭', 'The minimap, bottom right, turns with you: the office, the places and the shops round about, and who’s out there. Once the office is out of sight an arrow at its rim points the way back, with how far (the mouse wheel over it zooms). ☰ hides it'],
   ['J', 'The big map (or click the minimap): the whole town and the loop, north up. Drag to look about, the wheel zooms. Click a place or a shop and the minimap points you there; “Zum Büro” for the way back'],
+  // flrnoh fork: DER BRECHER, the roller coaster round the office (features/coaster).
+  ['🎢', 'Up on the roof, through the gap in the railing by the DJ: DER BRECHER’s station. E on the platform gets you in (E again gets you out before it goes); a few seconds after the first one’s in, it goes: up the lift hill, straight down the facade past the balconies, the loop over the street, through the ground floor’s ceiling past the desks, straight up the back and home. H (or Space) hands up, the mouse looks round. The photo from the bottom of the drop hangs on the monitor at the station (E there to save it)'],
 ];

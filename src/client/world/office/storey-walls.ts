@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { WallRect } from '../../../shared/decor';
 import { EXIT_DOOR, FLOOR, WALL_HEIGHT, WING, type Opening, type Side } from '../../../shared/layout';
 import { storeyPlan, type StoreyPlan } from '../../../shared/storey';
+import { TUBE_PORTALS } from '../../../shared/coaster'; // flrnoh fork: DER BRECHER's tube
 import { mergeByMaterial, mesh, toonUnique } from '../toon';
 import type { Collider } from '../types';
 import type { Fixture } from './fixture';
@@ -87,7 +88,7 @@ export const storeyWalls: Fixture = (site) => {
     if (laid) takeDown(laid);
     const l: Laid = { group: new THREE.Group(), colliders: [], doors: [], rects: [] };
     const doors = plan.balconies.map((b) => b.door);
-    buildWalls(l.group, l.colliders, [...plan.windows, EXIT_DOOR, ...doors], site.looks);
+    buildWalls(l.group, l.colliders, [...plan.windows, EXIT_DOOR, ...doors, ...(plan === storeyPlan(0) ? TUBE_PORTALS : [])], site.looks); // TUBE_PORTALS: flrnoh fork, DER BRECHER's tube
     const glazing = new THREE.Group();
     for (const o of plan.windows) {
       glazing.add(windowIn(o));

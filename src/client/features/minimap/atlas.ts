@@ -17,6 +17,7 @@ import { SHOPS, SHOP_KIND_BY_ID } from '../../../shared/shops';
 import { SOCCER_BOX } from '../../../shared/soccer';
 import { CANOPY } from '../../../shared/tankstelle';
 import { OFFICE_RECT } from './pois';
+import { coasterTrack, poseAt } from '../../../shared/coaster-track'; // fork: DER BRECHER
 
 /** What the map covers, in meters: the town, the loop round it, the coast and the foot of the mountains. */
 export const BOUNDS = { minX: -330, maxX: 330, minZ: -340, maxZ: 470 } as const;
@@ -202,4 +203,17 @@ function draw(g: CanvasRenderingContext2D, px: (x: number) => number, pz: (z: nu
 
   // The office.
   rect(OFFICE_RECT, COLORS.office, COLORS.ink, 3);
+  // Fork: DER BRECHER round it (seen from above it's the same however tall the building is), dashed
+  // where it runs through the ground floor.
+  const track = coasterTrack(1);
+  const tube = track.zones.find((z) => z.kind === 'tunnel')!;
+  const plan = (from: number, to: number) => Array.from({ length: Math.ceil((to - from) / 1.5) + 1 }, (_, i) => poseAt(track, Math.min(to, from + i * 1.5))).map((p) => ({ x: p.x, z: p.z }));
+  for (const [from, to, dash] of [
+    [0, tube.from, []],
+    [tube.from, tube.to, [4, 3]],
+    [tube.to, track.length, []],
+  ] as const) {
+    line(plan(from, to), 2.4, COLORS.ink, [...dash]);
+    line(plan(from, to), 1.3, '#f72585', [...dash]);
+  }
 }

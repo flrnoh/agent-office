@@ -5,7 +5,7 @@
 // ride's physics): a pure function of how many storeys the building has, so every page works out the
 // same track, and where the train is from the moment it was dispatched alone.
 
-import { FLOOR, WALL_T } from './layout.js';
+import { FLOOR, WALL_HEIGHT, WALL_T, type Opening } from './layout.js';
 
 export const COASTER_NAME = 'DER BRECHER';
 
@@ -36,6 +36,19 @@ export const STATION = {
   monitor: { x: -5.6, z: FLOOR.minZ - WALL_T - 0.35 },
   board: { x: -2.4, z: FLOOR.minZ - WALL_T - 0.35 },
 } as const;
+
+/**
+ * The glass tube through the ground floor: in through its south wall heading north at x TUBE_X, out
+ * through its north wall at x TUBE_OUT_X, under the ceiling. The holes it goes through in those walls
+ * (only the ground floor's: `tubePortals(index)`), for the walls, the tower, the facade and the interiors.
+ */
+export const TUBE_X = 4.8;
+export const TUBE_OUT_X = -16;
+export const TUBE_PORTALS: readonly Opening[] = [
+  { wall: 'south', u: TUBE_X, width: 3.1, y0: 3.75, y1: WALL_HEIGHT },
+  { wall: 'north', u: TUBE_OUT_X, width: 3.1, y0: 3.75, y1: WALL_HEIGHT },
+];
+export const tubePortals = (index: number): readonly Opening[] => (index === 0 ? TUBE_PORTALS : []);
 
 /** The gap in the roof's north railing (rooftop/world.ts leaves it open). */
 export const COASTER_GAP = STATION.gap;

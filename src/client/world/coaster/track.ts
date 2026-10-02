@@ -58,7 +58,8 @@ function chaseMaterial(): THREE.ShaderMaterial {
         float on = smoothstep(0.0, 0.08, run) * (1.0 - smoothstep(0.32, 0.5, run));
         vec3 c = mix(vec3(1.0), hue(fract(vAlong / 120.0 + uTime * 0.05)), 0.75);
         float lit = mix(0.25, 1.0, on);
-        gl_FragColor = vec4(c * mix(0.55, 1.0, uDark) * mix(0.55, lit * 1.6, uDark), 1.0);
+        vec3 day = mix(vec3(0.82), c, 0.35);
+        gl_FragColor = vec4(mix(day, c * lit * 2.2, uDark), 1.0);
       }`,
   });
 }
@@ -149,18 +150,18 @@ export function buildTrack(track: CoasterTrack): TrackView {
 
   // The chase lights, on the outside of both rails.
   const chase = keep(chaseMaterial());
-  const bulb = keep(new THREE.SphereGeometry(0.055, 8, 6));
+  const bulb = keep(new THREE.SphereGeometry(0.085, 8, 6));
   const tunnel = track.zones.find((z) => z.kind === 'tunnel')!;
   const lightAt: Span[] = [
     { from: 0, to: tunnel.from },
     { from: tunnel.to, to: track.length },
   ];
   for (const side of [-1, 1]) {
-    const m = along(track, lightAt, 1.4, side * (RAIL.b + 0.11), RAIL.n, bulb, chase);
+    const m = along(track, lightAt, 1.1, side * (RAIL.b + 0.14), RAIL.n, bulb, chase);
     const n = m.count;
     const along_ = new Float32Array(n);
     let i = 0;
-    for (const sp of lightAt) for (let s = sp.from; s < sp.to && i < n; s += 1.4) along_[i++] = s;
+    for (const sp of lightAt) for (let s = sp.from; s < sp.to && i < n; s += 1.1) along_[i++] = s;
     m.geometry = bulb.clone();
     keep(m.geometry);
     m.geometry.setAttribute('aAlong', new THREE.InstancedBufferAttribute(along_, 1));

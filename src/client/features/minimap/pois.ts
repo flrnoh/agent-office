@@ -12,6 +12,7 @@ import { EXIT_STAIRS, FLOOR, GOLF_HOLE } from '../../../shared/layout';
 import { FARM, LAKE, LIGHTHOUSE, LOOP, PLACES, TUNNEL } from '../../../shared/scenic';
 import { SHOPS, SHOP_KIND_BY_ID, shopPoint } from '../../../shared/shops';
 import { SOCCER, SOCCER_BOX } from '../../../shared/soccer';
+import { STATION } from '../../../shared/coaster'; // fork: DER BRECHER
 
 export interface Poi {
   id: string;
@@ -58,6 +59,7 @@ export const PLACES_ON_MAP: readonly Poi[] = [
   { id: 'tankstelle', name: 'Tankstelle', icon: '⛽', x: tank.x, z: tank.z, kind: 'place' },
   { id: 'kino', name: 'Kino', icon: '🍿', x: kino.x, z: kino.z, kind: 'place' },
   { id: 'baumarkt', name: 'Baumarkt', icon: '🔨', x: BAUMARKT_DOOR.x, z: BAUMARKT_DOOR.z, kind: 'place' },
+  { id: 'coaster', name: 'Der Brecher (Dach)', icon: '🎢', x: STATION.stopX, z: STATION.trackZ, kind: 'place' },
   ...(CHURCH ? [{ id: 'kirche', name: 'Kirche', icon: '⛪', x: CHURCH.x, z: CHURCH.z, kind: 'place' as const }] : []),
   { id: 'beach', name: PLACES.beach.name, icon: PLACES.beach.icon, x: JETTY.x0 + 6, z: JETTY.z, kind: 'scenery' },
   { id: 'lighthouse', name: PLACES.coast.name, icon: PLACES.coast.icon, x: LIGHTHOUSE.x, z: LIGHTHOUSE.z, kind: 'scenery' },
