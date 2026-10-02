@@ -85,4 +85,6 @@ export const HELP_ROWS: readonly (readonly [string, string])[] = [
   // flrnoh fork: the minimap (features/minimap).
   ['🧭', 'The minimap, bottom right, turns with you: the office, the places and the shops round about, and who’s out there. Once the office is out of sight an arrow at its rim points the way back, with how far (the mouse wheel over it zooms). ☰ hides it'],
   ['J', 'The big map (or click the minimap): the whole town and the loop, north up. Drag to look about, the wheel zooms. Click a place or a shop and the minimap points you there; “Zum Büro” for the way back'],
+  // flrnoh fork: Spotify (features/spotify).
+  ['U', 'Spotify (or 🎧 in the ☰ menu): sign in with your Spotify Premium account once, then search, pick one of your playlists or liked songs, or bring over what’s playing on your phone. It plays wherever you go, only for you, like headphones; while it plays, the office’s own music is off for you (the window has a switch for that)'],
 ];

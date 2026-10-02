@@ -76,6 +76,7 @@ import { installFunShops } from './features/funshops'; // flrnoh fork: the Spiel
 import { installRide } from './features/ride'; // flrnoh fork: bikes, pets, laundry
 import { installCityBus } from './features/citybus'; // flrnoh fork: the city bus
 import { installMinimap } from './features/minimap'; // flrnoh fork: the minimap and the big map
+import { installSpotify } from './features/spotify'; // flrnoh fork: Spotify
 import { installDjSets } from './features/djset';
 import { installDoorbell } from './features/doorbell';
 import { installFogbox } from './features/fogbox';
@@ -225,6 +226,7 @@ parts.ride = installRide(ctx, { personOf, booze: () => parts.bar.booze, serve: (
 parts.tankstelle = installTankstelle(ctx, parts, { booze: () => parts.bar.booze, caffeine: () => parts.coffee.caffeine, reach });
 (window as any).__citybus = installCityBus(ctx, { free: () => (standUp(), stopWalking()) }); // fork: riding the city bus
 (window as any).__minimap = installMinimap(ctx); // fork: the minimap, J for the big map
+(window as any).__spotify = installSpotify(ctx); // fork: Spotify, U
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);

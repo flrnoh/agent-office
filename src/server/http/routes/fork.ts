@@ -1,5 +1,6 @@
 // flrnoh fork (see FORK.md): the HTTP routes this fork adds.
 import { radioTarget } from '../../radio.js';
+import { readSpotifyClientId } from '../../spotify.js';
 import { send } from '../util.js';
 import type { Route } from '../router.js';
 
@@ -14,5 +15,12 @@ export const forkRoutes = {
       if ('error' in target) return send(res, target.status, { error: target.error });
       return ctx.radio.pipe(req, res, target.url);
     },
+  },
+  spotify: {
+    method: 'GET',
+    path: '/api/spotify',
+    auth: 'session',
+    // Which Spotify app the page signs in with (spotify.ts); null until one's set up.
+    handle: (ctx, { res }) => send(res, 200, { clientId: readSpotifyClientId(ctx.cfg.dataDir) }),
   },
 } satisfies Record<string, Route>;

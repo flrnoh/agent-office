@@ -99,3 +99,12 @@ WantedBy=multi-user.target
 If you don't have a domain, `--self-signed` serves HTTPS directly. Browsers will warn once per person.
 
 **Voice across strict NATs.** Peers connect directly using public STUN. If some teammates can't hear each other (common on corporate networks), run a TURN server such as coturn and pass `--turn turn:user:pass@turn.example.com:3478`.
+
+**Spotify** (flrnoh fork). Everyone can play their own Spotify in the office (**U**), through Spotify's Web Playback SDK. It needs a Spotify app, made once by someone with Spotify Premium:
+
+1. At [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard), create an app (any name) with **Web API** and **Web Playback SDK** ticked.
+2. Add the redirect URI `https://<your office's address>/spotify-callback.html`. Spotify takes no `localhost`: on this machine, open the office at `http://127.0.0.1:4600` and add `http://127.0.0.1:4600/spotify-callback.html` too.
+3. Put its Client ID in `~/agent-office/.agent-office/spotify.json` as `{"clientId": "…"}` (or set `SPOTIFY_CLIENT_ID`). It's read on each ask: no restart.
+4. Under **User Management**, add everyone who'll listen (their Spotify e-mail). An app in development mode takes up to 5 people, and each needs Premium.
+
+No client secret is involved (PKCE), and each person's Spotify sign-in stays in their own browser.

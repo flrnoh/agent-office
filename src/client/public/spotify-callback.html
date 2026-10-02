@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spotify · Agent Office</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fffaf3;color:#2b2d42;font:800 16px/1.4 Nunito,system-ui,sans-serif;text-align:center}</style>
+</head>
+<body>
+<p id="msg">Verbunden – das Fenster schließt sich gleich.</p>
+<script>
+  // flrnoh fork (see FORK.md "Spotify"): Spotify sends the sign-in back here; hand it to the office's
+  // page (features/spotify/auth.ts) on the channel it's listening on, and close.
+  const q = new URLSearchParams(location.search);
+  const msg = { code: q.get('code'), state: q.get('state'), error: q.get('error') };
+  const ch = new BroadcastChannel('spotify-auth');
+  ch.postMessage(msg);
+  ch.close();
+  if (msg.error) document.getElementById('msg').textContent = 'Nicht verbunden: ' + msg.error;
+  history.replaceState(null, '', location.pathname);
+  setTimeout(() => window.close(), msg.error ? 2500 : 400);
+</script>
+</body>
+</html>
