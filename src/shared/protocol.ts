@@ -17,6 +17,8 @@ import type { SettingsClientMsg, SettingsServerMsg } from './protocol/settings.j
 import type { BallClientMsg, CabinetClientMsg, CarClientMsg, DecorClientMsg, DogClientMsg, JukeboxClientMsg, ToysServerMsg, WhiteboardClientMsg } from './protocol/toys.js';
 import type { UsageClientMsg, UsageServerMsg } from './protocol/usage.js';
 import type { WorkerClientMsg, WorkerServerMsg } from './protocol/workers.js';
+import type { MinigolfClientMsg, MinigolfServerMsg } from './minigolf.js'; // flrnoh fork: the bowling centre's mini golf
+import type { BowlingGameClientMsg, BowlingGameServerMsg } from './bowling-game.js'; // flrnoh fork: the bowling centre's lanes
 
 export * from './protocol/accounts.js';
 export * from './protocol/agents.js';
@@ -55,7 +57,9 @@ export type ClientMsg =
   | WhiteboardClientMsg
   | BallClientMsg
   | CarClientMsg
-  | DogClientMsg;
+  | DogClientMsg
+  | MinigolfClientMsg // flrnoh fork (shared/minigolf.ts)
+  | BowlingGameClientMsg; // flrnoh fork: the bowling centre's lanes and league (shared/bowling-game.ts)
 
 export type ServerMsg =
   | ForkServerMsg // flrnoh fork (protocol/fork.ts)
@@ -70,4 +74,6 @@ export type ServerMsg =
   | AccountsServerMsg
   | SettingsServerMsg
   | UsageServerMsg
-  | ToysServerMsg;
+  | ToysServerMsg
+  | MinigolfServerMsg // flrnoh fork (shared/minigolf.ts)
+  | BowlingGameServerMsg; // flrnoh fork: the bowling centre's lanes and league (shared/bowling-game.ts)

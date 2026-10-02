@@ -15,6 +15,7 @@ import { HALL_BOX } from './hall.js';
 import { SOCCER_BOX } from './soccer.js';
 import { GOLF_HOLE } from './layout.js';
 import { routeStoreys } from './coaster-route.js';
+import { BOWLING_BOX } from './bowling.js';
 import { DIVE, POOL_DECK, SLIDE } from './roofpool.js';
 import { ROOF_BAR, STAGE } from './layout.js';
 
@@ -44,8 +45,8 @@ export const SIDEWALKS_Z = [
   { min: 21, max: 23 },
   { min: 31, max: 33 },
 ] as const;
-/** The bowling centre going up on the block east of the office (feat/bowling). */
-export const BOWLING_BOX = { minX: 35, maxX: 77, minZ: -22, maxZ: 20 } as const;
+/** The bowling centre on the block east of the office (shared/bowling.ts). */
+export { BOWLING_BOX };
 
 /** The trees round the office (world/outside.ts): x, z, size. */
 export const TREES: readonly (readonly [number, number, number])[] = [

@@ -7,6 +7,7 @@ import { CASINO, CASINO_ENTRY } from '../../shared/casino.js';
 import { GYM, GYM_ENTRY } from '../../shared/gym.js';
 import { HALL } from '../../shared/hall.js';
 import { SOCCER } from '../../shared/soccer.js';
+import { BOWLING } from '../../shared/bowling.js';
 import type { Ctx } from '../office/context.js';
 import type { Client } from '../office/client.js';
 import type { Spot } from '../office/input.js';
@@ -30,8 +31,12 @@ import { BungeeRope } from '../bungee.js';
 import { Coaster } from '../coaster.js';
 import { Soccer } from '../soccer/index.js';
 import { RadioProxy } from '../radio.js';
+import { Karaoke } from '../bowling/karaoke.js';
+import { tvTitleLookup } from '../tv.js';
 import { HALL_ARRIVAL, backInHall, hallView } from '../hall.js';
 import { SOCCER_ARRIVAL, backInSoccer, soccerView } from '../soccer/place.js';
+import { BOWLING_ARRIVAL, BowlingHouse, backInBowling, bowlingView } from '../bowling/place.js';
+import { Minigolf } from '../bowling/minigolf.js';
 
 /** Made last, once upstream's stages are all there (see server.ts). */
 export interface Fork {
@@ -54,10 +59,15 @@ export interface Fork {
   coaster: Coaster; // DER BRECHER, the roller coaster round the tower (coaster.ts)
   soccer: Soccer; // the soccer hall's ball and match
   radio: RadioProxy; // radio stations on the jukebox
+  karaoke: Karaoke; // the bowling centre's karaoke bar (bowling/karaoke.ts)
+  bowling: BowlingHouse; // the bowling centre's lights (cosmic bowling) and rental shoes
+  minigolf: Minigolf; // the bowling centre's black-light mini golf (bowling/minigolf.ts)
   /** To everyone up on the roof (or everyone but `except`). */
   toRoof(m: ServerMsg, except?: string, droppable?: boolean): void;
   /** To everyone in the padel hall. */
   toHall(m: ServerMsg, except?: string, droppable?: boolean): void;
+  /** To everyone in the bowling centre (its lanes, karaoke and mini golf all talk to the whole room). */
+  toBowling(m: ServerMsg, except?: string, droppable?: boolean): void;
   /** Tells a floor who's at its racing rig now. */
   rigChanged(floorId: string): void;
   /** A picture hanging on some floor's wall: the one thing a guest may fetch through the image proxy. */
@@ -67,7 +77,7 @@ export interface Fork {
 }
 
 /** The places across the street: like the roof, places of their own with none of a floor's things. */
-export const PLACES = [CASINO, GYM, HALL, SOCCER] as const;
+export const PLACES = [CASINO, GYM, HALL, SOCCER, BOWLING] as const;
 export const isPlace = (floor: unknown): floor is (typeof PLACES)[number] => (PLACES as readonly unknown[]).includes(floor);
 
 /** Who someone is to the fork's keepers (the casino's wallets, the gym, the postcards). */
@@ -119,8 +129,33 @@ export function createFork(ctx: Ctx): Fork {
       dataDir: cfg.dataDir, // the leaderboard (soccer.json)
     }),
     radio: new RadioProxy(),
+    karaoke: new Karaoke({
+      toAll: (m, except) => to(BOWLING)(m, except),
+      toOne: (id, m) => {
+        const c = clients.get(id);
+        if (c) ctx.sendTo(c, m);
+      },
+      present: () => [...clients.values()].filter((c) => c.peer.floor === BOWLING).map((c) => c.id),
+      dataDir: cfg.dataDir, // the week's karaoke kings (karaoke.json)
+      lookup: tvTitleLookup,
+    }),
+    bowling: new BowlingHouse(),
+    minigolf: new Minigolf({
+      now: () => Date.now(),
+      where: (id) => {
+        const c = clients.get(id);
+        return c && c.peer.floor === BOWLING ? { x: c.peer.x, z: c.peer.z } : null;
+      },
+      send: (id, m) => {
+        const c = clients.get(id);
+        if (c) ctx.sendTo(c, m);
+      },
+      toAll: (m) => to(BOWLING)(m),
+      dataDir: cfg.dataDir, // the records (minigolf.json)
+    }),
     toRoof: to(ROOF),
     toHall: to(HALL),
+    toBowling: to(BOWLING),
     rigChanged: (floorId) => {
       const f = floors.get(floorId);
       if (f) ctx.toFloor(f, { t: 'rig', state: rigs.state(floorId) });
@@ -136,6 +171,7 @@ export function placeView(ctx: Ctx, place: (typeof PLACES)[number]): FloorView {
   const empty = floorView(ctx, undefined);
   if (place === HALL) return hallView(empty);
   if (place === SOCCER) return soccerView(empty);
+  if (place === BOWLING) return bowlingView(empty);
   return { ...empty, floor: place };
 }
 
@@ -145,6 +181,7 @@ const ENTRY: Record<(typeof PLACES)[number], Spot> = {
   [GYM]: { x: GYM_ENTRY.x, y: 0, z: GYM_ENTRY.z, rotY: GYM_ENTRY.rotY },
   [HALL]: HALL_ARRIVAL,
   [SOCCER]: SOCCER_ARRIVAL,
+  [BOWLING]: BOWLING_ARRIVAL,
 };
 
 /** Into one of the places once they're in: the casino, the gym and the soccer hall keep a list of who's there. */
@@ -152,6 +189,7 @@ export function enteredPlace(ctx: Ctx, c: Client, place: string | undefined) {
   if (place === CASINO) ctx.casino.enter(ctx.casinoPlayer(c));
   if (place === GYM) ctx.gym.enter(ctx.gymPlayer(c));
   if (place === SOCCER) ctx.soccer.enter({ id: c.id, name: c.peer.name, owner: owner(c), send: (m) => ctx.sendTo(c, m) });
+  if (place === BOWLING) ctx.sendTo(c, ctx.bowling.state()); // the lights and who's in rental shoes
 }
 
 /** `floor.go` to one of the places, just inside its door. Whether it was one (else upstream's floors and roof). */
@@ -167,6 +205,7 @@ export function backInPlace(wanted: string | null, floors: number): (typeof PLAC
   if (!isPlace(wanted) || floors === 0) return undefined;
   if (wanted === HALL) return backInHall(wanted, floors) ? HALL : undefined;
   if (wanted === SOCCER) return backInSoccer(wanted, floors) ? SOCCER : undefined;
+  if (wanted === BOWLING) return backInBowling(wanted, floors) ? BOWLING : undefined;
   return wanted;
 }
 
@@ -175,6 +214,7 @@ export const roofExtras = (ctx: Ctx): Partial<FloorView> => ({ dj: ctx.djBooth.s
 
 export function startFork(ctx: Ctx) {
   ctx.turn.start();
+  ctx.minigolf.start();
   // The office has heard the DJ set that's on (or couldn't): the roof's lights go by its beats.
   ctx.djBooth.onBeats = () => ctx.toRoof({ t: 'dj', state: ctx.djBooth.state() });
 }
@@ -183,7 +223,9 @@ export function stopFork(ctx: Ctx) {
   ctx.coaster.stop();
   ctx.casino.stop();
   ctx.soccer.stop();
+  ctx.karaoke.stop();
   ctx.gym.stop();
   ctx.turn.stop();
   ctx.forecourts.stop();
+  ctx.minigolf.stop();
 }

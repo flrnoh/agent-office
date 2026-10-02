@@ -60,6 +60,10 @@ import { StationLoops, tankstelle, type StationNoise, type TankSound } from '../
 import { BusEngines, busDoorHiss } from '../features/citybus/sound'; // fork: the city bus
 import { CitySound, type CityScene } from './city'; // fork: the sounds of the city
 import { bells, siren, type SirenPass } from './citybells';
+import { KaraokeSound } from '../features/karaoke/sound'; // fork: the bowling centre's karaoke bar
+import { BowlingAmbience, bowlingSound, type BowlingSound } from '../bowling/sound'; // fork: the bowling centre
+import { minigolf, MinigolfLoops, type MinigolfSound } from '../features/minigolf/sound'; // fork: the bowling centre's mini golf
+import { BallRolls, bowlSound, type BowlSound } from '../features/bowlinggame/sound'; // fork: the bowling centre's lanes
 
 // What the rest of the client imports from here.
 export type { Hall, Listener } from './core';
@@ -92,6 +96,8 @@ export class OfficeSound {
   private readonly station = new StationLoops(this.a); // fork
   private readonly busEngines = new BusEngines(this.a); // fork: the city bus
   private readonly city = new CitySound(this.a); // fork
+  /** Fork: the bowling centre's karaoke bar: its band on the music volume, its crowd and mics (features/karaoke/sound.ts). */
+  readonly karaoke = new KaraokeSound(this.a, () => this.music.musicBus ?? null, () => this.music.musicGain());
   /** A stream that won't play here. */
   onMusicError?: (text: string) => void;
   /** Fork: a stream the browser won't start before you click (autoplay rules). */
@@ -541,5 +547,37 @@ export class OfficeSound {
   /** DER BRECHER's wind, rumble and chain, every frame while it's to be heard (null: quiet). */
   setCoaster(frame: CoasterFrame | null) {
     this.coasterLoops.set(frame);
+  }
+
+  /** The bowling centre's doors, the cosmic switch, the tap, the fryer, the till, the shoes (client/bowling/sound.ts). */
+  bowling(kind: BowlingSound) {
+    bowlingSound(this.a, kind);
+  }
+  private readonly bowlingAir = new BowlingAmbience(this.a);
+  /** Every frame in the bowling centre: its murmur, far-off balls, muzak, and (0..1) cosmic bowling's pulse. */
+  setBowling(level: number, cosmic: number) {
+    this.bowlingAir.set(level, cosmic);
+  }
+
+  /** fork: the bowling centre's black-light mini golf (features/minigolf/sound.ts): a putt, a rail, a bumper, the cup, a fanfare. */
+  minigolf(kind: MinigolfSound, at?: Pos, strength = 0.5) {
+    minigolf(this.a, kind, at, strength);
+  }
+
+  private readonly minigolfLoops = new MinigolfLoops(this.a);
+  /** fork: the mini golf room's spacey pad (`ambient` 0–1) and the felt under a rolling ball, every frame near it; they fade without a call. */
+  setMinigolf(ambient: number, roll: number, rollAt: Pos | null, rollSpeed: number) {
+    this.minigolfLoops.set(ambient, roll, rollAt, rollSpeed);
+  }
+
+  // fork: the bowling centre's lanes (features/bowlinggame/sound.ts)
+  private readonly bowlRolls = new BallRolls(this.a);
+  /** The pins, the gutter, the pit, the pinsetter, the ball return, the foul buzzer and the screens' fanfares. */
+  bowlingLane(kind: BowlSound, at: Pos, strength = 1) {
+    bowlSound(this.a, kind, at, strength);
+  }
+  /** Ball `id` rolling at `speed` m/s (in the gutter or not), every frame it rolls: it fades away without a call. */
+  bowlRoll(id: number, at: Pos, speed: number, gutter: boolean) {
+    this.bowlRolls.set(id, at, speed, gutter);
   }
 }

@@ -15,6 +15,7 @@ import { GOLF_HOLE, ROAD } from '../../../shared/layout';
 import { CREEK, FARM, FOOTHILLS, LAKE, LIGHTHOUSE, LOOP, LOOP_HALF, MOUNTAINS, STREET_END, TUNNEL, shoreX } from '../../../shared/scenic';
 import { SHOPS, SHOP_KIND_BY_ID } from '../../../shared/shops';
 import { SOCCER_BOX } from '../../../shared/soccer';
+import { BOWLING_BOX, BOWLING_DOOR } from '../../../shared/bowling';
 import { CANOPY } from '../../../shared/tankstelle';
 import { OFFICE_RECT } from './pois';
 import { coasterTrack, poseAt } from '../../../shared/coaster-track'; // fork: DER BRECHER
@@ -178,6 +179,10 @@ function draw(g: CanvasRenderingContext2D, px: (x: number) => number, pz: (z: nu
   rect(BAUMARKT.HALL, '#f08c00', COLORS.ink, 2);
   rect(BAUMARKT.GARDEN, COLORS.park);
   if (CHURCH) for (const s of CHURCH.solids) rect(s, '#efe6d8', COLORS.ink, 2);
+  // The bowling centre next to the office: its block, the house (retro teal) and its doors' canopy.
+  rect(landmarkBox('bowling'), COLORS.walk);
+  rect(BOWLING_BOX, '#2a9d8f', COLORS.ink, 2);
+  rect({ minX: BOWLING_DOOR.x - 6, maxX: BOWLING_DOOR.x + 6, minZ: BOWLING_BOX.maxZ - 3, maxZ: BOWLING_BOX.maxZ + 1 }, '#e63946', COLORS.ink, 1);
 
   // The streets: the city's, the office's (and the lots by the garage), and the loop.
   for (const s of STREETS) rect(stretchRect(s), COLORS.road);

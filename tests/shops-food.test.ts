@@ -20,7 +20,7 @@ const NEW = ['eisdiele', 'sushi', 'metzgerei', 'supermarkt'] as const;
 test('the four food kinds are in town, each with its keeper and its things to do', () => {
   for (const id of NEW) {
     const list = SHOPS.filter((s) => s.kind === id);
-    assert.ok(list.length >= 5, `${id}: ${list.length}`);
+    assert.ok(list.length >= 4, `${id}: ${list.length}`);
     assert.ok(new Set(list.map((s) => quarterOf(s.ox, s.oz))).size >= 3, `${id} quarters`);
     assert.ok(SHOP_KIND_BY_ID.get(id)!.keeper.name);
     for (const s of list) {

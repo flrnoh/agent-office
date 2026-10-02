@@ -13,6 +13,7 @@ import { FARM, LAKE, LIGHTHOUSE, LOOP, PLACES, TUNNEL } from '../../../shared/sc
 import { SHOPS, SHOP_KIND_BY_ID, shopPoint } from '../../../shared/shops';
 import { SOCCER, SOCCER_BOX } from '../../../shared/soccer';
 import { STATION } from '../../../shared/coaster'; // fork: DER BRECHER
+import { BOWLING, BOWLING_BOX, BOWLING_DOOR } from '../../../shared/bowling';
 
 export interface Poi {
   id: string;
@@ -56,6 +57,7 @@ export const PLACES_ON_MAP: readonly Poi[] = [
   { id: SOCCER, name: 'Soccerhalle', icon: '⚽', x: (SOCCER_BOX.minX + SOCCER_BOX.maxX) / 2, z: SOCCER_BOX.minZ, kind: 'place' },
   { id: HALL, name: 'Padel-Halle', icon: '🎾', x: HALL_DOOR.x, z: HALL_BOX.minZ, kind: 'place' },
   { id: GYM, name: 'Gym', icon: '🏋️', x: GYM_STREET_DOOR.x, z: GYM_BOX.minZ, kind: 'place' },
+  { id: BOWLING, name: 'Bowling', icon: '🎳', x: BOWLING_DOOR.x, z: BOWLING_BOX.maxZ, kind: 'place' },
   { id: 'tankstelle', name: 'Tankstelle', icon: '⛽', x: tank.x, z: tank.z, kind: 'place' },
   { id: 'kino', name: 'Kino', icon: '🍿', x: kino.x, z: kino.z, kind: 'place' },
   { id: 'baumarkt', name: 'Baumarkt', icon: '🔨', x: BAUMARKT_DOOR.x, z: BAUMARKT_DOOR.z, kind: 'place' },
@@ -92,6 +94,8 @@ export function placeSpot(floor: string | null): { x: number; z: number } | null
       return box(HALL_BOX);
     case SOCCER:
       return box(SOCCER_BOX);
+    case BOWLING:
+      return box(BOWLING_BOX);
     default:
       return null;
   }

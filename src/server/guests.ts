@@ -33,6 +33,10 @@ const GUEST = [
   'bike.ride', 'bike.bell', // fork: bikes from the city's bike shop
   'tank.fill', 'tank.wash', // fork: the petrol station and its car wash
   'coaster.board', 'coaster.leave', 'coaster.hands', // fork: DER BRECHER, the roller coaster round the tower
+  'karaoke.hello', 'karaoke.queue', 'karaoke.unqueue', 'karaoke.mic', 'karaoke.stop', 'karaoke.done', 'karaoke.rate', 'karaoke.cheer', // fork: the bowling centre's karaoke bar
+  'bowling.lights', 'bowling.shoes', // fork: the bowling centre's cosmic switch and rental shoes
+  'mg.look', 'mg.take', 'mg.return', 'mg.group', 'mg.putt', 'mg.pickup', // fork: the bowling centre's mini golf
+  'bowl.look', 'bowl.join', 'bowl.leave', 'bowl.ball', 'bowl.new', 'bowl.skip', 'bowl.throw', 'bowl.stats', // fork: the bowling centre's lanes and league
 ] as const satisfies readonly ClientMsg['t'][];
 
 /** What a guest's page sends on its own (resizing a terminal it watches, polling boards): dropped without a word. */
