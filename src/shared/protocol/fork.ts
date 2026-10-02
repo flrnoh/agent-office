@@ -18,6 +18,7 @@ import type { ClawClientMsg, ClawServerMsg, PostClientMsg, PostServerMsg } from 
 import type { TrolleyClientMsg, TrolleyServerMsg } from '../trolley.js';
 import type { RideClientMsg, RideServerMsg } from '../ride.js';
 import type { TankClientMsg, TankServerMsg } from '../tankstelle-play.js';
+import type { KaraokeClientMsg, KaraokeServerMsg } from '../karaoke.js';
 
 export type ForkClientMsg =
   | CasinoClientMsg // the casino (shared/casino.ts)
@@ -33,6 +34,7 @@ export type ForkClientMsg =
   | TrolleyClientMsg // the supermarket's shopping trolley (shared/trolley.ts)
   | RideClientMsg // a bike from the city's bike shop (shared/ride.ts)
   | TankClientMsg // the petrol station and its car wash (shared/tankstelle-play.ts)
+  | KaraokeClientMsg // the bowling centre's karaoke bar (shared/karaoke.ts)
   /** Put a YouTube, SoundCloud or Mixcloud set on at the DJ booth, for everyone on the roof (see shared/djset.ts). */
   | { t: 'dj.play'; url: string }
   /** Back to the house DJ. */
@@ -74,6 +76,7 @@ export type ForkServerMsg =
   | TrolleyServerMsg
   | RideServerMsg
   | TankServerMsg
+  | KaraokeServerMsg // the bowling centre's karaoke bar
   /** The DJ set on the roof changed (sent to everyone up there). */
   | { t: 'dj'; state: DjSetState }
   /** The stream on the floor's TV changed (sent to everyone on the floor). */

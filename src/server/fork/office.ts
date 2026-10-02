@@ -30,6 +30,8 @@ import { PadelCourts } from '../padel.js';
 import { BungeeRope } from '../bungee.js';
 import { Soccer } from '../soccer/index.js';
 import { RadioProxy } from '../radio.js';
+import { Karaoke } from '../bowling/karaoke.js';
+import { tvTitleLookup } from '../tv.js';
 import { HALL_ARRIVAL, backInHall, hallView } from '../hall.js';
 import { SOCCER_ARRIVAL, backInSoccer, soccerView } from '../soccer/place.js';
 
@@ -53,6 +55,7 @@ export interface Fork {
   bungeeRope: BungeeRope; // bungee off the roof
   soccer: Soccer; // the soccer hall's ball and match
   radio: RadioProxy; // radio stations on the jukebox
+  karaoke: Karaoke; // the bowling centre's karaoke bar (bowling/karaoke.ts)
   /** To everyone up on the roof (or everyone but `except`). */
   toRoof(m: ServerMsg, except?: string, droppable?: boolean): void;
   /** To everyone in the padel hall. */
@@ -113,6 +116,16 @@ export function createFork(ctx: Ctx): Fork {
       dataDir: cfg.dataDir, // the leaderboard (soccer.json)
     }),
     radio: new RadioProxy(),
+    karaoke: new Karaoke({
+      toAll: (m, except) => to(BOWLING)(m, except),
+      toOne: (id, m) => {
+        const c = clients.get(id);
+        if (c) ctx.sendTo(c, m);
+      },
+      present: () => [...clients.values()].filter((c) => c.peer.floor === BOWLING).map((c) => c.id),
+      dataDir: cfg.dataDir, // the week's karaoke kings (karaoke.json)
+      lookup: tvTitleLookup,
+    }),
     toRoof: to(ROOF),
     toHall: to(HALL),
     toBowling: to(BOWLING),
@@ -176,6 +189,7 @@ export function startFork(ctx: Ctx) {
 export function stopFork(ctx: Ctx) {
   ctx.casino.stop();
   ctx.soccer.stop();
+  ctx.karaoke.stop();
   ctx.gym.stop();
   ctx.turn.stop();
   ctx.forecourts.stop();
