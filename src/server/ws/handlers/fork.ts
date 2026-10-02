@@ -22,6 +22,7 @@ import { funshopHandlers } from './funshops.js';
 import { karaokeHandlers } from './karaoke.js';
 import { bowlingHandlers } from './bowling.js';
 import { rideMessage } from '../../fork/ride.js';
+import { voiceRangeMessage } from '../../fork/voicerange.js';
 import { here } from './common.js';
 import { jukeboxChanged } from './jukebox.js';
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
@@ -174,6 +175,7 @@ export const forkHandlers = {
   ...bowlingHandlers, // the bowling centre's cosmic switch and rental shoes
   'bike.ride': rideMessage, // a bike from the city's bike shop (fork/ride.ts)
   'bike.bell': rideMessage,
+  'voice.range': voiceRangeMessage, // how far your voice carries (fork/voicerange.ts)
   'tank.fill': tank,
   'tank.wash': tank,
   'trolley.set'(ctx, c, msg) {

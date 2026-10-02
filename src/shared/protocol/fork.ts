@@ -20,6 +20,7 @@ import type { RideClientMsg, RideServerMsg } from '../ride.js';
 import type { TankClientMsg, TankServerMsg } from '../tankstelle-play.js';
 import type { KaraokeClientMsg, KaraokeServerMsg } from '../karaoke.js';
 import type { BowlingHouseClientMsg, BowlingHouseServerMsg } from '../bowling-house.js';
+import type { VoiceRangeClientMsg, VoiceRangeServerMsg } from '../voicerange.js';
 
 export type ForkClientMsg =
   | CasinoClientMsg // the casino (shared/casino.ts)
@@ -37,6 +38,7 @@ export type ForkClientMsg =
   | TankClientMsg // the petrol station and its car wash (shared/tankstelle-play.ts)
   | KaraokeClientMsg // the bowling centre's karaoke bar (shared/karaoke.ts)
   | BowlingHouseClientMsg // the bowling centre's cosmic switch and rental shoes (shared/bowling-house.ts)
+  | VoiceRangeClientMsg // how far your voice carries (shared/voicerange.ts)
   /** Put a YouTube, SoundCloud or Mixcloud set on at the DJ booth, for everyone on the roof (see shared/djset.ts). */
   | { t: 'dj.play'; url: string }
   /** Back to the house DJ. */
@@ -84,6 +86,7 @@ export type ForkServerMsg =
   | TankServerMsg
   | KaraokeServerMsg // the bowling centre's karaoke bar
   | BowlingHouseServerMsg
+  | VoiceRangeServerMsg // how far someone's voice carries
   /** The DJ set on the roof changed (sent to everyone up there). */
   | { t: 'dj'; state: DjSetState }
   /** The stream on the floor's TV changed (sent to everyone on the floor). */

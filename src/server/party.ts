@@ -76,6 +76,7 @@ const PARTY_SEES = [
   'claw', 'post.recipients', 'post.sent', 'post.cards', // fork: the claw machine, postcards (party guests' recipients leave out the accounts)
   'trolley', // fork: the supermarket's shopping trolley
   'bike.rode', 'bike.bell', // fork: bikes from the city's bike shop
+  'voice.ranged', // fork: how far someone's voice carries
   'tankstelle', // fork: the petrol station and its car wash
   'karaoke', 'karaoke.cheer', 'karaoke.rated', // fork: the bowling centre's karaoke bar
   'bowling.lights', 'bowling.shoes', 'bowling.house', // fork: the bowling centre's lights and rental shoes

@@ -8,6 +8,7 @@ import { sameLook } from '../../../shared/avatar';
 import { seatOn } from '../../../shared/maps';
 import { shopSeatHips } from '../../../shared/shop-rooms'; // flrnoh fork
 import { storeySeat } from '../../../shared/storey'; // flrnoh fork
+import { heardVolume } from '../../../shared/voicerange'; // flrnoh fork
 import type { PeerInfo } from '../../../shared/protocol';
 import { DRINK_BY_ID } from '../../../shared/rooftop';
 import { hipsOf } from '../../../shared/garage';
@@ -142,7 +143,7 @@ export function installPeers(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'puff
         r.bubble = undefined;
       }
       const d = Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z);
-      voice.setVolume(id, d < 4 ? 1 : Math.max(0.2, 1 - (d - 4) / 16));
+      voice.setVolume(id, heardVolume(d, p.voiceRange)); // flrnoh fork: Hörkreise (shared/voicerange.ts)
     }
   });
   let speakTick = 0;

@@ -16,6 +16,8 @@ interface Conn {
   analyser?: AnalyserNode;
   src?: MediaStreamAudioSourceNode; // fork: for the PA's reverb (voice-pa.ts)
   wet?: GainNode;
+  /** Fork: outside your Hörkreis, so your mic isn't sent to them (features/voicerange). */
+  unheard?: boolean;
 }
 
 type Signal = { description?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit | null };
@@ -39,6 +41,8 @@ export class Voice {
   localLevel = 0;
   /** Fork: who's on the karaoke stage's PA, heard at full volume all through the bowling centre (voice-pa.ts). */
   private readonly pa = new VoicePa(() => this.audioCtx);
+  /** Fork: you're on the PA yourself, so the whole bowling centre hears you, whatever your Hörkreis. */
+  selfOnPa = false;
 
   constructor(private net: Net) {
     // Often enough for mouths to keep up with syllables.
@@ -105,7 +109,10 @@ export class Voice {
       src.connect(this.localAnalyser);
     }
     const track = this.mic.getAudioTracks()[0];
-    for (const c of this.conns.values()) c.micSender = c.pc.addTrack(track, this.mic);
+    for (const c of this.conns.values()) {
+      c.micSender = c.pc.addTrack(track, this.mic);
+      if (c.unheard) void c.micSender.replaceTrack(null).catch(() => {}); // fork: outside your Hörkreis
+    }
     this.changed();
     return null;
   }
@@ -204,6 +211,24 @@ export class Voice {
     if (c) c.audio.volume = this.pa.has(peerId) ? 1 : Math.max(0, Math.min(1, volume)); // fork: on the PA, full volume
   }
 
+  /**
+   * Fork (features/voicerange): whether your mic goes to this peer. Outside your Hörkreis it doesn't,
+   * so they can't hear you at all, not just quietly. The connection stays up for when they come close.
+   */
+  setSending(peerId: string, on: boolean) {
+    const c = this.conns.get(peerId);
+    if (!c || c.unheard === !on) return;
+    c.unheard = !on;
+    const track = on ? (this.mic?.getAudioTracks()[0] ?? null) : null;
+    if (c.micSender) void c.micSender.replaceTrack(track).catch(() => {});
+  }
+
+  /** Fork: whether your mic goes to this peer now (see setSending). */
+  sendingTo(peerId: string): boolean {
+    const c = this.conns.get(peerId);
+    return !!c && !c.unheard;
+  }
+
   /** Fork: puts these peers on the PA (the karaoke stage, see features/karaoke) and everyone else off it. */
   setPa(ids: Iterable<string>) {
     this.pa.set(ids, this.conns);
@@ -253,7 +278,7 @@ export class Voice {
     const pc = new RTCPeerConnection({ iceServers: store.ice });
     const audio = new Audio();
     audio.autoplay = true;
-    const c: Conn = { pc, polite: store.you < id, makingOffer: false, ignoreOffer: false, audio, level: 0 };
+    const c: Conn = { pc, polite: store.you < id, makingOffer: false, ignoreOffer: false, audio, level: 0, unheard: true }; // unheard: fork, till your Hörkreis says (features/voicerange)
     this.conns.set(id, c);
 
     pc.onnegotiationneeded = async () => {
@@ -303,6 +328,7 @@ export class Voice {
 
     // Share whatever we're already sending.
     if (this.mic) c.micSender = pc.addTrack(this.mic.getAudioTracks()[0], this.mic);
+    if (c.micSender && c.unheard) void c.micSender.replaceTrack(null).catch(() => {}); // fork: outside your Hörkreis
     if (this.screen) c.screenSender = pc.addTrack(this.screen.getVideoTracks()[0], this.screen);
     return c;
   }
