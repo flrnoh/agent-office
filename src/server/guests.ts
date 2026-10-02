@@ -88,5 +88,6 @@ export function guestMayFetch(p: string, url: URL, onAWall: (imageUrl: string) =
   // The jukebox's radio: a built-in station, or the stream on a floor's jukebox (the handler checks it's that one).
   if (p === '/api/radio') return radioRequestShape(url.searchParams);
   if (p === '/api/dj/beats') return true; // fork: the roof's lights, to the DJ set that's on
+  if (p === '/api/dj/video') return true; // fork: the DJ set's video on the roof's LED wall
   return false;
 }

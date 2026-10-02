@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { DjFrame } from '../../dnb';
+import { videoTurn } from './videoturn';
 
 /*
  * The LED wall behind the DJ (flrnoh fork, see FORK.md): a wall of round LEDs playing visuals to
@@ -7,13 +8,23 @@ import type { DjFrame } from '../../dnb';
  * a synthwave sun, a warp, a checkerboard, rings and a plasma) take turns by the set's parts and
  * bars, cross-fading on the beat, with words over them now and then (FLOGGE OFFICE as a drop lands,
  * GET READY and a countdown through a build, the set's title and its tempo). Everything goes by
- * the frame (DjFrame), so it's the same on every screen on the roof.
+ * the frame (DjFrame), so it's the same on every screen on the roof. A YouTube set's own video comes
+ * on now and then too (videoturn.ts), LED by LED, once the office has a copy (features/djset/video.ts).
  */
 
 /** What the wall knows beyond the frame: the set's tempo and title (see features/djset/frame.ts). */
 export interface WallInfo {
   bpm?: number;
   title?: string;
+  /** The set's video, while there's one to show (features/djset/video.ts). */
+  video?: WallVideo;
+}
+
+/** A set's video for the wall: its texture, how wide its picture is, and whether it has a picture in step right now. */
+export interface WallVideo {
+  texture: THREE.Texture;
+  aspect: number;
+  on: boolean;
 }
 
 export interface LedWall {
@@ -22,7 +33,7 @@ export interface LedWall {
   update(f: DjFrame & WallInfo, t: number, calm: boolean, dark: number): void;
 }
 
-const P = { tunnel: 0, kaleido: 1, bars: 2, sun: 3, warp: 4, checker: 5, rings: 6, plasma: 7 } as const;
+const P = { tunnel: 0, kaleido: 1, bars: 2, sun: 3, warp: 4, checker: 5, rings: 6, plasma: 7, video: 8 } as const;
 type Prog = keyof typeof P;
 /** Which programs take turns in each part, and every how many beats the next one comes on. */
 const PLAYLIST: Record<DjFrame['part'], { every: number; progs: Prog[] }> = {
@@ -48,6 +59,9 @@ uniform vec2 uGrid;
 uniform sampler2D uText;
 uniform float uTextOn, uTextY;
 uniform vec3 uTextTint;
+uniform sampler2D uVideo;
+uniform float uVideoOn;
+uniform vec2 uVideoFit;
 
 #define PI 3.14159265
 vec3 hsl(float h, float s, float l) {
@@ -152,6 +166,17 @@ vec3 plasma(vec2 p) {
   float v = sin(p.x * 2.1 + t) + sin(p.y * 3.3 - t * 1.3) + sin((p.x + p.y) * 1.7 + t * 0.7) + sin(length(p * 2.5) - t);
   return hsl(uHue + v * 0.08, 0.85, 0.22 + 0.12 * sin(v * PI) + 0.06 * uBeat);
 }
+vec3 video(vec2 p) {
+  // The set's own video, letterboxed (uVideoFit: how much of the wall it fills across and up), one
+  // sample per LED, a little punchier than it is, pulsing with the kick; a dim glow round it.
+  vec2 uv = vec2(p.x / 4.0, p.y / 2.0) / uVideoFit + 0.5;
+  vec3 bg = hsl(uHue, 0.7, 0.025 + 0.03 * uBeat);
+  if (uVideoOn < 0.5 || uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return bg;
+  vec3 c = texture2D(uVideo, uv).rgb;
+  c = mix(vec3(dot(c, vec3(0.299, 0.587, 0.114))), c, 1.35);
+  c = (c - 0.5) * 1.15 + 0.5;
+  return clamp(c, 0.0, 1.0) * (0.65 + 0.25 * uKick);
+}
 vec3 program(float id, vec2 p) {
   if (id < 0.5) return tunnel(p);
   if (id < 1.5) return kaleido(p);
@@ -160,7 +185,8 @@ vec3 program(float id, vec2 p) {
   if (id < 4.5) return warp(p);
   if (id < 5.5) return checker(p);
   if (id < 6.5) return rings(p);
-  return plasma(p);
+  if (id < 7.5) return plasma(p);
+  return video(p);
 }
 
 void main() {
@@ -189,6 +215,12 @@ void main() {
   col *= 0.85 + 0.35 * uDark;
   gl_FragColor = vec4(col, 1.0);
 }`;
+
+const NO_VIDEO = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+NO_VIDEO.needsUpdate = true;
+
+/** A program to keep on the wall, from the console (window.__ledWall.force('video'); .now() says what's on), for looking at one; null: back to the playlist. */
+let forced: Prog | null = null;
 
 /** A wall `w` × `h` meters, `cols` LEDs across. */
 export function buildLedWall(w: number, h: number, cols = 192): LedWall {
@@ -220,6 +252,10 @@ export function buildLedWall(w: number, h: number, cols = 192): LedWall {
     // The words' canvas is 8:1; the wall isn't: so many of its heights to the canvas'.
     uTextY: { value: (h / w) * 8 },
     uTextTint: { value: new THREE.Color('#ffffff') },
+    // The set's video: a black dot while there's none (or it isn't on the wall), so nothing's uploaded for it then.
+    uVideo: { value: NO_VIDEO as THREE.Texture },
+    uVideoOn: { value: 0 },
+    uVideoFit: { value: new THREE.Vector2(1, 1) },
   };
   const mat = new THREE.ShaderMaterial({ uniforms: u, vertexShader: VERT, fragmentShader: FRAG });
   mat.toneMapped = false;
@@ -254,6 +290,10 @@ export function buildLedWall(w: number, h: number, cols = 192): LedWall {
   /** The program on before this one, and when this one came on: they cross-fade over a beat. */
   let shown = { prog: P.plasma as number, from: P.plasma as number, at: -1e9 };
   const tmp = new THREE.Color();
+  (window as unknown as { __ledWall?: unknown }).__ledWall = {
+    force: (p: string | null) => (forced = p && p in P ? (p as Prog) : null),
+    now: () => ({ prog: Object.keys(P)[shown.prog], video: u.uVideoOn.value > 0 }),
+  };
 
   return {
     mesh,
@@ -269,13 +309,27 @@ export function buildLedWall(w: number, h: number, cols = 192): LedWall {
       u.uSnare.value = calm ? 0 : f.snare;
       u.uEnergy.value = calm ? 0.3 : f.energy;
       u.uRise.value = f.rise;
-      // Which program: the part's list, the next one every so many beats (and a new part starts its own).
-      const want = calm ? P.plasma : progOf(f.part, Math.floor(beats / PLAYLIST[f.part].every) + f.track);
+      // Which program: the set's video now and then, once there's one; else the part's list, the next
+      // one every so many beats (and a new part starts its own).
+      const v = f.video;
+      const want =
+        forced && (forced !== 'video' || v) ? P[forced]
+        : v && videoTurn(f, calm) ? P.video
+        : calm ? P.plasma
+        : progOf(f.part, Math.floor(beats / PLAYLIST[f.part].every) + f.track);
       if (want !== shown.prog) shown = { prog: want, from: shown.prog, at: beats };
       const fade = calm ? 1 : Math.min(1, Math.max(0, beats - shown.at));
       u.uProgA.value = shown.from;
       u.uProgB.value = shown.prog;
       u.uMix.value = fade;
+      // The video's texture only while it's on the wall (fading in or out), so it's only uploaded then.
+      const showing = !!v && (shown.prog === P.video || (shown.from === P.video && fade < 1));
+      u.uVideo.value = showing ? v.texture : NO_VIDEO;
+      u.uVideoOn.value = showing && v.on ? 1 : 0;
+      if (showing) {
+        const wall = w / h;
+        u.uVideoFit.value.set(v.aspect > wall ? 1 : v.aspect / wall, v.aspect > wall ? wall / v.aspect : 1);
+      }
       // A white flash as the drop lands, and on the last beats of a build.
       u.uFlash.value = calm ? 0 : f.sinceDrop < 0.5 ? 0.6 * (1 - f.sinceDrop / 0.5) : f.part === 'build' && f.rise > 7 / 8 ? 0.25 * f.beat : 0;
 

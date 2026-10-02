@@ -31,6 +31,7 @@ export const routes: readonly Route[] = [
   agentRoutes.grokModels,
   forkRoutes.radio, // flrnoh fork: the jukebox's radio
   forkRoutes.djBeats, // flrnoh fork: the DJ set's beats, for the roof's lights
+  forkRoutes.djVideo, // flrnoh fork: the DJ set's video, for the roof's LED wall
   fileRoutes.image,
   fileRoutes.whiteboardFile,
   fileRoutes.termDrop,
