@@ -6,6 +6,7 @@ import { mergeByMaterial, mesh, toon } from '../toon';
 import { box, canvasTexture, glow } from '../casino/parts';
 import { BOLD, setlistTexture, stickersTexture } from './signs';
 import type { Look } from './lighting';
+import { pickBox } from './pick';
 
 /*
  * Backstage (flrnoh fork, see FORK.md "The Schallwerk"), behind the hall's back wall in
@@ -17,6 +18,8 @@ import type { Look } from './lighting';
  */
 
 const R = VENUE_ROOM;
+/** Backstage's own low ceiling. */
+const CEILING = 3.9;
 
 export interface VenueBackstage {
   update(look: Look, t: number): void;
@@ -52,12 +55,12 @@ export function buildBackstage(group: THREE.Group, colliders: Collider[], intera
     }
     for (const x of [STAGE_STAIRS.minX - 0.06, STAGE_STAIRS.maxX + 0.06]) {
       const rail = mesh(new THREE.CylinderGeometry(0.025, 0.025, Math.hypot(run, STAGE_HEIGHT) + 0.4, 8), toon('#c9a227'), x, STAGE_HEIGHT / 2 + 0.95, (STAGE_STAIRS.foot + L.maxZ) / 2);
-      rail.rotation.x = Math.PI / 2 - slope;
+      rail.rotation.x = slope - Math.PI / 2; // (up toward the landing)
       parts.add(rail);
       for (const k of [0, 0.5, 1]) parts.add(mesh(box(0.04, 0.95, 0.04), steel, x, STAGE_HEIGHT * (1 - k) + 0.47, L.maxZ + k * run));
     }
     // ON STAGE: a red light over the opening that's lit while the band's on.
-    const sign = mesh(new THREE.PlaneGeometry(1.2, 0.3), glow(canvasTexture(256, 64, (g) => {
+    const sign = mesh(new THREE.PlaneGeometry(1.04, 0.26), glow(canvasTexture(256, 64, (g) => {
       g.fillStyle = '#3a0508';
       g.fillRect(0, 0, 256, 64);
       g.fillStyle = '#ff3b3b';
@@ -65,7 +68,7 @@ export function buildBackstage(group: THREE.Group, colliders: Collider[], intera
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.fillText('ON STAGE', 128, 34);
-    })), cx, STAGE_HEIGHT + 2.75, BACK_WALL.z1 + 0.02, false);
+    })), cx, STAGE_HEIGHT + 2.55, BACK_WALL.z1 + 0.02, false);
     group.add(sign);
   }
 
@@ -89,7 +92,11 @@ export function buildBackstage(group: THREE.Group, colliders: Collider[], intera
     parts.add(sofa);
     colliders.push({ minX: s.x - s.len / 2, maxX: s.x + s.len / 2, minZ: s.z - SOFA_DEPTH / 2, maxZ: Math.min(R.maxZ, s.z + SOFA_DEPTH / 2), bottom: 0, top: 0.42, fence: true });
   }
-  for (const seat of sofaSeats()) interactables.push({ kind: 'venueseat', seatId: seat.key, x: seat.x, z: seat.z, radius: 0.8, y: 0 });
+  for (const seat of sofaSeats()) {
+    const it: Interactable = { kind: 'venueseat', seatId: seat.key, x: seat.x, z: seat.z, radius: 0.8, y: 0 };
+    interactables.push(it);
+    pickBox(group, it, { minX: seat.x - 0.38, maxX: seat.x + 0.38, minZ: seat.z - 0.4, maxZ: seat.z + 0.4 }, 0.3, 0.9);
+  }
   // The low table: bottles, a fruit bowl, a laminate.
   {
     const T = GREEN_TABLE;
@@ -130,7 +137,27 @@ export function buildBackstage(group: THREE.Group, colliders: Collider[], intera
     const cz = (M.minZ + M.maxZ) / 2;
     parts.add(mesh(box(M.maxX - M.minX, 0.06, M.maxZ - M.minZ), toon('#e9e2d6'), (M.minX + M.maxX) / 2, M.top, cz));
     for (const e of [-1, 1]) parts.add(mesh(box(0.06, M.top, M.maxZ - M.minZ - 0.05), steel, (M.minX + M.maxX) / 2 + e * ((M.maxX - M.minX) / 2 - 0.05), M.top / 2, cz));
-    const mirrorMat = new THREE.MeshToonMaterial({ color: '#9fb3c8', emissive: new THREE.Color('#3a4a5c'), gradientMap });
+    const mirrorMat = new THREE.MeshToonMaterial({
+      gradientMap,
+      emissive: new THREE.Color('#2a3440'),
+      map: canvasTexture(128, 96, (g) => {
+        const grd = g.createLinearGradient(0, 0, 128, 96);
+        grd.addColorStop(0, '#c9d6e3');
+        grd.addColorStop(0.45, '#7d8fa3');
+        grd.addColorStop(0.55, '#a9bacb');
+        grd.addColorStop(1, '#5d6e80');
+        g.fillStyle = grd;
+        g.fillRect(0, 0, 128, 96);
+        g.strokeStyle = 'rgba(255,255,255,0.5)';
+        g.lineWidth = 3;
+        for (const x of [30, 44]) {
+          g.beginPath();
+          g.moveTo(x, 0);
+          g.lineTo(x + 40, 96);
+          g.stroke();
+        }
+      }),
+    });
     for (let i = 0; i < 3; i++) {
       const x = M.minX + 1 + i * 2;
       parts.add(mesh(box(1.2, 0.9, 0.03), mirrorMat, x, M.top + 0.75, BACK_WALL.z1 + 0.02, false));
@@ -178,7 +205,9 @@ export function buildBackstage(group: THREE.Group, colliders: Collider[], intera
     stickers.rotation.y = Math.PI / 2;
     group.add(stickers);
     colliders.push({ minX: F.minX, maxX: F.maxX, minZ: F.minZ, maxZ: F.maxZ, bottom: 0, top: F.top });
-    interactables.push({ kind: 'venuerider', x: cx, z: F.minZ - 0.4, radius: 1.4 });
+    const rider: Interactable = { kind: 'venuerider', x: cx, z: F.minZ - 0.4, radius: 1.4 };
+    interactables.push(rider);
+    pickBox(group, rider, { ...F, minZ: F.minZ - 0.15 }, 0, F.top);
   }
   // The setlist taped to the wall, stickers on the back wall, a clothes rail of stage outfits.
   const setlist = mesh(new THREE.PlaneGeometry(0.42, 0.6), new THREE.MeshToonMaterial({ gradientMap, map: setlistTexture() }), 4.4, 1.6, R.maxZ - 0.02, false);
@@ -228,7 +257,7 @@ export function buildBackstage(group: THREE.Group, colliders: Collider[], intera
   const bare = glow(null, '#ffd9a0');
   const cables = new THREE.Group();
   for (let x = -8; x < ZONES.backstage.maxX; x += 4.2) {
-    cables.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, R.height - 3, 4), toon('#111'), x, (R.height + 3) / 2, 13.5, false));
+    cables.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, CEILING - 3, 4), toon('#111'), x, (CEILING + 3) / 2, 13.5, false));
     cables.add(mesh(new THREE.SphereGeometry(0.07, 8, 6), bare, x, 2.95, 13.5, false));
   }
   group.add(mergeByMaterial(cables));
@@ -238,6 +267,22 @@ export function buildBackstage(group: THREE.Group, colliders: Collider[], intera
     group.add(l);
     return l;
   });
+
+  // A low ceiling of black boards over it all, with the pipes along it (the hall's roof is far above).
+  {
+    const x0 = ZONES.wing.maxX + 0.1;
+    const w = R.maxX - x0;
+    const d = R.maxZ - BACK_WALL.z1;
+    const cz = (BACK_WALL.z1 + R.maxZ) / 2;
+    parts.add(mesh(box(w, 0.12, d), toon('#1d1c21'), x0 + w / 2, CEILING + 0.06, cz, false));
+    colliders.push({ minX: x0, maxX: R.maxX, minZ: BACK_WALL.z1, maxZ: R.maxZ, bottom: CEILING, top: CEILING + 0.12 });
+    for (const [z, r, c] of [
+      [15.3, 0.09, '#8a8f96'],
+      [15.0, 0.06, '#c4121f'],
+      [11.6, 0.11, '#5c6470'],
+    ] as const)
+      parts.add(mesh(new THREE.CylinderGeometry(r, r, w, 10).rotateZ(Math.PI / 2), toon(c), x0 + w / 2, CEILING - 0.18, z, false));
+  }
 
   group.add(mergeByMaterial(parts));
 

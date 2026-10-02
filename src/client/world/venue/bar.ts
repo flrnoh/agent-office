@@ -6,6 +6,7 @@ import { mergeByMaterial, mesh, toon } from '../toon';
 import { box, glow } from '../casino/parts';
 import { SW, barBoardTexture, neonWord } from './signs';
 import type { Look } from './lighting';
+import { pickBox } from './pick';
 
 /*
  * The Schallwerk's bar (flrnoh fork, see FORK.md "The Schallwerk"), down the east wall of the hall in
@@ -61,7 +62,11 @@ export function buildBar(group: THREE.Group, colliders: Collider[], interactable
   group.add(mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.16, 12), glassMat, (C.minX + C.maxX) / 2, C.top + 0.08, C.minZ + 1.2, false));
   colliders.push({ minX: C.minX - 0.2, maxX: C.maxX, minZ: C.minZ, maxZ: C.maxZ, bottom: 0, top: C.top });
   // E anywhere along the front of it: one interactable every couple of metres, so it's never far.
-  for (let z = C.minZ + 1; z < C.maxZ; z += 2.4) interactables.push({ kind: 'venuebar', x: C.minX - 0.3, z, radius: 1.6 });
+  for (let z = C.minZ; z < C.maxZ - 0.01; z += 2.55) {
+    const it: Interactable = { kind: 'venuebar', x: C.minX - 0.3, z: z + 1.27, radius: 1.6 };
+    interactables.push(it);
+    pickBox(group, it, { minX: C.minX - 0.2, maxX: BB.maxX, minZ: z, maxZ: Math.min(C.maxZ, z + 2.55) }, 0, 2.4);
+  }
 
   // ---- The back bar ---------------------------------------------------------------------------------
   const bx = (BB.minX + BB.maxX) / 2;
@@ -91,10 +96,10 @@ export function buildBar(group: THREE.Group, colliders: Collider[], interactable
   colliders.push({ minX: BB.minX, maxX: BB.maxX, minZ: BB.minZ, maxZ: BB.maxZ, bottom: 0, top: 2.6 });
 
   // ---- BAR in neon, the board, the cage pendants -------------------------------------------------
-  const neon = mesh(new THREE.PlaneGeometry(3.2, 1.0), glow(neonWord('BAR', SW.red, 1024, 320), '#ffffff', { transparent: true }), R.maxX - 0.06, 3.35, cz - 2.6, false);
+  const neon = mesh(new THREE.PlaneGeometry(3.2, 1.0), glow(neonWord('BAR', SW.red, 1024, 320), '#ffffff', { transparent: true }), R.maxX - 0.06, 3.7, cz - 3.2, false);
   neon.rotation.y = -Math.PI / 2;
   group.add(neon);
-  const board = mesh(new THREE.PlaneGeometry(2.6, 1.3), new THREE.MeshToonMaterial({ map: barBoardTexture() }), R.maxX - 0.06, 3.3, cz + 1.4, false);
+  const board = mesh(new THREE.PlaneGeometry(2.6, 1.3), new THREE.MeshToonMaterial({ map: barBoardTexture() }), R.maxX - 0.06, 3.55, cz + 1.6, false);
   board.rotation.y = -Math.PI / 2;
   group.add(board);
   const bulbMat = glow(null, '#ffcf8a');

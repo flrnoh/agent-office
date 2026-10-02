@@ -24,7 +24,7 @@ export interface Spot {
 // ---- The foyer (ZONES.foyer) ------------------------------------------------------------------------
 
 /** The gallery over the foyer: a slab at `y` from the north wall to the hall (`edgeZ`), its front a balcony rail facing the stage. */
-export const GALLERY = { y: 3.8, edgeZ: ZONES.foyer.maxZ, rail: 1.05 } as const;
+export const GALLERY = { y: 4.4, edgeZ: ZONES.foyer.maxZ, rail: 1.05 } as const;
 /** The pillars under the gallery's front edge (their middles along x; 0.5 m square), clear of the ways into the hall. */
 export const PILLARS_X: readonly number[] = [-6.5, 6.5, 13, 19.6];
 export const PILLAR_Z = ZONES.foyer.maxZ - 0.3;

@@ -6,6 +6,7 @@ import { mergeByMaterial, mesh, toon } from '../toon';
 import { box, canvasTexture } from '../casino/parts';
 import { BOLD } from './signs';
 import type { Look } from './lighting';
+import { pickBox } from './pick';
 
 /*
  * Front of house (flrnoh fork, see FORK.md "The Schallwerk"), mid-hall in ZONES.foh: a low platform
@@ -117,6 +118,8 @@ export function buildFoh(group: THREE.Group, colliders: Collider[], interactable
   const lightIt: Interactable = { kind: 'venuelight', x: light.cx, z: LIGHT_DESK.minZ - 0.5, radius: 1.5 };
   const mixIt: Interactable = { kind: 'venuemix', x: mix.cx, z: MIX_DESK.minZ - 0.5, radius: 1.5 };
   interactables.push(lightIt, mixIt);
+  pickBox(group, lightIt, LIGHT_DESK, 0, LIGHT_DESK.top + 0.55);
+  pickBox(group, mixIt, MIX_DESK, 0, MIX_DESK.top + 0.55);
 
   let drawn = 0;
   const meters = new Array(16).fill(0);

@@ -6,6 +6,7 @@ import { mergeByMaterial, mesh, toon } from '../toon';
 import { box, canvasTexture, glow, neonSign } from '../casino/parts';
 import { BOLD, SW, brickTexture, concreteTexture, corrugatedTexture, drawLogo, softDot } from './signs';
 import type { Look } from './lighting';
+import { noPick, pickBox } from './pick';
 
 /*
  * The Schallwerk's hall (flrnoh fork, see FORK.md "The Schallwerk"): the shell the building builds the
@@ -207,6 +208,7 @@ export function buildVenueShell(): VenueShell {
       for (const x of [380, 1024, 1668]) g.fillText('· S C H A L L W E R K ·', x, 34);
     });
     const fm = new THREE.MeshToonMaterial({ map: fascia, gradientMap, emissive: new THREE.Color('#ffffff'), emissiveMap: fascia, emissiveIntensity: 0.15 });
+    fm.userData.outlineParameters = { visible: false }; // (seen from the foyer behind it, the outline would draw it whole)
     uvGlow.push({ mat: fm, base: 0.15 });
     group.add(mesh(new THREE.PlaneGeometry(gx1 - gx0, 0.62), fm, (gx0 + gx1) / 2, GALLERY.y + 0.12, gz1 + 0.01, false));
     const rail = toon('#2b2d33');
@@ -266,14 +268,15 @@ export function buildVenueShell(): VenueShell {
   const winMat = new THREE.MeshBasicMaterial({ map: winTex });
   winMat.userData.outlineParameters = { visible: false };
   const frame = toon('#3b1d16');
-  for (let z = -6; z <= 8; z += 6) {
+  for (const z of [7.6]) {
+    // (only over the DJ booth: the acoustic panels have the wall over the bar)
     const w = mesh(archGeo, winMat, R.maxX - 0.02, 4.6, z, false);
     w.rotation.y = -Math.PI / 2;
     group.add(w);
     parts.add(mesh(box(0.08, 0.15, 2.4), frame, R.maxX - 0.05, 4.55, z));
   }
   for (let x = -6; x <= 18; x += 6) {
-    const w = mesh(archGeo, winMat, x, 4.6, R.minZ + 0.02, false);
+    const w = mesh(archGeo, winMat, x, 5.2, R.minZ + 0.02, false);
     group.add(w);
   }
 
@@ -314,7 +317,9 @@ export function buildVenueShell(): VenueShell {
   poolMat.userData.outlineParameters = { visible: false };
   const pools = new THREE.Group();
   for (const z of [-7.5, -3, 1.5]) for (let x = -8; x <= 18; x += 5.2) pools.add(mesh(new THREE.PlaneGeometry(4, 4).rotateX(-Math.PI / 2), poolMat, x, 0.02, z, false));
-  group.add(mergeByMaterial(pools));
+  const poolMesh = mergeByMaterial(pools);
+  noPick(poolMesh);
+  group.add(poolMesh);
 
   // ---- The doors back out, AUSGANG over them, the loading door, the exit signs --------------------
   const dw = VENUE_DOOR_INSIDE.width;
@@ -332,6 +337,7 @@ export function buildVenueShell(): VenueShell {
     group.add(leaf);
   }
   parts.add(mesh(box(dw + 0.3, 0.12, 0.12), frameMat, VENUE_DOOR_INSIDE.x, 3.04, dz));
+  pickBox(group, exit, { minX: VENUE_DOOR_INSIDE.x - dw / 2, maxX: VENUE_DOOR_INSIDE.x + dw / 2, minZ: R.minZ, maxZ: R.minZ + 0.12 }, 0, 3.1);
   const ausgang = mesh(new THREE.PlaneGeometry(1.3, 0.38), glow(neonSign('AUSGANG', '#3dff8a', 512, 150, '#0c2a18')), VENUE_DOOR_INSIDE.x, 3.42, R.minZ + 0.05, false);
   ausgang.userData.interact = exit;
   group.add(ausgang);

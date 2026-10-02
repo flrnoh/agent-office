@@ -92,6 +92,8 @@ export function buildVenueLab(s: LabStage) {
     stairs: [[14, 2.2, 15.2], [12.4, 1.2, 11]],
     top: [[4, 26, 2], [4, 0, 1.5]],
     side: [[-9, 6, 2], [14, 3, -1]],
+    gallery: [[3, 1.7, -4], [3, 4.6, -9]],
+    under: [[3, 1.7, -12], [3, 4.6, -8]],
   };
   const [p, at] = views[q.get('view') ?? 'hall'] ?? views.hall;
   camera.fov = q.get('view') === 'top' ? 75 : 62;

@@ -144,7 +144,7 @@ export function buildSigns(kit: ScenicKit) {
   for (const place of ['farm', 'forest', 'mountains', 'beach', 'coast'] as Place[]) {
     const s = stretch(place)[0];
     if (!s) continue;
-    const i = indexAt(s.from + 6);
+    const i = indexAt(s.from + (place === 'farm' ? 34 : 6)); // fork: the farm's past the Schallwerk's front, not in it
     const p = LOOP[i];
     const at = beside(i, -(LOOP_HALF + 3.4));
     signpost(parts.road, labels, at.x, at.z, Math.atan2(-p.tx, -p.tz) - 0.3, `${PLACES[place].icon} ${PLACES[place].name}`);

@@ -5,6 +5,7 @@ import { mulberry32 } from '../../../shared/rng';
 import { mergeByMaterial, mesh, toon } from '../toon';
 import { box } from '../casino/parts';
 import { softDot } from './signs';
+import { noPick } from './pick';
 
 /*
  * The light desk's effects (flrnoh fork, see FORK.md "The Schallwerk"), played from the moment the
@@ -27,7 +28,7 @@ const HAZERS: readonly { x: number; z: number }[] = [
 
 const CONFETTI = 520;
 const SPARKS = 140;
-const PUFFS = 22;
+const PUFFS = 36;
 
 export interface VenueFxShow {
   /** An effect went off at `at` (office clock, ms). */
@@ -108,6 +109,8 @@ export function buildFx(group: THREE.Group): VenueFxShow {
     return g;
   });
 
+  noPick(...puffs.flat(), ...hazePuffs.flat(), paper, sparks, ...glows);
+
   const m4 = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const e = new THREE.Euler();
@@ -131,14 +134,15 @@ export function buildFx(group: THREE.Group): VenueFxShow {
       puffs.forEach((jet, j) => {
         for (let i = 0; i < jet.length; i++) {
           const s = jet[i];
-          const age = co2 - i * 0.035;
-          s.visible = co2 >= 0 && age > 0 && age < 1.1;
+          const age = co2 - i * 0.022;
+          s.visible = co2 >= 0 && age > 0 && age < 1.3;
           if (!s.visible) continue;
-          const k = 1 - Math.exp(-age * 3.2);
-          p.set(CO2_JETS[j] + Math.sin(i * 2.3) * 0.4 * k, 6.9 - k * 5.4, FRONT_Z - 0.3 - k * 2.4 + Math.cos(i * 1.7) * 0.3 * k);
+          // Fast and narrow out of the nozzle, slowing and billowing out at the bottom.
+          const k = 1 - Math.exp(-age * 3.6);
+          p.set(CO2_JETS[j] + Math.sin(i * 2.3) * 0.6 * k * k, 6.9 - k * 5.6, FRONT_Z - 0.3 - k * 2.2 + Math.cos(i * 1.7) * 0.5 * k * k);
           s.position.copy(p);
-          s.scale.setScalar(0.5 + age * 3.4);
-          s.material.opacity = 0.75 * (1 - age / 1.1);
+          s.scale.set(0.25 + age * 2.6, 0.5 + age * 3.2, 1);
+          s.material.opacity = 0.42 * Math.min(1, age * 6) * (1 - age / 1.3);
         }
       });
 

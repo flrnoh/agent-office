@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { VENUE_ROOM } from '../../../shared/venue';
-import { COAT_RAILS, COAT_TAGS, FOTOBOX, GARDEROBE, HIGH_TABLES, KASSE, MERCH, MERCH_TABLE, MERCH_WALL, PILLARS_X, PILLAR_HALF, PILLAR_Z, type MerchItem } from '../../../shared/venue-house';
+import { COAT_RAILS, COAT_TAGS, FOTOBOX, GALLERY, GARDEROBE, HIGH_TABLES, KASSE, MERCH, MERCH_TABLE, MERCH_WALL, PILLARS_X, PILLAR_HALF, PILLAR_Z, type MerchItem } from '../../../shared/venue-house';
 import type { Collider, Interactable } from '../types';
 import { mergeByMaterial, mesh, toon } from '../toon';
 import { box, canvasTexture, glow, neonSign } from '../casino/parts';
 import { BOLD, SW, drawLogo, posterTexture } from './signs';
 import type { Look } from './lighting';
+import { pickBox } from './pick';
 
 /*
  * The Schallwerk's foyer (flrnoh fork, see FORK.md "The Schallwerk"), in ZONES.foyer under the
@@ -114,6 +115,7 @@ export function buildFoyer(group: THREE.Group, colliders: Collider[], interactab
     solid(K, 2.8);
     const it: Interactable = { kind: 'venuekasse', x: cx, z: K.maxZ + 0.3, radius: 1.8 };
     interactables.push(it);
+    pickBox(group, it, { ...K, maxZ: K.maxZ + 0.1 }, 0, 2.7);
   }
 
   // ---- The cloakroom ------------------------------------------------------------------------------
@@ -167,6 +169,7 @@ export function buildFoyer(group: THREE.Group, colliders: Collider[], interactab
     solid(RL, RL.top, true);
     const it: Interactable = { kind: 'venuecoat', x: cx, z: C.maxZ + 0.3, radius: 1.9 };
     interactables.push(it);
+    pickBox(group, it, { minX: C.minX, maxX: C.maxX, minZ: COAT_RAILS.minZ, maxZ: C.maxZ }, 0, 2.2);
   }
 
   // ---- The merch stand -----------------------------------------------------------------------------
@@ -193,7 +196,7 @@ export function buildFoyer(group: THREE.Group, colliders: Collider[], interactab
     for (let k = 0; k < 5; k++) parts.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.7, 8), toon(['#f4ead8', '#ff2d3d', '#2ee6ff'][k % 3]), T.maxX - 0.75 + (k % 3) * 0.12, T.top + 0.5, (T.minZ + T.maxZ) / 2 - 0.1 + Math.floor(k / 3) * 0.15));
     sign('MERCH', '#ff2d3d', 2.6, cx, 3.45, R.minZ + 0.15);
     // The price list: everything's on the house.
-    const price = mesh(new THREE.PlaneGeometry(0.9, 0.5), new THREE.MeshToonMaterial({ gradientMap, map: tex((g) => {
+    const price = mesh(new THREE.PlaneGeometry(0.8, 0.44), new THREE.MeshToonMaterial({ gradientMap, map: tex((g) => {
       g.fillStyle = '#f4ead8';
       g.fillRect(0, 0, 512, 284);
       g.fillStyle = '#16161a';
@@ -206,13 +209,16 @@ export function buildFoyer(group: THREE.Group, colliders: Collider[], interactab
       g.fillStyle = '#16161a';
       g.font = '30px "Chalkboard SE", "Comic Sans MS", cursive';
       g.fillText('Poster: nimm dir eins!', 24, 266);
-    }, 512, 284) }), T.minX + 0.25, T.top + 0.32, T.maxZ + 0.01, false);
-    price.rotation.x = -0.35;
+    }, 512, 284) }), T.minX + 0.45, T.top + 0.2, T.maxZ - 0.08, false);
+    (price.material as THREE.Material).userData.outlineParameters = { visible: false };
+    price.rotation.x = -0.2;
     group.add(price);
+    parts.add(mesh(box(0.92, 0.36, 0.02), toon('#141316'), T.minX + 0.45, T.top + 0.18, T.maxZ - 0.11));
     solid(T, T.top);
     solid(MW, MW.top, true);
     const it: Interactable = { kind: 'venuemerch', x: cx, z: T.maxZ + 0.3, radius: 2 };
     interactables.push(it);
+    pickBox(group, it, { minX: MW.minX, maxX: MW.maxX, minZ: MW.minZ, maxZ: T.maxZ }, 0, 3.2);
   }
 
   // ---- The photo booth ----------------------------------------------------------------------------
@@ -270,6 +276,7 @@ export function buildFoyer(group: THREE.Group, colliders: Collider[], interactab
     solid(F, F.top);
     const it: Interactable = { kind: 'venuebooth', x: cx, z: F.maxZ + 0.4, radius: 1.8 };
     interactables.push(it);
+    pickBox(group, it, { ...F, maxZ: F.maxZ + 0.12 }, 0, F.top + 0.5);
   }
 
   // ---- High tables, posters on the walls and the pillars ----------------------------------------
@@ -301,8 +308,8 @@ export function buildFoyer(group: THREE.Group, colliders: Collider[], interactab
 
   // The foyer's own warm light, under the gallery.
   const lamps = [-5, 9, 19].map((x) => {
-    const l = new THREE.PointLight('#ffc98a', 2.4, 11, 1.4);
-    l.position.set(x, 3.3, -12.6);
+    const l = new THREE.PointLight('#ffc98a', 5, 14, 1.3);
+    l.position.set(x, GALLERY.y - 0.6, -12.6);
     group.add(l);
     return l;
   });
@@ -318,7 +325,7 @@ export function buildFoyer(group: THREE.Group, colliders: Collider[], interactab
       }
     },
     update(look, t) {
-      for (const l of lamps) l.intensity = look.mode === 'club' ? 1.8 : 2.4;
+      for (const l of lamps) l.intensity = look.mode === 'club' ? 3.8 : 5;
       if (boothBulbs) boothBulbs.color.setHSL(0.12, 0.9, 0.6 + 0.25 * Math.sin(t * 6));
     },
   };

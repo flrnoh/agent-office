@@ -132,8 +132,10 @@ export class VenueWearing {
     else this.wear.delete(id);
   }
 
+  /** Everyone's, as the office says (the house's own staff, `npc-…`, keep theirs). */
   reset(all: Record<string, VenueWear>) {
-    this.wear = new Map(Object.entries(all));
+    const staff = [...this.wear].filter(([id]) => id.startsWith('npc-'));
+    this.wear = new Map([...Object.entries(all), ...staff]);
   }
 
   /** Every cloakroom ticket handed out: its number and whose. */

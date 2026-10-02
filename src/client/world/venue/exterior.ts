@@ -248,6 +248,7 @@ export function buildVenueExterior(group: THREE.Group, colliders: Collider[], in
   const dw = VENUE_DOOR.width;
   const dh = VENUE_DOOR.height;
   const PORTAL = { w: dw + 2.4, h: 5.6 } as const;
+  let recess: THREE.Mesh | null = null;
   const glassMat = new THREE.MeshToonMaterial({ color: '#ffd9a0', transparent: true, opacity: 0.55, gradientMap, emissive: new THREE.Color('#ffb060'), depthWrite: false });
   glassMat.userData.outlineParameters = { visible: false };
   night.bulbs.push({ mat: glassMat, day: 0.15 });
@@ -262,8 +263,41 @@ export function buildVenueExterior(group: THREE.Group, colliders: Collider[], in
     // The fanlight in the arch, lit from inside at night.
     root.add(mesh(new THREE.CircleGeometry(PORTAL.w / 2 - 1, 24, 0, Math.PI).rotateY(Math.PI), glassMat, DX, G + PORTAL.h - 0.4, FRONT - 0.04, false));
     root.add(mesh(new THREE.PlaneGeometry(0.08, PORTAL.w / 2 - 1).rotateY(Math.PI), steel, DX, G + PORTAL.h - 0.4 + (PORTAL.w / 2 - 1) / 2, FRONT - 0.06, false));
-    // The dark recess the doors stand in, its transom of glazing.
-    root.add(mesh(new THREE.PlaneGeometry(PORTAL.w - 2, PORTAL.h - 0.4).rotateY(Math.PI), toon('#14131a'), DX, G + (PORTAL.h - 0.4) / 2, FRONT - 0.03, false));
+    // Behind the doors, the foyer as you see it through them: warm light, the posters, people at the box office.
+    const lobby = canvasTexture(256, 320, (g) => {
+      const grd = g.createLinearGradient(0, 0, 0, 320);
+      grd.addColorStop(0, '#1a0f10');
+      grd.addColorStop(0.35, '#6b3a22');
+      grd.addColorStop(1, '#2a1a14');
+      g.fillStyle = grd;
+      g.fillRect(0, 0, 256, 320);
+      // Downlights' pools, posters on the far wall, the box office's lit window.
+      for (const x of [40, 128, 216]) {
+        const r = g.createRadialGradient(x, 120, 2, x, 150, 70);
+        r.addColorStop(0, 'rgba(255,214,150,0.9)');
+        r.addColorStop(1, 'rgba(255,214,150,0)');
+        g.fillStyle = r;
+        g.fillRect(0, 60, 256, 200);
+      }
+      [['#ff2d3d', 20], ['#2ee6ff', 90], ['#ffd166', 196]].forEach(([c, x]) => {
+        g.fillStyle = c as string;
+        g.fillRect(x as number, 150, 34, 48);
+      });
+      g.fillStyle = '#ffcf8a';
+      g.fillRect(140, 200, 70, 34);
+      // Heads and shoulders in silhouette.
+      g.fillStyle = 'rgba(15,8,10,0.9)';
+      for (const [x, y] of [[60, 268], [96, 276], [170, 262], [210, 280]]) {
+        g.beginPath();
+        g.arc(x, y, 13, 0, Math.PI * 2);
+        g.fill();
+        g.fillRect(x - 20, y + 10, 40, 60);
+      }
+    });
+    const lobbyMat = new THREE.MeshToonMaterial({ map: lobby, gradientMap, emissive: new THREE.Color('#ffffff'), emissiveMap: lobby });
+    night.bulbs.push({ mat: lobbyMat, day: 0.55 });
+    recess = mesh(new THREE.PlaneGeometry(PORTAL.w - 2, PORTAL.h - 0.4).rotateY(Math.PI), lobbyMat, DX, G + (PORTAL.h - 0.4) / 2, FRONT - 0.03, false);
+    root.add(recess);
   }
   const dz = FRONT - 0.12;
   parts.add(mesh(box(dw + 0.3, 0.2, 0.2), steel, DX, G + dh + 0.1, dz));
@@ -353,10 +387,14 @@ export function buildVenueExterior(group: THREE.Group, colliders: Collider[], in
     for (const x of [-4.5, -1.5, 1.5, 4.5]) root.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.03, 12), down, DX + x, G + MARQ.y - 0.03, FRONT - MARQ.out / 2, false));
     for (const x of [-3, 0, 3]) night.halos.push({ at: new THREE.Vector3(DX + x, G + MARQ.y - 0.2, FRONT - 1.3), size: 3.2, color: '#ffe0b0', ground: true });
     // Tie rods up to the wall.
-    for (const s of [-1, 1]) {
-      const rod = mesh(new THREE.CylinderGeometry(0.03, 0.03, 3.4, 6), steel, DX + s * (MARQ.w / 2 - 0.6), G + top + 1.15, FRONT - MARQ.out / 2 - 0.2);
-      rod.rotation.x = -0.75;
+    for (const s of [-1, -0.33, 0.33, 1]) {
+      // From the canopy's front edge up to an anchor plate on the wall.
+      const from = new THREE.Vector3(DX + s * (MARQ.w / 2 - 0.6), G + top, FRONT - MARQ.out + 0.25);
+      const to = new THREE.Vector3(from.x, G + top + 2.1, FRONT - 0.02);
+      const rod = mesh(new THREE.CylinderGeometry(0.03, 0.03, from.distanceTo(to), 6), steel, (from.x + to.x) / 2, (from.y + to.y) / 2, (from.z + to.z) / 2);
+      rod.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize());
       parts.add(rod);
+      parts.add(mesh(box(0.22, 0.22, 0.04), steel, to.x, to.y, FRONT - 0.03));
     }
   }
 
@@ -377,7 +415,7 @@ export function buildVenueExterior(group: THREE.Group, colliders: Collider[], in
     const lamp = bulb(night, '#ffd89a', 0.1);
     const wallGlow = new THREE.MeshBasicMaterial({ map: softDot(), color: '#ffb36b', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
     wallGlow.userData.outlineParameters = { visible: false };
-    night.glows.push({ mat: wallGlow, max: 0.5 });
+    night.glows.push({ mat: wallGlow, max: 0.8 });
     for (const x of bayXs) {
       if (Math.abs(x - DX) < 5) continue;
       const y = 8.9;
@@ -405,6 +443,7 @@ export function buildVenueExterior(group: THREE.Group, colliders: Collider[], in
   const interactable: Interactable = { kind: 'venue', x: DX, z: FRONT - 1.2, y: G, radius: 2.4 };
   interactables.push(interactable);
   transom.userData.interact = interactable;
+  if (recess) recess.userData.interact = interactable;
   for (const { leaf } of leaves) leaf.traverse((o) => (o.userData.interact = interactable));
 
   const door: Door = {

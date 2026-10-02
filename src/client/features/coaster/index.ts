@@ -10,6 +10,8 @@ import { GYM } from '../../../shared/gym';
 import { HALL } from '../../../shared/hall';
 import { roofDrop, streetBelow } from '../../../shared/layout';
 import { SOCCER } from '../../../shared/soccer';
+import { BOWLING } from '../../../shared/bowling'; // fork: nor in the bowling centre
+import { VENUE } from '../../../shared/venue'; // fork: nor in the Schallwerk
 import type { Ctx } from '../../core/context';
 import { builtFloors } from '../../core/floors';
 import { aside, hintTitle, key } from '../../core/hint';
@@ -42,7 +44,7 @@ export function installCoaster(ctx: Ctx, deps: CoasterFeatureDeps): CoasterRide 
   const lift = (): number | null => {
     if (ctx.upTop()) return ctx.inOffice() ? 0 : null;
     const f = store.floor;
-    if (!ctx.inOffice() || f === CASINO || f === GYM || f === HALL || f === SOCCER) return null;
+    if (!ctx.inOffice() || f === CASINO || f === GYM || f === HALL || f === SOCCER || f === BOWLING || f === VENUE) return null;
     const { index, count } = ctx.office.stack.state;
     return count >= 1 ? streetBelow(index) + roofDrop(count) : null;
   };

@@ -6,6 +6,7 @@ import { box } from '../casino/parts';
 import { beamTexture, hazeTexture, softDot } from './signs';
 import { LedWall } from './led';
 import type { Look } from './lighting';
+import { noPick } from './pick';
 
 /*
  * The Schallwerk's rig (flrnoh fork, see FORK.md "The Schallwerk"): everything that hangs from the
@@ -262,6 +263,7 @@ export function buildRig(group: THREE.Group): VenueRig {
   }
 
   group.add(mergeByMaterial(parts));
+  noPick(...heads.map((h) => h.beam), pin, flare, spots, ...lasers, sheet, ...clouds.map((c) => c.s));
 
   const tmp = new THREE.Vector3();
   const at = new THREE.Vector3();
