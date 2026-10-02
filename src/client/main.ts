@@ -80,7 +80,10 @@ import { installMinimap } from './features/minimap'; // flrnoh fork: the minimap
 import { installKaraoke } from './features/karaoke'; // flrnoh fork: the bowling centre's karaoke bar
 import { installMinigolf } from './features/minigolf'; // flrnoh fork: the bowling centre's black-light mini golf
 import { installBowlingGame } from './features/bowlinggame'; // flrnoh fork: the bowling centre's lanes
+import { installVenueShow } from './features/venueshow'; // flrnoh fork: the Schallwerk's show
+import { installProberaum } from './features/proberaum'; // flrnoh fork: the Schallwerk's rehearsal wing
 import { installVoiceRange } from './features/voicerange'; // flrnoh fork: Hörkreise
+import { installInstruments } from './features/instruments'; // flrnoh fork: the Schallwerk's instruments
 import { installDance } from './features/dance'; // flrnoh fork: dancing on the roof
 import { installDjSets } from './features/djset';
 import { installDoorbell } from './features/doorbell';
@@ -237,7 +240,10 @@ parts.coaster = installCoaster(ctx, { roof: parts.rooftop.roof, roofFloors: part
 (window as any).__karaoke = installKaraoke(ctx, { personOf }); // fork: the bowling centre's karaoke bar
 (window as any).__minigolf = installMinigolf(ctx, { standUp, stopWalking, personOf }); // fork: the bowling centre's mini golf
 (window as any).__bowlinggame = installBowlingGame(ctx, { personOf }); // fork: the bowling centre's lanes and league
+(window as any).__venueshow = installVenueShow(ctx, { personOf }); // fork: the Schallwerk's show (crowd, DJ booth, gigs)
+(window as any).__proberaum = installProberaum(ctx, { booze: () => parts.bar.booze, reach }); // fork: the Schallwerk's rehearsal wing
 (window as any).__voicerange = installVoiceRange(ctx, { bodies: () => parts.peers.remotes }); // fork: Hörkreise, how far each voice carries
+(window as any).__instruments = installInstruments(ctx, { personOf }); // fork: the Schallwerk's instruments
 (window as any).__dance = installDance(ctx, { frame: parts.rooftop.frame, remotes: () => parts.peers.remotes }); // fork: dancing on the roof, on the beat
 
 // ---- Main loop ---------------------------------------------------------------------------------------
@@ -302,6 +308,7 @@ const { worlds, views, rooftop, bar, coffee, golf, bargames, hanging, climbing, 
 (window as any).__office.tankstelle = parts.tankstelle; // flrnoh fork: the petrol station
 (window as any).__office.bikes = parts.ride; // flrnoh fork: bikes, pets, laundry
 (window as any).__office.coaster = parts.coaster; // flrnoh fork: DER BRECHER
+(window as any).__office.venue = parts.places.venue; // flrnoh fork: the Schallwerk
 (window as any).__voice = parts.voice;
 (window as any).__sound = parts.sound;
 (window as any).__notify = parts.notifier;

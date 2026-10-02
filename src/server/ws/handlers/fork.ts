@@ -9,6 +9,7 @@ import { interiorFor } from '../../../shared/interiors.js';
 import type { Ctx } from '../../office/context.js';
 import type { Client } from '../../office/client.js';
 import { djMessage } from '../../djset.js';
+import { showOf } from './venueshow.js'; // flrnoh fork: the Schallwerk's show
 import { tvMessage } from '../../tv.js';
 import { tableMessage } from '../../tablegames.js';
 import { padelMessage } from '../../padel.js';
@@ -22,6 +23,7 @@ import { funshopHandlers } from './funshops.js';
 import { coasterHandlers, coasterHooks } from './coaster.js';
 import { karaokeHandlers } from './karaoke.js';
 import { bowlingHandlers } from './bowling.js';
+import { venueHandlers } from './venue.js';
 import { rideMessage } from '../../fork/ride.js';
 import { voiceRangeMessage } from '../../fork/voicerange.js';
 import { danceLeft, danceMessage } from '../../fork/dance.js';
@@ -65,6 +67,7 @@ const soccer = (ctx: Ctx, c: Client, msg: Parameters<Ctx['soccer']['message']>[1
 
 function dj(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: 'dj.play' | 'dj.stop' | 'dj.tap' | 'dj.volume' }>) {
   djMessage(ctx.djBooth, msg, { id: c.id, who: c.peer.name, onRoof: c.peer.floor === ROOF, toRoof: (m) => ctx.toRoof(m), warn: (t) => ctx.warn(c, t) });
+  if (msg.t === 'dj.volume') ctx.toVenue({ t: 'venuedj', state: showOf(ctx).djState() }); // the Schallwerk plays at the party's volume too
 }
 function tv(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: 'tv.play' | 'tv.stop' }>) {
   const floor = ctx.floorOf(c); // streams on the office TV (tv.ts)
@@ -176,6 +179,7 @@ export const forkHandlers = {
   ...coasterHandlers, // DER BRECHER, the roller coaster round the tower
   ...karaokeHandlers, // the bowling centre's karaoke bar (karaoke.ts)
   ...bowlingHandlers, // the bowling centre's cosmic switch and rental shoes
+  ...venueHandlers, // the Schallwerk's house: concert or club, the light desk, stamp, cloakroom, merch (venue.ts)
   'bike.ride': rideMessage, // a bike from the city's bike shop (fork/ride.ts)
   'bike.bell': rideMessage,
   'voice.range': voiceRangeMessage, // how far your voice carries (fork/voicerange.ts)

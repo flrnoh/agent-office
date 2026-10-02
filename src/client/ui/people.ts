@@ -4,6 +4,7 @@ import { GYM } from '../../shared/gym'; // fork
 import { HALL } from '../../shared/hall'; // fork
 import { SOCCER } from '../../shared/soccer'; // fork
 import { BOWLING } from '../../shared/bowling'; // fork
+import { VENUE } from '../../shared/venue'; // fork
 import { store } from '../state';
 import type { Voice } from '../voice';
 import { $, h } from './dom';
@@ -47,6 +48,8 @@ export function renderPeople(voice: Voice, onEditProfile: () => void, onWalkTo: 
             ? h('span.where', { title: 'In the soccer hall across the street' }, '⚽ Soccer Hall') // fork
             : p.floor === BOWLING
             ? h('span.where', { title: 'In the bowling centre next door' }, '🎳 Bowling') // fork
+            : p.floor === VENUE
+            ? h('span.where', { title: 'Im Schallwerk gegenüber' }, '🎸 Schallwerk') // fork
             : h('span.where', { title: 'On another floor' }, `🛗 ${store.floors.find((f) => f.id === p.floor)?.name ?? 'lobby'}`)
         : null,
       p.sharing ? h('span', { title: 'Sharing screen' }, '🖥️') : null,

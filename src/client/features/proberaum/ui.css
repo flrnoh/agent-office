@@ -1,0 +1,51 @@
+/* The rehearsal wing's windows (features/proberaum/ui.ts, recui.ts). */
+.pb-window { width: min(620px, calc(100vw - 32px)); }
+.pb-window h3 { margin: 16px 0 8px; font-size: 15px; font-weight: 900; }
+.pb-window .pb-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.pb-window .pb-row input[type=text] { flex: 1; min-width: 160px; }
+.pb-window .pb-meta { font-size: 12px; font-weight: 700; color: var(--muted); }
+.pb-window .pb-label { font-size: 13px; font-weight: 800; }
+.pb-cards { display: grid; gap: 10px; margin-top: 12px; }
+.pb-card { border: 3px solid var(--ink); border-radius: 14px; padding: 10px 12px; background: #fff; }
+.pb-card.focus { border-color: var(--accent); box-shadow: 0 0 0 3px #ffd9c7; }
+.pb-card-head { display: flex; gap: 8px; align-items: center; font-size: 16px; }
+.pb-card-head b { flex: 1; }
+.pb-chip { font-size: 12px; font-weight: 900; padding: 2px 10px; border-radius: 999px; border: 2px solid var(--ink); }
+.pb-chip.free { background: #c9f2d9; }
+.pb-chip.busy { background: #ffd0d0; }
+.pb-chip.rec { background: #e63946; color: #fff; }
+.pb-chip.play { background: #36e7ff; }
+.pb-band { font-weight: 900; font-size: 17px; margin-top: 6px; }
+.pb-members { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+.pb-member { display: inline-flex; align-items: center; gap: 4px; background: var(--paper-2); border: 2px solid var(--ink); border-radius: 999px; padding: 2px 4px 2px 10px; font-weight: 800; font-size: 13px; }
+.pb-member:not(:has(.pb-x)) { padding-right: 10px; }
+.pb-member .pb-x { padding: 0 6px; min-height: 0; font-size: 11px; border-radius: 999px; }
+.pb-knocks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; font-weight: 800; font-size: 13px; }
+.pb-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+.pb-swatches { display: flex; gap: 6px; }
+.pb-swatches .swatch { width: 26px; height: 26px; border-radius: 6px; border: 2px solid var(--ink); cursor: pointer; display: inline-block; }
+.pb-pins { list-style: none; padding: 0; margin: 12px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.pb-pins li { border: 2px solid var(--ink); border-radius: 6px; padding: 10px; box-shadow: 2px 3px 0 rgba(0, 0, 0, .25); display: flex; flex-direction: column; gap: 6px; }
+.pb-pins li.empty { background: none; box-shadow: none; border: none; }
+.pb-pin-text { white-space: pre-wrap; font-weight: 700; overflow-wrap: anywhere; }
+.pb-bandname { font-size: 30px; font-weight: 900; text-align: center; padding: 26px 8px; font-family: "Marker Felt", "Comic Sans MS", cursive; }
+.pb-polaroids { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.pb-polaroids li { display: flex; flex-direction: column; border: 2px solid var(--ink); border-radius: 10px; padding: 8px 10px; background: #fff; }
+.pb-recorder { width: min(720px, calc(100vw - 32px)); }
+.pb-timeline { width: 100%; height: auto; border: 3px solid var(--ink); border-radius: 12px; display: block; background: #10141c; }
+.pb-rec-status { font-weight: 900; font-size: 15px; margin-bottom: 8px; }
+.pb-rec-status.rec { color: #e63946; }
+.pb-rec-status.play { color: #118ab2; }
+.pb-inline { display: inline-flex !important; align-items: center; gap: 4px; margin: 0 !important; font-size: 13px !important; }
+.pb-bpm { width: 64px; font: inherit; font-weight: 800; border: 2px solid var(--ink); border-radius: 8px; padding: 4px 6px; }
+.pb-takes { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.pb-takes li { display: flex; gap: 6px; align-items: center; border: 2px solid var(--ink); border-radius: 12px; padding: 6px 8px; background: #fff; cursor: pointer; }
+.pb-takes li.sel { border-color: var(--accent); background: #fff1de; }
+.pb-takes li.playing { box-shadow: inset 4px 0 0 #118ab2; }
+.pb-takes li.empty { cursor: default; border: none; background: none; }
+.pb-takes .svc-main { flex: 1; min-width: 0; }
+.pb-takes .btn { padding: 4px 10px; }
+@media (max-width: 480px) {
+  .pb-window .pb-opts { flex-direction: column; align-items: flex-start; }
+  .pb-takes li { flex-wrap: wrap; }
+}

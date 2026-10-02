@@ -14,6 +14,7 @@ import { store } from '../../state';
 import { toast } from '../../ui/dom';
 import { Ring } from './rings';
 import { hearers, myVoiceRange, onMyVoiceRange, setMyVoiceRange } from './state';
+import { voiceWalled } from './walls';
 
 export interface VoiceRangeDeps {
   /** Where everyone else stands as drawn (features/peers), for their circles. */
@@ -69,7 +70,9 @@ export function installVoiceRange(ctx: Ctx, deps: VoiceRangeDeps) {
       const p = store.peers.get(id);
       const here = !!p && store.onMyFloor(p) && !p.lite;
       const d = here ? Math.hypot(p!.x - player.pos.x, p!.z - player.pos.z) : Infinity;
-      const on = here && (voice.selfOnPa || sendsVoice(d, myVoiceRange(), voice.sendingTo(id)));
+      // A wall in between (a rehearsal room's, walls.ts): not even the PA gets through.
+      const walled = here && voiceWalled({ floor: store.floor, x: player.pos.x, z: player.pos.z }, p!);
+      const on = here && !walled && (voice.selfOnPa || sendsVoice(d, myVoiceRange(), voice.sendingTo(id)));
       voice.setSending(id, on);
       if (on && p!.voice && voice.inVoice) names.push(p!.name);
     }

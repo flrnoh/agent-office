@@ -2,6 +2,7 @@ import { CITY_ROAD, CITY_WALK, LOTS, STREETS, stretchRect, type Stretch } from '
 import { mulberry32 } from './rng.js';
 import { onTankstelle } from './tankstelle.js';
 import { BOWLING_BOX } from './bowling.js';
+import { VENUE_BOX } from './venue.js';
 
 // flrnoh fork (see FORK.md): what stands along the city's streets, laid out once so the page that
 // draws it (client/world/town/furniture.ts, ground.ts) and the passers-by who sit on its benches and
@@ -54,10 +55,10 @@ export interface Lamp {
 /** What stands in a bin's slot, by where it is. */
 const BIN_SLOTS: FurnitureKind[] = ['pillar', 'bin', 'papers', 'pillar', 'bin'];
 
-/** Whether a building stands within `pad` of (x, z) (fork: the bowling centre on its block too). */
+/** Whether a building stands within `pad` of (x, z) (fork: the bowling centre on its block too, and the Schallwerk). */
 const built = (x: number, z: number, pad: number) =>
   LOTS.some((l) => Math.abs(x - l.x) < l.w / 2 + pad && Math.abs(z - l.z) < l.d / 2 + pad) ||
-  (x > BOWLING_BOX.minX - pad && x < BOWLING_BOX.maxX + pad && z > BOWLING_BOX.minZ - pad && z < BOWLING_BOX.maxZ + pad);
+  [BOWLING_BOX, VENUE_BOX].some((b) => x > b.minX - pad && x < b.maxX + pad && z > b.minZ - pad && z < b.maxZ + pad);
 
 /** The stretch's ends along it, its line, and whether it's close enough for furniture. */
 export function stretchSpan(s: Stretch): { from: number; to: number; line: number; near: boolean } {

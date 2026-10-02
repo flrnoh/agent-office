@@ -1,0 +1,36 @@
+/* The Schallwerk's windows (client/venue/ui.ts, booth.ts). */
+.vn-menu .svc-list li.vn-off { opacity: 0.45; cursor: not-allowed; }
+.vn-h { margin: 14px 0 8px; font-size: 15px; }
+.vn-h:first-child { margin-top: 0; }
+.vn-note { margin: 0 0 12px; }
+.vn-wide { margin-top: 12px; width: 100%; display: block; text-align: center; }
+.vn-merch { width: min(620px, calc(100vw - 32px)); }
+.vn-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.vn-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px; text-align: center; white-space: normal; height: auto; }
+.vn-card span { font-size: 12px; opacity: 0.8; font-weight: 400; }
+.vn-card em { font-style: normal; font-size: 12px; color: #c4121f; font-weight: 800; }
+.vn-card.on { outline: 3px solid #c4121f; }
+.vn-shirt { width: 96px; height: 96px; }
+.vn-desk { width: min(560px, calc(100vw - 32px)); }
+.vn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.vn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+.vn-mode { font-size: 18px; font-weight: 900; padding: 12px 0; }
+.vn-desk .btn.on { background: #c4121f; color: #fff; }
+.vn-mode.on[data-mode='club'] { background: #6a1fd1; }
+.vn-fx { position: relative; overflow: hidden; }
+.vn-fx.loading { opacity: 0.6; cursor: progress; }
+.vn-fx.loading::after { content: ''; position: absolute; left: 0; bottom: 0; height: 3px; width: calc(var(--load, 0) * 100%); background: #ffb347; }
+.vn-booth { width: min(560px, calc(100vw - 32px)); }
+.vn-booth .booth-stage { position: relative; display: flex; justify-content: center; }
+.vn-booth canvas, .vn-booth .vn-strip { max-width: 100%; border-radius: 6px; }
+.vn-booth .vn-strip { max-height: 60vh; }
+.vn-booth .vn-count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 96px; font-weight: 900; color: #fff; text-shadow: 0 4px 18px rgba(0, 0, 0, 0.6); pointer-events: none; }
+.vn-booth .vn-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.vn-booth .vn-flash.on { animation: vn-flash 0.35s ease-out; }
+@keyframes vn-flash { from { opacity: 1; } to { opacity: 0; } }
+.vn-booth .vn-poses { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; justify-content: center; }
+.vn-booth .vn-status { text-align: center; margin: 8px 0 0; }
+@media (max-width: 480px) {
+  .vn-cards { grid-template-columns: 1fr; }
+  .vn-row { grid-template-columns: 1fr; }
+}

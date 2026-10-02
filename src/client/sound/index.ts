@@ -64,6 +64,10 @@ import { KaraokeSound } from '../features/karaoke/sound'; // fork: the bowling c
 import { BowlingAmbience, bowlingSound, type BowlingSound } from '../bowling/sound'; // fork: the bowling centre
 import { minigolf, MinigolfLoops, type MinigolfSound } from '../features/minigolf/sound'; // fork: the bowling centre's mini golf
 import { BallRolls, bowlSound, type BowlSound } from '../features/bowlinggame/sound'; // fork: the bowling centre's lanes
+import { VenueSounds } from '../venue/sound'; // fork: the Schallwerk
+import { VenueShowSound } from '../features/venueshow/sound'; // fork: the Schallwerk's show
+import { InstrumentSound } from '../features/instruments/sound/engine'; // fork: the Schallwerk's instruments
+import { proberaumSound, type ProberaumSound } from '../features/proberaum/sound'; // fork: the Schallwerk's rehearsal wing
 
 // What the rest of the client imports from here.
 export type { Hall, Listener } from './core';
@@ -98,6 +102,12 @@ export class OfficeSound {
   private readonly city = new CitySound(this.a); // fork
   /** Fork: the bowling centre's karaoke bar: its band on the music volume, its crowd and mics (features/karaoke/sound.ts). */
   readonly karaoke = new KaraokeSound(this.a, () => this.music.musicBus ?? null, () => this.music.musicGain());
+  /** Fork: the Schallwerk's doors, stamp, bar, light desk and effects, and its air (client/venue/sound.ts). */
+  readonly venue = new VenueSounds(this.a);
+  /** Fork: the Schallwerk's show: its house mix on the music volume, its crowd (features/venueshow/sound.ts). */
+  readonly venueShow = new VenueShowSound(this.a, () => this.music.musicBus ?? null, () => this.music.musicGain());
+  /** Fork: the Schallwerk's instruments, on the music volume (features/instruments/sound/engine.ts). */
+  readonly instruments = new InstrumentSound(() => this.a.ctx, () => this.music.musicBus ?? null);
   /** A stream that won't play here. */
   onMusicError?: (text: string) => void;
   /** Fork: a stream the browser won't start before you click (autoplay rules). */
@@ -579,5 +589,9 @@ export class OfficeSound {
   /** Ball `id` rolling at `speed` m/s (in the gutter or not), every frame it rolls: it fades away without a call. */
   bowlRoll(id: number, at: Pos, speed: number, gutter: boolean) {
     this.bowlRolls.set(id, at, speed, gutter);
+  }
+  /** fork: the Schallwerk's rehearsal wing (features/proberaum/sound.ts): doors, knocks, coins, the click track (`delay` s), a room through its walls. */
+  proberaum(kind: ProberaumSound, at?: Pos, strength = 0.6, delay = 0, pitch = 48) {
+    proberaumSound(this.a, kind, at, strength, delay, pitch);
   }
 }

@@ -11,6 +11,7 @@ import { ROOF } from '../src/shared/rooftop.js';
 import { SHOPS } from '../src/shared/shops.js';
 import { SOCCER } from '../src/shared/soccer.js';
 import { BOWLING } from '../src/shared/bowling.js';
+import { VENUE } from '../src/shared/venue.js';
 
 test('every place and shop is on the map, once', () => {
   const ids = ALL_POIS.map((p) => p.id);
@@ -24,7 +25,7 @@ test('every place and shop is on the map, once', () => {
     assert.ok(p.icon && p.name, `${p.id} has an icon and a name`);
   }
   assert.equal(SHOPS_ON_MAP.length, SHOPS.length, 'one mark for each shop');
-  for (const id of ['tankstelle', 'kino', 'baumarkt', CASINO, GYM, HALL, SOCCER, BOWLING, 'beach']) assert.ok(PLACES_ON_MAP.some((p) => p.id === id), `${id} is on the map`);
+  for (const id of ['tankstelle', 'kino', 'baumarkt', CASINO, GYM, HALL, SOCCER, BOWLING, VENUE, 'beach']) assert.ok(PLACES_ON_MAP.some((p) => p.id === id), `${id} is on the map`);
 });
 
 test('the way home ends at the foot of the steps up to the office door, off the street', () => {
@@ -33,7 +34,7 @@ test('the way home ends at the foot of the steps up to the office door, off the 
 });
 
 test('inside a place of its own you show up at its building; on a floor or the roof, where you stand', () => {
-  for (const id of [CASINO, GYM, HALL, SOCCER, BOWLING]) {
+  for (const id of [CASINO, GYM, HALL, SOCCER, BOWLING, VENUE]) {
     const at = placeSpot(id);
     const door = PLACES_ON_MAP.find((p) => p.id === id)!;
     assert.ok(at, `${id} has a spot on the map`);
