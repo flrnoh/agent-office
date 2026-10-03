@@ -201,6 +201,7 @@ export function buildDetails(p: ThermeParts): Details {
     f.userData.noOutline = true;
     p.group.add(f);
     torches.push(f);
+    p.halos.push({ x, y: 2, z, color: '#ff9a3c' });
   }
   // A light by every slide's gate: green to go, red while you're on that slide.
   const lights = new Map<SlideId, THREE.MeshBasicMaterial>();

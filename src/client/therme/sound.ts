@@ -179,4 +179,47 @@ export class ThermeSounds {
     src.start(t0, Math.random());
     src.stop(t0 + 0.35);
   }
+
+  /** The stove in a sauna: a crackle, a stone ticking in the heat. */
+  crackle(at: Pos) {
+    const ctx = this.a.ctx;
+    if (!ctx) return;
+    const out = this.a.panner(at, 2, 1.2);
+    out.connect(this.a.ambience);
+    const t0 = ctx.currentTime + 0.01;
+    const n = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) {
+      const t = t0 + i * rand(0.02, 0.09);
+      const src = this.a.noise(this.a.buf.white);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(rand(0.03, 0.07), t + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.0008, t + rand(0.03, 0.08));
+      src.connect(biquad(ctx, 'bandpass', rand(1800, 3800), 2.5)).connect(g).connect(out);
+      src.start(t, Math.random());
+      src.stop(t + 0.1);
+    }
+  }
+
+  /** Water on the hot stones (or the steam bath's generator puffing): a hiss that swells and dies away. */
+  hiss(at: Pos, strength = 1) {
+    const ctx = this.a.ctx;
+    if (!ctx) return;
+    this.a.count('therme.hiss');
+    const out = this.a.panner(at, 2.5, 1.1);
+    out.connect(this.a.ambience);
+    const t0 = ctx.currentTime + 0.01;
+    const len = rand(1.6, 2.6);
+    const src = this.a.noise(this.a.buf.white, true);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(0.11 * strength, t0 + 0.12);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + len);
+    const hp = biquad(ctx, 'highpass', 2400, 0.7);
+    hp.frequency.setValueAtTime(3600, t0);
+    hp.frequency.linearRampToValueAtTime(1800, t0 + len);
+    src.connect(hp).connect(g).connect(out);
+    src.start(t0, Math.random());
+    src.stop(t0 + len + 0.05);
+  }
 }

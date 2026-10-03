@@ -19,6 +19,8 @@ export interface ThermeParts {
   still: THREE.Group;
   colliders: Collider[];
   interactables: Interactable[];
+  /** Where a lamp, lantern or torch glows: a soft halo there after dark (world/therme/index.ts). */
+  halos: { x: number; y: number; z: number; color: string }[];
 }
 
 export const wrap = (t: THREE.CanvasTexture, x = 1, y = 1) => {

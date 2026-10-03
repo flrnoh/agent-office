@@ -15,9 +15,10 @@ import type { ThermeSounds } from './sound';
 import { zoneAt } from '../../shared/therme';
 import { openBoards, openLift } from './slide-ui';
 import { LANDING, LEVELS, LIFT_DOOR, SLIDE_BY_ID, TOWER } from '../../shared/therme-slides';
-import { SAUNA_BY_ID } from '../../shared/therme-dorf';
 import { thermeSeat } from './loungers';
 import { DorfLife } from './dorf-life';
+import { SaunaFeel } from './sauna-feel';
+import { SAUNA_BY_ID, inRuhehaus, saunaAt, stoveOf } from '../../shared/therme-dorf';
 import { LOBBY_ARRIVAL, THERME_STREET_SPOT } from '../../shared/therme-street';
 import { streetBelow } from '../../shared/layout';
 import { toast } from '../ui/dom';
@@ -99,6 +100,9 @@ export class ThermePlace {
   private night = new THREE.Color('#ffd2a1');
   private ground = new THREE.Color('#8a7a60');
   private light = new THREE.Color();
+  /** Outside after dark: the lanterns' warm light. */
+  private lamp = new THREE.Color('#ffcf98');
+  private lampGround = new THREE.Color('#5e4a36');
 
   /** Swimming in any of the baths' pools (client/swim/, the pools in shared/therme-all.ts). */
   readonly swim: Swimmer;
@@ -109,6 +113,12 @@ export class ThermePlace {
   private hornFor = 0;
   /** The Saunadorf's goings-on, the showers, buckets and ice (client/therme/dorf-life.ts). */
   private dorf: DorfLife | null = null;
+  /** How a sauna feels from in front of the screen (client/therme/sauna-feel.ts). */
+  private feel: SaunaFeel;
+  /** In a hut (a sauna, the Ruhehaus): its own light, out of the weather. */
+  private inHut = false;
+  private hissAt = 0;
+  private lastPour = 0;
   /** Out at the lagoon, under the open sky (the weather falls there). */
   private outdoors = false;
   /** The other bathers (client/therme/bathers.ts). */
@@ -125,6 +135,7 @@ export class ThermePlace {
     }, () => host.now());
     this.rider = new SlideRider({ player: host.player, camera: host.camera as THREE.PerspectiveCamera, send: (m) => host.send(m), sound: (k) => host.sound(k), renderer: host.renderer, scene: host.scene, me: () => host.me(), name: () => host.name() });
     this.rider.onBoards = () => this.rider.drawBoard();
+    this.feel = new SaunaFeel(host.renderer.domElement);
     this.loungers = new ThermeLoungers({ you: () => host.you(), people: () => host.people(), player: host.player, me: () => host.me(), npc: (id) => !!this.bathers?.takes(id) });
   }
 
@@ -158,7 +169,7 @@ export class ThermePlace {
     if (!this.room) {
       this.room = buildThermeInterior();
       this.bathers = new Bathers(this.room.group);
-      this.dorf = new DorfLife(this.room, { camera: this.host.camera, audio: this.host.audio });
+      this.dorf = new DorfLife(this.room, { camera: this.host.camera, audio: this.host.audio, cool: () => this.feel.cool() });
       this.host.noOutline(this.room.group);
       this.room.group.visible = false;
       this.host.scene.add(this.room.group);
@@ -255,6 +266,7 @@ export class ThermePlace {
       if (this.room) this.room.group.visible = false;
       this.swim.release();
       this.rider.stop();
+      this.feel.clear();
       this.loungers.clear();
       this.host.audio.air(0, 0);
       if (this.host.player.seat?.seatId?.startsWith('therme-')) this.host.player.stand();
@@ -381,9 +393,10 @@ export class ThermePlace {
     const me = this.host.player.pos;
     const now = this.host.now();
     const temp = this.host.temp();
-    this.room.update(t, dt, now, me, temp === undefined ? 0 : Math.max(0, Math.min(1, (10 - temp) / 14)));
-    // In the sauna garden and out at the lagoon it's outdoors: the rain and the snow fall there, not under the dome.
-    const outdoors = underSky(me.x, me.z);
+    this.room.update(t, dt, now, me, temp === undefined ? 0 : Math.max(0, Math.min(1, (10 - temp) / 14)), 1 - Math.max(0, Math.min(1, this.host.daylight() * 1.6)));
+    // In the sauna garden and out at the lagoon it's outdoors: the rain and the snow fall there, not under the dome (nor in a hut).
+    this.inHut = !!saunaAt(me.x, me.y, me.z) || inRuhehaus(me.x, me.z);
+    const outdoors = underSky(me.x, me.z) && !this.inHut;
     if (outdoors !== this.outdoors) {
       this.outdoors = outdoors;
       this.host.setIndoors(!outdoors);
@@ -398,6 +411,7 @@ export class ThermePlace {
     }
     if (!this.rider.riding) this.swim.tick(dt);
     this.dorf?.update(me, this.host.player.moving, now, t, dt);
+    this.sauna(me, now, t, dt);
     const people = this.host.people();
     this.rider.update(t, people, this.host.you());
     this.room.details.update(t, this.rider.riding && this.rider.riding.countdown <= 0 ? this.rider.riding.slide : null);
@@ -434,19 +448,66 @@ export class ThermePlace {
     }
   }
 
-  /** Under the dome it's as light as it is outside: the sun by day; at night the dome goes dark and the hall's own warm light takes over. */
+  /** A sauna's heat, steam and sweat (sauna-feel.ts), and its sounds: the stove crackling, the stones hissing as the Aufguss is poured, the steam bath's generator puffing. */
+  private sauna(me: THREE.Vector3, now: number, t: number, dt: number) {
+    const cold = this.swim.swimming && (this.swim.pool?.id === 'therme-pond' || this.swim.pool?.id === 'therme-plunge');
+    this.feel.update(me.x, me.y, me.z, now, dt, cold);
+    const f = this.feel.feel;
+    if (!f.sauna) return;
+    const st = stoveOf(f.sauna);
+    const at = { x: (st.minX + st.maxX) / 2, y: 1, z: (st.minZ + st.maxZ) / 2 };
+    if (f.sauna.look !== 'tile' && Math.random() < dt * (0.6 + f.heat * 2)) this.host.audio.crackle(at);
+    // A hiss with each ladle as the Saunameister pours (the waves of the pour), a puff every few seconds in the steam bath.
+    if (f.pour > 0.92 && this.lastPour <= 0.92) this.host.audio.hiss(at, 1);
+    if (f.sauna.look === 'tile' && t - this.hissAt > 7) {
+      this.hissAt = t + Math.random() * 3;
+      this.host.audio.hiss(at, 0.5);
+    }
+    this.lastPour = f.pour;
+  }
+
+  /**
+   * The light: under the dome as light as it is outside (the sun by day; at night the dome goes dark
+   * and the hall's own warm light takes over). Outside (the sauna garden, the lagoon) the sky lights
+   * it, but never darker than its lanterns and lamps would keep it, warm after dark. In a hut, its own
+   * dim warm light (the steam bath's cool and white). In a sauna's steam, the room fills with it.
+   */
   mood(lights: { sun: THREE.DirectionalLight; hemi: THREE.HemisphereLight; ambient: THREE.AmbientLight; scene: THREE.Scene }) {
     if (!this.active) return;
-    const fog0 = lights.scene.fog as THREE.Fog | null;
-    if (this.outdoors) {
-      // Outside, the sky lights it as it is.
-      if (fog0) {
-        fog0.near = 600;
-        fog0.far = 800;
+    const d = Math.max(0, Math.min(1, this.host.daylight()));
+    const fog = lights.scene.fog as THREE.Fog | null;
+    if (fog) {
+      fog.near = 600;
+      fog.far = 800;
+    }
+    if (this.inHut) {
+      const f = this.feel.feel;
+      const steamy = f.sauna?.look === 'tile';
+      lights.sun.intensity *= 0.1;
+      lights.hemi.color.set(steamy ? '#dcecf5' : f.sauna?.look === 'salt' ? '#ffb39a' : '#ffb26b');
+      lights.hemi.groundColor.set(steamy ? '#7d8d96' : '#5a3a20');
+      lights.hemi.intensity = steamy ? 1.1 : 0.95;
+      lights.ambient.color.set(steamy ? '#eef6fa' : '#ffc890');
+      lights.ambient.intensity = steamy ? 0.6 : 0.5;
+      // The steam: the room fills with it, the far wall going white.
+      if (fog && f.steam > 0.02) {
+        fog.color.set(steamy ? '#eef3f5' : '#f2e6d8');
+        // Thick in the steam bath: you see the bench across, not the far wall's tiles.
+        fog.near = 0.6 + (1 - f.steam) * 6;
+        fog.far = 5.5 + (1 - f.steam) * 24;
       }
       return;
     }
-    const d = Math.max(0, Math.min(1, this.host.daylight()));
+    if (this.outdoors) {
+      // Outside, the sky lights it as it is, but the garden's and the beach's lamps keep it from going dark.
+      const n = 1 - d;
+      lights.hemi.intensity = Math.max(lights.hemi.intensity, 1.15 + 0.25 * d);
+      lights.ambient.intensity = Math.max(lights.ambient.intensity, 0.56 + 0.06 * d);
+      lights.hemi.color.lerp(this.lamp, n * 0.55);
+      lights.hemi.groundColor.lerp(this.lampGround, n * 0.5);
+      lights.ambient.color.lerp(this.lamp, n * 0.45);
+      return;
+    }
     this.light.copy(this.night).lerp(this.day, d);
     lights.sun.intensity *= 0.85;
     lights.hemi.color.copy(this.light);
@@ -454,10 +515,5 @@ export class ThermePlace {
     lights.hemi.intensity = 1.0 + 0.5 * d;
     lights.ambient.color.copy(this.light);
     lights.ambient.intensity = 0.6 + 0.3 * d;
-    const fog = lights.scene.fog as THREE.Fog | null;
-    if (fog) {
-      fog.near = 600;
-      fog.far = 800;
-    }
   }
 }

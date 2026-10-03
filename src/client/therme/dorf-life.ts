@@ -21,6 +21,8 @@ type Hint = { k: string; parts: (HTMLElement | string)[] };
 export interface DorfLifeHost {
   camera: THREE.Camera;
   audio: ThermeSounds;
+  /** Cold water over you (a shower, a bucket, the ice): the sweat washed off (sauna-feel.ts). */
+  cool(): void;
 }
 
 export class DorfLife {
@@ -98,6 +100,7 @@ export class DorfLife {
       const s = SHOWERS[it.thermeIndex ?? 0];
       this.room.decor.pour(s.x, s.z + 0.5, SHOWER_HEIGHT - 0.15, false);
       this.host.audio.pour({ x: s.x, y: 2, z: s.z + 0.5 }, 4);
+      this.host.cool();
       toast('🚿 Abgeduscht: warm von oben, jetzt darfst du ins Becken');
     } else if (it.thermeUse === 'bucket') {
       const i = it.thermeIndex ?? 0;
@@ -105,9 +108,11 @@ export class DorfLife {
       this.room.garden.tip(i);
       window.setTimeout(() => this.room.decor.pour(b.x, b.z, 2.45, true), 280);
       this.host.audio.pour({ x: b.x, y: 2.5, z: b.z }, 1.3, true);
+      this.host.cool();
       toast('🪣 Schwall! Ein Eimer eiskaltes Wasser über den Kopf');
     } else if (it.thermeUse === 'ice') {
       this.host.audio.crunch({ x: ICE_FOUNTAIN.x, y: 1, z: ICE_FOUNTAIN.z });
+      this.host.cool();
       toast('🧊 Mit Crushed Ice abgerieben: herrlich frisch nach der Sauna');
     }
     return true;

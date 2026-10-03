@@ -16,6 +16,7 @@ import { buildGarden, type Garden } from './garden';
 import { buildPoolDecor, type PoolDecor } from './decor';
 import { buildDetails, type Details } from './details';
 import type { Person } from '../character';
+import { softDot } from '../gym/textures';
 
 /*
  * Inside the thermal baths (flrnoh fork, see FORK.md "The thermal baths"): a place of its own, built
@@ -48,15 +49,35 @@ export interface ThermeInterior {
   decor: PoolDecor;
   /** The finishing touches (world/therme/details.ts): its lights by the slides' gates go red for the one you're on. */
   details: Details;
-  /** Every frame inside; `now` is the office's clock (the waves), `me` where you are (what's far off doesn't bubble). */
-  update(t: number, dt: number, now: number, me: THREE.Vector3, cold: number): void;
+  /** Every frame inside; `now` is the office's clock (the waves), `me` where you are (what's far off doesn't bubble), `dark` how dark it is outside (0 day … 1 night: the lanterns' halos). */
+  update(t: number, dt: number, now: number, me: THREE.Vector3, cold: number, dark: number): void;
+}
+
+/** The lanterns' and torches' halos: soft additive dots, one draw call for all of them, showing after dark. */
+function buildHalos(list: ThermeParts['halos']): { points: THREE.Points; mat: THREE.PointsMaterial } {
+  const pos = new Float32Array(list.length * 3);
+  const col = new Float32Array(list.length * 3);
+  const c = new THREE.Color();
+  list.forEach((h, i) => {
+    pos.set([h.x, h.y, h.z], i * 3);
+    c.set(h.color);
+    col.set([c.r, c.g, c.b], i * 3);
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  const mat = new THREE.PointsMaterial({ size: 3.2, map: softDot(), vertexColors: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true });
+  mat.toneMapped = false;
+  const points = new THREE.Points(geo, mat);
+  points.userData.noOutline = true;
+  return { points, mat };
 }
 
 export function buildThermeInterior(): ThermeInterior {
   const group = new THREE.Group();
   group.name = 'therme';
   const still = new THREE.Group();
-  const p: ThermeParts = { group, still, colliders: thermeFixtures().map(({ minX, maxX, minZ, maxZ, top, bottom }) => ({ minX, maxX, minZ, maxZ, top, bottom })), interactables: [] };
+  const p: ThermeParts = { group, still, colliders: thermeFixtures().map(({ minX, maxX, minZ, maxZ, top, bottom }) => ({ minX, maxX, minZ, maxZ, top, bottom })), interactables: [], halos: [] };
   buildShell(p);
   const { exit } = buildWayIn(p);
   const paradies = buildParadies(p);
@@ -70,6 +91,8 @@ export function buildThermeInterior(): ThermeInterior {
   const decor = buildPoolDecor(p);
   const details = buildDetails(p);
   group.add(mergeByColor(still));
+  const halos = buildHalos(p.halos);
+  group.add(halos.points);
   // No toon outline round what's marked so (water, glass, pick boxes, signs): it's the material that says (core/outline.ts).
   group.traverse((o) => {
     const m = o as THREE.Mesh;
@@ -90,7 +113,9 @@ export function buildThermeInterior(): ThermeInterior {
     garden,
     decor,
     details,
-    update: (t, dt, now, me, cold) => {
+    update: (t, dt, now, me, cold, dark) => {
+      halos.mat.opacity = 0.85 * dark;
+      halos.points.visible = dark > 0.02;
       garden.update(t, dt, cold, me);
       decor.update(t, dt);
       paradies.update(t, dt, me);
