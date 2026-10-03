@@ -125,9 +125,7 @@ function plot(p: ThermeParts) {
 export function buildWayIn(p: ThermeParts): { exit: Interactable } {
   const exit = passage(p);
   for (const d of DOORS) if (d.shut) hoarding(p, d);
-  const par = ZONES.paradies;
   const rut = ZONES.rutschen;
-  standSign(p, 'THERMENPARADIES', 'unter der Kuppel · Thermalbecken · Schwimmbar · demnächst', (par.minX + par.maxX) / 2, 34, Math.PI);
   standSign(p, 'WELLENBAD', 'Wellen alle 20 Minuten · demnächst', (WELLENBAD.minX + WELLENBAD.maxX) / 2, WELLENBAD.minZ - 4, Math.PI);
   standSign(p, 'RUTSCHENWELT', 'Rutschenturm · 30 m · acht Rutschen · demnächst', (rut.minX + rut.maxX) / 2, 40, -Math.PI / 2);
   plot(p);

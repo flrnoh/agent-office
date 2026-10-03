@@ -1,17 +1,20 @@
 import * as THREE from 'three';
-import { thermeFixtures } from '../../../shared/therme';
+import { thermeFixtures } from '../../../shared/therme-all';
 import type { Collider, Interactable } from '../types';
 import { mergeByColor } from '../toon';
 import { buildWayIn } from './gang';
 import type { ThermeParts } from './kit';
 import { buildShell } from './shell';
+import { buildParadies } from './paradies';
+import { buildGrotto } from './grotto';
+import type { Person } from '../character';
 
 /*
  * Inside the thermal baths (flrnoh fork, see FORK.md "The thermal baths"): a place of its own, built
  * the first time anyone goes in (client/therme/place.ts), in the baths' own coordinates (shared/
- * therme.ts, the floor at y 0). Phase 0 is the empty house: the shell under the glass dome, the
- * passage from the gym with its door back, the zones' doors shut, signs where each part is coming.
- * Each phase adds its part here.
+ * therme.ts, the floor at y 0): the shell under the glass dome, the passage from the gym with its
+ * door back, the zones' doors that are shut for now, signs where each part is coming; the
+ * Thermenparadies (paradies.ts, grotto.ts, palms.ts). Each phase adds its part here.
  */
 
 export interface ThermeInterior {
@@ -21,7 +24,11 @@ export interface ThermeInterior {
   pickables: THREE.Object3D[];
   /** The way back to the gym (E at the passage's door). */
   exit: Interactable;
-  update(t: number, dt: number): void;
+  /** The swim-up bar's counter, and who's behind it. */
+  bar: Interactable;
+  bartender: Person;
+  /** Every frame inside; `me` is where you are (what's far off doesn't bubble). */
+  update(t: number, dt: number, me: THREE.Vector3): void;
 }
 
 export function buildThermeInterior(): ThermeInterior {
@@ -31,6 +38,20 @@ export function buildThermeInterior(): ThermeInterior {
   const p: ThermeParts = { group, still, colliders: thermeFixtures().map(({ minX, maxX, minZ, maxZ, top, bottom }) => ({ minX, maxX, minZ, maxZ, top, bottom })), interactables: [] };
   buildShell(p);
   const { exit } = buildWayIn(p);
+  const paradies = buildParadies(p);
+  const grotto = buildGrotto(p);
   group.add(mergeByColor(still));
-  return { group, colliders: p.colliders, interactables: p.interactables, pickables: [group], exit, update: () => {} };
+  return {
+    group,
+    colliders: p.colliders,
+    interactables: p.interactables,
+    pickables: [group],
+    exit,
+    bar: paradies.bar,
+    bartender: paradies.bartender,
+    update: (t, dt, me) => {
+      paradies.update(t, dt, me);
+      grotto.update(t, dt, me);
+    },
+  };
 }

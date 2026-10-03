@@ -1,7 +1,15 @@
 import * as THREE from 'three';
 import { GYM } from '../../shared/gym';
-import { GYM_FROM_THERME, THERME, THERME_ARRIVAL, THERME_BOX, THERME_NAME, inTherme, thermeWhereabouts } from '../../shared/therme';
+import { GYM_FROM_THERME, THERME, THERME_ARRIVAL, THERME_BOX, THERME_NAME, inTherme } from '../../shared/therme';
 import type { ClientMsg, ServerMsg } from '../../shared/protocol';
+import type { SeatPlace } from '../../shared/layout';
+import type { Drink } from '../../shared/rooftop';
+import { THERME_POOLS, thermeWhereabouts as whereIn } from '../../shared/therme-all';
+import { BARTENDER, BAR_COUNTER, SWIMBAR_MENU } from '../../shared/therme-paradies';
+import { Swimmer } from '../swim';
+import { ThermeLoungers } from './loungers';
+import { openVenueMenu } from '../venue/ui';
+import type { Person } from '../world/character';
 import type { Collider, Interactable } from '../world/types';
 import { buildThermeInterior, type ThermeInterior } from '../world/therme';
 
@@ -20,7 +28,7 @@ import { buildThermeInterior, type ThermeInterior } from '../world/therme';
 type Spot = { x: number; y: number; z: number; rotY: number };
 type Room = { minX: number; maxX: number; minZ: number; maxZ: number; wall: number; enclosed: boolean };
 
-export type ThermeSoundKind = 'door';
+export type ThermeSoundKind = 'door' | 'splash' | 'stroke' | 'pour' | 'ladder';
 
 export interface ThermeHost {
   scene: THREE.Scene;
@@ -29,7 +37,7 @@ export interface ThermeHost {
   floor(): string | null;
   /** On the office's map (the gym, and so the baths, are only on its street). */
   inOffice(): boolean;
-  player: { pos: THREE.Vector3; colliders: Collider[]; room: Room };
+  player: { pos: THREE.Vector3; colliders: Collider[]; room: Room; seat: SeatPlace | null; sit(p: SeatPlace): void; stand(): void } & ConstructorParameters<typeof Swimmer>[0];
   showOffice(on: boolean): void;
   officeColliders(): Collider[];
   officeRoom(): Room;
@@ -39,6 +47,15 @@ export interface ThermeHost {
   sound(kind: ThermeSoundKind): void;
   /** How much daylight there is outside (0 night … 1 noon): the dome lets it in. */
   daylight(): number;
+  /** The office's clock (ms): the waves and currents go by it. */
+  now(): number;
+  you(): string;
+  /** Everyone in the baths (you too), where they are and their bodies. */
+  people(): { id: string; x: number; y: number; z: number; moving: boolean; person: Person | undefined }[];
+  me(): Person;
+  /** Handed over the bar: into your hand (like the Schallwerk's). */
+  served(d: Drink): void;
+  cutOff(): boolean;
 }
 
 export class ThermePlace {
@@ -53,7 +70,44 @@ export class ThermePlace {
   private ground = new THREE.Color('#8a7a60');
   private light = new THREE.Color();
 
-  constructor(private host: ThermeHost) {}
+  /** Swimming in any of the baths' pools (client/swim/, the pools in shared/therme-all.ts). */
+  readonly swim: Swimmer;
+  private loungers: ThermeLoungers;
+
+  constructor(private host: ThermeHost) {
+    this.swim = new Swimmer(host.player, () => THERME_POOLS, {
+      splash: () => host.sound('splash'),
+      stroke: () => host.sound('stroke'),
+      out: () => host.sound('ladder'),
+    }, () => host.now());
+    this.loungers = new ThermeLoungers({ you: () => host.you(), people: () => host.people(), player: host.player, me: () => host.me() });
+  }
+
+  /** Swimming up at the bar's counter (E there orders, not climbs out). */
+  get atBar(): boolean {
+    const p = this.host.player.pos;
+    const C = BAR_COUNTER;
+    return this.active && p.x > C.minX - 2.6 && p.x < C.maxX + 0.5 && p.z > C.minZ - 0.6 && p.z < C.maxZ + 0.6;
+  }
+
+  /** The bar's menu: Kai mixes it and slides it across the counter. */
+  bar() {
+    this.host.sound('pour');
+    openVenueMenu({
+      title: '🍹 Schwimmbar',
+      doing: '🍹 at the swim-up bar',
+      footer: 'Alles aufs Haus. Im Wasser schmeckt’s doppelt.',
+      menu: SWIMBAR_MENU,
+      cut: this.host.cutOff(),
+      cutNote: 'Kai meint, für jetzt lieber ein Wasser',
+      order: (d) => {
+        this.host.sound('pour');
+        window.setTimeout(() => {
+          if (this.active) this.host.served(d);
+        }, 1100);
+      },
+    });
+  }
 
   private theRoom(): ThermeInterior {
     if (!this.room) {
@@ -112,6 +166,9 @@ export class ThermePlace {
       this.host.setIndoors(true);
     } else {
       if (this.room) this.room.group.visible = false;
+      this.swim.release();
+      this.loungers.clear();
+      if (this.host.player.seat?.seatId?.startsWith('therme-')) this.host.player.stand();
       this.host.showOffice(true);
       this.host.player.colliders = this.host.officeColliders();
       this.host.player.room = this.host.officeRoom();
@@ -145,8 +202,16 @@ export class ThermePlace {
     this.backToGym = false;
   }
 
-  /** E at the door (either side of it). True when it was the baths'. */
+  /** E at the door (either side of it), a lounger or the bar. True when it was the baths'. */
   use(it: Interactable, key: string): boolean {
+    if (it.kind === 'thermeseat') {
+      if (key === 'E' && it.seatId && !this.swim.swimming) this.loungers.lie(it.seatId);
+      return true;
+    }
+    if (it.kind === 'thermebar') {
+      if (key === 'E') this.bar();
+      return true;
+    }
     if (it.kind !== 'therme') return false;
     if (key === 'E') {
       if (this.active) this.leave();
@@ -156,6 +221,8 @@ export class ThermePlace {
   }
 
   hint(it: Interactable, title: (t: string) => HTMLElement, key: (k: string, label: string) => HTMLElement, aside: (t: string) => HTMLElement): { k: string; parts: (HTMLElement | string)[] } | null {
+    if (it.kind === 'thermeseat') return this.host.player.seat?.seatId === it.seatId ? { k: 'therme-up', parts: [title('🏖️ Liege'), key('E', 'Get up')] } : { k: 'therme-lie', parts: [title('🏖️ Liege'), aside('unter Palmen'), key('E', 'Lie down')] };
+    if (it.kind === 'thermebar') return { k: 'therme-bar', parts: [title('🍹 Schwimmbar'), aside('Cocktails · Bier · Wein · Wasser'), key('E', 'Order')] };
     if (it.kind !== 'therme') return null;
     if (this.active) return { k: 'therme-out', parts: [title('🚪 Gym'), aside('Schwimmhalle · Untergeschoss'), key('E', 'Back to the gym')] };
     return { k: 'therme-in', parts: [title(`🌴 ${THERME_NAME}`), aside('Thermalbad · geöffnet'), key('E', 'Go in')] };
@@ -163,14 +230,28 @@ export class ThermePlace {
 
   title(): { name: string; meta: string } {
     const p = this.host.player.pos;
-    return { name: `🌴 ${THERME_NAME}`, meta: thermeWhereabouts(p.x, p.z).replace(/^\S+\s/, '') };
+    return { name: `🌴 ${THERME_NAME}`, meta: whereIn(p.x, p.y, p.z).replace(/^\S+\s/, '') };
   }
 
   onMessage(_msg: ServerMsg) {}
 
   update(t: number, dt: number) {
     if (!this.active || !this.room) return;
-    this.room.update(t, dt);
+    const me = this.host.player.pos;
+    this.room.update(t, dt, me);
+    this.swim.tick(dt);
+    const people = this.host.people();
+    this.swim.pose(people.filter((q): q is typeof q & { person: Person } => !!q.person));
+    this.loungers.pose();
+    // Kai behind the bar turns to whoever swims up.
+    const b = this.room.bartender;
+    b.update(dt, t, false, false);
+    const near = Math.hypot(me.x - BARTENDER.x, me.z - BARTENDER.z) < 7;
+    const to = near ? Math.atan2(me.x - BARTENDER.x, me.z - BARTENDER.z) : BARTENDER.rotY;
+    let d = to - b.root.rotation.y;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    b.root.rotation.y += d * Math.min(1, dt * 4);
   }
 
   /** Under the dome it's as light as it is outside: the sun by day; at night the dome goes dark and the hall's own warm light takes over. */

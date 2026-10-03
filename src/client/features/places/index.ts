@@ -70,6 +70,8 @@ declare module '../../world/types' {
     venueseat: true;
     venuepart: true;
     therme: true;
+    thermeseat: true;
+    thermebar: true;
   }
 }
 
@@ -197,7 +199,26 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     },
   });
   // The thermal baths behind the gym (client/therme): through the glass door at the end of its basement's passage.
-  const therme = new ThermePlace({ ...host, sound: () => ctx.sound.padelHall('door'), daylight: () => ctx.sky.daylight });
+  const therme = new ThermePlace({
+    ...host,
+    sound: (k) => (k === 'door' ? ctx.sound.padelHall('door') : k === 'pour' ? ctx.sound.padelHall('pour') : k === 'stroke' ? ctx.sound.gym('whoosh') : ctx.sound.gym('splash')),
+    daylight: () => ctx.sky.daylight,
+    now: () => store.officeNow(),
+    you: () => store.you,
+    people: () =>
+      [...store.peers.values()]
+        .filter((p) => p.floor === THERME)
+        .map((p) => (p.id === store.you ? { id: p.id, x: player.pos.x, y: player.pos.y, z: player.pos.z, moving: player.moving, person: ctx.me } : { id: p.id, x: p.x, y: p.y, z: p.z, moving: p.moving, person: parts.peers.remotes.get(p.id)?.person })),
+    me: () => ctx.me,
+    served: (d: Drink) => {
+      deps.booze().drink(d, performance.now() / 1000);
+      deps.reach();
+      ctx.sound.opener(d.glass === 'pint' || d.glass === 'bottle' ? 'bottle' : 'can');
+      if (ctx.player.view === 'first') ctx.hands.sip();
+      toast(`${d.emoji} ${d.name}. ${(d as Drink & { says?: string }).says ?? 'Zum Wohl!'}`);
+    },
+    cutOff: () => deps.booze().cutOff(performance.now() / 1000),
+  });
   // The baths last: going back to the gym, they put you by their door after the gym has had its say.
   const all = [casino, gym, hall, soccer, bowling, venue, therme] as const;
 
@@ -249,6 +270,9 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   ctx.interactions.define('venueseat', { reach: 3, hint: hintIn(venue), use });
   // The glass door between the gym's basement and the baths, from either side.
   ctx.interactions.define('therme', { reach: 3.5, hint: hintIn(therme), use });
+  // The baths' loungers and the swim-up bar (client/therme).
+  ctx.interactions.define('thermeseat', { reach: 2.5, hint: hintIn(therme), use });
+  ctx.interactions.define('thermebar', { reach: 4, hint: hintIn(therme), use });
   ctx.interactions.define('padel', {
     reach: 5,
     hint: (it) => {
@@ -281,6 +305,41 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
       return false;
     },
     hint: (el) => ctx.hint.draw(el, `gympool|${lap.atEdge}`, () => [hintTitle('🏊 Lap pool'), aside('wall to wall: a timed length'), key('W A S D', 'Swim'), key('Shift', 'Faster'), key('Space', 'Splash'), ...(lap.atEdge ? [key('E', 'Climb out')] : [])]),
+    hidesHands: true,
+  });
+
+  // Fork: swimming in the thermal baths' pools (client/swim/, client/therme): the keys and the hint bar while you're in.
+  const bath = therme.swim;
+  ctx.activities.add({
+    id: 'thermeswim',
+    active: () => bath.swimming,
+    stop: (why) => {
+      if (why !== 'walk' && why !== 'errand') bath.leave();
+    },
+    key: (e) => {
+      if (e.code === 'KeyE' && therme.atBar) {
+        if (!e.repeat) therme.bar();
+        return true;
+      }
+      if (e.code === 'KeyE' && bath.atEdge) {
+        if (!e.repeat) bath.climbOut();
+        return true;
+      }
+      if (e.code === 'Space') {
+        if (!e.repeat) ctx.sound.gym('splash');
+        return true;
+      }
+      return false;
+    },
+    hint: (el) =>
+      ctx.hint.draw(el, `thermeswim|${bath.atEdge}|${therme.atBar}|${bath.pool?.id}`, () => [
+        hintTitle(bath.pool?.id.startsWith('therme-whirl') ? '🫧 Whirlpool' : bath.pool?.id === 'therme-grotto' ? '💎 Grotte' : '🌊 Thermalbecken'),
+        aside(bath.pool?.id === 'therme-thermal' ? '34 °C' : '36 °C'),
+        key('W A S D', 'Swim'),
+        key('Shift', 'Faster'),
+        key('Space', 'Splash'),
+        ...(therme.atBar ? [key('E', 'Order at the bar')] : bath.atEdge ? [key('E', 'Climb out')] : []),
+      ]),
     hidesHands: true,
   });
 

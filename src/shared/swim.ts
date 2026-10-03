@@ -84,17 +84,23 @@ export function atEdge(def: PoolDef, x: number, z: number): boolean {
   return overPool(def, x, z) && !overPool(def, x, z, def.edge);
 }
 
-/** Where someone climbing out at (x, z) comes up: the pool's own say, else straight out over the nearest wall that has deck behind it (not into more water). */
-export function climbOutAt(def: PoolDef, x: number, z: number): { x: number; z: number } {
-  if (def.climbOut) return def.climbOut(x, z);
+/** Where someone climbing out at (x, z) could come up, best first: the pool's own say, else straight out over each wall that has deck behind it (not into more water), nearest first. */
+export function climbOutWays(def: PoolDef, x: number, z: number): { x: number; z: number }[] {
+  if (def.climbOut) return [def.climbOut(x, z)];
   const OUT = 0.45;
   const ways: { d: number; at: { x: number; z: number } }[] = [];
   for (const r of def.rects) {
     if (!inRect(r, x, z, 0)) continue;
     ways.push({ d: x - r.minX, at: { x: r.minX - OUT, z } }, { d: r.maxX - x, at: { x: r.maxX + OUT, z } }, { d: z - r.minZ, at: { x, z: r.minZ - OUT } }, { d: r.maxZ - z, at: { x, z: r.maxZ + OUT } });
   }
-  const dry = ways.filter((w) => !overPool(def, w.at.x, w.at.z)).sort((a, b) => a.d - b.d);
-  return (dry[0] ?? ways.sort((a, b) => a.d - b.d)[0] ?? { at: { x, z } }).at;
+  ways.sort((a, b) => a.d - b.d);
+  const dry = ways.filter((w) => !overPool(def, w.at.x, w.at.z));
+  return (dry.length ? dry : ways.slice(0, 1)).map((w) => w.at);
+}
+
+/** Where someone climbing out at (x, z) comes up (the first of climbOutWays; the page also skips any with something standing there). */
+export function climbOutAt(def: PoolDef, x: number, z: number): { x: number; z: number } {
+  return climbOutWays(def, x, z)[0] ?? { x, z };
 }
 
 /** The pool (x, z) is over, of `pools`, if any. */
@@ -110,4 +116,43 @@ export function wallTouched(def: PoolDef, x: number, z: number): 'lo' | 'hi' | n
   const lo = Math.min(...def.rects.map((r) => (L.axis === 'x' ? r.minX : r.minZ)));
   const hi = Math.max(...def.rects.map((r) => (L.axis === 'x' ? r.maxX : r.maxZ)));
   return v < lo + L.touch ? 'lo' : v > hi - L.touch ? 'hi' : null;
+}
+
+/** A stretch of a pool's wall: along `axis` at `at` from `from` to `to`; `out` is the way to the deck (+1 or -1 along the other axis). */
+export interface PoolEdge {
+  axis: 'x' | 'z';
+  at: number;
+  from: number;
+  to: number;
+  out: 1 | -1;
+}
+
+/** Where a pool's water meets the deck: each rectangle's sides, less where they meet another's water (a seam is no wall). */
+export function poolEdges(def: PoolDef): PoolEdge[] {
+  const out: PoolEdge[] = [];
+  const E = 0.01;
+  for (const r of def.rects) {
+    const sides: [PoolEdge['axis'], number, number, number, 1 | -1][] = [
+      ['x', r.minZ, r.minX, r.maxX, -1],
+      ['x', r.maxZ, r.minX, r.maxX, 1],
+      ['z', r.minX, r.minZ, r.maxZ, -1],
+      ['z', r.maxX, r.minZ, r.maxZ, 1],
+    ];
+    for (const [axis, at, from, to, dir] of sides) {
+      // Split where the other rectangles' sides cross it, and keep the pieces with no water past them.
+      const cuts = [from, to, ...def.rects.flatMap((o) => (axis === 'x' ? [o.minX, o.maxX] : [o.minZ, o.maxZ])).filter((v) => v > from && v < to)].sort((a, b) => a - b);
+      for (let i = 0; i < cuts.length - 1; i++) {
+        const a = cuts[i];
+        const b = cuts[i + 1];
+        if (b - a < 1e-6) continue;
+        const m = (a + b) / 2;
+        const wet = axis === 'x' ? overPool(def, m, at + dir * E) : overPool(def, at + dir * E, m);
+        if (wet) continue;
+        const last = out[out.length - 1];
+        if (last && last.axis === axis && last.at === at && last.out === dir && Math.abs(last.to - a) < 1e-6) last.to = b;
+        else out.push({ axis, at, from: a, to: b, out: dir });
+      }
+    }
+  }
+  return out;
 }

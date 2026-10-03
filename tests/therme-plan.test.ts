@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DOME, DOORS, GYM_DOOR, GYM_FROM_THERME, NORTH_BAND_Z, ROOFS, THERME, THERME_ARRIVAL, THERME_BOX, WELLENBAD, ZONES, domeHeight, inTherme, thermeFixtures, thermeWhereabouts, zoneAt, type TRect } from '../src/shared/therme.js';
+import { DOME, DOORS, GYM_DOOR, GYM_FROM_THERME, NORTH_BAND_Z, ROOFS, THERME, THERME_ARRIVAL, THERME_BOX, WELLENBAD, ZONES, domeHeight, inTherme, thermeWhereabouts, zoneAt, type TRect } from '../src/shared/therme.js';
+import { thermeFixtures } from '../src/shared/therme-all.js';
 import { BASEMENT_FLOOR, THERME_PASSAGE, basementFixtures, inB } from '../src/shared/gym-basement.js';
 import { GYM } from '../src/shared/gym.js';
 import { PLACES, backInPlace, placeSpotFrom } from '../src/server/fork/office.js';
@@ -22,8 +23,8 @@ function walkable() {
   const nx = Math.ceil((THERME_BOX.maxX - x0 + 2) / STEP);
   const nz = Math.ceil((ZONES.lagune.maxZ - z0 + 2) / STEP);
   const free = (x: number, z: number) => !fx.some((f) => x + BODY > f.minX && x - BODY < f.maxX && z + BODY > f.minZ && z - BODY < f.maxZ);
-  // Only on the floor: inside the building (the floor's slab, a little past the walls' faces).
-  const floor = thermeFixtures().find((f) => f.id === 'floor')!;
+  // Only on the floor: inside the building (its slabs, a little past the walls' faces; not over the water).
+  const slabs = thermeFixtures().filter((f) => f.id.startsWith('floor'));
   const seen = new Uint8Array(nx * nz);
   const ix = (x: number) => Math.round((x - x0) / STEP);
   const iz = (z: number) => Math.round((z - z0) / STEP);
@@ -46,7 +47,7 @@ function walkable() {
       if (seen[n]) continue;
       const x = x0 + a * STEP;
       const z = z0 + b * STEP;
-      if (!inB(floor, x, z) || !free(x, z)) continue;
+      if (!slabs.some((f) => inB(f, x, z, -1e-6)) || !free(x, z)) continue;
       seen[n] = 1;
       queue.push(n);
     }
@@ -89,7 +90,7 @@ test('every door is in a wall: a gap in it, with a lintel over it', () => {
     const c = d.at + (d.shift ?? 0);
     const mid = (d.from + d.to) / 2;
     const [x, z] = d.axis === 'x' ? [mid, c] : [c, mid];
-    const solid = fx.filter((f) => f.id !== 'floor' && !f.id.startsWith('shut-') && f.id !== 'gym-door' && inB(f, x, z, -1e-6));
+    const solid = fx.filter((f) => !f.id.startsWith('floor') && !f.id.startsWith('shut-') && f.id !== 'gym-door' && inB(f, x, z, -1e-6));
     assert.ok(solid.length > 0, `${d.id} has a lintel over it`);
     for (const f of solid) assert.ok((f.bottom ?? 0) >= d.height - 1e-6, `${d.id}: ${f.id} stands in the opening`);
   }

@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DOME, NORTH_BAND_Z, ROOFS, THERME_BOX, TWALL, ZONES, thermeWalls } from '../../../shared/therme';
 import { mesh, toon } from '../toon';
-import { blk, flat, tex, tiles, wrap, type ThermeParts } from './kit';
+import { cutOut } from '../../../shared/gym-basement';
+import { thermeWater } from '../../../shared/therme-all';
+import { blk, flat, rectsGeometry, tex, tiles, wrap, type ThermeParts } from './kit';
 
 /*
  * The thermal baths' shell (flrnoh fork, see shared/therme.ts): the floor, the walls as the plan has
@@ -18,12 +20,14 @@ const PLASTER = '#efe6d6';
 const SKIRT = '#cdb995';
 const STEEL = '#e9eef1';
 
-/** The floor: warm sandstone tiles everywhere, pale blue ones in the slide world. */
+/** The floor: warm sandstone tiles everywhere, pale blue ones in the slide world; open over the water (one mesh each, the tiles laid by world position). */
 function floors(p: ThermeParts) {
   const all = { minX: B.minX - W, maxX: B.maxX + W, minZ: B.minZ - W, maxZ: B.maxZ + W };
-  flat(p, all, tex(wrap(tiles('#e7d8bd', '#bfae8f', 4, 0.05, 11), (all.maxX - all.minX) / 2, (all.maxZ - all.minZ) / 2)), 0);
-  const r = ZONES.rutschen;
-  flat(p, r, tex(wrap(tiles('#cfe4ec', '#9fbfcc', 4, 0.05, 13), (r.maxX - r.minX) / 2, (r.maxZ - r.minZ) / 2)), 0.006);
+  const water = thermeWater();
+  const sand = wrap(tiles('#e7d8bd', '#bfae8f', 4, 0.05, 11));
+  p.group.add(mesh(rectsGeometry(cutOut(all, water), 0, 2), tex(sand), 0, 0, 0, false));
+  const blue = wrap(tiles('#cfe4ec', '#9fbfcc', 4, 0.05, 13));
+  p.group.add(mesh(rectsGeometry(cutOut(ZONES.rutschen, water), 0.006, 2), tex(blue), 0, 0, 0, false));
 }
 
 /** The walls from the plan, plaster with a sandstone skirting along the bottom (just proud of it, so they never flicker). */

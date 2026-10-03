@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
-import { atEdge, climbOutAt, inPoolAt, overPool, poolAt, surfaceAt, wallTouched, type PoolDef } from '../../shared/swim';
-import { stepTo, type Body } from '../player/collide';
+import { atEdge, climbOutWays, inPoolAt, overPool, poolAt, surfaceAt, wallTouched, type PoolDef } from '../../shared/swim';
+import { blockerAt, stepTo, type Body } from '../player/collide';
 import type { Person } from '../world/character';
 import { seaPose } from '../features/beach/poses';
 
@@ -125,7 +125,10 @@ export class Swimmer {
     const def = this.pool;
     if (!def || !this.atEdge) return;
     const p = this.player;
-    const at = climbOutAt(def, p.pos.x, p.pos.z);
+    // The nearest wall with room on the deck behind it (not into a rock or a bar's counter).
+    const ways = climbOutWays(def, p.pos.x, p.pos.z);
+    const at = ways.find((w) => !blockerAt(p, w.x, w.z, def.deck)) ?? ways[0];
+    if (!at) return;
     this.leave();
     p.pos.set(at.x, def.deck, at.z);
     p.vy = 0;

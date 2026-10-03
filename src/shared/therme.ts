@@ -1,4 +1,4 @@
-import { BASEMENT_FLOOR, THERME_PASSAGE } from './gym-basement.js';
+import { BASEMENT_FLOOR, THERME_PASSAGE, cutOut } from './gym-basement.js';
 
 /*
  * The thermal baths behind the gym (flrnoh fork, see FORK.md "The thermal baths"): a place of its own
@@ -182,9 +182,17 @@ export function thermeWalls(): TFixture[] {
   ];
 }
 
-/** Every solid thing in phase 0: the floor, the walls, the door back to the gym, the shut doors, the passage's ceiling. */
-export function thermeFixtures(): TFixture[] {
-  const f: TFixture[] = [{ id: 'floor', minX: B.minX - W, maxX: B.maxX + W, minZ: B.minZ - W, maxZ: B.maxZ + W, bottom: -0.3, top: 0 }];
+/** How far down the floor's slabs reach round the pools: their sides are the basins' walls, keeping swimmers in. */
+export const SLAB_BOTTOM = -2.4;
+
+/**
+ * The house's own solid things: the floor (open over `water`, the pools' rectangles: its slabs reach
+ * down past a swimmer's feet), the walls, the door back to the gym, the shut doors, the passage's
+ * ceiling. What stands in the parts is theirs (shared/therme-all.ts puts it all together).
+ */
+export function thermeFixtures(water: readonly TRect[] = []): TFixture[] {
+  const all = { minX: B.minX - W, maxX: B.maxX + W, minZ: B.minZ - W, maxZ: B.maxZ + W };
+  const f: TFixture[] = cutOut(all, water).map((r, i) => ({ id: i ? `floor-${i}` : 'floor', ...r, bottom: water.length ? SLAB_BOTTOM : -0.3, top: 0 }));
   f.push(...thermeWalls());
   f.push({ id: 'gym-door', minX: GYM_DOOR.x - GYM_DOOR.width / 2, maxX: GYM_DOOR.x + GYM_DOOR.width / 2, minZ: B.minZ - W, maxZ: B.minZ, top: GYM_DOOR.height });
   for (const d of DOORS) {
