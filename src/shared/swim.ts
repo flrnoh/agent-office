@@ -66,7 +66,11 @@ const inRect = (r: SwimRect, x: number, z: number, slack: number) => x > r.minX 
 
 /** Whether (x, z) is over the water, `slack` in from its walls: in from every wall, where the rectangles meet too (a point near where two meet is inside the other). */
 export function overPool(def: PoolDef, x: number, z: number, slack = 0): boolean {
-  if (slack <= 0) return def.rects.some((r) => inRect(r, x, z, slack));
+  if (slack <= 0) {
+    if (def.rects.some((r) => inRect(r, x, z, slack))) return true;
+    // Exactly on a seam two rectangles share is water too (their outer edges stay walls).
+    return slack === 0 && def.rects.filter((r) => inRect(r, x, z, -1e-9)).length >= 2;
+  }
   // In by `slack` from the union's edge: the square round (x, z) is all water.
   return [-slack, slack].every((dx) => [-slack, slack].every((dz) => def.rects.some((r) => inRect(r, x + dx, z + dz, 0)))) && def.rects.some((r) => inRect(r, x, z, -1e-9));
 }

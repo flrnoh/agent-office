@@ -108,6 +108,7 @@ export class OfficeSound {
   /** Fork: the Schallwerk's show: its house mix on the music volume, its crowd (features/venueshow/sound.ts). */
   readonly venueShow = new VenueShowSound(this.a, () => this.music.musicBus ?? null, () => this.music.musicGain());
   readonly gymRadio = new GymRadioSound(this.a, () => this.music.musicGain()); // fork: the gym's radio (shared/gym-radio.ts)
+  readonly core = this.a; // fork: the audio itself, for a part that makes its own sounds on it (client/therme/sound.ts)
   /** Fork: the Schallwerk's instruments, on the music volume (features/instruments/sound/engine.ts). */
   readonly instruments = new InstrumentSound(() => this.a.ctx, () => this.music.musicBus ?? null);
   /** A stream that won't play here. */

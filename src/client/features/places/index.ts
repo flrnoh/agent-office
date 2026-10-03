@@ -33,6 +33,7 @@ import { soccerLook } from '../../world/soccer/look';
 import { BowlingPlace } from '../../bowling/place';
 import { VenuePlace } from '../../venue/place';
 import { ThermePlace } from '../../therme/place';
+import { ThermeSounds } from '../../therme/sound';
 import type { Booze } from '../bar/booze';
 import { toast } from '../../ui/dom';
 import { store } from '../../state';
@@ -225,6 +226,7 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     renderer: ctx.renderer,
     camera,
     temp: () => store.sky?.temp,
+    audio: new ThermeSounds(ctx.sound.core),
     name: () => store.peers.get(store.you)?.name ?? '',
   });
   // The baths last: going back to the gym, they put you by their door after the gym has had its say.

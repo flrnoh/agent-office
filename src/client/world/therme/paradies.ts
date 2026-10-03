@@ -8,7 +8,7 @@ import { mesh, toon } from '../toon';
 import { Cloud } from '../gym/particles';
 import { fallingWater, mosaic, ripples, rock } from '../gym/basement/textures';
 import { Person } from '../character';
-import { blk, edgeWallsGeometry, glow, plane, rectsGeometry, sign, tex, wrap, type ThermeParts } from './kit';
+import { blk, edgeWallsGeometry, glow, mergeTextured, plane, rectsGeometry, sign, tex, wrap, type ThermeParts } from './kit';
 import { buildBamboo, buildPalms, type Grove } from './palms';
 
 /*
@@ -30,7 +30,8 @@ export function basin(p: ThermeParts, def: PoolDef, water: THREE.CanvasTexture, 
   const tiles = wrap(mosaic(color, 16, 0.12, def.id.length));
   p.group.add(mesh(rectsGeometry(def.rects, def.floor + 0.002, 2), tex(tiles), 0, 0, 0, false));
   const edges = poolEdges(def);
-  p.group.add(mesh(edgeWallsGeometry(edges, def.floor, 0, 2), tex(tiles), 0, 0, 0, false));
+  // The walls are lit from above only: a touch of their own glow, so they read turquoise through the water, not grey.
+  p.group.add(mesh(edgeWallsGeometry(edges, def.floor, 0, 2), tex(tiles, '#ffffff', { emissive: color, emissiveIntensity: 0.32 }), 0, 0, 0, false));
   const w = water.clone();
   w.needsUpdate = true;
   const wm = tex(w, '#ffffff', { transparent: true, opacity: 0.8, depthWrite: false });
@@ -135,13 +136,15 @@ function island(p: ThermeParts) {
 function waterfall(p: ThermeParts): { tex: THREE.CanvasTexture; foam: Cloud } {
   const C = CLIFF;
   const rk = tex(rock(71));
+  const rocks = new THREE.Group();
   const cliff = mesh(new THREE.BoxGeometry(C.maxX - C.minX, WATERFALL.top + 0.3, C.maxZ - C.minZ), rk, (C.minX + C.maxX) / 2, (WATERFALL.top + 0.3) / 2, (C.minZ + C.maxZ) / 2, false);
-  p.group.add(cliff);
+  rocks.add(cliff);
   for (let i = 0; i < 7; i++) {
     const m = mesh(new THREE.DodecahedronGeometry(0.9 + (i % 3) * 0.35, 0), rk, C.minX + 0.6 + i * 1.45, WATERFALL.top + 0.2 + (i % 2) * 0.3, (C.minZ + C.maxZ) / 2, false);
     m.rotation.set(i, i * 2, 0);
-    p.group.add(m);
+    rocks.add(m);
   }
+  p.group.add(mergeTextured(rocks));
   const fall = wrap(fallingWater(29));
   const fm = tex(fall, '#ffffff', { transparent: true, opacity: 0.85, depthWrite: false });
   const sheet = plane(p, WATERFALL.maxX - WATERFALL.minX, WATERFALL.top - THERMAL.surface, fm, (WATERFALL.minX + WATERFALL.maxX) / 2, (WATERFALL.top + THERMAL.surface) / 2, WATERFALL.z, 0);

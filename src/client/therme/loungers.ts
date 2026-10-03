@@ -35,6 +35,8 @@ export interface LoungerHost {
   people(): { id: string; x: number; y: number; z: number; moving: boolean; person: Person | undefined }[];
   player: { seat: SeatPlace | null; sit(p: SeatPlace): void; stand(): void };
   me(): Person;
+  /** Whether one of the baths' other bathers lies there (client/therme/bathers.ts). */
+  npc?(id: string): boolean;
 }
 
 export class ThermeLoungers {
@@ -46,6 +48,7 @@ export class ThermeLoungers {
   taken(id: string): boolean {
     const l = BY_ID.get(id);
     if (!l) return true;
+    if (this.host.npc?.(id)) return true;
     return this.host.people().some((p) => p.id !== this.host.you() && !p.moving && Math.abs(p.x - l.x) < ON_SEAT && Math.abs(p.z - l.z) < ON_SEAT && Math.abs(p.y - l.y) < 0.3);
   }
 

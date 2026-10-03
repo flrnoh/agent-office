@@ -8,7 +8,7 @@ import { mesh, toon } from '../toon';
 import { Cloud } from '../gym/particles';
 import { planks, turf } from '../gym/textures';
 import { mosaic, ripples } from '../gym/basement/textures';
-import { blk, edgeWallsGeometry, rand, rectsGeometry, tex, tiles, wrap, type ThermeParts } from './kit';
+import { blk, edgeWallsGeometry, mergeTextured, rand, rectsGeometry, tex, tiles, wrap, type ThermeParts } from './kit';
 import { basin } from './paradies';
 import { buildPalms } from './palms';
 
@@ -118,10 +118,12 @@ export function buildLagune(p: ThermeParts): Lagune {
   // Lanterns along the beach and round the lagoon.
   const lamp = new THREE.MeshBasicMaterial({ color: '#ffd9a0' });
   lamp.toneMapped = false;
+  const lamps = new THREE.Group();
   for (let x = L.minX + 6; x < L.maxX; x += 12) {
     p.still.add(mesh(new THREE.CylinderGeometry(0.05, 0.06, 3, 6), toon('#2a2f35'), x, 1.5, 147.6, false));
-    p.group.add(mesh(new THREE.SphereGeometry(0.2, 10, 8), lamp, x, 3.1, 147.6, false));
+    lamps.add(mesh(new THREE.SphereGeometry(0.2, 10, 8), lamp, x, 3.1, 147.6, false));
   }
+  p.group.add(mergeTextured(lamps));
   const steam = new Cloud(200, '#ffffff');
   steam.lift = 0.25;
   steam.drag = 0.4;

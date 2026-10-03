@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { TRect } from '../../../shared/therme';
 import type { Collider, Interactable } from '../types';
 import { mesh, toon } from '../toon';
@@ -177,4 +178,47 @@ export function edgeWallsGeometry(edges: readonly { axis: 'x' | 'z'; at: number;
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
   return g;
+}
+
+/**
+ * Like mergeByMaterial (world/toon.ts), but keeping each mesh's UVs, so textured pieces sharing a
+ * material (rock lumps, a hut's walls) become one draw call and keep their texture. Meshes whose
+ * geometry has no UVs, or that move, are left as they are. `root` is emptied into what it returns.
+ */
+export function mergeTextured(root: THREE.Object3D): THREE.Group {
+  root.updateMatrixWorld(true);
+  const inv = root.matrixWorld.clone().invert();
+  const by = new Map<string, { mat: THREE.Material; geos: THREE.BufferGeometry[]; keep: THREE.Mesh | null }>();
+  const others: THREE.Object3D[] = [];
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    const mat = m.material as THREE.Material;
+    if (Array.isArray(m.material) || !m.geometry.attributes.uv || m.userData.interact || (mat as THREE.MeshBasicMaterial).transparent) {
+      others.push(m);
+      return;
+    }
+    const geo = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()).applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
+    for (const k of Object.keys(geo.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') geo.deleteAttribute(k);
+    const e = by.get(mat.uuid) ?? { mat, geos: [], keep: null };
+    e.geos.push(geo);
+    by.set(mat.uuid, e);
+  });
+  const out = new THREE.Group();
+  for (const { mat, geos } of by.values()) {
+    const merged = mergeGeometries(geos);
+    for (const g of geos) g.dispose();
+    if (merged) {
+      const m = new THREE.Mesh(merged, mat);
+      m.userData.noOutline = mat.userData.outlineParameters?.visible === false;
+      out.add(m);
+    }
+  }
+  // What wasn't merged stays where it was, now under the new group.
+  for (const o of others) {
+    const m = o as THREE.Mesh;
+    m.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.parent!.matrixWorld));
+    out.add(m);
+  }
+  return out;
 }

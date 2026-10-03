@@ -152,19 +152,29 @@ function slide(p: ThermeParts, s: SlideDef, curves: SlideWorld['curves'], rings:
       const base = at.x > LANDING.minX && at.x < LANDING.maxX && at.z > LANDING.minZ && at.z < LANDING.maxZ ? LANDING_POOL.floor : 0;
       stilts.push(new THREE.CylinderGeometry(0.11, 0.13, at.y - SLIDE_RADIUS - base, 6).translate(at.x, (at.y - SLIDE_RADIUS + base) / 2, at.z));
     }
-    // The black hole: rings of light inside, every few metres.
-    if (s.dark)
-      for (let d = 3; d < len - 2; d += 3.5) {
+    // The black hole: rings of light inside, every few metres, in four colours (one mesh a colour).
+    if (s.dark) {
+      const byColour: THREE.BufferGeometry[][] = [[], [], [], []];
+      const m4 = new THREE.Object3D();
+      for (let d = 3, k = 0; d < len - 2; d += 3.5, k++) {
         const at = curve.getPointAt(d / len);
         const tg = curve.getTangentAt(d / len);
-        const ringMat = new THREE.MeshBasicMaterial({ color: ['#ff3dcb', '#3df2ff', '#ffe03d', '#7d3dff'][Math.floor(d / 3.5) % 4] });
+        m4.position.copy(at);
+        m4.lookAt(at.clone().add(tg));
+        m4.updateMatrix();
+        byColour[k % 4].push(new THREE.TorusGeometry(SLIDE_RADIUS - 0.04, 0.035, 5, 18).applyMatrix4(m4.matrix));
+      }
+      ['#ff3dcb', '#3df2ff', '#ffe03d', '#7d3dff'].forEach((c, k) => {
+        if (!byColour[k].length) return;
+        const ringMat = new THREE.MeshBasicMaterial({ color: c });
         ringMat.toneMapped = false;
         rings.push(ringMat);
-        const ring = mesh(new THREE.TorusGeometry(SLIDE_RADIUS - 0.04, 0.035, 5, 18), ringMat, at.x, at.y, at.z, false);
-        ring.lookAt(at.clone().add(tg));
+        const ring = mesh(mergeGeometries(byColour[k])!, ringMat, 0, 0, 0, false);
         ring.userData.noOutline = true;
         p.group.add(ring);
-      }
+        for (const g of byColour[k]) g.dispose();
+      });
+    }
     // Its gate on the platform: E there goes down it.
     const start = pts[0];
     const it: Interactable = { kind: 'thermeslide', thermeSlide: s.id, thermeLane: l, x: start.x, z: start.z, y: LEVELS[s.level], radius: 2.2 };

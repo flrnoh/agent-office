@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GYM } from '../../shared/gym';
-import { GYM_FROM_THERME, THERME, THERME_ARRIVAL, THERME_BOX, THERME_NAME, ZONES, inTherme } from '../../shared/therme';
+import { GYM_FROM_THERME, THERME, THERME_ARRIVAL, THERME_BOX, THERME_NAME, ZONES, inT, inTherme } from '../../shared/therme';
 import type { ClientMsg, ServerMsg } from '../../shared/protocol';
 import type { SeatPlace } from '../../shared/layout';
 import type { Drink } from '../../shared/rooftop';
@@ -10,8 +10,11 @@ import { Swimmer } from '../swim';
 import { nextWaves, waveStrength } from '../../shared/therme-waves';
 import { ThermeLoungers } from './loungers';
 import { SlideRider, type RiderHost } from './slides';
+import { Bathers } from './bathers';
+import type { ThermeSounds } from './sound';
+import { zoneAt } from '../../shared/therme';
 import { openBoards, openLift } from './slide-ui';
-import { LEVELS, LIFT_DOOR, SLIDE_BY_ID } from '../../shared/therme-slides';
+import { LANDING, LEVELS, LIFT_DOOR, SLIDE_BY_ID, TOWER } from '../../shared/therme-slides';
 import { AUFGUSS_RUN, RUHEHAUS, SAUNA_BY_ID, aufgussAt, aufgussPlan, inRuhehaus, saunaAt, type SaunaId } from '../../shared/therme-dorf';
 import { thermeSeat } from './loungers';
 import { outside } from '../../shared/therme-lagune';
@@ -74,6 +77,8 @@ export interface ThermeHost {
   noOutline(o: THREE.Object3D): void;
   /** For the slides' ride photo. */
   renderer: RiderHost['renderer'];
+  /** The baths' own sounds (client/therme/sound.ts): the hall's air, whoops, splashes. */
+  audio: ThermeSounds;
   /** It's this cold outside (°C, the office's real weather; undefined: unknown): steam off the lagoon. */
   temp(): number | undefined;
   /** Where the camera is (the saunas' walls lift away while you're inside one and it isn't). */
@@ -108,6 +113,11 @@ export class ThermePlace {
   private aufgussFor = -1;
   /** Out at the lagoon, under the open sky (the weather falls there). */
   private outdoors = false;
+  /** The other bathers (client/therme/bathers.ts). */
+  private bathers: Bathers | null = null;
+  /** Who's on a slide now (they whooped already), and how high everyone was a moment ago (to hear them land). */
+  private whooped = new Set<string>();
+  private lastY = new Map<string, number>();
   private boardAt = 0;
 
   constructor(private host: ThermeHost) {
@@ -118,7 +128,7 @@ export class ThermePlace {
     }, () => host.now());
     this.rider = new SlideRider({ player: host.player, send: (m) => host.send(m), sound: (k) => host.sound(k), renderer: host.renderer, scene: host.scene, me: () => host.me(), name: () => host.name() });
     this.rider.onBoards = () => this.rider.drawBoard();
-    this.loungers = new ThermeLoungers({ you: () => host.you(), people: () => host.people(), player: host.player, me: () => host.me() });
+    this.loungers = new ThermeLoungers({ you: () => host.you(), people: () => host.people(), player: host.player, me: () => host.me(), npc: (id) => !!this.bathers?.takes(id) });
   }
 
   /** Swimming up at the bar's counter (E there orders, not climbs out). */
@@ -150,6 +160,7 @@ export class ThermePlace {
   private theRoom(): ThermeInterior {
     if (!this.room) {
       this.room = buildThermeInterior();
+      this.bathers = new Bathers(this.room.group);
       this.host.noOutline(this.room.group);
       this.room.group.visible = false;
       this.host.scene.add(this.room.group);
@@ -247,6 +258,7 @@ export class ThermePlace {
       this.swim.release();
       this.rider.stop();
       this.loungers.clear();
+      this.host.audio.air(0, 0);
       if (this.host.player.seat?.seatId?.startsWith('therme-')) this.host.player.stand();
       this.host.showOffice(true);
       this.host.player.colliders = this.host.officeColliders();
@@ -373,6 +385,8 @@ export class ThermePlace {
       this.outdoors = outdoors;
       this.host.setIndoors(!outdoors);
     }
+    this.bathers?.update(now, t, dt, me);
+    this.hear(me, this.host.people());
     // The horn as each run of waves starts (once a run), for whoever's in the baths.
     const run = nextWaves(now);
     if (waveStrength(now) > 0 && run !== this.hornFor) {
@@ -416,6 +430,25 @@ export class ThermePlace {
     while (d > Math.PI) d -= Math.PI * 2;
     while (d < -Math.PI) d += Math.PI * 2;
     b.root.rotation.y += d * Math.min(1, dt * 4);
+  }
+
+  /** The baths' sound where you are: the hall's air by zone (a hush in the Saunadorf), whoops off the slides, a splash as someone lands. */
+  private hear(me: THREE.Vector3, people: { id: string; x: number; y: number; z: number; moving: boolean }[]) {
+    const zone = zoneAt(me.x, me.z);
+    const quiet = zone === 'dorf';
+    const hall = this.outdoors ? 0.35 : quiet ? 0.1 : zone === 'gang' || zone === 'lobby' ? 0.45 : 1;
+    const crowd = (this.bathers?.count(me) ?? 0) + people.filter((q) => Math.hypot(q.x - me.x, q.z - me.z) < 25).length;
+    this.host.audio.air(hall, quiet ? 0 : Math.min(1, 0.25 + crowd * 0.08));
+    const R = ZONES.rutschen;
+    for (const q of people) {
+      const onSlide = q.id === this.host.you() ? !!this.rider.riding && (this.rider.riding.countdown ?? 0) <= 0 : q.x > R.minX && q.y > 2.5 && q.moving && !inT(TOWER, q.x, q.z, -0.5);
+      if (onSlide && !this.whooped.has(q.id) && Math.random() < 0.6) this.host.audio.whoop(q.id === this.host.you() ? { x: me.x, y: me.y + 1, z: me.z } : { x: q.x, y: q.y + 1, z: q.z }, 0.9 + Math.random() * 0.3);
+      if (onSlide) this.whooped.add(q.id);
+      else if (q.y < 0.5) this.whooped.delete(q.id);
+      const was = this.lastY.get(q.id);
+      if (q.id !== this.host.you() && was !== undefined && was > 0 && q.y < -0.5 && inT(LANDING, q.x, q.z)) this.host.audio.splash({ x: q.x, y: 0, z: q.z });
+      this.lastY.set(q.id, q.y);
+    }
   }
 
   /** Under the dome it's as light as it is outside: the sun by day; at night the dome goes dark and the hall's own warm light takes over. */

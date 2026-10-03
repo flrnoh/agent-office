@@ -4,7 +4,7 @@ import { paradiesFixtures } from '../../../shared/therme-paradies';
 import { mesh, toon } from '../toon';
 import { Cloud } from '../gym/particles';
 import { rock } from '../gym/basement/textures';
-import { glow, plane, rand, sign, tex, wrap, type ThermeParts } from './kit';
+import { glow, mergeTextured, plane, rand, sign, tex, wrap, type ThermeParts } from './kit';
 
 /*
  * The dripstone grotto in the Thermenparadies's north-west corner (flrnoh fork, see shared/
@@ -21,10 +21,12 @@ export function buildGrotto(p: ThermeParts): Grotto {
   const r = rand(61);
   const map = wrap(rock(83), 2, 1);
   const rk = tex(map, '#b9a99a');
+  // The cave's rock and crystals, gathered here and merged at the end (one draw call a material).
+  const cave = new THREE.Group();
   // The walls and roof as the plan has them, in rock.
   for (const f of paradiesFixtures().filter((f) => f.id.startsWith('grotto-'))) {
     const bottom = f.bottom ?? 0;
-    p.group.add(mesh(new THREE.BoxGeometry(f.maxX - f.minX, f.top - bottom, f.maxZ - f.minZ), rk, (f.minX + f.maxX) / 2, (bottom + f.top) / 2, (f.minZ + f.maxZ) / 2, false));
+    cave.add(mesh(new THREE.BoxGeometry(f.maxX - f.minX, f.top - bottom, f.maxZ - f.minZ), rk, (f.minX + f.maxX) / 2, (bottom + f.top) / 2, (f.minZ + f.maxZ) / 2, false));
   }
   // Lumps of rock along the walls outside and in, so it's a cave and not a box.
   const G = GROTTO;
@@ -32,7 +34,7 @@ export function buildGrotto(p: ThermeParts): Grotto {
     const m = mesh(new THREE.DodecahedronGeometry(s, 0), rk, x, y, z, false);
     m.rotation.set(r() * 3, r() * 3, r() * 3);
     m.scale.set(1, 0.7 + r() * 0.5, 1);
-    p.group.add(m);
+    cave.add(m);
   };
   for (let x = G.minX + 1; x < G.maxX; x += 2.2) {
     lump(x, 0.6 + r(), G.maxZ + 0.2, 1 + r() * 0.6);
@@ -60,7 +62,7 @@ export function buildGrotto(p: ThermeParts): Grotto {
   // The ceiling's underside.
   const ceil = mesh(new THREE.PlaneGeometry(G.maxX - G.minX, G.maxZ - G.minZ), rk, (G.minX + G.maxX) / 2, GROTTO_ROOF - 0.01, (G.minZ + G.maxZ) / 2, false);
   ceil.rotation.x = Math.PI / 2;
-  p.group.add(ceil);
+  cave.add(ceil);
   // Crystals glowing in the walls, and the light that changes colour.
   const crystal = new THREE.MeshBasicMaterial({ color: '#9ff3ff' });
   crystal.toneMapped = false;
@@ -72,8 +74,9 @@ export function buildGrotto(p: ThermeParts): Grotto {
     const g = mesh(new THREE.OctahedronGeometry(0.12 + r() * 0.14, 0), crystal, x, 0.8 + r() * 2.8, z, false);
     g.userData.noOutline = true;
     gems.push(g);
-    p.group.add(g);
+    cave.add(g);
   }
+  p.group.add(mergeTextured(cave));
   const light = new THREE.PointLight('#7fdcff', 2.4, 22, 1.6);
   light.position.set((GROTTO_POOL.minX + GROTTO_POOL.maxX) / 2, GROTTO_ROOF - 1, (GROTTO_POOL.minZ + GROTTO_POOL.maxZ) / 2);
   p.group.add(light);

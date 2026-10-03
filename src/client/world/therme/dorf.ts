@@ -11,7 +11,7 @@ import { Cloud } from '../gym/particles';
 import { planks } from '../gym/textures';
 import { mosaic, ripples, rock, saltBricks } from '../gym/basement/textures';
 import { Person } from '../character';
-import { blk, edgeWallsGeometry, glow, rand, rectsGeometry, sign, tex, wrap, type ThermeParts } from './kit';
+import { blk, edgeWallsGeometry, glow, mergeTextured, rand, rectsGeometry, sign, tex, wrap, type ThermeParts } from './kit';
 
 /*
  * The Saunadorf (flrnoh fork, see shared/therme-dorf.ts, phase 5): a wooden boardwalk floor, the huts
@@ -135,6 +135,10 @@ function hut(p: ThermeParts, s: SaunaDef, wallTex: THREE.Texture, steamRoom: boo
   hinge.rotation.y = rotY + (horiz ? 0 : Math.PI / 2) - 1.2; // left standing open
   glass.userData.noOutline = true;
   shell.add(hinge);
+  // One draw call a material for the hut's walls, ceiling and roof.
+  const merged = mergeTextured(shell);
+  shell.clear();
+  shell.add(merged);
   return shell;
 }
 
@@ -177,6 +181,9 @@ export function buildDorf(p: ThermeParts): Dorf {
     g.rotation.y = s.rotY;
     p.still.add(g);
   }
+  const ruheMerged = mergeTextured(ruhe);
+  ruhe.clear();
+  ruhe.add(ruheMerged);
   p.still.add(mesh(new THREE.BoxGeometry(4, 0.02, 7), toon('#8f3b2e'), (R.box.minX + R.box.maxX) / 2, 0.02, (R.box.minZ + R.box.maxZ) / 2 + 2, false));
   // Every seat (benches, loungers) as something to aim at: invisible boxes (nothing drawn, still picked).
   const pickMat = new THREE.MeshBasicMaterial({ visible: false });
@@ -229,10 +236,12 @@ export function buildDorf(p: ThermeParts): Dorf {
   }
   const lamp = new THREE.MeshBasicMaterial({ color: '#ffcf8a' });
   lamp.toneMapped = false;
+  const lamps = new THREE.Group();
   for (const [x, z] of [[54, 64], [54, 84], [40, 74], [32, 96], [32, 46], [42, 112]] as const) {
     p.still.add(mesh(new THREE.CylinderGeometry(0.04, 0.05, 2.2, 6), toon('#2a2f35'), x, 1.1, z, false));
-    p.group.add(mesh(new THREE.SphereGeometry(0.16, 10, 8), lamp, x, 2.3, z, false));
+    lamps.add(mesh(new THREE.SphereGeometry(0.16, 10, 8), lamp, x, 2.3, z, false));
   }
+  p.group.add(mergeTextured(lamps));
   // The board by the way in.
   const canvas = document.createElement('canvas');
   canvas.width = 768;
