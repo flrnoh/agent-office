@@ -31,7 +31,7 @@ export function basin(p: ThermeParts, def: PoolDef, water: THREE.CanvasTexture, 
   p.group.add(mesh(rectsGeometry(def.rects, def.floor + 0.002, 2), tex(tiles), 0, 0, 0, false));
   const edges = poolEdges(def);
   // The walls are lit from above only: a touch of their own glow, so they read turquoise through the water, not grey.
-  p.group.add(mesh(edgeWallsGeometry(edges, def.floor, 0, 2), tex(tiles, '#ffffff', { emissive: color, emissiveIntensity: 0.32 }), 0, 0, 0, false));
+  p.group.add(mesh(edgeWallsGeometry(edges, def.floor, 0, 2), tex(tiles, '#ffffff', { emissive: color, emissiveIntensity: 0.6 }), 0, 0, 0, false));
   const w = water.clone();
   w.needsUpdate = true;
   const wm = tex(w, '#ffffff', { transparent: true, opacity: 0.8, depthWrite: false });
@@ -39,14 +39,7 @@ export function basin(p: ThermeParts, def: PoolDef, water: THREE.CanvasTexture, 
   surface.userData.noOutline = true;
   surface.renderOrder = 1;
   p.group.add(surface);
-  // The coping: a pale stone kerb round the water, just proud of the deck.
-  for (const e of edges) {
-    const len = e.to - e.from;
-    const mid = (e.from + e.to) / 2;
-    const off = e.at + e.out * 0.2;
-    if (e.axis === 'x') blk(p, len + 0.4, 0.04, 0.4, '#f3ede0', mid, 0.02, off);
-    else blk(p, 0.4, 0.04, len + 0.4, '#f3ede0', off, 0.02, mid);
-  }
+  // (The coping, lights and ladders: decor.ts, the same round every pool.)
   return w;
 }
 

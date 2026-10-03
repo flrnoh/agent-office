@@ -12,6 +12,9 @@ import { buildSlides, type SlideWorld } from './slides';
 import { buildDorf, type Dorf } from './dorf';
 import { buildLagune } from './lagune';
 import { buildLobby, type Lobby } from './lobby';
+import { buildGarden, type Garden } from './garden';
+import { buildPoolDecor, type PoolDecor } from './decor';
+import { buildDetails, type Details } from './details';
 import type { Person } from '../character';
 
 /*
@@ -19,7 +22,8 @@ import type { Person } from '../character';
  * the first time anyone goes in (client/therme/place.ts), in the baths' own coordinates (shared/
  * therme.ts, the floor at y 0): the shell under the glass dome, the passage from the gym with its
  * door back, the zones' doors that are shut for now, signs where each part is coming; the
- * Thermenparadies (paradies.ts, grotto.ts, palms.ts). Each phase adds its part here.
+ * Thermenparadies (paradies.ts, grotto.ts, palms.ts), and so on; what every pool has (decor.ts). Each
+ * part is added here.
  */
 
 export interface ThermeInterior {
@@ -38,6 +42,12 @@ export interface ThermeInterior {
   dorf: Dorf;
   /** The entrance hall (world/therme/lobby.ts). */
   lobby: Lobby;
+  /** The sauna garden round the huts (world/therme/garden.ts): its buckets. */
+  garden: Garden;
+  /** What every pool has, and the showers (world/therme/decor.ts). */
+  decor: PoolDecor;
+  /** The finishing touches (world/therme/details.ts): its lights by the slides' gates go red for the one you're on. */
+  details: Details;
   /** Every frame inside; `now` is the office's clock (the waves), `me` where you are (what's far off doesn't bubble). */
   update(t: number, dt: number, now: number, me: THREE.Vector3, cold: number): void;
 }
@@ -56,11 +66,14 @@ export function buildThermeInterior(): ThermeInterior {
   const dorf = buildDorf(p);
   const lagune = buildLagune(p);
   const lobby = buildLobby(p);
+  const garden = buildGarden(p);
+  const decor = buildPoolDecor(p);
+  const details = buildDetails(p);
   group.add(mergeByColor(still));
   // No toon outline round what's marked so (water, glass, pick boxes, signs): it's the material that says (core/outline.ts).
   group.traverse((o) => {
     const m = o as THREE.Mesh;
-    if (!m.isMesh || !o.userData.noOutline) return;
+    if (!m.isMesh || !(o.userData.noOutline || m.geometry.userData.noOutline)) return;
     for (const mat of Array.isArray(m.material) ? m.material : [m.material]) mat.userData.outlineParameters = { visible: false };
   });
   return {
@@ -74,7 +87,12 @@ export function buildThermeInterior(): ThermeInterior {
     slides,
     dorf,
     lobby,
+    garden,
+    decor,
+    details,
     update: (t, dt, now, me, cold) => {
+      garden.update(t, dt, cold, me);
+      decor.update(t, dt);
       paradies.update(t, dt, me);
       grotto.update(t, dt, me);
       waves.update(t, dt, now, me);

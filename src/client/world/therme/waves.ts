@@ -7,12 +7,15 @@ import { FONT } from '../casino/parts';
 import { Cloud } from '../gym/particles';
 import { mosaic, ripples } from '../gym/basement/textures';
 import { blk, edgeWallsGeometry, rectsGeometry, tex, tiles, wrap, type ThermeParts } from './kit';
+import { grate } from './textures';
 
 /*
  * The wave pool (flrnoh fork, see shared/therme-waves.ts, phase 3): the beach stepping down into the
  * water, the deep basin in mosaic, the water's surface as a grid of vertices lifted each frame by the
  * same waves every page works out from the office's clock, foam where they break toward the beach,
- * and the board over the beach saying when the next waves come (or how long they still run).
+ * the wave machine's grilles in the deep end's wall, a line of floats across where the beach drops
+ * away (riding the waves too), and the board over the beach saying when the next waves come (or how
+ * long they still run).
  */
 
 export interface WavePool {
@@ -67,12 +70,10 @@ export function buildWavePool(p: ThermeParts): WavePool {
     { axis: 'z' as const, at: W.minX, from: W.minZ, to: W.maxZ, out: -1 as const },
     { axis: 'z' as const, at: W.maxX, from: W.minZ, to: W.maxZ, out: 1 as const },
   ];
-  p.group.add(mesh(edgeWallsGeometry(walls, WAVE_WATER.floor, 0, 2), tex(blue), 0, 0, 0, false));
+  const wallMat = tex(blue, '#ffffff', { emissive: '#3aa7c4', emissiveIntensity: 0.6 });
+  p.group.add(mesh(edgeWallsGeometry(walls, WAVE_WATER.floor, 0, 2), wallMat, 0, 0, 0, false));
   // Where the beach ends, a drop into the deep: the last step's face.
-  p.group.add(mesh(edgeWallsGeometry([{ axis: 'x', at: DEEP.minZ, from: W.minX, to: W.maxX, out: -1 }], WAVE_WATER.floor, BEACH.bottom, 2), tex(blue), 0, 0, 0, false));
-  // The coping round three sides (the beach side runs straight out of the deck).
-  blk(p, W.maxX - W.minX + 0.8, 0.04, 0.4, '#f3ede0', (W.minX + W.maxX) / 2, 0.02, W.maxZ + 0.2);
-  for (const x of [W.minX - 0.2, W.maxX + 0.2]) blk(p, 0.4, 0.04, W.maxZ - W.minZ, '#f3ede0', x, 0.02, (W.minZ + W.maxZ) / 2);
+  p.group.add(mesh(edgeWallsGeometry([{ axis: 'x', at: DEEP.minZ, from: W.minX, to: W.maxX, out: -1 }], WAVE_WATER.floor, BEACH.bottom, 2), wallMat, 0, 0, 0, false));
   // The surface: a grid over the water (from where the beach goes under), lifted by the waves each frame.
   const z0 = BEACH.minZ + 0.9;
   const nx = 60;
@@ -103,6 +104,34 @@ export function buildWavePool(p: ThermeParts): WavePool {
   board.position.set(B.x, B.y, B.z);
   p.group.add(board);
   for (const s of [-1, 1]) p.still.add(mesh(new THREE.CylinderGeometry(0.1, 0.12, B.y, 8), toon('#22303a'), B.x + (s * B.w) / 2, B.y / 2, B.z, false));
+  // The wave machine's grilles, low in the deep end's wall.
+  const grilles = new THREE.MeshToonMaterial({ map: grate(), color: '#9fb8c0', gradientMap: toon('#ffffff').gradientMap });
+  for (const x of [72, 90, 108, 126]) {
+    const g = mesh(new THREE.PlaneGeometry(9, 1.3), grilles, x, WAVE_WATER.floor + 1.0, W.maxZ - 0.02, false);
+    g.rotation.y = Math.PI;
+    p.group.add(g);
+  }
+  // A line of floats across, where the beach drops into the deep, red and white, riding the waves.
+  const LINE_Z = BEACH.maxZ + 1.5;
+  const n = Math.floor((W.maxX - W.minX - 1) / 0.7);
+  const floats = [toon('#e63946'), toon('#ffffff')].map((m) => new THREE.InstancedMesh(new THREE.SphereGeometry(0.14, 8, 6), m, Math.ceil(n / 2)));
+  const rope = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(n * 3), 3));
+  const ropeLine = new THREE.Line(rope, new THREE.LineBasicMaterial({ color: '#f4f7f8' }));
+  ropeLine.frustumCulled = false;
+  p.group.add(ropeLine, ...floats);
+  const fm = new THREE.Matrix4();
+  const lay = (now: number) => {
+    const rp = rope.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < n; i++) {
+      const x = W.minX + 0.5 + i * 0.7;
+      const y = WAVE_WATER.surface + waveSwell(x, LINE_Z, now) + 0.04;
+      rp.setXYZ(i, x, y, LINE_Z);
+      floats[i % 2].setMatrixAt(i >> 1, fm.makeTranslation(x, y, LINE_Z));
+    }
+    rp.needsUpdate = true;
+    for (const f of floats) f.instanceMatrix.needsUpdate = true;
+  };
+  lay(0);
   const foam = new Cloud(360, '#ffffff');
   foam.lift = 0.3;
   foam.drag = 1.6;
@@ -122,6 +151,7 @@ export function buildWavePool(p: ThermeParts): WavePool {
         pos.needsUpdate = true;
         surface.userData.moved = strong > 0;
         if (!strong) geo.computeVertexNormals();
+        lay(now);
       }
       // Foam where they break, on the beach's last steps.
       if (near && strong > 0.2) {

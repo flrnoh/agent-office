@@ -5,10 +5,11 @@ import { mesh, toon } from '../toon';
 import { cutOut } from '../../../shared/gym-basement';
 import { thermeWater } from '../../../shared/therme-all';
 import { blk, flat, rectsGeometry, tex, tiles, wrap, type ThermeParts } from './kit';
+import { buildFacades, drawnElsewhere } from './facade';
 
 /*
  * The thermal baths' shell (flrnoh fork, see shared/therme.ts): the floor, the walls as the plan has
- * them, the roofs (the north band's, the sauna village's, the eaves round the dome, the slide hall's
+ * them, the roofs (the north band's, the eaves round the dome, the slide hall's
  * high one with its trusses) and the glass dome over the Thermenparadies on its steel ribs and rings.
  * The sky shows through the dome (the place doesn't hide it), so it's day or night in there as it
  * is outside.
@@ -30,9 +31,10 @@ function floors(p: ThermeParts) {
   p.group.add(mesh(rectsGeometry(cutOut(ZONES.rutschen, water), 0.006, 2), tex(blue), 0, 0, 0, false));
 }
 
-/** The walls from the plan, plaster with a sandstone skirting along the bottom (just proud of it, so they never flicker). */
+/** The walls from the plan, plaster with a sandstone skirting along the bottom (just proud of it, so they never flicker); the glass fronts and the garden's fence are drawn by facade.ts and garden.ts. */
 function walls(p: ThermeParts) {
   for (const f of thermeWalls()) {
+    if (drawnElsewhere(f)) continue;
     const bottom = f.bottom ?? 0;
     const w = f.maxX - f.minX;
     const d = f.maxZ - f.minZ;
@@ -41,11 +43,10 @@ function walls(p: ThermeParts) {
   }
 }
 
-/** The ceilings under each part's roof; round the dome, the eaves are a frame with the dome's ellipse cut out. */
+/** The ceilings under each part's roof (the sauna garden has none: it's open to the sky); round the dome, the eaves are a frame with the dome's ellipse cut out. */
 function roofs(p: ThermeParts) {
   const under = toon('#f4efe6');
   flat(p, { minX: B.minX, maxX: B.maxX, minZ: B.minZ, maxZ: NORTH_BAND_Z }, under, ROOFS.band, true);
-  flat(p, ZONES.dorf, under, ROOFS.dorf, true);
   flat(p, ZONES.rutschen, toon('#e3e9ec'), ROOFS.rutschen, true);
   // The slide hall's trusses, every 10 m across it.
   const r = ZONES.rutschen;
@@ -105,6 +106,7 @@ function dome(p: ThermeParts) {
 export function buildShell(p: ThermeParts) {
   floors(p);
   walls(p);
+  buildFacades(p);
   roofs(p);
   dome(p);
 }

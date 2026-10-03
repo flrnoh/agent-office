@@ -150,6 +150,8 @@ export function rectsGeometry(rects: readonly TRect[], y: number, tile: number, 
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  // A flat sheet needs no toon outline: its hull, pushed off it, would cover a pool's wall seen from the water.
+  g.userData.noOutline = true;
   return g;
 }
 
@@ -177,6 +179,8 @@ export function edgeWallsGeometry(edges: readonly { axis: 'x' | 'z'; at: number;
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  // A flat sheet needs no toon outline: its hull, pushed off it, would cover a pool's wall seen from the water.
+  g.userData.noOutline = true;
   return g;
 }
 

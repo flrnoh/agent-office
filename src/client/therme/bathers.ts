@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { LOUNGER_HIPS, THERMAL_POOL, WHIRLPOOLS } from '../../shared/therme-paradies';
-import { BATHER_NAMES, BATHER_PLAN, BATHER_SUITS, NPC_LOUNGERS, batherAt, type BatherRole } from '../../shared/therme-bathers';
+import { TUB_POOL } from '../../shared/therme-dorf';
+import { LAGOON } from '../../shared/therme-lagune';
+import { BATHER_NAMES, BATHER_PLAN, BATHER_SUITS, NPC_LAWN, NPC_LOUNGERS, batherAt, type BatherRole } from '../../shared/therme-bathers';
 import type { Look } from '../../shared/avatar';
 import { Person } from '../world/character';
 import { seaPose } from '../features/beach/poses';
@@ -10,9 +12,10 @@ import { liePose } from '../features/lounging';
  * The thermal baths' other bathers (flrnoh fork, see FORK.md "The thermal baths", phase 8): thirty
  * people who aren't anyone, so the place is never empty. Where each is comes from the office's clock
  * (like the waves), so every page sees the same bathers in the same places, and nothing goes over the
- * wire: swimmers doing lengths round the palm island, swimmers riding the waves, people sitting in
- * the whirlpools, lying on loungers (those loungers are taken), walking round the thermal pool,
- * floating round the lazy river. Only the nearest fourteen within 60 m move and are drawn.
+ * wire: swimmers doing lengths round the palm island and across the lagoon, riding the waves, sitting
+ * in the whirlpools, the sauna garden's hot tub and at the swim-up bar, lying on loungers (those
+ * loungers are taken), walking the decks, the garden's paths and the beach, floating round the lazy
+ * river. Only the nearest fourteen within 60 m move and are drawn.
  */
 
 interface Bather {
@@ -42,7 +45,7 @@ export class Bathers {
 
   /** Whether `seatId` is one of the bathers' loungers. */
   takes(seatId: string) {
-    return NPC_LOUNGERS.includes(seatId);
+    return NPC_LOUNGERS.includes(seatId) || NPC_LAWN.includes(seatId);
   }
 
   /** Every frame: where each is by the office's clock (`now`, ms), only those within `reach` of you drawn. */
@@ -63,12 +66,12 @@ export class Bathers {
 
   private pose(b: Bather) {
     b.posed = true;
-    const st = { moving: b.role === 'ring' || b.role === 'waves' };
-    if (b.role === 'lounge') {
+    const st = { moving: b.role === 'ring' || b.role === 'waves' || b.role === 'lagoon' };
+    if (b.role === 'lounge' || b.role === 'lawn') {
       b.person.sit(LOUNGER_HIPS);
-      b.person.setWorkout((bones, _dt, tt) => liePose(bones, LOUNGER_HIPS, 'recline', tt, b.phase));
-    } else if (b.role !== 'walk') {
-      const sink = b.role === 'whirl' ? WHIRLPOOLS[0].sink : THERMAL_POOL.sink;
+      b.person.setWorkout((bones, _dt, tt) => liePose(bones, LOUNGER_HIPS, b.role === 'lawn' ? 'flat' : 'recline', tt, b.phase));
+    } else if (b.role !== 'walk' && b.role !== 'beach' && b.role !== 'garden') {
+      const sink = b.role === 'whirl' ? WHIRLPOOLS[0].sink : b.role === 'tub' ? TUB_POOL.sink : b.role === 'lagoon' ? LAGOON.sink : THERMAL_POOL.sink;
       b.person.setWorkout((bones, _dt, tt) => seaPose(bones, sink, st.moving, tt, b.phase));
     }
   }

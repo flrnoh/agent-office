@@ -123,4 +123,60 @@ export class ThermeSounds {
     src.start(t0, Math.random());
     src.stop(t0 + 0.75);
   }
+
+  /** Water running over you at `at` for `secs` (a shower: a hiss), or all at once (a bucket's gush: a crash and a rush). */
+  pour(at: Pos, secs: number, gush = false) {
+    const ctx = this.a.ctx;
+    if (!ctx) return;
+    this.a.count(gush ? 'therme.gush' : 'therme.shower');
+    const out = this.a.panner(at, 2, 1.2);
+    out.connect(this.a.ambience);
+    const t0 = ctx.currentTime + 0.01;
+    const src = this.a.noise(this.a.buf.white, true);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(gush ? 0.22 : 0.07, t0 + (gush ? 0.04 : 0.25));
+    g.gain.setValueAtTime(gush ? 0.16 : 0.07, t0 + Math.max(0.1, secs - 0.4));
+    g.gain.linearRampToValueAtTime(0, t0 + secs);
+    src.connect(biquad(ctx, gush ? 'lowpass' : 'highpass', gush ? 1400 : 2200, 0.6)).connect(g).connect(out);
+    src.start(t0);
+    src.stop(t0 + secs + 0.05);
+  }
+
+  /** A handful of crushed ice: a few crunches. */
+  crunch(at: Pos) {
+    const ctx = this.a.ctx;
+    if (!ctx) return;
+    this.a.count('therme.ice');
+    const out = this.a.panner(at, 2, 1.2);
+    out.connect(this.a.ambience);
+    for (let i = 0; i < 6; i++) {
+      const t0 = ctx.currentTime + 0.02 + i * rand(0.07, 0.14);
+      const src = this.a.noise(this.a.buf.white);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(0.09, t0 + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.06);
+      src.connect(biquad(ctx, 'bandpass', rand(2500, 4200), 1.8)).connect(g).connect(out);
+      src.start(t0, Math.random());
+      src.stop(t0 + 0.08);
+    }
+  }
+
+  /** A foot through the Kneipp trough's water: a little slosh. */
+  slosh(at: Pos) {
+    const ctx = this.a.ctx;
+    if (!ctx) return;
+    const out = this.a.panner(at, 2, 1.2);
+    out.connect(this.a.ambience);
+    const t0 = ctx.currentTime + 0.01;
+    const src = this.a.noise(this.a.buf.white);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(0.05, t0 + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.32);
+    src.connect(biquad(ctx, 'bandpass', rand(500, 800), 0.9)).connect(g).connect(out);
+    src.start(t0, Math.random());
+    src.stop(t0 + 0.35);
+  }
 }

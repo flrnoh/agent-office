@@ -139,6 +139,10 @@ export const SLIDES: readonly SlideDef[] = [
   },
 ];
 export const SLIDE_BY_ID = new Map(SLIDES.map((s) => [s.id, s]));
+
+/** How you go down each: lying on your back feet first (the tubes, the Turbo), sitting, in a tyre, on a mat head first (the racer). */
+export type RidePose = 'lie' | 'sit' | 'tyre' | 'mat';
+export const RIDE_POSE: Record<SlideId, RidePose> = { blackhole: 'lie', turbo: 'lie', kapsel: 'lie', looping: 'lie', reifen: 'tyre', familie: 'sit', racer: 'mat' };
 export const isSlideId = (v: unknown): v is SlideId => typeof v === 'string' && SLIDE_BY_ID.has(v as SlideId);
 
 /** A slide's path for one of its lanes (the racer's sideways offset, square to its way down). */
