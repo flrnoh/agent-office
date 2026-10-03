@@ -4,7 +4,7 @@
 // the way up onto the stage, what the bar and the rider serve, the merch, the light desk's scenes and
 // effects, and the messages for all of it. The server keeps the house (server/venue/place.ts).
 
-import { STAGE_HEIGHT, VENUE_DOOR_INSIDE, VENUE_ENTRY, VENUE_ROOM, WING_DOOR, ZONES, REHEARSAL_ROOMS, WING_CORRIDOR, type VenueMode, type Zone, type ZoneId } from './venue.js';
+import { STAGE_HEIGHT, VENUE_BOX, VENUE_CENTER, VENUE_DOOR_INSIDE, VENUE_ENTRY, VENUE_ROOM, WING_DOOR, ZONES, REHEARSAL_ROOMS, WING_CORRIDOR, type VenueMode, type Zone, type ZoneId } from './venue.js';
 import type { DrinkId } from './rooftop.js';
 
 const R = VENUE_ROOM;
@@ -25,6 +25,13 @@ export interface Spot {
 
 /** The gallery over the foyer: a slab at `y` from the north wall to the hall (`edgeZ`), its front a balcony rail facing the stage. */
 export const GALLERY = { y: 4.4, edgeZ: ZONES.foyer.maxZ, rail: 1.05 } as const;
+/**
+ * The way up to the gallery: a steel stair in the hall along the gallery's front, climbing west
+ * from beside the FOH desk (`lowX`) to a landing against the wing's wall, which meets the gallery
+ * where its rail is open (x landing.minX..landing.maxX). Its top is the gallery's floor.
+ */
+export const GALLERY_STAIRS = { minZ: ZONES.foyer.maxZ, maxZ: ZONES.foyer.maxZ + 1.2, lowX: -2.5, highX: -8.6, steps: 24, top: GALLERY.y + 0.3 } as const;
+export const GALLERY_LANDING = { minX: ZONES.wing.maxX, maxX: GALLERY_STAIRS.highX, minZ: GALLERY_STAIRS.minZ, maxZ: GALLERY_STAIRS.maxZ } as const;
 /** The pillars under the gallery's front edge (their middles along x; 0.5 m square), clear of the ways into the hall. */
 export const PILLARS_X: readonly number[] = [-6.5, 6.5, 13, 19.6];
 export const PILLAR_Z = ZONES.foyer.maxZ - 0.3;
@@ -138,6 +145,11 @@ export const CASES: readonly Stand[] = [
 ];
 /** The roll-up door onto the loading dock, in the east wall. */
 export const LOADING_DOOR = { z: 13.5, width: 3.2, height: 3.4 } as const;
+/** E at the loading door inside goes out onto the dock; E at it outside comes in backstage, here (facing west, into the room). */
+export const LOADING_INSIDE = { x: VENUE_ROOM.maxX - 1.4, z: LOADING_DOOR.z, rotY: -Math.PI / 2 } as const;
+/** The loading door on the street (the building's east wall over the dock), and where you stand on the dock coming out (facing east). */
+export const DOCK_DOOR = { x: VENUE_BOX.maxX, z: VENUE_CENTER.z + LOADING_DOOR.z } as const;
+export const DOCK_SPOT = { x: VENUE_BOX.maxX + 1.4, z: DOCK_DOOR.z, rotY: Math.PI / 2 } as const;
 
 /** The seats on the sofas, a person's width apart: where you sit and which way you face. */
 export function sofaSeats(): { key: string; x: number; z: number; rotY: number }[] {

@@ -4,6 +4,7 @@
  * hall/padel.ts), the soccer hall (soccer/place.ts), the bowling centre (client/bowling) and the Schallwerk (client/venue). Their doors are on the office's street; inside,
  * only what's in there is there to use.
  */
+import { setMirrorSelf } from '../../world/venue/mirror'; // fork: the Schallwerk's mirror
 import type * as THREE from 'three';
 import type { CafeItem } from '../../../shared/cafe';
 import { CASINO } from '../../../shared/casino';
@@ -55,6 +56,7 @@ declare module '../../world/types' {
     bowlingpart: true;
     venue: true;
     venuekasse: true;
+    venuedock: true;
     venuecoat: true;
     venuemerch: true;
     venuebooth: true;
@@ -161,6 +163,7 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   });
   // The Schallwerk across the street (client/venue): its house, and the instruments, the rehearsal wing and the show as its parts.
   const peerLook = (id: string) => store.peers.get(id);
+  setMirrorSelf(() => ctx.me.root); // the green room's mirror shows you, in first person too
   const venue = new VenuePlace({
     ...host,
     player,
@@ -224,6 +227,7 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   ctx.interactions.define('bowlingpart', { reach: 3.5, hint: hintIn(bowling), use });
   // The Schallwerk: its doors, the foyer's stands, the bar, the rider, the green room's sofas, the desks; anything of its parts' without a kind of its own (world/venue/parts.ts).
   ctx.interactions.define('venue', { reach: 4, hint: hintIn(venue), use });
+  ctx.interactions.define('venuedock', { reach: 4, hint: hintIn(venue), use });
   ctx.interactions.define('venuekasse', { reach: 3.5, hint: hintIn(venue), use });
   ctx.interactions.define('venuecoat', { reach: 3.5, hint: hintIn(venue), use });
   ctx.interactions.define('venuemerch', { reach: 3.5, hint: hintIn(venue), use });

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { VENUE, VENUE_ENTRY, VENUE_NAME, VENUE_ROOM, VENUE_STREET_SPOT, ZONES, venueRoomAt, type VenueMode } from '../../shared/venue';
 import { muffleFor } from '../../shared/proberaum';
-import { BAR_MENU, FOTOBOX_SPOT, MERCH_BY_ID, MODE_LIGHTS, RIDER_MENU, type MerchId, type VenueFx, type VenueHouseServerMsg, type VenueLights, type VenueWear } from '../../shared/venue-house';
+import { BAR_MENU, DOCK, DOCK_SPOT, FOTOBOX_SPOT, LOADING_INSIDE, MERCH_BY_ID, MODE_LIGHTS, RIDER_MENU, type MerchId, type VenueFx, type VenueHouseServerMsg, type VenueLights, type VenueWear } from '../../shared/venue-house';
 import type { ClientMsg, FloorInfo, ServerMsg } from '../../shared/protocol';
 import type { Drink } from '../../shared/rooftop';
 import type { EmoteId } from '../../shared/emotes';
@@ -91,6 +91,8 @@ export class VenuePlace {
   active = false;
   private outside: Spot | null = null;
   private arriving = false;
+  /** Came in by the loading door (lands backstage, not in the foyer). */
+  private viaDock = false;
   private parts: VenuePart[] = [];
   mode: VenueMode = 'konzert';
   lights: VenueLights = { ...MODE_LIGHTS.konzert };
@@ -158,7 +160,8 @@ export class VenuePlace {
   }
 
   /** E at the doors on the street: in you go. */
-  go() {
+  go(dock = false) {
+    this.viaDock = dock;
     const here = this.host.floor();
     if (!here || here === VENUE) return;
     try {
@@ -172,11 +175,12 @@ export class VenuePlace {
   }
 
   /** E at the doors inside: back out onto your floor's street, in front of the Schallwerk. */
-  leave() {
+  leave(dock = false) {
     const to = this.from();
     if (!to) return toast('Es gibt kein Stockwerk, auf das du zurückkannst', 'warn');
     const i = this.host.floors().findIndex((f) => f.id === to);
-    const at = { x: VENUE_STREET_SPOT.x, y: streetBelow(Math.max(0, i)), z: VENUE_STREET_SPOT.z, rotY: VENUE_STREET_SPOT.rotY };
+    const spot = dock ? DOCK_SPOT : VENUE_STREET_SPOT;
+    const at = { x: spot.x, y: streetBelow(Math.max(0, i)) + (dock ? DOCK.top : 0), z: spot.z, rotY: spot.rotY };
     this.outside = at;
     const coat = this.wearing.of(this.host.you()).coat;
     if (coat) toast(`🧥 Deine Jacke hängt noch an der Garderobe (Marke ${coat})`);
@@ -193,6 +197,7 @@ export class VenuePlace {
   }
 
   private entry(): Spot {
+    if (this.viaDock) return { x: LOADING_INSIDE.x, y: 0, z: LOADING_INSIDE.z, rotY: LOADING_INSIDE.rotY };
     return { x: VENUE_ENTRY.x, y: 0, z: VENUE_ENTRY.z, rotY: VENUE_ENTRY.rotY };
   }
 
@@ -244,6 +249,7 @@ export class VenuePlace {
     if (this.active) {
       if (this.arriving || !this.inside(this.host.player.pos)) this.host.placeAt(this.entry());
       this.arriving = false;
+      this.viaDock = false;
       this.outside = null;
       return;
     }
@@ -257,10 +263,11 @@ export class VenuePlace {
   // ---- Using things ---------------------------------------------------------------------------------
 
   use(it: Interactable, key: string): boolean {
-    if (it.kind === 'venue') {
+    if (it.kind === 'venue' || it.kind === 'venuedock') {
+      const dock = it.kind === 'venuedock';
       if (key === 'E') {
-        if (this.active) this.leave();
-        else this.go();
+        if (this.active) this.leave(dock);
+        else this.go(dock);
       }
       return true;
     }

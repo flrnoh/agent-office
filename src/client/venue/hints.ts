@@ -22,6 +22,8 @@ export function venueHint(place: Place, it: Interactable, title: (t: string) => 
     return place.active
       ? { k: 'venue-out', parts: [title('🚪 Straße'), key('E', 'Rausgehen')] }
       : { k: `venue-in|${place.mode}`, parts: [title(`🎸 ${VENUE_NAME}`), aside(place.mode === 'club' ? 'Heute: Club · Bar · Proberäume' : 'Heute: Konzert · Bar · Proberäume'), key('E', 'Reingehen')] };
+  if (it.kind === 'venuedock')
+    return place.active ? { k: 'venue-dock-out', parts: [title('🚚 Ladetor'), aside('raus auf die Laderampe'), key('E', 'Rausgehen')] } : { k: 'venue-dock-in', parts: [title('🚚 Ladetor'), aside('Bühneneingang · Backstage'), key('E', 'Reingehen')] };
   if (!place.active) return undefined;
   const w = place.you.wear;
   switch (it.kind) {
