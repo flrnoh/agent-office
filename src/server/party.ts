@@ -15,6 +15,7 @@ import type {
 } from '../shared/protocol.js';
 import { GUEST_MSGS, GUEST_QUIET, guestMayFetch } from './guests.js';
 import { PROBE_SERVER_MSGS } from '../shared/proberaum.js'; // flrnoh fork: the Schallwerk's rehearsal wing
+import { WAYMO_SERVER_MSGS } from '../shared/waymo/fleet.js'; // flrnoh fork: the robotaxis
 
 /*
  * The party guest (flrnoh fork, see FORK.md): friends invited to a party on the rooftop bar. They
@@ -81,6 +82,8 @@ const PARTY_SEES = [
   'voice.ranged', // fork: how far someone's voice carries
   'dance.moved', // fork: someone dancing on the roof
   'bus.rode', // fork: someone's place in a city bus
+  ...WAYMO_SERVER_MSGS, // fork: the robotaxis
+  'phone.held', // fork: someone's phone out
   'tankstelle', // fork: the petrol station and its car wash
   'coaster', // fork: DER BRECHER (its typists are the ground floor's workers by name, as party guests see them at their desks)
   'karaoke', 'karaoke.cheer', 'karaoke.rated', // fork: the bowling centre's karaoke bar

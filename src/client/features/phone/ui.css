@@ -1,0 +1,259 @@
+/* flrnoh fork (see FORK.md "The phone"): the phone, held up in the middle of the screen. */
+.phone {
+  position: relative;
+  width: min(330px, 92vw);
+  height: min(660px, 86vh);
+  border-radius: 44px;
+  background: #0d0e12;
+  padding: 12px;
+  box-shadow: 0 0 0 3px #3a3d46, 0 24px 60px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  color: #f3f4f6;
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+.phone > .modal-close,
+.phone > button.close {
+  top: 18px;
+  right: 18px;
+  z-index: 3;
+}
+.phone-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 18px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 26px;
+}
+.phone-notch {
+  width: 96px;
+  height: 24px;
+  border-radius: 14px;
+  background: #000;
+}
+.phone-net {
+  font-size: 11px;
+  opacity: 0.85;
+  margin-right: 26px;
+}
+.phone-appbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-weight: 700;
+  font-size: 16px;
+}
+.phone-appbar.hidden {
+  display: none;
+}
+.phone-back {
+  border: 0;
+  background: #22252e;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.phone-screen {
+  flex: 1;
+  border-radius: 30px;
+  overflow: hidden auto;
+  background: linear-gradient(160deg, #1b2a4a 0%, #3b1f4a 55%, #6b2f3a 100%);
+}
+.phone-home {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px 8px;
+  padding: 28px 14px;
+}
+.phone-app {
+  border: 0;
+  background: none;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.phone-icon {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  font-weight: 800;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.phone-app:hover .phone-icon {
+  transform: scale(1.06);
+}
+.phone-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 12px;
+  line-height: 20px;
+}
+.phone-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.phone-app-body {
+  min-height: 100%;
+  background: #f5f6f8;
+  color: #16181d;
+}
+.phone-homebar {
+  width: 120px;
+  height: 5px;
+  border-radius: 3px;
+  background: #e5e7eb;
+  margin: 8px auto 2px;
+}
+/* Lists in the apps. */
+.phone-pad {
+  padding: 14px 12px 20px;
+}
+.phone-pad h3 {
+  margin: 4px 4px 12px;
+  font-size: 17px;
+}
+.phone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.phone-row {
+  border: 0;
+  text-align: left;
+  background: #fff;
+  border-radius: 14px;
+  padding: 10px 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.phone-row:hover {
+  background: #eef4ff;
+}
+.phone-row-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.phone-row-head span {
+  color: #6b7280;
+  font-size: 12px;
+}
+.phone-dep {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  padding: 2px 0;
+}
+.phone-line {
+  color: #fff;
+  font-weight: 800;
+  text-align: center;
+  border-radius: 5px;
+  font-size: 12px;
+  padding: 1px 0;
+}
+.phone-when {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+/* The Waymo app (features/waymo/app.ts). */
+.waymo-head {
+  display: flex;
+  flex-direction: column;
+  padding: 18px 16px 8px;
+  background: #0b0f14;
+  color: #fff;
+}
+.waymo-head strong {
+  font-size: 26px;
+  letter-spacing: -0.5px;
+}
+.waymo-head span {
+  font-size: 13px;
+  opacity: 0.75;
+}
+.waymo-search {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 15px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  margin-bottom: 12px;
+}
+.waymo-place {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+}
+.waymo-icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+}
+.waymo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+.waymo-big {
+  font-size: 24px;
+  font-weight: 800;
+  margin-top: 6px;
+}
+.waymo-sub {
+  color: #6b7280;
+  font-size: 13px;
+}
+.waymo-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+.waymo-btn {
+  border: 0;
+  border-radius: 24px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  background: #00a99d;
+  color: #fff;
+  cursor: pointer;
+}
+.waymo-btn.waymo-quiet {
+  background: #e5e7eb;
+  color: #16181d;
+}

@@ -14,6 +14,7 @@ import { thermeWhereabouts } from '../../shared/therme-all'; // fork
 import { venueWhereabouts } from '../../shared/venue-house'; // fork
 import { danceWhereabouts } from '../../shared/dance'; // fork
 import { busWhereabouts } from '../../shared/busride'; // fork
+import { waymoWhereabouts } from '../features/waymo/state'; // fork
 import { CARS, type CarSeat } from '../../shared/garage';
 import { seatOn, type MapPlan } from '../../shared/maps';
 import { store } from '../state';
@@ -37,6 +38,8 @@ export function whereabouts(p: PeerInfo, car?: { car: number; seat: CarSeat }, p
   if (car && def?.kind === 'bulli') return `🚐 ${car.seat === 'driver' ? 'driving' : 'riding in'} ${def.name}`; // flrnoh fork
   if (def) return `🏎️ ${car.seat === 'driver' ? 'driving' : 'riding in'} the ${def.name}`;
   if (p.bus) return busWhereabouts(p.bus); // flrnoh fork: on a city bus
+  const taxi = waymoWhereabouts(p.id); // flrnoh fork: in a robotaxi
+  if (taxi) return taxi;
   if (p.smoking) return '🚬 on a smoke break';
   if (p.golfing) return p.floor === BOWLING ? '⛳ putting in the black-light mini golf' : '🏌️ teeing off'; // fork: the mini golf borrows the golf pose
   if (p.throwing) return p.throwing === 'darts' ? '🎯 playing darts' : '🪓 throwing axes';

@@ -26,6 +26,7 @@ import { Announcer } from './announce';
 import { speedCamera } from './blitzer';
 import { doorNear, seatNear, standUp, validatorNear, walkInBus, type Ride } from './cabin';
 import { busWorld, followRiders, takenSeats } from './riders';
+import { busApp } from './app';
 
 declare module '../../world/types' {
   interface InteractKinds {
@@ -48,6 +49,7 @@ export function installCityBus(ctx: Ctx, deps: CityBusDeps) {
   const buses = town.buses.buses;
   speedCamera(ctx); // a red light run in a garage car at speed: flash
   followRiders(ctx);
+  busApp(ctx); // the bus app on your phone
   const onStreet = () => ctx.inOffice() && !ctx.upTop() && !ctx.trip() && Math.abs(ctx.player.pos.y - ctx.player.street) < 1.5;
   const now = () => store.officeNow() / 1000;
   let ride: Ride | null = null;

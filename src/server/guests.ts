@@ -1,6 +1,7 @@
 import type { ClientMsg } from '../shared/protocol.js';
 import { radioRequestShape } from './radio.js';
 import { PROBE_CLIENT_MSGS } from '../shared/proberaum.js'; // flrnoh fork: the Schallwerk's rehearsal wing
+import { WAYMO_CLIENT_MSGS } from '../shared/waymo/fleet.js'; // flrnoh fork: the robotaxis
 
 /*
  * The guest role (flrnoh fork, see FORK.md): guests walk around, chat, talk, play and watch the
@@ -36,6 +37,8 @@ const GUEST = [
   'voice.range', // fork: how far your voice carries
   'dance.set', // fork: dancing on the roof
   'bus.ride', // fork: riding a city bus
+  ...WAYMO_CLIENT_MSGS, // fork: the robotaxis
+  'phone.hold', // fork: your phone out
   'tank.fill', 'tank.wash', // fork: the petrol station and its car wash
   'coaster.board', 'coaster.leave', 'coaster.hands', // fork: DER BRECHER, the roller coaster round the tower
   'karaoke.hello', 'karaoke.queue', 'karaoke.unqueue', 'karaoke.mic', 'karaoke.stop', 'karaoke.done', 'karaoke.rate', 'karaoke.cheer', // fork: the bowling centre's karaoke bar

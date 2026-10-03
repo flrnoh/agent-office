@@ -7,6 +7,7 @@ import type { BusLine, BusPose } from '../../../shared/citybus';
 import { h, openModal } from '../../ui/dom';
 import { atlas, BOUNDS, COLORS, PX } from './atlas';
 import { drawBuses, drawRoutes, drawStops } from './buses'; // the bus network
+import { drawWaymos } from './waymos'; // the robotaxis
 import type { Where } from './index';
 import { ALL_POIS, HOME, distanceWord, type Poi } from './pois';
 
@@ -120,6 +121,7 @@ export function openBigMap(opts: BigMapOptions) {
     names.sort((a, b) => rank(a) - rank(b));
     for (const n of names) label(n.p.name, n.x, n.y, n.p === HOME, n.big);
     drawBuses(g, pt, opts.buses(), 16);
+    drawWaymos(g, pt, 18); // the robotaxis (waymos.ts)
     // The people on your floor.
     for (const peer of store.peers.values()) {
       if (peer.id === store.you || peer.lite || !store.onMyFloor(peer)) continue;
