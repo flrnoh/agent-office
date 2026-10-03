@@ -52,8 +52,10 @@ export class Motors {
       const v = Math.abs(e.speed);
       const push = Math.abs(e.gas);
       // Up through the gears: the revs climb in each one and drop back as it shifts up.
-      const gear = Math.min(3, Math.floor(v / 5.5));
-      const f = 44 + gear * 7 + Math.min(1.5, (v - gear * 5.5) / 5.5) * 46 + push * 5;
+      // flrnoh fork: past 22 m/s (only the Bulli, up to 200 km/h) on through four longer gears.
+      const gear = v < 22 ? Math.floor(v / 5.5) : Math.min(7, 4 + Math.floor((v - 22) / 8.5));
+      const into = gear < 4 ? (v - gear * 5.5) / 5.5 : (v - 22 - (gear - 4) * 8.5) / 8.5;
+      const f = 44 + gear * 7 + Math.min(1.5, into) * 46 + push * 5;
       m.saw.frequency.setTargetAtTime(f, now, 0.06);
       m.sub.frequency.setTargetAtTime(f / 2, now, 0.06);
       m.tone.frequency.setTargetAtTime(240 + f * 5 + push * 450, now, 0.08);
