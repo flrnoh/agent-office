@@ -48,6 +48,8 @@ export interface PeerInfo {
   bike?: BikeKind;
   /** flrnoh fork: aboard a city bus, and where in it (shared/busride.ts). */
   bus?: BusRide;
+  /** flrnoh fork: their phone out, in their hand (shared/phone.ts). */
+  phone?: boolean;
   /** flrnoh fork: how far their voice carries, in meters (shared/voicerange.ts); none is the default. */
   voiceRange?: number;
   /** flrnoh fork: dancing on the roof, this move (shared/dance.ts). */

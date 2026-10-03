@@ -47,6 +47,7 @@ import { gigStarted } from '../ws/handlers/venue.js'; // a gig starting switches
 import { THERME_ENTRY, backInTherme, thermeDoorSpot, thermeView } from '../therme/place.js'; // the thermal baths behind the gym
 import { Therme } from '../therme/index.js';
 import { AUFGUSS_BONUS, type SaunaId } from '../../shared/therme-dorf.js';
+import { Fleet } from './waymo.js'; // the robotaxis
 
 /** Made last, once upstream's stages are all there (see server.ts). */
 export interface Fork {
@@ -68,6 +69,7 @@ export interface Fork {
   padelCourts: PadelCourts; // padel in the hall
   bungeeRope: BungeeRope; // bungee off the roof
   coaster: Coaster; // DER BRECHER, the roller coaster round the tower (coaster.ts)
+  waymo: Fleet; // the robotaxis, one fleet for the building (fork/waymo.ts)
   soccer: Soccer; // the soccer hall's ball and match
   radio: RadioProxy; // radio stations on the jukebox
   karaoke: Karaoke; // the bowling centre's karaoke bar (bowling/karaoke.ts)
@@ -138,6 +140,15 @@ export function createFork(ctx: Ctx): Fork {
       storeys: () => floors.size,
       // The ground floor's workers at their desks: the tube runs over their heads.
       typists: () => [...([...floors.values()][0]?.workers.list() ?? [])].map((w) => ({ desk: w.deskId, name: w.name, color: w.color })),
+    }),
+    waymo: new Fleet({
+      now: () => Date.now() / 1000,
+      changed: (car) => ctx.broadcast({ t: 'waymo.car', car }), // the whole building: the street's under every floor
+      warn: (id, text) => {
+        const c = clients.get(id);
+        if (c) ctx.warn(c, text);
+      },
+      honked: (car) => ctx.broadcast({ t: 'waymo.honked', car }),
     }),
     soccer: new Soccer({
       where: (id) => {
@@ -281,6 +292,7 @@ function thermeAufguss(ctx: Ctx) {
 }
 
 export function startFork(ctx: Ctx) {
+  ctx.waymo.start(); // the robotaxis cruise, come, wait and take people places
   ctx.turn.start();
   aufgussTimer = setInterval(() => thermeAufguss(ctx), 3000); // the baths' Aufgüsse
   aufgussTimer.unref?.();
@@ -295,6 +307,7 @@ export function stopFork(ctx: Ctx) {
   if (aufgussTimer) clearInterval(aufgussTimer);
   aufgussTimer = null;
   ctx.coaster.stop();
+  ctx.waymo.stop();
   ctx.casino.stop();
   ctx.soccer.stop();
   ctx.karaoke.stop();

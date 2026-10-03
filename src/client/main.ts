@@ -77,6 +77,8 @@ import { installFunShops } from './features/funshops'; // flrnoh fork: the Spiel
 import { installRide } from './features/ride'; // flrnoh fork: bikes, pets, laundry
 import { installCityBus } from './features/citybus'; // flrnoh fork: the city bus
 import { installMinimap } from './features/minimap'; // flrnoh fork: the minimap and the big map
+import { installPhone } from './features/phone'; // flrnoh fork: your phone
+import { installWaymo } from './features/waymo'; // flrnoh fork: the robotaxis
 import { installKaraoke } from './features/karaoke'; // flrnoh fork: the bowling centre's karaoke bar
 import { installMinigolf } from './features/minigolf'; // flrnoh fork: the bowling centre's black-light mini golf
 import { installBowlingGame } from './features/bowlinggame'; // flrnoh fork: the bowling centre's lanes
@@ -238,6 +240,8 @@ parts.ride = installRide(ctx, { personOf, booze: () => parts.bar.booze, serve: (
 parts.tankstelle = installTankstelle(ctx, parts, { booze: () => parts.bar.booze, caffeine: () => parts.coffee.caffeine, reach });
 (window as any).__citybus = installCityBus(ctx, { free: () => (standUp(), stopWalking()) }); // fork: riding the city bus
 (window as any).__minimap = installMinimap(ctx); // fork: the minimap, J for the big map
+(window as any).__phone = installPhone(ctx, { remotes: () => parts.peers.remotes }); // fork: your phone (I) and its apps
+(window as any).__waymo = installWaymo(ctx, { free: () => (standUp(), stopWalking()) }); // fork: the robotaxis
 parts.coaster = installCoaster(ctx, { roof: parts.rooftop.roof, roofFloors: parts.rooftop.roofFloors, bodyOf: (id) => personOf(id)?.root }); // fork: DER BRECHER
 (window as any).__karaoke = installKaraoke(ctx, { personOf }); // fork: the bowling centre's karaoke bar
 (window as any).__minigolf = installMinigolf(ctx, { standUp, stopWalking, personOf }); // fork: the bowling centre's mini golf

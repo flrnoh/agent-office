@@ -17,6 +17,9 @@ import { $, h } from '../../ui/dom';
 import { atlas, PX } from './atlas';
 import { openBigMap } from './bigmap';
 import { drawBuses, drawStops } from './buses'; // the bus network
+import { drawWaymos } from './waymos'; // the robotaxis
+import { bindGoal } from './goal';
+import { addPhoneApp } from '../phone/apps';
 import { ALL_POIS, HOME, OFFICE_RECT, compassWord, distanceWord, placeSpot, type Poi } from './pois';
 
 /** The minimap's size on screen (px, CSS), till it's laid out (ui.css has it smaller on a phone). */
@@ -153,6 +156,7 @@ export function installMinimap(ctx: Ctx) {
     // The bus stops (zoomed in) and the buses round about (buses.ts).
     if (zoom >= 1.2) drawStops(g, toDial, 2.6 * dpr);
     drawBuses(g, toDial, ctx.office.town.buses.buses.filter((b) => inDial(toDial(b.pose.x, b.pose.z), 6 * dpr)), 11 * dpr);
+    drawWaymos(g, toDial, 12 * dpr, (p) => inDial(p, 6 * dpr)); // the robotaxis (waymos.ts)
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     // The people on your floor.
@@ -279,6 +283,9 @@ export function installMinimap(ctx: Ctx) {
     { passive: false },
   );
   ctx.keys.bind({ code: 'KeyJ', run: () => openMap() });
+  // Other features send you places (goal.ts); the map's an app on the phone too.
+  bindGoal(setTarget, () => target);
+  addPhoneApp({ id: 'map', name: 'Karte', icon: '🗺️', color: '#34c759', open: (_, phone) => (phone.close(), openMap()) });
   // Once the frame's drawn, so the camera faces where you see.
   ctx.ticks.add('render', () => draw());
 

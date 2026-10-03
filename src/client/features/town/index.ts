@@ -5,6 +5,7 @@
  * windows (the street, the city, the country past it) and looks out at the same country from there.
  */
 import type * as THREE from 'three';
+import { posesNow } from '../waymo/state'; // fork: the robotaxis
 import { roofDrop } from '../../../shared/layout';
 import type { Ctx } from '../../core/context';
 import type { Obstacle } from '../../world/town';
@@ -37,6 +38,8 @@ export function installTown(ctx: Ctx, deps: TownFeatureDeps) {
     if (Math.abs(ctx.player.pos.y - street) < 1.5) obstacles.push(ctx.player.pos);
     for (const b of deps.bodies()) if (Math.abs(b.position.y - street) < 1.5) obstacles.push(b.position);
     for (const c of office.cars.cars) obstacles.push(c.pose);
+    // Fork: the robotaxis, nose to tail (features/waymo).
+    for (const p of posesNow().values()) for (const k of [-1.8, 0, 1.8]) obstacles.push({ x: p.x + Math.cos(p.yaw) * k, z: p.z - Math.sin(p.yaw) * k });
     return obstacles;
   }
 

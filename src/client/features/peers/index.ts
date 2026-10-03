@@ -11,6 +11,8 @@ import { storeySeat } from '../../../shared/storey'; // flrnoh fork
 import { heardVolume } from '../../../shared/voicerange'; // flrnoh fork
 import { voiceWalled } from '../voicerange/walls'; // flrnoh fork: rooms voice doesn't get out of
 import { aboardBus } from '../citybus/riders'; // flrnoh fork: riding the city bus
+import { aboardWaymo } from '../waymo/state'; // flrnoh fork: riding a robotaxi
+import { holdPhone } from '../phone/prop'; // flrnoh fork: a phone in their hand
 import type { PeerInfo } from '../../../shared/protocol';
 import { DRINK_BY_ID } from '../../../shared/rooftop';
 import { hipsOf } from '../../../shared/garage';
@@ -83,6 +85,7 @@ export function installPeers(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'puff
       r.person.holdDrink(peer.drink ? (DRINK_BY_ID.get(peer.drink) ?? null) : null);
       r.person.carry(peer.carrying);
       r.person.read(!!peer.reading);
+      holdPhone(r.person, !!peer.phone); // flrnoh fork: their phone out
       r.person.sit(store.carOf(id) ? hipsOf(store.carOf(id)!.car) : peer.seat ? (seatOn(plan(), peer.seat)?.hips ?? shopSeatHips(peer.seat)) : null); // shopSeatHips: flrnoh fork
       r.person.wheel = onRig(peer.seat); // fork: hands on the racing rig's wheel
       r.person.setDoing(whereabouts(peer, store.carOf(id), plan()));
@@ -106,7 +109,7 @@ export function installPeers(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'puff
       const p = store.peers.get(id);
       if (!p) continue;
       // Sitting, they're wherever their seat puts them; in a car, right in it as it goes.
-      const bus = aboardBus(id, p, r.person); // flrnoh fork: in a city bus, standing or sitting, as it goes
+      const bus = aboardBus(id, p, r.person) ?? aboardWaymo(id, r.person); // flrnoh fork: in a city bus (standing or sitting) or a robotaxi, as it goes
       const ride = parts.cars.rideOf(id) ?? bus;
       const sat = bus && !bus.seated ? undefined : ride ?? (p.seat ? storeySeat(seatOn(plan(), p.seat), parts.worlds.inOffice() ? office.stack.state.index : 0) : undefined); // fork: the balcony's seats where this storey has them
       const at = ride ?? sat ?? p;

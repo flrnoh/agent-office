@@ -20,6 +20,8 @@ import { kinoMessage } from '../../kino.js';
 import { toyUse } from '../../../shared/shopwares.js';
 import { funshopHandlers } from './funshops.js';
 import { coasterHandlers, coasterHooks } from './coaster.js';
+import { waymoHandlers, waymoHooks } from './waymo.js';
+import { phoneMessage } from '../../fork/phone.js';
 import { karaokeHandlers } from './karaoke.js';
 import { bowlingHandlers } from './bowling.js';
 import { venueHandlers } from './venue.js';
@@ -178,6 +180,8 @@ export const forkHandlers = {
   },
   ...funshopHandlers, // the Spielhalle's claw machine and the Post's postcards
   ...coasterHandlers, // DER BRECHER, the roller coaster round the tower
+  ...waymoHandlers, // the robotaxis (waymo.ts)
+  'phone.hold': phoneMessage, // your phone out or away (fork/phone.ts)
   ...karaokeHandlers, // the bowling centre's karaoke bar (karaoke.ts)
   ...bowlingHandlers, // the bowling centre's cosmic switch and rental shoes
   ...venueHandlers, // the Schallwerk's house: concert or club, the light desk, stamp, cloakroom, merch (venue.ts)
@@ -236,6 +240,7 @@ export const forkHooks: FeatureHooks = {
     baumarktLeft(ctx, c, was?.id); // off the Baumarkt's forklift, trolleys and tools
     trolleyLeft(ctx, c, was?.id); // the supermarket's trolley stays behind
     coasterHooks.leaving?.(ctx, c, was); // out of DER BRECHER's train, off the roof
+    waymoHooks.leaving?.(ctx, c, was); // out of a robotaxi
     busLeft(ctx, c); // off the city bus
   },
   closed(ctx, c) {
@@ -248,6 +253,7 @@ export const forkHooks: FeatureHooks = {
     offRope(ctx, c.id);
     rigLeft(ctx, c);
     coasterHooks.closed?.(ctx, c);
+    waymoHooks.closed?.(ctx, c);
   },
   closedOn(ctx, c, floor) {
     boatLeft(ctx, c, floor.id); // out of a boat at the beach
