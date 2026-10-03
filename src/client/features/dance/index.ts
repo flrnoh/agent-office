@@ -15,7 +15,8 @@
  *   choices go by their id (danceSeed), so it picks the same moves everywhere too.
  * - Only while they stand on the roof's floor: walking, sitting, a car, the pool or the air (the
  *   coaster, the bungee) let go of the pose, and only of ours (another feature's pose is left alone).
- * - In first person you don't see yourself, so nothing changes about the view; your hands stay put.
+ * - In first person the dance comes to you: the view rides your hips and head, and your hands do the
+ *   move's arms in front of your eyes (firstperson.ts).
  * - On the dance floor a soft spot of light pulses under each dancer in the track's colour (glow.ts).
  */
 import { DANCE_BY_ID, DANCE_MOVES, DANCE_SEND_MS, danceSeed, isDance, type DanceId } from '../../../shared/dance';
@@ -29,6 +30,7 @@ import { $, h, toast } from '../../ui/dom';
 import type { Person } from '../../world/character';
 import type { Bones } from '../../world/character/person-bones';
 import { Glows, onDanceFloor } from './glow';
+import { danceInFirstPerson } from './firstperson';
 import { Dancer } from './poses';
 import { DANCE_KEYS, DancePanel } from './ui';
 
@@ -249,6 +251,8 @@ export function installDance(ctx: Ctx, deps: DanceDeps) {
     const idle = up && !mine && !ctx.activities.busy() && onDanceFloor(player.pos.x, player.pos.z);
     panel.show(mine ? 'dancing' : idle ? 'invite' : 'off', mine, posed.get('')?.dancer.pick ?? null);
   });
+
+  danceInFirstPerson(ctx, () => (mine && player.grounded ? (posed.get('')?.dancer ?? null) : null));
 
   // For the tests and the console: what you dance, who's posed, and the controls.
   return { mine: () => mine, posed, start, stop, choose, glows };

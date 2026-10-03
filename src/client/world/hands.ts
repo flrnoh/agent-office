@@ -86,6 +86,8 @@ export class Hands {
   private lightLevel = 1;
   /** Seconds into a smoke break, or -1. Runs in step with your character's (see Person.setSmoking). */
   private smokeT = -1;
+  /** Fork: moves the hands (right, left; already placed for this frame) through a dance, or null. */
+  dancing: ((r: THREE.Group, l: THREE.Group) => void) | null = null;
   /** The emote your character is doing, and how far into it (see Person.emote). */
   private emoting: { emote: Emote; t: number } | null = null;
   /** Sticks up out of the right fist for a thumbs up. */
@@ -477,6 +479,7 @@ export class Hands {
       this.ember.emissiveIntensity += ((d > 0.9 ? 1.4 : 0.3) - this.ember.emissiveIntensity) * Math.min(1, dt * 6);
     }
     if (this.emoting) this.emoteStep(dt, l);
+    this.dancing?.(r, l); // flrnoh fork: dancing on the roof (features/dance/firstperson.ts)
     if (this.costume === 'halloween') this.burn(t);
   }
 
