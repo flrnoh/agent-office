@@ -133,19 +133,20 @@ function run(p: CarPose, pedals: Pedals, seconds: number, t: DriveTuning): CarPo
 }
 const still = (): CarPose => ({ x: 0, z: 0, rotY: 0, speed: 0, steer: 0 });
 
-test('it drives like a Bulli: slower and softer than the supercars, but it gets there and turns', () => {
+test('it drives like a Bulli: slower off the line than the supercars, then on to 200 km/h, and it turns', () => {
   assert.equal(tuningOf(BULLI), BULLI_DRIVE);
   assert.equal(tuningOf(0), DRIVE);
-  for (const k of ['top', 'reverse', 'accel', 'brake', 'steerRate'] as const) assert.ok(BULLI_DRIVE[k] < DRIVE[k], `${k} is gentler`);
+  for (const k of ['reverse', 'accel', 'brake', 'steerRate'] as const) assert.ok(BULLI_DRIVE[k] < DRIVE[k], `${k} is gentler`);
   assert.ok(Object.values(BULLI_DRIVE).every((v) => Number.isFinite(v) && v > 0));
   const bulli = run(still(), GAS, 2, BULLI_DRIVE);
   const lambo = run(still(), GAS, 2, DRIVE);
-  assert.ok(bulli.speed > 3 && bulli.speed < lambo.speed / 2, `gentle off the line (${bulli.speed.toFixed(1)} m/s after 2 s)`);
+  assert.ok(bulli.speed > 3 && bulli.speed < lambo.speed, `slower off the line (${bulli.speed.toFixed(1)} m/s after 2 s)`);
   assert.equal(run(still(), GAS, 20, BULLI_DRIVE).speed, BULLI_DRIVE.top, 'up to its top speed, and no more');
-  assert.ok(BULLI_DRIVE.top * 3.6 > 40 && BULLI_DRIVE.top * 3.6 < 60, 'about 45 km/h flat out');
-  assert.equal(run({ ...still(), speed: BULLI_DRIVE.top }, { ...GAS, brake: true }, 2, BULLI_DRIVE).speed, 0, 'the brakes stop it');
+  assert.equal(Math.round(BULLI_DRIVE.top * 3.6), 200, '200 km/h flat out');
+  assert.equal(run({ ...still(), speed: BULLI_DRIVE.top }, { ...GAS, brake: true }, 4, BULLI_DRIVE).speed, 0, 'the brakes stop it');
   const radius = (speed: number) => BULLI_DRIVE.wheelbase / Math.tan(steerLimit(speed, BULLI_DRIVE));
   assert.ok(radius(3) < 7, `turns round in the garage (${radius(3).toFixed(1)} m)`);
+  assert.ok(radius(BULLI_DRIVE.top) > 60, `no flicking it round flat out (${radius(BULLI_DRIVE.top).toFixed(0)} m)`);
   const left = run({ ...still(), speed: 5 }, { gas: 0.3, turn: 1, brake: false }, 1, BULLI_DRIVE);
   assert.ok(left.rotY > 0.1, 'A turns it left');
 });
