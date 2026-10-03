@@ -1,4 +1,5 @@
 import type { SeatDef } from './layout.js';
+import { POOL_DEFAULTS, type PoolDef } from './swim.js';
 import { GYM_ROOM } from './gym.js';
 
 /*
@@ -134,6 +135,19 @@ export const laneAt = (z: number) => Math.max(0, Math.min(LAP_POOL.lanes - 1, Ma
 export const BLOCKS = { minX: 6.15, maxX: 6.95, step: B + 0.3, top: B + 0.6, half: 0.32 } as const;
 /** How near a wall a swimmer touches it (a length counts from wall to wall). */
 export const TOUCH = 0.7;
+
+/** The lap pool as a pool to swim in (shared/swim.ts, client/swim/): lengths along x, timed, lane by lane. */
+export const LAP_SWIM: PoolDef = {
+  ...POOL_DEFAULTS,
+  id: 'gym-lap',
+  rects: [LAP_POOL],
+  surface: LAP_POOL.surface,
+  floor: LAP_POOL.floor,
+  sink: SWIM_SINK,
+  deck: B,
+  climbOut: (x, z) => lapClimbOut(x, z),
+  lengths: { axis: 'x', meters: 25, touch: TOUCH, key: 'agent-office.gym.best25', where: (_x, z) => `lane ${laneAt(z) + 1}` },
+};
 
 export const overLapPool = (x: number, z: number, slack = 0) => inB(LAP_POOL, x, z, slack);
 /** Whether someone with feet at `y` at (x, z) is swimming in the lap pool. */
