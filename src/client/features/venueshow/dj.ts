@@ -54,7 +54,8 @@ export class VenueDj {
 
   /** Whether a set plays here now (rather than the house mix). */
   setPlays(): boolean {
-    return this.player.silencesHouse() && !!this.state.set;
+    // A set that's run out hands back to the house mix here (the roof stays quiet instead, features/djset).
+    return this.player.silencesHouse() && !this.player.over() && !!this.state.set;
   }
 
   private fetchBeats() {

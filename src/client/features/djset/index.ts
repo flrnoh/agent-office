@@ -15,7 +15,7 @@ import type { SettingsPane } from '../../ui/settings';
 import type { Interactable } from '../../world/types';
 import { isDjBeats } from '../../../shared/djbeats';
 import type { DjSetState } from '../../../shared/djset';
-import { gridFrame, SetBeats, setHue, type SetFrame } from './frame';
+import { gridFrame, quietFrame, SetBeats, setHue, type SetFrame } from './frame';
 import { SetVideo } from './video';
 
 export interface DjSetDeps {
@@ -31,7 +31,15 @@ export interface DjSetDeps {
 
 export function installDjSets(ctx: Ctx, deps: DjSetDeps) {
   const watchers = new Set<() => void>();
-  const djSets = new DjSetPlayer({ now: () => store.officeNow(), volume: () => ctx.sound.djSetVolume(), toast, changed: () => (houseDj(), watchers.forEach((fn) => fn())) });
+  /** Whether you were hearing the set (for saySetOver). */
+  let wasPlaying = false;
+  const djSets = new DjSetPlayer({ now: () => store.officeNow(), volume: () => ctx.sound.djSetVolume(), toast, changed: () => (houseDj(), saySetOver(), watchers.forEach((fn) => fn())) });
+  /** Once, as the set you're hearing runs out: it's quiet now, and how to get music back. */
+  function saySetOver() {
+    const phase = djSets.phase();
+    if (phase === 'ended' && wasPlaying && ctx.upTop()) toast('🤫 The set is over. Quiet till someone puts on the next one at the DJ booth (E)');
+    if (phase !== 'away') wasPlaying = phase === 'playing' || phase === 'blocked' || phase === 'held';
+  }
   /** The house DJ plays on the roof unless a set does. */
   function houseDj() {
     ctx.sound.setDj(ctx.upTop() && !djSets.silencesHouse() ? deps.djAt : null);
@@ -104,6 +112,8 @@ export function installDjSets(ctx: Ctx, deps: DjSetDeps) {
     if (!set || !djSets.silencesHouse()) return (video.release(), null);
     const hue = setHue(set.url);
     const now = store.officeNow();
+    // It's run out: quiet up here, the lights drifting, no video.
+    if (djSets.over()) return (video.release(), quietFrame(now / 1000, hue));
     // Where the set you hear is: everyone's point in it, put right by how far its player here is off.
     const at = djSets.expectedAt(now) + (driftFor === set.url ? drift : 0);
     const shown = video.update(s.video?.status === 'ready' ? (s.video.key ?? null) : null, at, djSets.phase() === 'playing');
@@ -149,6 +159,7 @@ export function installDjSets(ctx: Ctx, deps: DjSetDeps) {
   /** What the booth's hint says is on, when it's a set of someone's (else the house DJ's). */
   function playing(): string | null {
     if (!djSets.silencesHouse() || !djSets.current().set) return null;
+    if (djSets.over()) return `🤫 ${djSets.titleNow()} is over · quiet till the next set`;
     return `🎶 ${djSets.titleNow()}${djSets.phase() === 'blocked' ? ' · click to hear it' : ''}`;
   }
 

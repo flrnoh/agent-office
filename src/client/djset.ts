@@ -176,8 +176,17 @@ export class DjSetPlayer extends EmbedPlayer<DjSet> {
     return s.set ? s.set.start + Math.max(0, now - s.startedAt) / 1000 : 0;
   }
 
-  /** Whether the house DJ keeps quiet: while a set is on and this page hasn't given up on it. */
+  /**
+   * Whether the house DJ keeps quiet: while a set is on, unless this page can't play it. Once a set
+   * has run out it stays quiet (Florian: "lieber ist es dann mal still"), till someone puts on the
+   * next one or gives the decks back to the house DJ.
+   */
   silencesHouse(): boolean {
-    return !!this.current().set && this.phase() !== 'failed' && this.phase() !== 'ended';
+    return !!this.current().set && this.phase() !== 'failed';
+  }
+
+  /** The set that's on has run out: the roof is quiet. */
+  over(): boolean {
+    return !!this.current().set && this.phase() === 'ended';
   }
 }
