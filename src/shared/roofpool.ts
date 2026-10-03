@@ -4,6 +4,7 @@
 // page (which builds it and swims in it) and the tests (which check it stands clear of everything else
 // up there). Nobody tells the office they're swimming: like the sea, every page works it out from where
 // someone is (their `move`).
+import { POOL_DEFAULTS, type PoolDef } from './swim.js';
 
 /** The water, inside the basin's walls: x and z on the roof, its surface `surface` up, its floor the roof. */
 export const POOL = { minX: 11.4, maxX: 16.2, minZ: -11.8, maxZ: -6.6, surface: 0.85 } as const;
@@ -169,3 +170,21 @@ export function diveFloors(): { minX: number; maxX: number; minZ: number; maxZ: 
     { minX: d.board.minX, maxX: d.board.maxX, minZ: d.front, maxZ: d.board.to, top: d.top + 0.05, bottom: d.top - 0.1 },
   ];
 }
+
+/** The pool as a pool to swim in (shared/swim.ts, client/swim/): its feet down in the deck's slab, so the walls are tried just over the roof's floor. */
+export const ROOF_SWIM: PoolDef = {
+  ...POOL_DEFAULTS,
+  id: 'roof-pool',
+  rects: [POOL],
+  surface: POOL.surface,
+  floor: POOL.surface - POOL_SINK - 0.4,
+  sink: POOL_SINK,
+  deck: POOL_DECK.top,
+  wallsAt: 0.05,
+  speed: 1.8,
+  fast: 2.8,
+  jumpScale: 2,
+  dunk: { base: 0.1, extra: 0.3 },
+  strokeEvery: 0.75,
+  climbOut: (x, z) => climbOutAt(x, z),
+};
