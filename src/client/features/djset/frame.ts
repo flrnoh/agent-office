@@ -52,6 +52,15 @@ export function gridFrame(at: number, bpm: number, phase: number, hue: number): 
   };
 }
 
+/**
+ * The roof once a set has run out and it's quiet: the lights and the wall drift slowly (a calm
+ * breakdown at half the pace of a slow heart), nothing hits, nothing flashes, no words.
+ */
+export function quietFrame(at: number, hue: number): SetFrame {
+  const beats = 256 + at * (50 / 60);
+  return { beats, beat: 0, kick: 0, snare: 0, energy: 0.05, part: 'breakdown', rise: 0, sinceDrop: Infinity, track: 0, hue, bpm: 0 };
+}
+
 /** What the office heard in a set, ready to give a frame at any point in it. */
 export class SetBeats {
   readonly url: string;

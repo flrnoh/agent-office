@@ -31,7 +31,7 @@ const STATUS: Record<string, string> = {
   playing: '🔊 playing',
   blocked: '🖱️ click anywhere to hear it',
   failed: "can't play here, so you hear the house DJ",
-  ended: 'the set has ended, so you hear the house DJ',
+  ended: '🤫 the set is over: quiet till someone puts on the next one (or the house DJ)',
   away: 'paused while you are off the roof',
   off: '',
 };
