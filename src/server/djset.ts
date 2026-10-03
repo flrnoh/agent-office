@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { DJ_SET_SITES, djSetTitle, parseDjSetUrl, partyVolume, sameDjSet, type DjSet, type DjSetState } from '../shared/djset.js';
+import { DJ_SET_SITES, djSetSeekable, djSetTitle, parseDjSetUrl, partyVolume, sameDjSet, seekSpot, setClock, type DjSet, type DjSetState } from '../shared/djset.js';
 import { validTap, type DjBeats, type DjTap } from '../shared/djbeats.js';
 import { DjBeatsJobs, type Hear } from './djbeats/index.js';
 import { DjVideoJobs, type FetchVideo } from './djvideo/index.js';
@@ -19,6 +19,8 @@ export type TitleLookup = LookupOf<DjSet>;
 
 /** The least time between two changes by one person (ms): enough for a tap on Play, not for a flood. */
 export const DJ_CHANGE_EVERY = CHANGE_EVERY;
+/** The least time between two skips by one person (ms): a few clicks on ⏩ in a row go through. */
+export const DJ_SEEK_EVERY = 400;
 
 const OEMBED: Record<DjSet['kind'], string> = {
   youtube: 'https://www.youtube.com/oembed?format=json&url=',
@@ -149,15 +151,25 @@ export interface DjHooks {
 }
 
 /**
- * dj.play, dj.stop and dj.tap, from someone's page: only from up on the roof, not too often. dj.volume
- * (the party's volume, the team's to set: guests.ts) from anywhere, as often as a slider sends it.
+ * dj.play, dj.stop, dj.seek and dj.tap, from someone's page: only from up on the roof, not too often.
+ * dj.volume (the party's volume, the team's to set: guests.ts) from anywhere, as often as a slider sends it.
  */
-export function djMessage(booth: DjBooth, msg: Extract<ClientMsg, { t: 'dj.play' | 'dj.stop' | 'dj.tap' | 'dj.volume' }>, c: DjHooks) {
+export function djMessage(booth: DjBooth, msg: Extract<ClientMsg, { t: 'dj.play' | 'dj.stop' | 'dj.seek' | 'dj.tap' | 'dj.volume' }>, c: DjHooks) {
   if (msg.t === 'dj.volume') {
     if (booth.setVolume(msg.volume, c.who)) c.toRoof({ t: 'dj', state: booth.state() });
     return;
   }
   if (!c.onRoof) return c.warn('Head up to the roof to pick what the DJ plays');
+  if (msg.t === 'dj.seek') {
+    const set = booth.state().set;
+    const at = seekSpot(msg.at);
+    if (!set) return c.warn('Put a set on first');
+    if (!djSetSeekable(set)) return c.warn("A SoundCloud set only plays from its top: it can't be skipped through");
+    if (at === null || !booth.allow(`seek:${c.id}`, Date.now(), DJ_SEEK_EVERY)) return;
+    if (!booth.seek(at)) return;
+    c.toRoof({ t: 'dj', state: booth.state() });
+    return c.toRoof({ t: 'toast', text: `⏩ ${c.who} skipped the set to ${setClock(at)}`, level: 'info' });
+  }
   if (msg.t === 'dj.tap') {
     if (!booth.state().set) return c.warn('Tap the tempo once a set is on');
     if (!booth.allow(`tap:${c.id}`)) return c.warn('Easy there, give the DJ a moment');

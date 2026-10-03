@@ -300,6 +300,11 @@ export class EmbedPlayer<S extends Embeddable> {
     return set ? set.title || this.title || this.o.fallbackTitle(set) : '';
   }
 
+  /** How long it is (s), once its player has said. */
+  length(): number | undefined {
+    return this.deck?.duration();
+  }
+
   /** Where in it everyone is now, in seconds. */
   private target(): number {
     const set = this.state.set;
@@ -321,6 +326,9 @@ export class EmbedPlayer<S extends Embeddable> {
       this.drop();
       return this.setPhase('off');
     }
+    // Skipped in it (the same thing, from another moment): the player that's there jumps, unless it gave up.
+    const skipped = this.o.same(set, this.deckSet) && this.state.startedAt !== this.deckStartedAt;
+    if (skipped && (this.deck || this.loading) && this.phaseNow !== 'failed' && this.phaseNow !== 'ended') this.deckStartedAt = this.state.startedAt;
     const fresh = !this.o.same(set, this.deckSet) || this.state.startedAt !== this.deckStartedAt;
     if (fresh) {
       this.drop();

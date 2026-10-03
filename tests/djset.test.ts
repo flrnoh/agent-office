@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { parseDjSetUrl, parseStart, sameDjSet, djSetTitle, type DjSet } from '../src/shared/djset.js';
+import { djSetSeekable, parseDjSetUrl, parseStart, sameDjSet, djSetTitle, seekSpot, setClock, type DjSet } from '../src/shared/djset.js';
 import { DJ_CHANGE_EVERY, DjBooth, djMessage } from '../src/server/djset.js';
 import type { ServerMsg } from '../src/shared/protocol.js';
 
@@ -246,4 +246,65 @@ test('pasting the set that is already on neither restarts it nor uses up your tu
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('dj.seek: skips the set for everyone on the roof, from its link\'s start on; not a SoundCloud set, not from downstairs', () => {
+  const dir = tmp();
+  try {
+    const booth = new DjBooth(dir, async () => undefined);
+    const sent: ServerMsg[] = [];
+    const warned: string[] = [];
+    const c = (id: string, onRoof = true) => ({ id, who: id, onRoof, toRoof: (m: ServerMsg) => sent.push(m), warn: (t: string) => warned.push(t) });
+    djMessage(booth, { t: 'dj.seek', at: 60 }, c('ann'));
+    assert.match(warned.pop()!, /first/, 'nothing on yet');
+    djMessage(booth, { t: 'dj.play', url: 'https://youtu.be/dQw4w9WgXcQ?t=30' }, c('ann'));
+    const before = booth.state().startedAt;
+    djMessage(booth, { t: 'dj.seek', at: 600 }, c('bob', false));
+    assert.match(warned.pop()!, /roof/);
+    assert.equal(booth.state().startedAt, before, 'not from downstairs');
+
+    sent.length = 0;
+    djMessage(booth, { t: 'dj.seek', at: 630 }, c('bob'));
+    const s = booth.state();
+    const at = 30 + (Date.now() - s.startedAt) / 1000;
+    assert.ok(Math.abs(at - 630) < 1, `everyone is at 10:30 now, not ${at}`);
+    assert.equal(s.by, 'ann', 'still the set ann put on');
+    assert.equal(sent[0].t, 'dj');
+    assert.ok(sent.some((m) => m.t === 'toast' && /bob skipped the set to 10:30/.test(m.text)));
+    // Saved: the office comes back to the same spot after a restart.
+    assert.equal(new DjBooth(dir, async () => undefined).state().startedAt, s.startedAt);
+
+    // Not before where the link starts it, and nothing silly.
+    djMessage(booth, { t: 'dj.seek', at: 0 }, c('cid'));
+    assert.ok(Math.abs(booth.state().startedAt - Date.now()) < 50, 'back to the link\'s start');
+    for (const bad of [-5, Number.NaN, 1e9, '60' as unknown as number]) {
+      const was = booth.state().startedAt;
+      djMessage(booth, { t: 'dj.seek', at: bad }, c(`x${String(bad)}`));
+      assert.equal(booth.state().startedAt, was, String(bad));
+    }
+    // Clicks in quick succession go through, a flood doesn't.
+    djMessage(booth, { t: 'dj.seek', at: 100 }, c('dan'));
+    djMessage(booth, { t: 'dj.seek', at: 200 }, c('dan'));
+    assert.ok(Math.abs(30 + (Date.now() - booth.state().startedAt) / 1000 - 100) < 1, 'the second, straight after, waits');
+
+    djMessage(booth, { t: 'dj.play', url: 'https://soundcloud.com/someone/sets/a-night' }, c('eve'));
+    djMessage(booth, { t: 'dj.seek', at: 300 }, c('eve2'));
+    assert.match(warned.pop()!, /SoundCloud set/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a spot in a set: whole seconds, up to twelve hours; its clock; which sets can be skipped', () => {
+  assert.equal(seekSpot(61.4), 61);
+  assert.equal(seekSpot(-1), null);
+  assert.equal(seekSpot(13 * 3600), null);
+  assert.equal(seekSpot('5'), null);
+  assert.equal(setClock(65), '1:05');
+  assert.equal(setClock(3729), '1:02:09');
+  assert.equal(setClock(-3), '0:00');
+  assert.ok(djSetSeekable(ok('https://youtu.be/dQw4w9WgXcQ')));
+  assert.ok(djSetSeekable(ok('https://soundcloud.com/someone/a-track')));
+  assert.ok(!djSetSeekable(ok('https://soundcloud.com/someone/sets/a-night')));
+  assert.ok(djSetSeekable(ok('https://www.mixcloud.com/someone/a-show/')));
 });

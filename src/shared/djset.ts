@@ -63,6 +63,26 @@ export function partyVolume(v: unknown): number | null {
   return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= PARTY_VOLUME_MAX ? Math.round(v * 100) / 100 : null;
 }
 
+/** The furthest into a set the decks skip (s): twelve hours. */
+export const DJ_SEEK_MAX = 12 * 3600;
+
+/** Reads a spot in the set someone skipped to (s, whole seconds), or null when it's no spot. */
+export function seekSpot(at: unknown): number | null {
+  return typeof at === 'number' && Number.isFinite(at) && at >= 0 && at <= DJ_SEEK_MAX ? Math.round(at) : null;
+}
+
+/** Whether the decks can skip about in it: a SoundCloud set (a playlist) only ever plays from its top. */
+export const djSetSeekable = (set: Pick<DjSet, 'kind' | 'id'>): boolean => !(set.kind === 'soundcloud' && set.id.includes('/sets/'));
+
+/** A spot in a set as a clock: 4:05, 1:02:09. */
+export function setClock(s: number): string {
+  const t = Math.max(0, Math.floor(s));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const sec = String(t % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+}
+
 export const DJ_SET_SITES: Record<DjSetKind, string> = { youtube: 'YouTube', soundcloud: 'SoundCloud', mixcloud: 'Mixcloud' };
 
 const SOUNDCLOUD_HOSTS = new Set(['soundcloud.com', 'www.soundcloud.com', 'm.soundcloud.com']);

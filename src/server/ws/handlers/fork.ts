@@ -9,7 +9,6 @@ import { interiorFor } from '../../../shared/interiors.js';
 import type { Ctx } from '../../office/context.js';
 import type { Client } from '../../office/client.js';
 import { djMessage } from '../../djset.js';
-import { showOf } from './venueshow.js'; // flrnoh fork: the Schallwerk's show
 import { tvMessage } from '../../tv.js';
 import { tableMessage } from '../../tablegames.js';
 import { padelMessage } from '../../padel.js';
@@ -66,9 +65,8 @@ const casino = (ctx: Ctx, c: Client, msg: Parameters<Casino['message']>[1]) => c
 const gym = (ctx: Ctx, c: Client, msg: Parameters<Gym['message']>[1]) => ctx.gym.message(c.id, msg);
 const soccer = (ctx: Ctx, c: Client, msg: Parameters<Ctx['soccer']['message']>[1]) => ctx.soccer.message(c.id, msg);
 
-function dj(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: 'dj.play' | 'dj.stop' | 'dj.tap' | 'dj.volume' }>) {
+function dj(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: 'dj.play' | 'dj.stop' | 'dj.seek' | 'dj.tap' | 'dj.volume' }>) {
   djMessage(ctx.djBooth, msg, { id: c.id, who: c.peer.name, onRoof: c.peer.floor === ROOF, toRoof: (m) => ctx.toRoof(m), warn: (t) => ctx.warn(c, t) });
-  if (msg.t === 'dj.volume') ctx.toVenue({ t: 'venuedj', state: showOf(ctx).djState() }); // the Schallwerk plays at the party's volume too
 }
 function tv(ctx: Ctx, c: Client, msg: Extract<ForkClientMsg, { t: 'tv.play' | 'tv.stop' }>) {
   const floor = ctx.floorOf(c); // streams on the office TV (tv.ts)
@@ -136,6 +134,7 @@ export const forkHandlers = {
   'padel.sync': padel,
   'dj.play': dj,
   'dj.stop': dj,
+  'dj.seek': dj,
   'dj.tap': dj,
   'dj.volume': dj,
   'tv.play': tv,

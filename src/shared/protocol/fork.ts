@@ -51,6 +51,8 @@ export type ForkClientMsg =
   | { t: 'dj.play'; url: string }
   /** Back to the house DJ. */
   | { t: 'dj.stop' }
+  /** Skip to `at` seconds into the set that's on, for everyone on the roof. */
+  | { t: 'dj.seek'; at: number }
   /** The set's tempo, tapped at the booth: `at` a beat on the office's clock; bpm 0 goes back to what the office heard (shared/djbeats.ts). */
   | { t: 'dj.tap'; bpm: number; at: number }
   /** The party's volume on the roof, 0–2 (2 is Disco), for everyone there (the team's to set, not guests'). */
