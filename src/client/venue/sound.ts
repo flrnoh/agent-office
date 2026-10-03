@@ -266,14 +266,13 @@ export function venueSound(a: AudioCore, kind: VenueSoundKind) {
 }
 
 /**
- * The Schallwerk's air: a crowd talking (louder in the foyer, a hum of it in the hall), glasses
- * clinking at the bar now and then, and the hall's own room tone, a low hum of the PA and the air
+ * The Schallwerk's air: a crowd talking (louder in the foyer, a hum of it in the hall),
+ * and the hall's own room tone, a low hum of the PA and the air
  * conditioning. Kept up every frame while you're inside (set); without a call it fades away by itself.
  * `crowd` is how many people are in (0..1), `foyer` how close to the foyer you are, `bar` to the bar.
  */
 export class VenueAmbience {
   private bus: { gain: GainNode; murmur: GainNode; hum: GainNode; bar: GainNode } | null = null;
-  private nextClink = 0;
   private nextLaugh = 0;
 
   constructor(private readonly a: AudioCore) {}
@@ -327,12 +326,6 @@ export class VenueAmbience {
     g.setTargetAtTime(0, now + 0.5, 0.4);
     this.bus.murmur.gain.setTargetAtTime(0.03 + crowd * 0.05 + foyer * 0.05, now, 0.6);
     this.bus.bar.gain.setTargetAtTime(0.15 + bar * 0.85, now, 0.6);
-    if (now > this.nextClink) {
-      this.nextClink = now + rand(1.2, 4);
-      const f = rand(2000, 3400);
-      this.a.clink(this.bus.bar, now + 0.05, f, rand(0.1, 0.25));
-      if (Math.random() < 0.4) this.a.clink(this.bus.bar, now + 0.12, f * 1.2, rand(0.08, 0.18));
-    }
     if (now > this.nextLaugh && crowd > 0.1) {
       // Someone laughing somewhere: a few short bursts.
       this.nextLaugh = now + rand(6, 16);

@@ -94,7 +94,12 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     },
     officeColliders: () => ctx.world().colliders,
     officeRoom: () => ({ ...plan().bounds, ...ctx.world().room }),
-    setIndoors: (on: boolean) => ctx.sky.setIndoors(on || ctx.world().room.enclosed),
+    setIndoors: (on: boolean) => {
+      ctx.sky.setIndoors(on || ctx.world().room.enclosed);
+      // Inside a place, all of it is indoors to the sound (they're bigger than the office, whose walls
+      // it'd go by): the rain's only a patter on the roof, not a downpour by the outer walls.
+      ctx.sound.setHall(on ? { bounds: { minX: -1e4, maxX: 1e4, minZ: -1e4, maxZ: 1e4 }, gong: null, windows: [{ x: 0, y: 12, z: 0 }] } : null);
+    },
     trip: (floor: string, at?: { x: number; y: number; z: number; rotY: number }) => parts.travel.placeTrip(floor, at),
     placeAt: (at: { x: number; y: number; z: number; rotY: number }) => parts.place.placeAt(at),
     noOutline: (o: THREE.Object3D) => noOutline(o),
