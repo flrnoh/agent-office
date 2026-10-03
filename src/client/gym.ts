@@ -546,6 +546,8 @@ export class GymPlace {
 
   /** Into or out of the sauna or the steam room (the office works out the same by where it sees you). */
   private setWalkIn(room: string | null) {
+    // Fork: stepping into the Kneipp trough or the whirlpool, a splash.
+    if (room === 'kneipp' || room === 'grotto') this.host.sound('splash');
     this.walkIn = room;
     this.renderHud(false);
   }

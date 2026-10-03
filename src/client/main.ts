@@ -96,6 +96,7 @@ import { installRig } from './features/rig';
 import { installSpeakers } from './features/speakers';
 import { installTableGames } from './features/tablegames';
 import { installRoofPool } from './features/roofpool'; // fork
+import { installLounging } from './features/lounging'; // fork
 
 // The loading screen stays up until there's an office to see (see boot and whoami at the end).
 const loading = loadingScreen(onModelsProgress);
@@ -217,6 +218,7 @@ parts.bossDesk = installBossDesk(ctx, { arcade: parts.arcade, hire: (id) => part
 parts.rig = installRig(ctx, { freePlace: (seat) => parts.seating.freePlace(seat), standUp });
 parts.tables = installTableGames(ctx, { roof: parts.rooftop.roof });
 installRoofPool(ctx, { roof: parts.rooftop.roof, remotes: () => parts.peers.remotes }); // fork: the pool on the roof
+installLounging(ctx, { remotes: () => parts.peers.remotes }); // fork: lying back on loungers and water beds
 parts.bungee = installBungee(ctx, { roof: parts.rooftop.roof, roofFloors: parts.rooftop.roofFloors, bodyOf: (id) => personOf(id)?.root });
 installTown(ctx, { roof: parts.rooftop.roof, roofFloors: parts.rooftop.roofFloors, bodies: () => [...parts.peers.remotes.values()].map((r) => r.person.root) }); // fork
 installCitySound(ctx, { roofFloors: parts.rooftop.roofFloors }); // fork

@@ -387,3 +387,15 @@ test("the towel shelf stands clear of the stair's way down", () => {
   assert.ok(!overlaps(TOWEL_SHELF, approach), 'not where you walk up to the stair');
   assert.ok(!overlaps(TOWEL_SHELF, { ...w, minX: w.minX - 0.5, maxZ: w.maxZ + 0.3 }), 'not by the stairwell');
 });
+
+test('loungers and water beds are lain on, everything else is sat on', async () => {
+  const { lieOn } = await import('../src/shared/lounging.js');
+  const { SEATING } = await import('../src/shared/layout.js');
+  for (const s of BASEMENT_SEATING) {
+    const want = s.id.startsWith('gym-waterbed-') ? 'flat' : /^gym-(rest|salt|poolside)-/.test(s.id) ? 'recline' : undefined;
+    assert.equal(lieOn(s.id), want, s.id);
+  }
+  assert.ok(SEATING.some((s) => s.id.startsWith('roof-lounger-') && lieOn(s.id) === 'recline'), "the roof's loungers too");
+  for (const s of SEATING) if (!/lounger|waterbed|gym-(rest|salt|poolside)-/.test(s.id)) assert.equal(lieOn(s.id), undefined, `${s.id} is sat on`);
+  assert.equal(lieOn(undefined), undefined);
+});
