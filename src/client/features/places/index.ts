@@ -33,6 +33,7 @@ import { soccerLook } from '../../world/soccer/look';
 import { BowlingPlace } from '../../bowling/place';
 import { VenuePlace } from '../../venue/place';
 import { ThermePlace } from '../../therme/place';
+import { ThermeSounds } from '../../therme/sound';
 import type { Booze } from '../bar/booze';
 import { toast } from '../../ui/dom';
 import { store } from '../../state';
@@ -70,6 +71,12 @@ declare module '../../world/types' {
     venueseat: true;
     venuepart: true;
     therme: true;
+    thermeseat: true;
+    thermebar: true;
+    thermeslide: true;
+    thermelift: true;
+    thermeboard: true;
+    thermestreet: true;
   }
 }
 
@@ -197,7 +204,31 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     },
   });
   // The thermal baths behind the gym (client/therme): through the glass door at the end of its basement's passage.
-  const therme = new ThermePlace({ ...host, sound: () => ctx.sound.padelHall('door'), daylight: () => ctx.sky.daylight });
+  const therme = new ThermePlace({
+    ...host,
+    sound: (k) => (k === 'whoosh' ? ctx.sound.gym('whoosh') : k === 'beep' || k === 'ding' || k === 'photo' ? ctx.sound.gym('ding') : k === 'go' ? ctx.sound.gym('buzzer') : k === 'horn' ? ctx.sound.soccerCrowd('horn', 0.9) : k === 'door' ? ctx.sound.padelHall('door') : k === 'pour' ? ctx.sound.padelHall('pour') : k === 'stroke' ? ctx.sound.gym('whoosh') : ctx.sound.gym('splash')),
+    daylight: () => ctx.sky.daylight,
+    now: () => store.officeNow(),
+    you: () => store.you,
+    people: () =>
+      [...store.peers.values()]
+        .filter((p) => p.floor === THERME)
+        .map((p) => (p.id === store.you ? { id: p.id, x: player.pos.x, y: player.pos.y, z: player.pos.z, moving: player.moving, person: ctx.me } : { id: p.id, x: p.x, y: p.y, z: p.z, moving: p.moving, person: parts.peers.remotes.get(p.id)?.person })),
+    me: () => ctx.me,
+    served: (d: Drink) => {
+      deps.booze().drink(d, performance.now() / 1000);
+      deps.reach();
+      ctx.sound.opener(d.glass === 'pint' || d.glass === 'bottle' ? 'bottle' : 'can');
+      if (ctx.player.view === 'first') ctx.hands.sip();
+      toast(`${d.emoji} ${d.name}. ${(d as Drink & { says?: string }).says ?? 'Zum Wohl!'}`);
+    },
+    cutOff: () => deps.booze().cutOff(performance.now() / 1000),
+    renderer: ctx.renderer,
+    camera,
+    temp: () => store.sky?.temp,
+    audio: new ThermeSounds(ctx.sound.core),
+    name: () => store.peers.get(store.you)?.name ?? '',
+  });
   // The baths last: going back to the gym, they put you by their door after the gym has had its say.
   const all = [casino, gym, hall, soccer, bowling, venue, therme] as const;
 
@@ -249,6 +280,15 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   ctx.interactions.define('venueseat', { reach: 3, hint: hintIn(venue), use });
   // The glass door between the gym's basement and the baths, from either side.
   ctx.interactions.define('therme', { reach: 3.5, hint: hintIn(therme), use });
+  // The baths' loungers and the swim-up bar (client/therme).
+  ctx.interactions.define('thermeseat', { reach: 2.5, hint: hintIn(therme), use });
+  ctx.interactions.define('thermebar', { reach: 4, hint: hintIn(therme), use });
+  // The slides' gates, the tower's lift, the kiosk with the boards.
+  ctx.interactions.define('thermeslide', { reach: 3, hint: hintIn(therme), use });
+  ctx.interactions.define('thermelift', { reach: 3, hint: hintIn(therme), use });
+  ctx.interactions.define('thermeboard', { reach: 3.5, hint: hintIn(therme), use });
+  // The baths' main doors: on the street, and inside the entrance hall back out.
+  ctx.interactions.define('thermestreet', { reach: 4, hint: hintIn(therme), use });
   ctx.interactions.define('padel', {
     reach: 5,
     hint: (it) => {
@@ -281,6 +321,53 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
       return false;
     },
     hint: (el) => ctx.hint.draw(el, `gympool|${lap.atEdge}`, () => [hintTitle('🏊 Lap pool'), aside('wall to wall: a timed length'), key('W A S D', 'Swim'), key('Shift', 'Faster'), key('Space', 'Splash'), ...(lap.atEdge ? [key('E', 'Climb out')] : [])]),
+    hidesHands: true,
+  });
+
+  // Fork: swimming in the thermal baths' pools (client/swim/, client/therme): the keys and the hint bar while you're in.
+  const bath = therme.swim;
+  ctx.activities.add({
+    id: 'thermeswim',
+    active: () => bath.swimming,
+    stop: (why) => {
+      if (why !== 'walk' && why !== 'errand') bath.leave();
+    },
+    key: (e) => {
+      if (e.code === 'KeyE' && therme.atBar) {
+        if (!e.repeat) therme.bar();
+        return true;
+      }
+      if (e.code === 'KeyE' && bath.atEdge) {
+        if (!e.repeat) bath.climbOut();
+        return true;
+      }
+      if (e.code === 'Space') {
+        if (!e.repeat) ctx.sound.gym('splash');
+        return true;
+      }
+      return false;
+    },
+    hint: (el) =>
+      ctx.hint.draw(el, `thermeswim|${bath.atEdge}|${therme.atBar}|${bath.pool?.id}`, () => [
+        hintTitle(bath.pool?.id.startsWith('therme-whirl') ? '🫧 Whirlpool' : bath.pool?.id === 'therme-grotto' ? '💎 Grotte' : bath.pool?.id === 'therme-waves' ? '🌊 Wellenbad' : bath.pool?.id === 'therme-landing' ? '🛝 Landebecken' : bath.pool?.id === 'therme-river' ? '🌀 Strömungskanal' : bath.pool?.id === 'therme-lagoon' ? '🏝️ Außenlagune' : bath.pool?.id === 'therme-pond' ? '🧊 Kaltwasserteich' : bath.pool?.id === 'therme-plunge' ? '🧊 Tauchbecken' : '🌊 Thermalbecken'),
+        aside(bath.pool?.id === 'therme-thermal' ? '34 °C' : bath.pool?.id === 'therme-waves' ? '30 °C · Wellen alle 8 Minuten' : bath.pool?.id === 'therme-landing' ? 'Bestzeiten am Kiosk' : bath.pool?.id === 'therme-river' ? '32 °C · lass dich treiben' : bath.pool?.id === 'therme-lagoon' ? '32 °C · unter freiem Himmel' : bath.pool?.id === 'therme-pond' || bath.pool?.id === 'therme-plunge' ? '16 °C · brrr' : '36 °C'),
+        key('W A S D', 'Swim'),
+        key('Shift', 'Faster'),
+        key('Space', 'Splash'),
+        ...(therme.atBar ? [key('E', 'Order at the bar')] : bath.atEdge ? [key('E', 'Climb out')] : []),
+      ]),
+    hidesHands: true,
+  });
+
+  // Fork: down one of the baths' slides (client/therme/slides.ts): nothing to steer, the hint says how fast.
+  ctx.activities.add({
+    id: 'thermeslide',
+    active: () => !!therme.rider.riding,
+    stop: (why) => {
+      if (why !== 'walk' && why !== 'errand') therme.rider.stop();
+    },
+    key: () => true,
+    hint: (el) => ctx.hint.draw(el, `thermeslide|${Math.round((therme.rider.riding?.t ?? 0) * 10)}`, () => [hintTitle(therme.rider.hint())]),
     hidesHands: true,
   });
 

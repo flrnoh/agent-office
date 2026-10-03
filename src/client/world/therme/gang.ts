@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { DOORS, GANG_CEILING, GYM_DOOR, NORTH_BAND_Z, THERME_NAME, TWALL, WELLENBAD, ZONES, type TDoor } from '../../../shared/therme';
+import { DOORS, GANG_CEILING, GYM_DOOR, NORTH_BAND_Z, THERME_NAME, TWALL, ZONES, type TDoor } from '../../../shared/therme';
 import type { Interactable } from '../types';
 import { mesh, toon } from '../toon';
 import { blk, flat, glow, plane, sign, stripes, tex, tiles, wrap, type ThermeParts } from './kit';
@@ -8,7 +8,7 @@ import { blk, flat, glow, plane, sign, stripes, tex, tiles, wrap, type ThermePar
  * The thermal baths' way in and its signs (flrnoh fork, see shared/therme.ts): the tiled passage from
  * the gym's basement with the glass door back (E there goes back to the gym), the name over its mouth
  * into the hall, the zones' doors that are shut for now (a hoarding with what's coming behind it),
- * and stand signs where each part will be built, the wave pool's outline painted on the floor.
+ * and stand signs where each part will be built.
  */
 
 const G = ZONES.gang;
@@ -104,32 +104,10 @@ function standSign(p: ThermeParts, big: string, small: string, x: number, z: num
   p.group.add(g);
 }
 
-/** The wave pool's outline, painted on the floor in dashes (a building plot, for now). */
-function plot(p: ThermeParts) {
-  const W = WELLENBAD;
-  const paint = toon('#e0a526');
-  const dash = (x0: number, z0: number, x1: number, z1: number) => {
-    const len = Math.hypot(x1 - x0, z1 - z0);
-    for (let s = 0; s + 1.2 <= len; s += 2) {
-      const t = (s + 0.6) / len;
-      const m = mesh(new THREE.BoxGeometry(Math.abs(x1 - x0) > 0 ? 1.2 : 0.18, 0.01, Math.abs(z1 - z0) > 0 ? 1.2 : 0.18), paint, x0 + (x1 - x0) * t, 0.012, z0 + (z1 - z0) * t, false);
-      p.still.add(m);
-    }
-  };
-  dash(W.minX, W.minZ, W.maxX, W.minZ);
-  dash(W.minX, W.maxZ, W.maxX, W.maxZ);
-  dash(W.minX, W.minZ, W.minX, W.maxZ);
-  dash(W.maxX, W.minZ, W.maxX, W.maxZ);
-}
-
 export function buildWayIn(p: ThermeParts): { exit: Interactable } {
   const exit = passage(p);
   for (const d of DOORS) if (d.shut) hoarding(p, d);
-  const par = ZONES.paradies;
   const rut = ZONES.rutschen;
-  standSign(p, 'THERMENPARADIES', 'unter der Kuppel · Thermalbecken · Schwimmbar · demnächst', (par.minX + par.maxX) / 2, 34, Math.PI);
-  standSign(p, 'WELLENBAD', 'Wellen alle 20 Minuten · demnächst', (WELLENBAD.minX + WELLENBAD.maxX) / 2, WELLENBAD.minZ - 4, Math.PI);
   standSign(p, 'RUTSCHENWELT', 'Rutschenturm · 30 m · acht Rutschen · demnächst', (rut.minX + rut.maxX) / 2, 40, -Math.PI / 2);
-  plot(p);
   return { exit };
 }

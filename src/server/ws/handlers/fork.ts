@@ -24,6 +24,7 @@ import { coasterHandlers, coasterHooks } from './coaster.js';
 import { karaokeHandlers } from './karaoke.js';
 import { bowlingHandlers } from './bowling.js';
 import { venueHandlers } from './venue.js';
+import { thermeHandlers } from './therme.js';
 import { rideMessage } from '../../fork/ride.js';
 import { busLeft, busRideMessage } from '../../fork/busride.js';
 import { voiceRangeMessage } from '../../fork/voicerange.js';
@@ -181,6 +182,7 @@ export const forkHandlers = {
   ...karaokeHandlers, // the bowling centre's karaoke bar (karaoke.ts)
   ...bowlingHandlers, // the bowling centre's cosmic switch and rental shoes
   ...venueHandlers, // the Schallwerk's house: concert or club, the light desk, stamp, cloakroom, merch (venue.ts)
+  ...thermeHandlers, // the thermal baths' slides (therme.ts)
   'bike.ride': rideMessage, // a bike from the city's bike shop (fork/ride.ts)
   'bike.bell': rideMessage,
   'bus.ride': busRideMessage, // riding a city bus: where in it (fork/busride.ts)
@@ -224,6 +226,7 @@ export const forkHooks: FeatureHooks = {
   leaving(ctx, c, was) {
     ctx.casino.leave(c.id); // up from the casino's tables
     ctx.gym.leave(c.id); // off the gym's stations
+    ctx.therme.leave(c.id); // off a slide halfway
     if (c.peer.floor === ROOF) leftTable(ctx, c.id); // off the roof, away from its tables
     if (c.peer.floor === HALL) leftCourt(ctx, c.id); // out of the padel hall, off its courts
     ctx.soccer.leave(c.id); // out of the soccer hall, off its pitch
@@ -238,6 +241,7 @@ export const forkHooks: FeatureHooks = {
   },
   closed(ctx, c) {
     ctx.casino.leave(c.id);
+    ctx.therme.leave(c.id);
     ctx.gym.leave(c.id);
     leftTable(ctx, c.id);
     leftCourt(ctx, c.id);

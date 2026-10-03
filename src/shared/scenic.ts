@@ -302,7 +302,8 @@ export const FARM = {
   silo: { x: 162, z: 64 },
   windmill: { x: 128, z: -6 },
   fields: [
-    { minX: 58, maxX: 132, minZ: 70, maxZ: 104 },
+    // fork: to z 86 (not 104), for the thermal baths' house south of the gym (shared/therme-street.ts)
+    { minX: 58, maxX: 132, minZ: 70, maxZ: 86 },
     // fork: from x 92, not 62, so the block east of the office across the side street is the city's (shared/city.ts)
     { minX: 92, maxX: 150, minZ: -40, maxZ: 14 },
   ],

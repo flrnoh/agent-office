@@ -25,6 +25,7 @@ import type { VoiceRangeClientMsg, VoiceRangeServerMsg } from '../voicerange.js'
 import type { VenueHouseClientMsg, VenueHouseServerMsg } from '../venue-house.js';
 import type { DanceClientMsg, DanceServerMsg } from '../dance.js';
 import type { BusRideClientMsg, BusRideServerMsg } from '../busride.js';
+import type { ThermeClientMsg, ThermeServerMsg } from '../therme-msgs.js';
 
 export type ForkClientMsg =
   | CasinoClientMsg // the casino (shared/casino.ts)
@@ -47,6 +48,7 @@ export type ForkClientMsg =
   | VoiceRangeClientMsg // how far your voice carries (shared/voicerange.ts)
   | DanceClientMsg // dancing on the roof (shared/dance.ts)
   | BusRideClientMsg // riding a city bus: where in it (shared/busride.ts)
+  | ThermeClientMsg // the thermal baths: the slides' rides (shared/therme-msgs.ts)
   /** Put a YouTube, SoundCloud or Mixcloud set on at the DJ booth, for everyone on the roof (see shared/djset.ts). */
   | { t: 'dj.play'; url: string }
   /** Back to the house DJ. */
@@ -99,6 +101,7 @@ export type ForkServerMsg =
   | VoiceRangeServerMsg // how far someone's voice carries
   | DanceServerMsg // someone dancing on the roof
   | BusRideServerMsg // someone's place in a city bus
+  | ThermeServerMsg // the thermal baths: the slides' boards, your ride
   /** The DJ set on the roof changed (sent to everyone up there). */
   | { t: 'dj'; state: DjSetState }
   /** The stream on the floor's TV changed (sent to everyone on the floor). */

@@ -19,6 +19,7 @@ import { coasterTrack, poseAt } from './coaster-track.js';
 import { TUBE_RADIUS, TUBE_UP } from './coaster.js';
 import { BOWLING_BOX } from './bowling.js';
 import { VENUE_BOX } from './venue.js';
+import { THERME_STREET_BOX } from './therme-street.js';
 import { DIVE, POOL_DECK, SLIDE } from './roofpool.js';
 import { ROOF_BAR, STAGE } from './layout.js';
 import { ROOF_BAR_END } from './skybar.js'; // flrnoh fork: the sky bar's short leg
@@ -121,6 +122,7 @@ export function outsideKeepouts(storeys: number): Box3[] {
   out.push(box('casino', CASINO_BOX.minX, CASINO_BOX.maxX, S - 1, S + 12, CASINO_BOX.minZ, CASINO_BOX.maxZ));
   out.push(box('gym', GYM_STREET_BOX.minX, GYM_STREET_BOX.maxX, S - 1, S + 12, GYM_STREET_BOX.minZ, GYM_STREET_BOX.maxZ));
   out.push(box('Schallwerk', VENUE_BOX.minX, VENUE_BOX.maxX, S - 1, S + 31, VENUE_BOX.minZ, VENUE_BOX.maxZ));
+  out.push(box('Thermenwelt', THERME_STREET_BOX.minX, THERME_STREET_BOX.maxX, S - 1, S + 31, THERME_STREET_BOX.minZ, THERME_STREET_BOX.maxZ));
   out.push(box('padel hall', HALL_BOX.minX, HALL_BOX.maxX, S - 1, S + 14, HALL_BOX.minZ, HALL_BOX.maxZ));
   out.push(box('soccer hall', SOCCER_BOX.minX, SOCCER_BOX.maxX, S - 1, S + 16, SOCCER_BOX.minZ, SOCCER_BOX.maxZ));
   out.push(box('golf', GOLF_HOLE.fairway[0] - 0.5, GOLF_HOLE.fairway[1] + 0.5, S - 1, S + 3, 33, GOLF_HOLE.z + GOLF_HOLE.green));

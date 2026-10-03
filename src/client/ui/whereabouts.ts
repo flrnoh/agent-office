@@ -9,7 +9,8 @@ import { SOCCER } from '../../shared/soccer'; // fork
 import { BOWLING } from '../../shared/bowling'; // fork
 import { bowlingWhereabouts } from '../../shared/bowling-house'; // fork
 import { VENUE } from '../../shared/venue'; // fork
-import { THERME, thermeWhereabouts } from '../../shared/therme'; // fork
+import { THERME } from '../../shared/therme'; // fork
+import { thermeWhereabouts } from '../../shared/therme-all'; // fork
 import { venueWhereabouts } from '../../shared/venue-house'; // fork
 import { danceWhereabouts } from '../../shared/dance'; // fork
 import { busWhereabouts } from '../../shared/busride'; // fork
@@ -56,7 +57,7 @@ export function whereabouts(p: PeerInfo, car?: { car: number; seat: CarSeat }, p
   if (p.floor === SOCCER) return '⚽ in the soccer hall'; // fork (client/soccer/place.ts)
   if (p.floor === BOWLING) return bowlingWhereabouts(p.x, p.z); // fork (client/bowling)
   if (p.floor === VENUE) return venueWhereabouts(p.x, p.y, p.z); // fork (client/venue)
-  if (p.floor === THERME) return thermeWhereabouts(p.x, p.z); // fork (client/therme)
+  if (p.floor === THERME) return thermeWhereabouts(p.x, p.y, p.z); // fork (client/therme)
   // On a map of its own, the office's rooms aren't where they'd be.
   if (!office) return undefined;
   // Through the north wall in the back office: nobody gets there unless the floor's built out.

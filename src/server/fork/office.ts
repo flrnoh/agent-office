@@ -45,6 +45,8 @@ import { VENUE_ARRIVAL, VenueHouse, backInVenue, venueView } from '../venue/plac
 import { showOf, startVenueShow, stopVenueShow } from '../ws/handlers/venueshow.js'; // the Schallwerk's show
 import { gigStarted } from '../ws/handlers/venue.js'; // a gig starting switches the Schallwerk to its kind
 import { THERME_ENTRY, backInTherme, thermeDoorSpot, thermeView } from '../therme/place.js'; // the thermal baths behind the gym
+import { Therme } from '../therme/index.js';
+import { AUFGUSS_BONUS, type SaunaId } from '../../shared/therme-dorf.js';
 
 /** Made last, once upstream's stages are all there (see server.ts). */
 export interface Fork {
@@ -72,6 +74,7 @@ export interface Fork {
   bowling: BowlingHouse; // the bowling centre's lights (cosmic bowling) and rental shoes
   minigolf: Minigolf; // the bowling centre's black-light mini golf (bowling/minigolf.ts)
   venue: VenueHouse; // the Schallwerk's house: concert or club, the light desk, the effects, stamps, shirts, coats (venue/place.ts)
+  therme: Therme; // the thermal baths: the slides' rides and boards (therme/index.ts)
   /** To everyone up on the roof (or everyone but `except`). */
   toRoof(m: ServerMsg, except?: string, droppable?: boolean): void;
   /** To everyone in the padel hall. */
@@ -80,6 +83,8 @@ export interface Fork {
   toBowling(m: ServerMsg, except?: string, droppable?: boolean): void;
   /** To everyone in the Schallwerk (its instruments, rehearsal rooms and show sort out among themselves who hears what). */
   toVenue(m: ServerMsg, except?: string, droppable?: boolean): void;
+  /** To everyone in the thermal baths. */
+  toTherme(m: ServerMsg, except?: string, droppable?: boolean): void;
   /** Tells a floor who's at its racing rig now. */
   rigChanged(floorId: string): void;
   /** A picture hanging on some floor's wall: the one thing a guest may fetch through the image proxy. */
@@ -167,10 +172,12 @@ export function createFork(ctx: Ctx): Fork {
       dataDir: cfg.dataDir, // the records (minigolf.json)
     }),
     venue: new VenueHouse({ dataDir: cfg.dataDir }), // venue.json
+    therme: new Therme(cfg.dataDir), // therme.json
     toRoof: to(ROOF),
     toHall: to(HALL),
     toBowling: to(BOWLING),
     toVenue: to(VENUE),
+    toTherme: to(THERME),
     rigChanged: (floorId) => {
       const f = floors.get(floorId);
       if (f) ctx.toFloor(f, { t: 'rig', state: rigs.state(floorId) });
@@ -209,6 +216,7 @@ export function enteredPlace(ctx: Ctx, c: Client, place: string | undefined) {
   if (place === GYM) ctx.gym.enter(ctx.gymPlayer(c));
   if (place === SOCCER) ctx.soccer.enter({ id: c.id, name: c.peer.name, owner: owner(c), send: (m) => ctx.sendTo(c, m) });
   if (place === BOWLING) ctx.sendTo(c, ctx.bowling.state()); // the lights and who's in rental shoes
+  if (place === THERME) ctx.sendTo(c, { t: 'therme.slides', boards: ctx.therme.boards() }); // the slides' boards
   if (place === VENUE) ctx.sendTo(c, ctx.venue.state([...ctx.clients.values()].map((o) => ({ id: o.id, owner: owner(o) })))); // concert or club, the lights, who has what on
 }
 
@@ -256,8 +264,26 @@ export function placeSpotFrom(place: (typeof PLACES)[number] | undefined, q: URL
 /** The roof's own things on top of an empty floor view. */
 export const roofExtras = (ctx: Ctx): Partial<FloorView> => ({ dj: ctx.djBooth.state(), tables: ctx.roofTables.state() });
 
+/** The thermal baths' Aufguss plan: every few seconds, whoever's in the sauna with one gets its energy back (the gym's fitness). */
+let aufgussTimer: ReturnType<typeof setInterval> | null = null;
+function thermeAufguss(ctx: Ctx) {
+  const inside = [...ctx.clients.values()].filter((c) => c.peer.floor === THERME);
+  if (!inside.length) return;
+  const got = ctx.therme.aufguss(Date.now(), inside.map((c) => ({ id: c.id, owner: owner(c), x: c.peer.x, y: c.peer.y, z: c.peer.z })));
+  for (const g of got) {
+    const c = ctx.clients.get(g.id);
+    if (!c) continue;
+    ctx.gym.fitness.ensure(g.owner, c.peer.name);
+    ctx.gym.fitness.addStamina(g.owner, AUFGUSS_BONUS.stamina);
+    ctx.gym.fitness.addXp(g.owner, AUFGUSS_BONUS.xp);
+    ctx.sendTo(c, { t: 'therme.aufguss', sauna: g.sauna as SaunaId, stamina: AUFGUSS_BONUS.stamina, xp: AUFGUSS_BONUS.xp });
+  }
+}
+
 export function startFork(ctx: Ctx) {
   ctx.turn.start();
+  aufgussTimer = setInterval(() => thermeAufguss(ctx), 3000); // the baths' Aufgüsse
+  aufgussTimer.unref?.();
   ctx.minigolf.start();
   startVenueShow(ctx); // the Schallwerk's gig calendar: a gig starting
   showOf(ctx).onGigStart = (gig) => gigStarted(ctx, gig); // … turns the house into a concert or a club
@@ -266,6 +292,8 @@ export function startFork(ctx: Ctx) {
 }
 
 export function stopFork(ctx: Ctx) {
+  if (aufgussTimer) clearInterval(aufgussTimer);
+  aufgussTimer = null;
   ctx.coaster.stop();
   ctx.casino.stop();
   ctx.soccer.stop();
@@ -275,5 +303,6 @@ export function stopFork(ctx: Ctx) {
   ctx.forecourts.stop();
   ctx.minigolf.stop();
   ctx.venue.stop();
+  ctx.therme.stop();
   stopVenueShow(ctx);
 }

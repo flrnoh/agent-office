@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { TRect } from '../../../shared/therme';
 import type { Collider, Interactable } from '../types';
 import { mesh, toon } from '../toon';
@@ -124,4 +125,100 @@ export function stripes(): THREE.CanvasTexture {
     6,
     1,
   );
+}
+
+/** Flat rectangles at height `y` as one mesh, the texture laid by world position (`tile` m a repeat) so they meet seamlessly; facing up (or down). */
+export function rectsGeometry(rects: readonly TRect[], y: number, tile: number, down = false): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const uv: number[] = [];
+  const nrm: number[] = [];
+  for (const r of rects) {
+    const c = [
+      [r.minX, r.minZ],
+      [r.maxX, r.minZ],
+      [r.maxX, r.maxZ],
+      [r.minX, r.maxZ],
+    ];
+    const tri = down ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2];
+    for (const k of tri) {
+      pos.push(c[k][0], y, c[k][1]);
+      uv.push(c[k][0] / tile, -c[k][1] / tile);
+      nrm.push(0, down ? -1 : 1, 0);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  return g;
+}
+
+/** A pool's walls from `y0` up to `y1` along its edges, facing the water, as one mesh (texture by length and height, `tile` m a repeat). */
+export function edgeWallsGeometry(edges: readonly { axis: 'x' | 'z'; at: number; from: number; to: number; out: 1 | -1 }[], y0: number, y1: number, tile: number): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const uv: number[] = [];
+  const nrm: number[] = [];
+  for (const e of edges) {
+    // The quad's corners in order round, seen from the water (normal pointing back into it, -out).
+    const p = (s: number, y: number) => (e.axis === 'x' ? [s, y, e.at] : [e.at, y, s]);
+    const quad = [p(e.from, y0), p(e.to, y0), p(e.to, y1), p(e.from, y1)];
+    const flip = e.axis === 'x' ? e.out > 0 : e.out < 0;
+    const tri = flip ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2];
+    const n = e.axis === 'x' ? [0, 0, -e.out] : [-e.out, 0, 0];
+    const u = [e.from, e.to, e.to, e.from];
+    const v = [y0, y0, y1, y1];
+    for (const k of tri) {
+      pos.push(...quad[k]);
+      uv.push(u[k] / tile, v[k] / tile);
+      nrm.push(...n);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  return g;
+}
+
+/**
+ * Like mergeByMaterial (world/toon.ts), but keeping each mesh's UVs, so textured pieces sharing a
+ * material (rock lumps, a hut's walls) become one draw call and keep their texture. Meshes whose
+ * geometry has no UVs, or that move, are left as they are. `root` is emptied into what it returns.
+ */
+export function mergeTextured(root: THREE.Object3D): THREE.Group {
+  root.updateMatrixWorld(true);
+  const inv = root.matrixWorld.clone().invert();
+  const by = new Map<string, { mat: THREE.Material; geos: THREE.BufferGeometry[]; keep: THREE.Mesh | null }>();
+  const others: THREE.Object3D[] = [];
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    const mat = m.material as THREE.Material;
+    if (Array.isArray(m.material) || !m.geometry.attributes.uv || m.userData.interact || (mat as THREE.MeshBasicMaterial).transparent) {
+      others.push(m);
+      return;
+    }
+    const geo = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()).applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
+    for (const k of Object.keys(geo.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') geo.deleteAttribute(k);
+    const e = by.get(mat.uuid) ?? { mat, geos: [], keep: null };
+    e.geos.push(geo);
+    by.set(mat.uuid, e);
+  });
+  const out = new THREE.Group();
+  for (const { mat, geos } of by.values()) {
+    const merged = mergeGeometries(geos);
+    for (const g of geos) g.dispose();
+    if (merged) {
+      const m = new THREE.Mesh(merged, mat);
+      m.userData.noOutline = mat.userData.outlineParameters?.visible === false;
+      out.add(m);
+    }
+  }
+  // What wasn't merged stays where it was, now under the new group.
+  for (const o of others) {
+    const m = o as THREE.Mesh;
+    m.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.parent!.matrixWorld));
+    out.add(m);
+  }
+  return out;
 }

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DOME, DOORS, GYM_DOOR, GYM_FROM_THERME, NORTH_BAND_Z, ROOFS, THERME, THERME_ARRIVAL, THERME_BOX, WELLENBAD, ZONES, domeHeight, inTherme, thermeFixtures, thermeWhereabouts, zoneAt, type TRect } from '../src/shared/therme.js';
+import { DOME, DOORS, GYM_DOOR, GYM_FROM_THERME, NORTH_BAND_Z, ROOFS, THERME, THERME_ARRIVAL, THERME_BOX, WELLENBAD, ZONES, domeHeight, inTherme, thermeWhereabouts, zoneAt, type TRect } from '../src/shared/therme.js';
+import { thermeFixtures } from '../src/shared/therme-all.js';
 import { BASEMENT_FLOOR, THERME_PASSAGE, basementFixtures, inB } from '../src/shared/gym-basement.js';
 import { GYM } from '../src/shared/gym.js';
 import { PLACES, backInPlace, placeSpotFrom } from '../src/server/fork/office.js';
@@ -22,8 +23,8 @@ function walkable() {
   const nx = Math.ceil((THERME_BOX.maxX - x0 + 2) / STEP);
   const nz = Math.ceil((ZONES.lagune.maxZ - z0 + 2) / STEP);
   const free = (x: number, z: number) => !fx.some((f) => x + BODY > f.minX && x - BODY < f.maxX && z + BODY > f.minZ && z - BODY < f.maxZ);
-  // Only on the floor: inside the building (the floor's slab, a little past the walls' faces).
-  const floor = thermeFixtures().find((f) => f.id === 'floor')!;
+  // Only on the floor: inside the building (its slabs, a little past the walls' faces; not over the water).
+  const slabs = thermeFixtures().filter((f) => f.id.startsWith('floor') || f.id.startsWith('out-ground'));
   const seen = new Uint8Array(nx * nz);
   const ix = (x: number) => Math.round((x - x0) / STEP);
   const iz = (z: number) => Math.round((z - z0) / STEP);
@@ -46,7 +47,7 @@ function walkable() {
       if (seen[n]) continue;
       const x = x0 + a * STEP;
       const z = z0 + b * STEP;
-      if (!inB(floor, x, z) || !free(x, z)) continue;
+      if (!slabs.some((f) => inB(f, x, z, -1e-6)) || !free(x, z)) continue;
       seen[n] = 1;
       queue.push(n);
     }
@@ -89,7 +90,7 @@ test('every door is in a wall: a gap in it, with a lintel over it', () => {
     const c = d.at + (d.shift ?? 0);
     const mid = (d.from + d.to) / 2;
     const [x, z] = d.axis === 'x' ? [mid, c] : [c, mid];
-    const solid = fx.filter((f) => f.id !== 'floor' && !f.id.startsWith('shut-') && f.id !== 'gym-door' && inB(f, x, z, -1e-6));
+    const solid = fx.filter((f) => !f.id.startsWith('floor') && !f.id.startsWith('shut-') && f.id !== 'gym-door' && f.id !== 'street-door' && inB(f, x, z, -1e-6));
     assert.ok(solid.length > 0, `${d.id} has a lintel over it`);
     for (const f of solid) assert.ok((f.bottom ?? 0) >= d.height - 1e-6, `${d.id}: ${f.id} stands in the opening`);
   }
@@ -106,9 +107,12 @@ test('from the door you come in by you can walk through the passage into the hal
     ['out of the passage into the hall', (ZONES.gang.minX + ZONES.gang.maxX) / 2, NORTH_BAND_Z + 2],
     ['under the dome', DOME.cx, DOME.cz],
     ['the Thermenparadies by the sauna village', P.minX + 1, (P.minZ + P.maxZ) / 2],
-    ['the wave pool plot', (WELLENBAD.minX + WELLENBAD.maxX) / 2, (WELLENBAD.minZ + WELLENBAD.maxZ) / 2],
+    ['the box office in the entrance hall', ZONES.lobby.minX + 2.4, 7.5],
+    ['the top of the wave pool\'s beach', (WELLENBAD.minX + WELLENBAD.maxX) / 2, WELLENBAD.minZ - 0.8],
     ['the slide world', (R.minX + R.maxX) / 2, (R.minZ + R.maxZ) / 2],
-    ['the slide world, far corner', R.maxX - 1, R.maxZ - 1],
+    ['the slide world, by the board', 179.5, 93.5],
+    ['through the door into the Saunadorf', ZONES.dorf.maxX - 1.5, 74],
+    ['out through the glass doors onto the lagoon\'s beach', 97.5, 143.5],
   ];
   for (const [what, x, z] of spots) assert.ok(reach(x, z), `you can walk to ${what}`);
   // In front of each shut door, from the hall's side.
@@ -119,17 +123,17 @@ test('from the door you come in by you can walk through the passage into the hal
     assert.ok(reach(x, z), `you can walk up to the ${d.id} door`);
   }
   const shut: [string, number, number][] = [
-    ['the sauna village', (ZONES.dorf.minX + ZONES.dorf.maxX) / 2, (ZONES.dorf.minZ + ZONES.dorf.maxZ) / 2],
-    ['the entrance hall', (ZONES.lobby.minX + ZONES.lobby.maxX) / 2, NORTH_BAND_Z / 2],
-    ['the lagoon', (ZONES.lagune.minX + ZONES.lagune.maxX) / 2, (ZONES.lagune.minZ + ZONES.lagune.maxZ) / 2],
     ['the plant rooms', 50, NORTH_BAND_Z / 2],
     ['through the door back to the gym', GYM_DOOR.x, THERME_BOX.minZ - 1],
+    ['through the doors out to the street', (ZONES.lobby.minX + ZONES.lobby.maxX) / 2, THERME_BOX.minZ - 1],
   ];
   for (const [what, x, z] of shut) assert.ok(!reach(x, z), `${what} is shut for now`);
 });
 
 test('the door between the gym and the baths: the office lands you by it on either side', () => {
   assert.deepEqual(thermeDoorSpot(THERME, GYM), THERME_ARRIVAL);
+  assert.equal(thermeDoorSpot(THERME, 'some-floor')?.z, 2.2, 'off the street: at the box office');
+  assert.ok(thermeDoorSpot(THERME, 'some-floor')!.x > ZONES.lobby.minX && thermeDoorSpot(THERME, 'some-floor')!.x < ZONES.lobby.maxX);
   assert.deepEqual(thermeDoorSpot(GYM, THERME), GYM_FROM_THERME);
   assert.equal(thermeDoorSpot(GYM, 'some-floor'), null, 'into the gym from the street is its front door');
   assert.equal(thermeDoorSpot('@casino', THERME), null);

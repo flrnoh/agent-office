@@ -3,6 +3,7 @@ import { mulberry32 } from './rng.js';
 import { onTankstelle } from './tankstelle.js';
 import { BOWLING_BOX } from './bowling.js';
 import { VENUE_BOX } from './venue.js';
+import { THERME_STREET_BOX } from './therme-street.js'; // fork: the thermal baths' house
 import { POLE_OFF, STOP_DEFS, stopStretch, type StopDef } from './busnet.js'; // fork: the bus network's stops
 
 // flrnoh fork (see FORK.md): what stands along the city's streets, laid out once so the page that
@@ -58,10 +59,10 @@ export interface Lamp {
 /** What stands in a bin's slot, by where it is. */
 const BIN_SLOTS: FurnitureKind[] = ['pillar', 'bin', 'papers', 'pillar', 'bin'];
 
-/** Whether a building stands within `pad` of (x, z) (fork: the bowling centre on its block too, and the Schallwerk). */
+/** Whether a building stands within `pad` of (x, z) (fork: the bowling centre on its block too, the Schallwerk, the thermal baths). */
 const built = (x: number, z: number, pad: number) =>
   LOTS.some((l) => Math.abs(x - l.x) < l.w / 2 + pad && Math.abs(z - l.z) < l.d / 2 + pad) ||
-  [BOWLING_BOX, VENUE_BOX].some((b) => x > b.minX - pad && x < b.maxX + pad && z > b.minZ - pad && z < b.maxZ + pad);
+  [BOWLING_BOX, VENUE_BOX, THERME_STREET_BOX].some((b) => x > b.minX - pad && x < b.maxX + pad && z > b.minZ - pad && z < b.maxZ + pad);
 
 /** The stretch's ends along it, its line, and whether it's close enough for furniture. */
 export function stretchSpan(s: Stretch): { from: number; to: number; line: number; near: boolean } {
