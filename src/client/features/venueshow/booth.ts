@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BOOTH_DESK, BOOTH_RISER, BOOTH_SCREEN, BOOTH_STAIRS, DJ_SPOT } from '../../../shared/venueshow';
+import { ZONES } from '../../../shared/venue';
 import type { MixFrame } from '../../../shared/venueshow-mix';
 import { mesh, roundedBox, toon } from '../../world/toon';
 import type { Collider, Interactable } from '../../world/types';
@@ -93,6 +94,16 @@ export function buildBooth(): Booth {
     group.add(mesh(new THREE.BoxGeometry(S.maxX - S.minX, top, stepD), black, (S.minX + S.maxX) / 2, top / 2, z0 + stepD / 2));
     group.add(mesh(new THREE.BoxGeometry(S.maxX - S.minX, 0.02, 0.05), toon('#ffd166', { emissive: '#7a5a00' }), (S.minX + S.maxX) / 2, top + 0.005, z0 + 0.03, false));
     colliders.push({ minX: S.minX, maxX: S.maxX, minZ: z0, maxZ: z0 + stepD, top });
+  }
+  // Between the stage (to x = ZONES.djbooth.minX) and the riser there'd be a pit behind the steps and a slot
+  // beside them: the riser runs on west to the stage's edge there, a 0.2 m step down from the stage.
+  const fills = [
+    { minX: ZONES.djbooth.minX, maxX: R.minX, minZ: S.maxZ, maxZ: ZONES.djbooth.maxZ },
+    { minX: ZONES.djbooth.minX, maxX: S.minX, minZ: S.minZ, maxZ: S.maxZ },
+  ];
+  for (const f of fills) {
+    group.add(mesh(new THREE.BoxGeometry(f.maxX - f.minX, TOP, f.maxZ - f.minZ), black, (f.minX + f.maxX) / 2, TOP / 2, (f.minZ + f.maxZ) / 2));
+    colliders.push({ ...f, top: TOP });
   }
   // A handrail up the steps' outer (west) side.
   const rail = new THREE.CatmullRomCurve3([new THREE.Vector3(S.minX + 0.05, 0.95, S.minZ), new THREE.Vector3(S.minX + 0.05, TOP + 0.95, S.maxZ + 0.2)]);
