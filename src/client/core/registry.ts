@@ -464,6 +464,8 @@ export interface UsableSource<I, O> {
   usable(): readonly I[];
   /** What the aim can land on that isn't in the building itself (the dog walks about on its own), if anything. */
   pickable?(): O;
+  /** Fork: also up on the roof and inside the places across the street, not only the office's own map (features/bag). */
+  anywhere?: boolean;
 }
 
 /**
@@ -488,5 +490,11 @@ export class Usables<I, O> {
     const out: O[] = [];
     for (const s of this.sources.items) if (s.pickable) out.push(s.pickable());
     return out;
+  }
+
+  /** Fork: what the sources that are there anywhere have to use, and what the aim can land on of them (features/bag). */
+  anywhere(): { lists: (readonly I[])[]; pickables: O[] } {
+    const all = this.sources.items.filter((s) => s.anywhere);
+    return { lists: all.map((s) => s.usable()), pickables: all.flatMap((s) => (s.pickable ? [s.pickable()] : [])) };
   }
 }

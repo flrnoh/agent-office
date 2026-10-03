@@ -28,6 +28,7 @@ import type { BusRideClientMsg, BusRideServerMsg } from '../busride.js';
 import type { ThermeClientMsg, ThermeServerMsg } from '../therme-msgs.js';
 import type { WaymoClientMsg, WaymoServerMsg } from '../waymo/fleet.js';
 import type { PhoneClientMsg, PhoneServerMsg } from '../phone.js';
+import type { BagClientMsg, BagServerMsg } from '../bag.js';
 
 export type ForkClientMsg =
   | CasinoClientMsg // the casino (shared/casino.ts)
@@ -53,6 +54,7 @@ export type ForkClientMsg =
   | ThermeClientMsg // the thermal baths: the slides' rides (shared/therme-msgs.ts)
   | WaymoClientMsg // the robotaxis (shared/waymo/fleet.ts)
   | PhoneClientMsg // your phone out or away (shared/phone.ts)
+  | BagClientMsg // your rucksack, and things put down (shared/bag.ts)
   /** Put a YouTube, SoundCloud or Mixcloud set on at the DJ booth, for everyone on the roof (see shared/djset.ts). */
   | { t: 'dj.play'; url: string }
   /** Back to the house DJ. */
@@ -110,6 +112,7 @@ export type ForkServerMsg =
   | ThermeServerMsg // the thermal baths: the slides' boards, your ride
   | WaymoServerMsg // the robotaxis
   | PhoneServerMsg // someone's phone out or away
+  | BagServerMsg // your rucksack, and things put down (shared/bag.ts)
   /** The DJ set on the roof changed (sent to everyone up there). */
   | { t: 'dj'; state: DjSetState }
   /** The stream on the floor's TV changed (sent to everyone on the floor). */

@@ -26,6 +26,7 @@ import { karaokeHandlers } from './karaoke.js';
 import { bowlingHandlers } from './bowling.js';
 import { venueHandlers } from './venue.js';
 import { thermeHandlers } from './therme.js';
+import { bagHandlers, bagHooks } from './bag.js';
 import { rideMessage } from '../../fork/ride.js';
 import { busLeft, busRideMessage } from '../../fork/busride.js';
 import { voiceRangeMessage } from '../../fork/voicerange.js';
@@ -186,6 +187,7 @@ export const forkHandlers = {
   ...bowlingHandlers, // the bowling centre's cosmic switch and rental shoes
   ...venueHandlers, // the Schallwerk's house: concert or club, the light desk, stamp, cloakroom, merch (venue.ts)
   ...thermeHandlers, // the thermal baths' slides (therme.ts)
+  ...bagHandlers, // the rucksack, and things put down (bag.ts)
   'bike.ride': rideMessage, // a bike from the city's bike shop (fork/ride.ts)
   'bike.bell': rideMessage,
   'bus.ride': busRideMessage, // riding a city bus: where in it (fork/busride.ts)
@@ -254,6 +256,7 @@ export const forkHooks: FeatureHooks = {
     rigLeft(ctx, c);
     coasterHooks.closed?.(ctx, c);
     waymoHooks.closed?.(ctx, c);
+    bagHooks.closed?.(ctx, c); // a thing to keep in hand goes in the rucksack
   },
   closedOn(ctx, c, floor) {
     boatLeft(ctx, c, floor.id); // out of a boat at the beach

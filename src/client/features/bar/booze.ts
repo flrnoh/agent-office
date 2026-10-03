@@ -6,6 +6,7 @@
  */
 import { BOOZE_LIMIT, type Drink } from '../../../shared/rooftop';
 import { heldAnywhere, holdSeconds } from '../../../shared/fridge'; // flrnoh fork
+import { keepable } from '../../../shared/bag'; // flrnoh fork: things to keep (features/bag)
 
 /** A drink kicks in over about this long. */
 const KICK_IN = 4;
@@ -26,14 +27,24 @@ export class Booze {
   private coming = 0;
   private glass: Drink | null = null;
   private glassUntil = 0;
+  /** Fork: a thing to keep in hand is about to make way for `d` (features/bag puts it in the rucksack). */
+  onSwap: ((was: Drink) => void) | null = null;
 
   /** Drinks one: it starts to kick in, and you hold the glass for a while. */
   drink(d: Drink, now: number) {
+    if (this.glass && keepable(this.glass.id) && now <= this.glassUntil) this.onSwap?.(this.glass); // fork
     this.settle(now);
     if (d.strength < 0) this.level = Math.max(0, this.level + d.strength);
     else this.coming += d.strength;
     this.glass = d;
     this.glassUntil = now + holdSeconds(d, GLASS_SECONDS); // fork: the fridge's snacks go quicker
+    if (keepable(d.id)) this.glassUntil = Infinity; // fork: a thing to keep doesn't run out
+  }
+
+  /** Fork: `d` in your hand (out of the rucksack, picked up), or nothing: no sip, nothing to your head (features/bag). */
+  hold(d: Drink | null) {
+    this.glass = d;
+    this.glassUntil = Infinity;
   }
 
   /** Had enough: the bartender pours you a water instead. Counts what's still on its way. */

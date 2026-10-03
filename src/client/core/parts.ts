@@ -58,6 +58,7 @@ import type { installRig } from '../features/rig';
 import type { installShops } from '../features/shops';
 import type { installFunShops } from '../features/funshops';
 import type { installRide } from '../features/ride';
+import type { installBag } from '../features/bag'; // flrnoh fork: the rucksack
 import type { installTableGames } from '../features/tablegames';
 import type { installFocus } from '../input/focus';
 import type { installPointer } from '../input/pointer';
@@ -153,4 +154,5 @@ export interface Parts {
   funshops: Made<typeof installFunShops>;
   ride: Made<typeof installRide>; // flrnoh fork: bikes, pets, laundry
   tankstelle: Made<typeof installTankstelle>; // flrnoh fork: the petrol station
+  bag: Made<typeof installBag>; // flrnoh fork: the rucksack
 }

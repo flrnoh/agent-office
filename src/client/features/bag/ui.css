@@ -1,0 +1,91 @@
+/* flrnoh fork (see FORK.md "The rucksack"): the rucksack's window. */
+.modal.bag {
+  width: min(560px, 94vw);
+}
+.bag-body {
+  padding-top: 4px;
+}
+.bag-head {
+  margin: 14px 0 8px;
+  font-size: 15px;
+}
+.bag-head:first-child {
+  margin-top: 0;
+}
+.bag-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.bag-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.bag-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 86px;
+  padding: 8px 6px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+  text-align: center;
+}
+.bag-body > .bag-slot {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 0;
+  padding: 10px 14px;
+}
+.bag-slot:hover,
+.bag-slot:focus-visible {
+  background: var(--paper-2);
+  outline: none;
+}
+.bag-slot.on {
+  background: var(--warn);
+}
+.bag-slot.empty {
+  background: transparent;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--ink) 30%, transparent);
+  box-shadow: none;
+  cursor: default;
+}
+.bag-emoji {
+  font-size: 30px;
+  line-height: 1;
+}
+.bag-name {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.bag-body > .bag-slot .bag-name {
+  font-size: 14px;
+}
+.bag-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--paper-2);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+}
+@media (max-width: 480px) {
+  .bag-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

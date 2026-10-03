@@ -17,10 +17,11 @@ Back to the [README](../README.md).
 | L | Hang a big sign over the desk you face (*Operations*, *Code cleanup*), in one of seven colors; again to change it or take it down |
 | O | Open a pull request for a worker on its own branch, or see the one it has (a worker across several projects gets one in each) |
 | N | Go to the worker that has waited longest on someone; again for the next one |
+| U | Your rucksack: what you keep of what you bought in town (twelve places). Click a thing to take it in hand, put it down in front of you, or give it to someone next to you |
 | I | Your phone: the Waymo robotaxi app, the bus departures near you, the town map (I, ✕ or Esc puts it away) |
 | J | The big map (or click the minimap, bottom right): the whole town and the loop, north up, with the bus lines, their stops and every bus where it is now; drag to look about, the wheel zooms, click a place or a shop to have the minimap point you there, **Zum Büro** for the way back |
 | F | Hang a picture from the web on a wall (scroll to size it, click to hang it); falling on the bungee rope, a salto |
-| Q | Put back the issue card you're carrying, or drop the basketball; in a Waymo, get out while it waits, or have it pull over on the way; on the pitch in the soccer hall, a slide tackle (so does **Ctrl**) |
+| Q | With a thing from town in your hand (flowers, a book, a toy, a pet, a record, a plush), put it in your rucksack; **Shift+Q** puts it down in front of you instead (on the desk or counter you look at), where it stays: **E** at it picks it up again. Else put back the issue card you're carrying, or drop the basketball; in a Waymo, get out while it waits, or have it pull over on the way; on the pitch in the soccer hall, a slide tackle (so does **Ctrl**) |
 | H | These controls; in a car, honk the horn; on a jetski, the motorboat or the Baumarkt’s forklift, its horn; at the DJ booth on the roof, blow the air horn; riding DER BRECHER, hands up (or down; Space too); in a city bus, press the stop button (the displays say HALT) |
 | T / Enter | Chat; in the DJ booth's window, T taps the set's tempo in for the lights |
 | G / 1–6 | Emote: hold G for the wheel (point and let go) or press 1–6 to wave, give a thumbs up, clap, dance, point or facepalm; everyone on your floor sees it |
