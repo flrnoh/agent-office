@@ -453,6 +453,7 @@ export function buildVenueExterior(group: THREE.Group, colliders: Collider[], in
   root.add(mergeByMaterial(parts));
   group.add(root);
   const yard = buildYard(group, colliders, night);
+  interactables.push(yard.dock);
 
   // In the way: the whole building (you go in by the doors, with E).
   colliders.push({ minX: B.minX, maxX: B.maxX, minZ: B.minZ, maxZ: B.maxZ, bottom: G, top: G + H + 3 });

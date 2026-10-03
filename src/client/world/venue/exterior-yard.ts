@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { STREET_Y } from '../../../shared/layout';
 import { VENUE_BOX } from '../../../shared/venue';
-import { BEER_GARDEN, DOCK, TOUR_BUS } from '../../../shared/venue-house';
-import type { Collider } from '../types';
+import { BEER_GARDEN, DOCK, DOCK_DOOR, TOUR_BUS } from '../../../shared/venue-house';
+import type { Collider, Interactable } from '../types';
 import { bulb, type NightParts } from '../outside';
 import { mergeByMaterial, mesh, toon, toonUnique } from '../toon';
 import { box, canvasTexture } from '../casino/parts';
@@ -23,12 +23,15 @@ const G = STREET_Y;
 export interface VenueYard {
   /** `lit`: how dark it is (0 day … 1 night), the fire's flicker. */
   update(t: number, lit: number): void;
+  /** The loading door: E there comes in backstage. */
+  dock: Interactable;
 }
 
 export function buildYard(group: THREE.Group, colliders: Collider[], night: NightParts): VenueYard {
   const root = new THREE.Group();
   root.name = 'venue-yard';
   const parts = new THREE.Group();
+  const dock: Interactable = { kind: 'venuedock', x: DOCK_DOOR.x + 1.2, z: DOCK_DOOR.z, y: G + DOCK.top, radius: 2.6 };
   const gradientMap = (toon('#fff') as THREE.MeshToonMaterial).gradientMap;
   const steel = toon('#24262c');
   const wood = toon('#a0703f');
@@ -260,8 +263,9 @@ export function buildYard(group: THREE.Group, colliders: Collider[], night: Nigh
     const roll = corrugatedTexture('#8a8f96');
     roll.repeat.set(1, 6);
     roll.rotation = Math.PI / 2;
-    const door = mesh(new THREE.PlaneGeometry(3.2, 3.4), new THREE.MeshToonMaterial({ map: roll, gradientMap }), VENUE_BOX.maxX + 0.03, G + DK.top + 1.7, 65.5, false);
+    const door = mesh(new THREE.PlaneGeometry(3.2, 3.4), new THREE.MeshToonMaterial({ map: roll, gradientMap }), VENUE_BOX.maxX + 0.03, G + DK.top + 1.7, DOCK_DOOR.z, false);
     door.rotation.y = Math.PI / 2;
+    door.userData.interact = dock;
     root.add(door);
     parts.add(mesh(box(0.3, 0.5, 3.6), toon('#3a3d44'), VENUE_BOX.maxX + 0.15, G + DK.top + 3.65, 65.5));
     const lamp = bulb(night, '#fff3d6', 0.1);
@@ -310,6 +314,7 @@ export function buildYard(group: THREE.Group, colliders: Collider[], night: Nigh
   group.add(root);
 
   return {
+    dock,
     update(t, lit) {
       for (let i = 0; i < flames.length; i++) {
         const f = flames[i];

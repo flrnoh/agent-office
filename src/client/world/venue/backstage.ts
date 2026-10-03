@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeMirror } from './mirror';
 import { STAGE_HEIGHT, VENUE_ROOM, ZONES } from '../../../shared/venue';
 import { BACK_WALL, CASES, GREEN_TABLE, MIRRORS, RIDER, SOFAS, SOFA_DEPTH, STAGE_STAIRS, STAIRS_LANDING, sofaSeats, stairSteps } from '../../../shared/venue-house';
 import type { Collider, Interactable } from '../types';
@@ -158,9 +159,13 @@ export function buildBackstage(group: THREE.Group, colliders: Collider[], intera
         }
       }),
     });
+    // One real mirror behind all three bulb frames (see mirror.ts), seen from backstage only.
+    const glass = makeMirror(5.2, 0.9, (cam) => cam.position.z > BACK_WALL.z1 + 0.2 && cam.position.x < M.maxX + 6);
+    glass.position.set(M.minX + 3, M.top + 0.75, BACK_WALL.z1 + 0.035);
+    group.add(glass);
+    parts.add(mesh(box(5.4, 1.06, 0.03), mirrorMat, M.minX + 3, M.top + 0.75, BACK_WALL.z1 + 0.015, false));
     for (let i = 0; i < 3; i++) {
       const x = M.minX + 1 + i * 2;
-      parts.add(mesh(box(1.2, 0.9, 0.03), mirrorMat, x, M.top + 0.75, BACK_WALL.z1 + 0.02, false));
       for (let k = 0; k < 5; k++) {
         bulbGroup.add(mesh(new THREE.SphereGeometry(0.045, 8, 6), bulbs, x - 0.66, M.top + 0.35 + k * 0.2, BACK_WALL.z1 + 0.06, false));
         bulbGroup.add(mesh(new THREE.SphereGeometry(0.045, 8, 6), bulbs, x + 0.66, M.top + 0.35 + k * 0.2, BACK_WALL.z1 + 0.06, false));

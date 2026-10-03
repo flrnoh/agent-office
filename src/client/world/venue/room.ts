@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { STAGE_HEIGHT, VENUE_DOOR_INSIDE, VENUE_ROOM, WING_DOOR, ZONES } from '../../../shared/venue';
-import { BACKSTAGE_DOOR, BACK_WALL, GALLERY, LOADING_DOOR, PILLARS_X, PILLAR_HALF, PILLAR_Z, STAGE_STAIRS } from '../../../shared/venue-house';
+import { BACKSTAGE_DOOR, BACK_WALL, GALLERY, GALLERY_LANDING, LOADING_DOOR, PILLARS_X, PILLAR_HALF, PILLAR_Z, STAGE_STAIRS } from '../../../shared/venue-house';
 import type { Collider, Interactable } from '../types';
 import { mergeByMaterial, mesh, toon } from '../toon';
 import { box, canvasTexture, glow, neonSign } from '../casino/parts';
 import { BOLD, SW, brickTexture, concreteTexture, corrugatedTexture, drawLogo, softDot } from './signs';
 import type { Look } from './lighting';
 import { noPick, pickBox } from './pick';
+import { buildGalleryStairs } from './gallerystairs';
 
 /*
  * The Schallwerk's hall (flrnoh fork, see FORK.md "The Schallwerk"): the shell the building builds the
@@ -206,9 +207,13 @@ export function buildVenueShell(): VenueShell {
     uvGlow.push({ mat: fm, base: 0.15 });
     group.add(mesh(new THREE.PlaneGeometry(gx1 - gx0, 0.62), fm, (gx0 + gx1) / 2, GALLERY.y + 0.12, gz1 + 0.01, false));
     const rail = toon('#2b2d33');
-    parts.add(mesh(box(gx1 - gx0, 0.08, 0.1), rail, (gx0 + gx1) / 2, GALLERY.y + 0.3 + GALLERY.rail, gz1 - 0.05));
-    parts.add(mesh(box(gx1 - gx0, 0.05, 0.05), rail, (gx0 + gx1) / 2, GALLERY.y + 0.3 + GALLERY.rail / 2, gz1 - 0.05));
-    for (let x = gx0 + 0.3; x < gx1; x += 1.2) parts.add(mesh(box(0.05, GALLERY.rail, 0.05), rail, x, GALLERY.y + 0.3 + GALLERY.rail / 2, gz1 - 0.05));
+    // The rail's open at the west end, where the stair's landing comes up (gallerystairs.ts); you can't fall off the rest.
+    const rx0 = GALLERY_LANDING.maxX;
+    parts.add(mesh(box(gx1 - rx0, 0.08, 0.1), rail, (rx0 + gx1) / 2, GALLERY.y + 0.3 + GALLERY.rail, gz1 - 0.05));
+    parts.add(mesh(box(gx1 - rx0, 0.05, 0.05), rail, (rx0 + gx1) / 2, GALLERY.y + 0.3 + GALLERY.rail / 2, gz1 - 0.05));
+    for (let x = rx0 + 0.05; x < gx1; x += 1.2) parts.add(mesh(box(0.05, GALLERY.rail, 0.05), rail, x, GALLERY.y + 0.3 + GALLERY.rail / 2, gz1 - 0.05));
+    colliders.push({ minX: rx0, maxX: gx1, minZ: gz1 - 0.12, maxZ: gz1, bottom: GALLERY.y + 0.3, top: GALLERY.y + 0.3 + GALLERY.rail });
+    buildGalleryStairs(parts, colliders);
     // Up there: a few bar tables and stools in silhouette, as if anyone could get up there.
     for (const x of [-6, 0.5, 9, 16]) {
       parts.add(mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 12), toon('#1d1c20'), x, GALLERY.y + 1.4, gz1 - 1.2));
@@ -341,6 +346,9 @@ export function buildVenueShell(): VenueShell {
   roll.rotation = Math.PI / 2;
   const rd = mesh(new THREE.PlaneGeometry(LOADING_DOOR.width, LOADING_DOOR.height), new THREE.MeshToonMaterial({ map: roll, gradientMap }), R.maxX - 0.02, LOADING_DOOR.height / 2 + 0.05, LOADING_DOOR.z, false);
   rd.rotation.y = -Math.PI / 2;
+  const dockOut: Interactable = { kind: 'venuedock', x: R.maxX - 0.8, z: LOADING_DOOR.z, y: 0, radius: 2.6 };
+  rd.userData.interact = dockOut;
+  interactables.push(dockOut);
   group.add(rd);
   // Green running-man exit signs over the ways out.
   const exitTex = canvasTexture(128, 48, (g) => {
