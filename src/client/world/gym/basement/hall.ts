@@ -260,7 +260,8 @@ export function buildPoolHall(p: GymParts): PoolHall {
   for (let i = 0; i < 40; i++) p.still.add(mesh(new THREE.SphereGeometry(0.03, 6, 4), fairy, G.minX + 0.8 + ((i * 0.83) % (G.maxX - G.minX - 1.4)), GROTTO_ROOF - 0.04, G.minZ + 0.8 + ((i * 1.37) % (G.maxZ - G.minZ - 1.6)), false));
   // The grotto's floor: dark slate; the basin: teal tiles, lit from inside, warm water.
   const slate = tiles('#3d4648', '#2b3133', 3, 0.12, 107);
-  for (const r of cutOut({ minX: G.minX + 0.6, maxX: G.maxX, minZ: G.minZ + 0.6, maxZ: G.maxZ - 0.6 }, [W])) floorPatch(p, r, slate, 1.0);
+  // The whole cave's floor, the way in through the rock included (no gap to the hall's deck), open over the basin.
+  for (const r of cutOut(G, [W])) floorPatch(p, r, slate, 1.0);
   // The cave's back wall is rock too, not the hall's tiles.
   const back = rk.clone();
   wrap(back, (G.maxZ - G.minZ) / 2, (GROTTO_ROOF - B) / 2);
@@ -281,6 +282,8 @@ export function buildPoolHall(p: GymParts): PoolHall {
   warm.renderOrder = 2;
   warm.userData.noOutline = true;
   p.group.add(warm);
+  // E at the water (or the bench under it): down the steps and sit in the bubbles, the jets in your back.
+  seatable(p, warm, 'gym-grotto-bench', 2.6);
   const grottoLight = new THREE.PointLight('#5ff0e0', 5, 8, 1.5);
   grottoLight.position.set((W.minX + W.maxX) / 2, B + 0.3, (W.minZ + W.maxZ) / 2);
   p.group.add(grottoLight);

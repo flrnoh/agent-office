@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BASEMENT_FLOOR, BSHOWERS, GRADIER, KNEIPP, KNEIPP_ROOM, REST, REST_BEDS, REST_DOOR, REST_LOUNGERS, SALT, SALT_DOOR, SALT_LOUNGERS, SALT_ROOM, SLAB, type ShowerKind } from '../../../../shared/gym-basement';
+import { BASEMENT_FLOOR, BSHOWERS, cutOut, GRADIER, KNEIPP, KNEIPP_ROOM, REST, REST_BEDS, REST_DOOR, REST_LOUNGERS, SALT, SALT_DOOR, SALT_LOUNGERS, SALT_ROOM, SLAB, type ShowerKind } from '../../../../shared/gym-basement';
 import type { WellnessView } from '../../../../shared/gym-wellness';
 import type { Interactable } from '../../types';
 import { mesh, toon } from '../../toon';
@@ -137,7 +137,7 @@ export function buildRooms(p: GymParts): BasementRooms {
 
   // ---- The Kneipp room: white tiles, the cold trough, three adventure showers ----
   const white = tiles('#eef4f5', '#c7d3d6', 6, 0.03, 29);
-  floorPatch(p, KNEIPP_ROOM, white, 1.5);
+  for (const r of cutOut(KNEIPP_ROOM, [KNEIPP])) floorPatch(p, r, white, 1.5); // open over the trough, one step down
   const K = KNEIPP_ROOM;
   panel(p, white, K.maxX - K.minX, H, (K.minX + K.maxX) / 2, B + H / 2, K.minZ + 0.002, 0, 4, 2);
   panel(p, white, K.maxX - K.minX, H, (K.minX + K.maxX) / 2, B + H / 2, K.maxZ - 0.002, Math.PI, 4, 2);
