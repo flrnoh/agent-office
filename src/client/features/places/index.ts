@@ -72,6 +72,9 @@ declare module '../../world/types' {
     therme: true;
     thermeseat: true;
     thermebar: true;
+    thermeslide: true;
+    thermelift: true;
+    thermeboard: true;
   }
 }
 
@@ -201,7 +204,7 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   // The thermal baths behind the gym (client/therme): through the glass door at the end of its basement's passage.
   const therme = new ThermePlace({
     ...host,
-    sound: (k) => (k === 'horn' ? ctx.sound.soccerCrowd('horn', 0.9) : k === 'door' ? ctx.sound.padelHall('door') : k === 'pour' ? ctx.sound.padelHall('pour') : k === 'stroke' ? ctx.sound.gym('whoosh') : ctx.sound.gym('splash')),
+    sound: (k) => (k === 'whoosh' ? ctx.sound.gym('whoosh') : k === 'beep' || k === 'ding' || k === 'photo' ? ctx.sound.gym('ding') : k === 'go' ? ctx.sound.gym('buzzer') : k === 'horn' ? ctx.sound.soccerCrowd('horn', 0.9) : k === 'door' ? ctx.sound.padelHall('door') : k === 'pour' ? ctx.sound.padelHall('pour') : k === 'stroke' ? ctx.sound.gym('whoosh') : ctx.sound.gym('splash')),
     daylight: () => ctx.sky.daylight,
     now: () => store.officeNow(),
     you: () => store.you,
@@ -218,6 +221,8 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
       toast(`${d.emoji} ${d.name}. ${(d as Drink & { says?: string }).says ?? 'Zum Wohl!'}`);
     },
     cutOff: () => deps.booze().cutOff(performance.now() / 1000),
+    renderer: ctx.renderer,
+    name: () => store.peers.get(store.you)?.name ?? '',
   });
   // The baths last: going back to the gym, they put you by their door after the gym has had its say.
   const all = [casino, gym, hall, soccer, bowling, venue, therme] as const;
@@ -273,6 +278,10 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   // The baths' loungers and the swim-up bar (client/therme).
   ctx.interactions.define('thermeseat', { reach: 2.5, hint: hintIn(therme), use });
   ctx.interactions.define('thermebar', { reach: 4, hint: hintIn(therme), use });
+  // The slides' gates, the tower's lift, the kiosk with the boards.
+  ctx.interactions.define('thermeslide', { reach: 3, hint: hintIn(therme), use });
+  ctx.interactions.define('thermelift', { reach: 3, hint: hintIn(therme), use });
+  ctx.interactions.define('thermeboard', { reach: 3.5, hint: hintIn(therme), use });
   ctx.interactions.define('padel', {
     reach: 5,
     hint: (it) => {
@@ -333,13 +342,25 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     },
     hint: (el) =>
       ctx.hint.draw(el, `thermeswim|${bath.atEdge}|${therme.atBar}|${bath.pool?.id}`, () => [
-        hintTitle(bath.pool?.id.startsWith('therme-whirl') ? '🫧 Whirlpool' : bath.pool?.id === 'therme-grotto' ? '💎 Grotte' : bath.pool?.id === 'therme-waves' ? '🌊 Wellenbad' : '🌊 Thermalbecken'),
-        aside(bath.pool?.id === 'therme-thermal' ? '34 °C' : bath.pool?.id === 'therme-waves' ? '30 °C · Wellen alle 8 Minuten' : '36 °C'),
+        hintTitle(bath.pool?.id.startsWith('therme-whirl') ? '🫧 Whirlpool' : bath.pool?.id === 'therme-grotto' ? '💎 Grotte' : bath.pool?.id === 'therme-waves' ? '🌊 Wellenbad' : bath.pool?.id === 'therme-landing' ? '🛝 Landebecken' : '🌊 Thermalbecken'),
+        aside(bath.pool?.id === 'therme-thermal' ? '34 °C' : bath.pool?.id === 'therme-waves' ? '30 °C · Wellen alle 8 Minuten' : bath.pool?.id === 'therme-landing' ? 'Bestzeiten am Kiosk' : '36 °C'),
         key('W A S D', 'Swim'),
         key('Shift', 'Faster'),
         key('Space', 'Splash'),
         ...(therme.atBar ? [key('E', 'Order at the bar')] : bath.atEdge ? [key('E', 'Climb out')] : []),
       ]),
+    hidesHands: true,
+  });
+
+  // Fork: down one of the baths' slides (client/therme/slides.ts): nothing to steer, the hint says how fast.
+  ctx.activities.add({
+    id: 'thermeslide',
+    active: () => !!therme.rider.riding,
+    stop: (why) => {
+      if (why !== 'walk' && why !== 'errand') therme.rider.stop();
+    },
+    key: () => true,
+    hint: (el) => ctx.hint.draw(el, `thermeslide|${Math.round((therme.rider.riding?.t ?? 0) * 10)}`, () => [hintTitle(therme.rider.hint())]),
     hidesHands: true,
   });
 

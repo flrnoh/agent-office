@@ -8,6 +8,7 @@ import { buildShell } from './shell';
 import { buildParadies } from './paradies';
 import { buildGrotto } from './grotto';
 import { buildWavePool } from './waves';
+import { buildSlides, type SlideWorld } from './slides';
 import type { Person } from '../character';
 
 /*
@@ -28,6 +29,8 @@ export interface ThermeInterior {
   /** The swim-up bar's counter, and who's behind it. */
   bar: Interactable;
   bartender: Person;
+  /** The slides' curves, the board, the black hole's rings (world/therme/slides.ts). */
+  slides: SlideWorld;
   /** Every frame inside; `now` is the office's clock (the waves), `me` where you are (what's far off doesn't bubble). */
   update(t: number, dt: number, now: number, me: THREE.Vector3): void;
 }
@@ -42,7 +45,14 @@ export function buildThermeInterior(): ThermeInterior {
   const paradies = buildParadies(p);
   const grotto = buildGrotto(p);
   const waves = buildWavePool(p);
+  const slides = buildSlides(p);
   group.add(mergeByColor(still));
+  // No toon outline round what's marked so (water, glass, pick boxes, signs): it's the material that says (core/outline.ts).
+  group.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh || !o.userData.noOutline) return;
+    for (const mat of Array.isArray(m.material) ? m.material : [m.material]) mat.userData.outlineParameters = { visible: false };
+  });
   return {
     group,
     colliders: p.colliders,
@@ -51,10 +61,12 @@ export function buildThermeInterior(): ThermeInterior {
     exit,
     bar: paradies.bar,
     bartender: paradies.bartender,
+    slides,
     update: (t, dt, now, me) => {
       paradies.update(t, dt, me);
       grotto.update(t, dt, me);
       waves.update(t, dt, now, me);
+      slides.update(t, dt);
     },
   };
 }

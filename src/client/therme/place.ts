@@ -9,6 +9,9 @@ import { BARTENDER, BAR_COUNTER, SWIMBAR_MENU } from '../../shared/therme-paradi
 import { Swimmer } from '../swim';
 import { nextWaves, waveStrength } from '../../shared/therme-waves';
 import { ThermeLoungers } from './loungers';
+import { SlideRider, type RiderHost } from './slides';
+import { openBoards, openLift } from './slide-ui';
+import { LEVELS, LIFT_DOOR, SLIDE_BY_ID } from '../../shared/therme-slides';
 import { openVenueMenu } from '../venue/ui';
 import type { Person } from '../world/character';
 import type { Collider, Interactable } from '../world/types';
@@ -29,7 +32,7 @@ import { buildThermeInterior, type ThermeInterior } from '../world/therme';
 type Spot = { x: number; y: number; z: number; rotY: number };
 type Room = { minX: number; maxX: number; minZ: number; maxZ: number; wall: number; enclosed: boolean };
 
-export type ThermeSoundKind = 'door' | 'splash' | 'stroke' | 'pour' | 'ladder' | 'horn';
+export type ThermeSoundKind = 'door' | 'splash' | 'stroke' | 'pour' | 'ladder' | 'horn' | 'whoosh' | 'beep' | 'go' | 'photo' | 'ding';
 
 export interface ThermeHost {
   scene: THREE.Scene;
@@ -38,7 +41,7 @@ export interface ThermeHost {
   floor(): string | null;
   /** On the office's map (the gym, and so the baths, are only on its street). */
   inOffice(): boolean;
-  player: { pos: THREE.Vector3; colliders: Collider[]; room: Room; seat: SeatPlace | null; sit(p: SeatPlace): void; stand(): void } & ConstructorParameters<typeof Swimmer>[0];
+  player: { pos: THREE.Vector3; colliders: Collider[]; room: Room; seat: SeatPlace | null; sit(p: SeatPlace): void; stand(): void; lookPitch: number } & ConstructorParameters<typeof Swimmer>[0];
   showOffice(on: boolean): void;
   officeColliders(): Collider[];
   officeRoom(): Room;
@@ -57,6 +60,11 @@ export interface ThermeHost {
   /** Handed over the bar: into your hand (like the Schallwerk's). */
   served(d: Drink): void;
   cutOff(): boolean;
+  /** No toon outline round its signs, screens and pick boxes (core/outline.ts). */
+  noOutline(o: THREE.Object3D): void;
+  /** For the slides' ride photo. */
+  renderer: RiderHost['renderer'];
+  name(): string;
 }
 
 export class ThermePlace {
@@ -74,6 +82,8 @@ export class ThermePlace {
   /** Swimming in any of the baths' pools (client/swim/, the pools in shared/therme-all.ts). */
   readonly swim: Swimmer;
   private loungers: ThermeLoungers;
+  /** Riding the slides (client/therme/slides.ts). */
+  readonly rider: SlideRider;
   /** The run of waves the horn last went for. */
   private hornFor = 0;
 
@@ -83,6 +93,8 @@ export class ThermePlace {
       stroke: () => host.sound('stroke'),
       out: () => host.sound('ladder'),
     }, () => host.now());
+    this.rider = new SlideRider({ player: host.player, send: (m) => host.send(m), sound: (k) => host.sound(k), renderer: host.renderer, scene: host.scene, me: () => host.me(), name: () => host.name() });
+    this.rider.onBoards = () => this.rider.drawBoard();
     this.loungers = new ThermeLoungers({ you: () => host.you(), people: () => host.people(), player: host.player, me: () => host.me() });
   }
 
@@ -115,6 +127,7 @@ export class ThermePlace {
   private theRoom(): ThermeInterior {
     if (!this.room) {
       this.room = buildThermeInterior();
+      this.host.noOutline(this.room.group);
       this.room.group.visible = false;
       this.host.scene.add(this.room.group);
     }
@@ -162,6 +175,8 @@ export class ThermePlace {
     this.active = inside;
     if (inside) {
       const r = this.theRoom();
+      this.rider.bind(r.slides);
+      this.rider.drawBoard();
       r.group.visible = true;
       this.host.showOffice(false);
       this.host.player.colliders = r.colliders;
@@ -170,6 +185,7 @@ export class ThermePlace {
     } else {
       if (this.room) this.room.group.visible = false;
       this.swim.release();
+      this.rider.stop();
       this.loungers.clear();
       if (this.host.player.seat?.seatId?.startsWith('therme-')) this.host.player.stand();
       this.host.showOffice(true);
@@ -215,6 +231,22 @@ export class ThermePlace {
       if (key === 'E') this.bar();
       return true;
     }
+    if (it.kind === 'thermeslide') {
+      if (key === 'E' && it.thermeSlide && !this.swim.swimming) this.rider.start(it.thermeSlide, it.thermeLane ?? 0);
+      return true;
+    }
+    if (it.kind === 'thermelift') {
+      if (key === 'E')
+        openLift(it.thermeLevel ?? -1, (l) => {
+          this.host.sound('ding');
+          this.host.placeAt({ x: LIFT_DOOR.x, y: l < 0 ? 0 : LEVELS[l], z: LIFT_DOOR.z, rotY: 0 });
+        });
+      return true;
+    }
+    if (it.kind === 'thermeboard') {
+      if (key === 'E') openBoards(this.rider.boards, this.rider.photo, this.host.name());
+      return true;
+    }
     if (it.kind !== 'therme') return false;
     if (key === 'E') {
       if (this.active) this.leave();
@@ -225,6 +257,14 @@ export class ThermePlace {
 
   hint(it: Interactable, title: (t: string) => HTMLElement, key: (k: string, label: string) => HTMLElement, aside: (t: string) => HTMLElement): { k: string; parts: (HTMLElement | string)[] } | null {
     if (it.kind === 'thermeseat') return this.host.player.seat?.seatId === it.seatId ? { k: 'therme-up', parts: [title('🏖️ Liege'), key('E', 'Get up')] } : { k: 'therme-lie', parts: [title('🏖️ Liege'), aside('unter Palmen'), key('E', 'Lie down')] };
+    if (it.kind === 'thermeslide') {
+      const s = it.thermeSlide ? SLIDE_BY_ID.get(it.thermeSlide) : undefined;
+      if (!s) return null;
+      const best = this.rider.boards[s.id]?.[0];
+      return { k: `therme-slide|${s.id}|${it.thermeLane ?? 0}`, parts: [title(`${s.emoji} ${s.name}${s.lanes ? ` · Bahn ${(it.thermeLane ?? 0) + 1}` : ''}`), aside(best ? `${s.blurb} · Rekord ${best.name} ${(best.ms / 1000).toFixed(2).replace('.', ',')} s` : s.blurb), key('E', 'Go down')] };
+    }
+    if (it.kind === 'thermelift') return { k: 'therme-lift', parts: [title('🛗 Aufzug'), aside('Rutschenturm · drei Ebenen'), key('E', 'Ride')] };
+    if (it.kind === 'thermeboard') return { k: 'therme-board', parts: [title('🏁 Bestzeiten'), aside('jede Rutsche · dein Fahrfoto'), key('E', 'Look')] };
     if (it.kind === 'thermebar') return { k: 'therme-bar', parts: [title('🍹 Schwimmbar'), aside('Cocktails · Bier · Wein · Wasser'), key('E', 'Order')] };
     if (it.kind !== 'therme') return null;
     if (this.active) return { k: 'therme-out', parts: [title('🚪 Gym'), aside('Schwimmhalle · Untergeschoss'), key('E', 'Back to the gym')] };
@@ -236,7 +276,9 @@ export class ThermePlace {
     return { name: `🌴 ${THERME_NAME}`, meta: whereIn(p.x, p.y, p.z).replace(/^\S+\s/, '') };
   }
 
-  onMessage(_msg: ServerMsg) {}
+  onMessage(msg: ServerMsg) {
+    if (msg.t === 'therme.slides' || msg.t === 'therme.ride') this.rider.onMessage(msg);
+  }
 
   update(t: number, dt: number) {
     if (!this.active || !this.room) return;
@@ -249,7 +291,8 @@ export class ThermePlace {
       if (now - run < 4000) this.host.sound('horn');
       this.hornFor = run;
     }
-    this.swim.tick(dt);
+    if (!this.rider.riding) this.swim.tick(dt);
+    this.rider.update(t);
     const people = this.host.people();
     this.swim.pose(people.filter((q): q is typeof q & { person: Person } => !!q.person));
     this.loungers.pose();
