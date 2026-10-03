@@ -5,6 +5,7 @@ import { mergeByMaterial, mesh, toon } from '../toon';
 import type { Collider } from '../types';
 import { G } from './kit';
 import { buildPillars } from './pillars';
+import { stopPole } from './busstops';
 
 // flrnoh fork (see FORK.md): what stands along the city's streets at eye level (see town/index.ts):
 // curbs along every road, and on the strip between the sidewalk and the buildings, street trees,
@@ -25,7 +26,6 @@ export function buildFurniture(group: THREE.Group, colliders: Collider[]) {
   const steel = toon('#9aa1ad');
   const glass = toon('#cfe8f5', { transparent: true, opacity: 0.45 });
   const red = toon('#d62828');
-  const yellow = toon('#ffd60a');
   const h = CITY_ROAD / 2;
 
   const trunkGeo = new THREE.CylinderGeometry(0.14, 0.2, 2.6, 6);
@@ -52,6 +52,7 @@ export function buildFurniture(group: THREE.Group, colliders: Collider[]) {
 
   /** Where a thing at `f` is drawn: `lx` along its front and `lz` toward the road. */
   const lay = (f: Furniture, geo: THREE.BufferGeometry, mat: THREE.Material, y: number, lx = 0, lz = 0) => put(geo, mat, f.x, y, f.z, f.yaw, lx, lz);
+  const local = (f: Furniture, lx: number, lz: number): [number, number] => [f.x + lx * Math.cos(f.yaw) + lz * Math.sin(f.yaw), f.z - lx * Math.sin(f.yaw) + lz * Math.cos(f.yaw)];
 
   for (const s of STREETS) {
     const { from, to, line, near } = stretchSpan(s);
@@ -101,13 +102,16 @@ export function buildFurniture(group: THREE.Group, colliders: Collider[]) {
         parts.add(hoop);
       }
     } else if (f.kind === 'bus') {
-      // A bus stop: a glass shelter with a bench in it and the sign on a pole.
+      // A bus stop: a glass shelter with a bench in it (or only the pole, at the curb), and on the pole
+      // its sign, its name and the departures board (town/busstops.ts).
+      const [px, pz] = stopPole(f);
+      lay(f, new THREE.CylinderGeometry(0.045, 0.045, 3.0, 8), steel, G + 1.5, px, pz);
+      block(...local(f, px, pz), 0.08, 0.08, 3);
+      if (f.stop?.pole) continue;
       for (const lx of [-1.4, 1.4]) lay(f, postGeo, steel, G + 1.3, lx, -0.6);
       lay(f, new THREE.BoxGeometry(3, 0.08, 1.5), steel, G + 2.62, 0, -0.1);
       lay(f, new THREE.BoxGeometry(2.8, 2.2, 0.03), glass, G + 1.2, 0, -0.62); // thinner than the posts, so its faces end inside them
       lay(f, seatGeo, wood, G + 0.45, 0, -0.3);
-      lay(f, new THREE.CylinderGeometry(0.04, 0.04, 2.8, 6), steel, G + 1.4, 2.1, 0.5);
-      lay(f, new THREE.CylinderGeometry(0.32, 0.32, 0.06, 16).rotateX(Math.PI / 2), yellow, G + 2.7, 2.1, 0.5);
       block(x, z, 1.6, 1.6, 2.7);
     } else if (f.kind === 'bin') {
       lay(f, binGeo, ink, G + 0.42);

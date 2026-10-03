@@ -6,6 +6,7 @@ import type { EmoteId } from '../emotes.js';
 import type { DrinkId } from '../rooftop.js';
 import type { BikeKind } from '../ride.js'; // flrnoh fork
 import type { DanceId } from '../dance.js'; // flrnoh fork
+import type { BusRide } from '../busride.js'; // flrnoh fork
 import type { Me } from './accounts.js';
 import type { FloorInfo, FloorView, ProjectsDirState } from './floors.js';
 import type { LeaveOnMergeState, MachineState, MapState, NotifyState, PromptsState, SkyState, ThemeState, UpgradeState } from './settings.js';
@@ -45,6 +46,8 @@ export interface PeerInfo {
   drink?: DrinkId;
   /** flrnoh fork: on a bike from the city's bike shop (shared/ride.ts). */
   bike?: BikeKind;
+  /** flrnoh fork: aboard a city bus, and where in it (shared/busride.ts). */
+  bus?: BusRide;
   /** flrnoh fork: how far their voice carries, in meters (shared/voicerange.ts); none is the default. */
   voiceRange?: number;
   /** flrnoh fork: dancing on the roof, this move (shared/dance.ts). */

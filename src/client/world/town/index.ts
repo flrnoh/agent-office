@@ -14,6 +14,7 @@ import { buildTraffic, type Obstacle } from './traffic';
 import { buildPassersby, type Passersby } from './people'; // fork: passers-by
 import { buildTrafficLights } from './lights'; // fork: traffic lights
 import { buildBuses, type Buses } from './bus'; // fork: the city bus
+import { buildBusStops, type BusStops } from './busstops'; // fork: the bus stops' signs and boards
 import { BUS_L } from '../../../shared/citybus';
 
 export type { Obstacle } from './traffic';
@@ -49,6 +50,8 @@ export interface Town {
   fronts: ShopFronts;
   /** The city's buses (town/bus.ts), on the office's clock. */
   buses: Buses;
+  /** The bus stops' signs and departures boards (town/busstops.ts). */
+  busStops: BusStops;
   /**
    * The cars along the streets, stopping for `obstacles` (and the passers-by crossing); the lights: `dark`
    * is how dark it is (0–1); `now`: the office's clock (s), which the traffic lights and the buses keep to.
@@ -75,6 +78,7 @@ export function buildTown(night: NightParts): Town {
   const lights = buildTrafficLights();
   group.add(lights.group);
   const buses = buildBuses(group);
+  const busStops = buildBusStops(group);
   const busAt = buses.buses.map((b) => b.pose);
   cars.traffic.push(...buses.buses.map((b) => b.box));
   const people = buildPassersby();
@@ -88,6 +92,7 @@ export function buildTown(night: NightParts): Town {
     traffic: cars.traffic,
     people,
     buses,
+    busStops,
     fronts,
     setFloors(floors) {
       // The buildings only change height up to six floors (see rise).

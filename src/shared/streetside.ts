@@ -3,6 +3,7 @@ import { mulberry32 } from './rng.js';
 import { onTankstelle } from './tankstelle.js';
 import { BOWLING_BOX } from './bowling.js';
 import { VENUE_BOX } from './venue.js';
+import { POLE_OFF, STOP_DEFS, stopStretch, type StopDef } from './busnet.js'; // fork: the bus network's stops
 
 // flrnoh fork (see FORK.md): what stands along the city's streets, laid out once so the page that
 // draws it (client/world/town/furniture.ts, ground.ts) and the passers-by who sit on its benches and
@@ -41,6 +42,8 @@ export interface Furniture {
   /** A tree's size, and which of the greens its crown is. */
   k: number;
   leaf: number;
+  /** A bus stop's own (shared/busnet.ts): its name, and whether it's only a pole. */
+  stop?: StopDef;
 }
 
 /** A street lamp: where it stands, and which stretch and side it's on. */
@@ -96,7 +99,8 @@ function layFurniture(): Furniture[] {
         const pick = r();
         if (pick < 0.45) put('bench');
         else if (pick < 0.7) put('bikes');
-        else if (pick < 0.82 && len > 30) put('bus');
+        // Where a bus stop used to come up, a bench: the stops are the bus network's now (see busStops).
+        else if (pick < 0.82 && len > 30) put('bench');
         // A bin, or (by where it is, not by drawing another number, so the rest stays as it was) an
         // advertising pillar or newspaper boxes in its place.
         else put(BIN_SLOTS[Math.abs(Math.round(x * 3 + z * 7)) % BIN_SLOTS.length]);
@@ -106,8 +110,26 @@ function layFurniture(): Furniture[] {
   return out;
 }
 
+/** How far along either side of a bus stop its strip is kept clear. */
+const STOP_CLEAR = 3.4;
+
+/** The bus network's stops (shared/busnet.ts), where it has them, and room made for them on the strip. */
+function busStops(laid: Furniture[]): Furniture[] {
+  const stops = STOP_DEFS.map((d): Furniture => {
+    const street = stopStretch(d);
+    const { line } = stretchSpan(street);
+    const off = d.side * (d.pole ? POLE_OFF : STRIP_OUT);
+    const yaw = d.alongX ? (d.side > 0 ? Math.PI : 0) : d.side > 0 ? -Math.PI / 2 : Math.PI / 2;
+    const [x, z] = d.alongX ? [d.at, line + off] : [line + off, d.at];
+    return { kind: 'bus', x, z, yaw, street, side: d.side, along: d.at, k: 1, leaf: 0, stop: d };
+  });
+  const line = (s: Stretch) => stretchSpan(s).line;
+  const inTheWay = (f: Furniture) => stops.some((s) => s.street.alongX === f.street.alongX && Math.abs(line(s.street) - line(f.street)) < 0.01 && s.side === f.side && Math.abs(s.along - f.along) < STOP_CLEAR);
+  return [...laid.filter((f) => !inTheWay(f)), ...stops];
+}
+
 /** The trees, benches, bike stands, bus stops and bins along the streets close by. */
-export const FURNITURE: readonly Furniture[] = layFurniture();
+export const FURNITURE: readonly Furniture[] = busStops(layFurniture());
 
 function layLamps(): Lamp[] {
   const out: Lamp[] = [];

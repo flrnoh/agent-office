@@ -4,8 +4,9 @@ import type { Pos } from '../../sound/places';
 
 // ---- The city bus (flrnoh fork, see FORK.md "Traffic lights and the city bus") ------------------------
 // Each bus's diesel: a low sawtooth rumble with a little noise, idling at the stops and the lights and
-// rising as it pulls away; and its doors' hiss as they open and shut. All synthesized, on the effects
-// volume, from where the bus is.
+// rising as it pulls away; its doors' hiss as they open and shut; inside, the gong before the next
+// stop's called, the ding of a stop button and the clack of the validator. All synthesized, on the
+// effects volume, from where the bus is.
 
 interface Engine {
   osc: OscillatorNode;
@@ -66,8 +67,68 @@ export class BusEngines {
   }
 }
 
+export type BusSound = 'open' | 'shut' | 'gong' | 'ding' | 'stamp';
+
+/** One of the bus's sounds at `at`. */
+export function busSound(a: AudioCore, kind: BusSound, at: Pos) {
+  if (kind === 'open' || kind === 'shut') return busDoorHiss(a, at, kind === 'open');
+  const ctx = a.ctx;
+  if (!ctx) return;
+  a.count(`bus-${kind}`);
+  const t = ctx.currentTime + 0.01;
+  const pan = a.panner(at, 2, 1.2);
+  pan.connect(a.ambience);
+  /** A soft bell tone: a sine and its octave, struck and dying away. */
+  const bell = (f: number, at0: number, len: number, level: number) => {
+    for (const [mul, k] of [[1, 1], [2.01, 0.35], [3.02, 0.12]] as const) {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f * mul;
+      const g = ctx.createGain();
+      envelope(g.gain, at0, [
+        [0.008, level * k],
+        [len, 0],
+      ]);
+      o.connect(g).connect(pan);
+      o.start(at0);
+      o.stop(at0 + len + 0.05);
+    }
+  };
+  if (kind === 'gong') {
+    // Ding-dong, before the next stop's called out.
+    bell(784, t, 1.1, 0.09);
+    bell(622, t + 0.45, 1.4, 0.09);
+  } else if (kind === 'ding') {
+    // Someone's pressed the stop button.
+    bell(1318, t, 0.5, 0.08);
+  } else {
+    // The validator: a clack, and its little beep.
+    const air = a.noise(a.buf.white);
+    const g = ctx.createGain();
+    envelope(g.gain, t, [
+      [0.003, 0.25],
+      [0.06, 0],
+    ]);
+    air.connect(biquad(ctx, 'bandpass', 1800, 2)).connect(g).connect(pan);
+    air.start(t);
+    air.stop(t + 0.1);
+    const o = ctx.createOscillator();
+    o.type = 'square';
+    o.frequency.value = 2200;
+    const k = ctx.createGain();
+    envelope(k.gain, t + 0.08, [
+      [0.005, 0.03],
+      [0.12, 0.03],
+      [0.13, 0],
+    ]);
+    o.connect(k).connect(pan);
+    o.start(t + 0.08);
+    o.stop(t + 0.25);
+  }
+}
+
 /** The doors: a burst of air (opening, a sigh out; shutting, shorter, with a thump at the end). */
-export function busDoorHiss(a: AudioCore, at: Pos, opening: boolean) {
+function busDoorHiss(a: AudioCore, at: Pos, opening: boolean) {
   const ctx = a.ctx;
   if (!ctx) return;
   a.count('busDoor');

@@ -68,6 +68,12 @@ export class PlayerController extends PlayerInput {
   eyeDrop = 0;
   /** The rig is a car (see features/cars/controller.ts): out on the street or in the garage, not up a shaft indoors. */
   riding = false;
+  /** flrnoh fork: the rig has a floor you stand and walk on (a city bus, features/citybus). */
+  rigFloor = false;
+  /** flrnoh fork: whether `code` is held down (for a rig that walks you about, features/citybus). */
+  held(code: string): boolean {
+    return this.enabled && this.keys.has(code);
+  }
 
   constructor(
     private camera: THREE.PerspectiveCamera,
@@ -156,7 +162,7 @@ export class PlayerController extends PlayerInput {
     if (this.rig) {
       this.rig(dt);
       this.vy = 0;
-      this.grounded = false;
+      this.grounded = this.rigFloor; // flrnoh fork: on your feet in a city bus
       this.stepOffset *= Math.exp(-dt * 16);
       this.bob = 0;
       this.jitterT += dt;

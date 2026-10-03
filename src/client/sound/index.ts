@@ -57,7 +57,7 @@ import { soccer, type SoccerSound } from './soccer';
 import { SoccerMurmur, soccerCrowd, type SoccerCrowdSound } from './soccercrowd';
 import { tableGame, type TableGameSound } from './tablegames';
 import { StationLoops, tankstelle, type StationNoise, type TankSound } from '../features/tankstelle/sound';
-import { BusEngines, busDoorHiss } from '../features/citybus/sound'; // fork: the city bus
+import { BusEngines, busSound, type BusSound } from '../features/citybus/sound'; // fork: the city bus
 import { CitySound, type CityScene } from './city'; // fork: the sounds of the city
 import { bells, siren, type SirenPass } from './citybells';
 import { KaraokeSound } from '../features/karaoke/sound'; // fork: the bowling centre's karaoke bar
@@ -462,12 +462,12 @@ export class OfficeSound {
     this.station.set(noise);
   }
 
-  /** The city buses' engines in earshot, every frame, and their doors' hiss (features/citybus/sound.ts). */
+  /** The city buses' engines in earshot, every frame; their doors' hiss, the gong, the stop button, the validator (features/citybus/sound.ts). */
   setBuses(list: Parameters<BusEngines['set']>[0]) {
     this.busEngines.set(list);
   }
-  busDoors(at: Pos, opening: boolean) {
-    busDoorHiss(this.a, at, opening);
+  bus(kind: BusSound, at: Pos) {
+    busSound(this.a, kind, at);
   }
 
   casino(kind: CasinoSound) {

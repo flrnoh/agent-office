@@ -172,7 +172,7 @@ test('they walk round the benches, trees and bus stops on the strip', () => {
   for (const f of FURNITURE) {
     if (f.kind === 'tree') solid.push([f.x, f.z, 0.2 * f.k]);
     if (f.kind === 'bench' || f.kind === 'bin') solid.push([...local(f, f.kind === 'bench' ? 1.35 : 0, 0), 0.28]);
-    if (f.kind === 'bus') for (const [lx, lz, r] of [[2.1, 0.5, 0.05], [-1.4, -0.6, 0.06], [1.4, -0.6, 0.06]]) solid.push([...local(f, lx, lz), r]);
+    if (f.kind === 'bus') for (const [lx, lz, r] of f.stop?.pole ? [[0, 0, 0.05]] : [[2.1, 0.5, 0.05], [-1.4, -0.6, 0.06], [1.4, -0.6, 0.06]]) solid.push([...local(f, lx, lz), r]); // fork: a pole-only stop (shared/busnet.ts)
   }
   // In 4 m squares, to look up what's near.
   const grid = new Map<string, [number, number, number][]>();

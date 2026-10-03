@@ -25,6 +25,7 @@ import { karaokeHandlers } from './karaoke.js';
 import { bowlingHandlers } from './bowling.js';
 import { venueHandlers } from './venue.js';
 import { rideMessage } from '../../fork/ride.js';
+import { busLeft, busRideMessage } from '../../fork/busride.js';
 import { voiceRangeMessage } from '../../fork/voicerange.js';
 import { danceLeft, danceMessage } from '../../fork/dance.js';
 import { here } from './common.js';
@@ -182,6 +183,7 @@ export const forkHandlers = {
   ...venueHandlers, // the Schallwerk's house: concert or club, the light desk, stamp, cloakroom, merch (venue.ts)
   'bike.ride': rideMessage, // a bike from the city's bike shop (fork/ride.ts)
   'bike.bell': rideMessage,
+  'bus.ride': busRideMessage, // riding a city bus: where in it (fork/busride.ts)
   'voice.range': voiceRangeMessage, // how far your voice carries (fork/voicerange.ts)
   'dance.set': danceMessage, // dancing on the roof (fork/dance.ts)
   'tank.fill': tank,
@@ -232,6 +234,7 @@ export const forkHooks: FeatureHooks = {
     baumarktLeft(ctx, c, was?.id); // off the Baumarkt's forklift, trolleys and tools
     trolleyLeft(ctx, c, was?.id); // the supermarket's trolley stays behind
     coasterHooks.leaving?.(ctx, c, was); // out of DER BRECHER's train, off the roof
+    busLeft(ctx, c); // off the city bus
   },
   closed(ctx, c) {
     ctx.casino.leave(c.id);

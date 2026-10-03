@@ -34,6 +34,7 @@ const GUEST = [
   'bike.ride', 'bike.bell', // fork: bikes from the city's bike shop
   'voice.range', // fork: how far your voice carries
   'dance.set', // fork: dancing on the roof
+  'bus.ride', // fork: riding a city bus
   'tank.fill', 'tank.wash', // fork: the petrol station and its car wash
   'coaster.board', 'coaster.leave', 'coaster.hands', // fork: DER BRECHER, the roller coaster round the tower
   'karaoke.hello', 'karaoke.queue', 'karaoke.unqueue', 'karaoke.mic', 'karaoke.stop', 'karaoke.done', 'karaoke.rate', 'karaoke.cheer', // fork: the bowling centre's karaoke bar
