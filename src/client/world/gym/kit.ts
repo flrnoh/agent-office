@@ -52,6 +52,33 @@ export function decal(p: GymParts, r: Rect, mat: THREE.Material, y = 0.005): THR
   return m;
 }
 
+/**
+ * Fork: a decal over `r` with a rectangular `hole` cut out of it (the stairwell down to the basement),
+ * its texture laid as the whole decal's would be, so it lines up with what it replaces.
+ */
+export function decalHoled(p: GymParts, r: Rect, mat: THREE.Material, y: number, hole: Rect): THREE.Mesh {
+  const cx = (r.minX + r.maxX) / 2;
+  const cz = (r.minZ + r.maxZ) / 2;
+  const w = r.maxX - r.minX;
+  const d = r.maxZ - r.minZ;
+  // In the plane's own frame (x east, y north) before it's laid flat.
+  const shape = new THREE.Shape([new THREE.Vector2(-w / 2, -d / 2), new THREE.Vector2(w / 2, -d / 2), new THREE.Vector2(w / 2, d / 2), new THREE.Vector2(-w / 2, d / 2)]);
+  const h0 = Math.max(r.minX, hole.minX) - cx;
+  const h1 = Math.min(r.maxX, hole.maxX) - cx;
+  const v0 = cz - Math.min(r.maxZ, hole.maxZ);
+  const v1 = cz - Math.max(r.minZ, hole.minZ);
+  shape.holes.push(new THREE.Path([new THREE.Vector2(h0, v0), new THREE.Vector2(h0, v1), new THREE.Vector2(h1, v1), new THREE.Vector2(h1, v0)]));
+  const geo = new THREE.ShapeGeometry(shape);
+  const pos = geo.attributes.position;
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < pos.count; i++) uv.setXY(i, (pos.getX(i) + w / 2) / w, (pos.getY(i) + d / 2) / d);
+  const m = mesh(geo, mat, cx, y, cz, false);
+  m.rotation.x = -Math.PI / 2;
+  m.receiveShadow = true;
+  p.group.add(m);
+  return m;
+}
+
 /** A lit material with a texture (toon-shaded like everything else). */
 export function tex(map: THREE.Texture, color: THREE.ColorRepresentation = '#ffffff', opts: THREE.MeshToonMaterialParameters = {}): THREE.MeshToonMaterial {
   const base = toon('#ffffff') as THREE.MeshToonMaterial;

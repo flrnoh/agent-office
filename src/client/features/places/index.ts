@@ -110,8 +110,10 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   const gym = new GymPlace({
     ...host,
     sound: (k) => ctx.sound.gym(k),
-    spaPeople: () => [...store.peers.values()].filter((p) => p.id !== store.you && store.onMyFloor(p)).map((p) => ({ x: p.x, z: p.z })),
+    spaPeople: () => [...store.peers.values()].filter((p) => p.id !== store.you && store.onMyFloor(p)).map((p) => ({ x: p.x, y: p.y, z: p.z })),
     ambience: (level) => ctx.sound.gymSpa(level),
+    radio: (url, reach) => ctx.sound.gymRadio.set(url, reach), // fork: Gym FM (shared/gym-radio.ts)
+    thunder: () => ctx.sound.gym('thunder'), // fork: the basement's storm shower
     people: () => [...parts.peers.remotes].map(([id, r]) => ({ name: store.peers.get(id)?.name ?? '', person: r.person })),
     you: () => ({ name: store.peers.get(store.you)?.name ?? '', person: ctx.me }),
     now: () => store.officeNow(),
@@ -248,6 +250,29 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     use: (it, k) => {
       if (k === 'E' && it.court) padel.use(it.court);
     },
+  });
+
+  // Fork: swimming in the gym basement's lap pool (client/gym-pool.ts): the keys and the hint bar while you're in.
+  const lap = gym.pool;
+  ctx.activities.add({
+    id: 'gympool',
+    active: () => lap.swimming,
+    stop: (why) => {
+      if (why !== 'walk' && why !== 'errand') lap.leave();
+    },
+    key: (e) => {
+      if (e.code === 'KeyE' && lap.atEdge) {
+        if (!e.repeat) lap.climbOut();
+        return true;
+      }
+      if (e.code === 'Space') {
+        if (!e.repeat) ctx.sound.gym('splash');
+        return true;
+      }
+      return false;
+    },
+    hint: (el) => ctx.hint.draw(el, `gympool|${lap.atEdge}`, () => [hintTitle('🏊 Lap pool'), aside('wall to wall: a timed length'), key('W A S D', 'Swim'), key('Shift', 'Faster'), key('Space', 'Splash'), ...(lap.atEdge ? [key('E', 'Climb out')] : [])]),
+    hidesHands: true,
   });
 
   ctx.ticks.add('play', ({ dt }) => padel.update(dt));

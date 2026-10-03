@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { GYM_DOOR, GYM_ROOM, GYM_STATION_BY_ID, JUICE_BAR, type JuiceBarView } from '../../../shared/gym';
 import type { WellnessView } from '../../../shared/gym-wellness';
 import { CHANGING_DOOR, JUICE_COUNTER, JUICE_STOOL_X, JUICE_STOOL_ZS, LOCKERS, RECEPTION, SPA, STRETCH, TURF, TURNSTILE } from '../../../shared/gym-rooms';
+import { STAIRWELL, gymFloorSlabs } from '../../../shared/gym-basement'; // fork
 import type { Interactable } from '../types';
 import { mergeByMaterial, mesh, textPlane, toon } from '../toon';
-import { blk, cyl, decal, picture, plant, seatable, speaker, tex, type GymParts } from './kit';
+import { blk, cyl, decal, decalHoled, picture, plant, seatable, speaker, tex, type GymParts } from './kit';
 import { glow, mirrorTexture, neonSign, rubberFloor } from './parts';
 import { WorkoutVideo, concrete, entranceMat, juiceMenu, lockerFront, logoPanel, planks, platform, poster, timetable, turf, weightTiles, windowView, zoneRubber } from './textures';
 
@@ -43,7 +44,7 @@ export function buildGymRooms(p: GymParts, showCeiling: boolean): GymRooms {
   // ---- The floor: rubber everywhere, a zone for each kind of training on top ---------------------
   const floorTex = rubberFloor();
   floorTex.repeat.set(W, D);
-  decal(p, R, tex(floorTex), 0);
+  decalHoled(p, R, tex(floorTex), 0, STAIRWELL); // fork: open over the stair down to the basement
   const cardio = tex(zoneRubber('#1d3440', '#35e0d0', '#35e0d0'));
   (cardio.map as THREE.Texture).wrapS = (cardio.map as THREE.Texture).wrapT = THREE.RepeatWrapping;
   decal(p, { minX: 8.6, maxX: 18.3, minZ: 37.95, maxZ: 40.6 }, cardio, 0.004);
@@ -91,7 +92,7 @@ export function buildGymRooms(p: GymParts, showCeiling: boolean): GymRooms {
   blk(p, T, H, R.maxZ - cd1, wallMat, R.minX - T / 2, H / 2, (cd1 + R.maxZ) / 2);
   blk(p, T, H - 2.25, cd1 - cd0, wallMat, R.minX - T / 2, (H + 2.25) / 2, CHANGING_DOOR.z);
   p.colliders.push({ minX: R.minX - T, maxX: R.maxX + T, minZ: R.minZ - T, maxZ: R.maxZ + T, bottom: H, top: H + 0.3 });
-  p.colliders.push({ minX: R.minX - T, maxX: R.maxX + T, minZ: R.minZ - T, maxZ: R.maxZ + T, bottom: -1, top: 0 });
+  for (const s of gymFloorSlabs()) p.colliders.push(s); // fork: the floor, open over the stair down to the basement (shared/gym-basement.ts)
   // Wainscot and lines round the room (the south and west are behind things, but show between them).
   const band = (x0: number, x1: number, z0: number, z1: number) => {
     const w = Math.max(0.03, x1 - x0);

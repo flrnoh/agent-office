@@ -51,7 +51,7 @@ export const GYM_STREET_SPOT = { x: GYM_STREET_DOOR.x, z: GYM_BOX.minZ - 1.8, ro
  * Many pieces of equipment share a kind (all the treadmills, bikes and rowers are 'cardio'); the
  * station's `machine` says which one, so the one game and the one window cover them all.
  */
-export type GymKind = 'cardio' | 'strength' | 'wellness' | 'juicebar';
+export type GymKind = 'cardio' | 'strength' | 'wellness' | 'juicebar' | 'radio';
 
 /** A station (a machine, a bench, a sauna, the juice bar): where it stands and how many use it at once. */
 export interface GymStationDef {
@@ -98,6 +98,12 @@ export const GYM_STATIONS: readonly GymStationDef[] = [
   { id: 'coldplunge', kind: 'wellness', machine: 'coldplunge', name: 'Cold plunge', x: 27.3, z: 48.3, rotY: 0, seats: 1 },
   { id: 'massage-1', kind: 'wellness', machine: 'massage', name: 'Massage table', x: 31.9, z: 43.05, rotY: Math.PI / 2, seats: 1 },
   { id: 'massage-2', kind: 'wellness', machine: 'massage', name: 'Massage table', x: 31.9, z: 45.35, rotY: Math.PI / 2, seats: 1 },
+  // ---- Down in the basement (shared/gym-basement.ts): walked (or swum) into, like the sauna ------
+  { id: 'salt', kind: 'wellness', machine: 'salt', name: 'Salt grotto', x: 32.6, z: 44.1, rotY: Math.PI / 2, seats: 8 },
+  { id: 'rest', kind: 'wellness', machine: 'rest', name: 'Quiet room', x: 15.0, z: 48.0, rotY: -Math.PI / 2, seats: 18 },
+  { id: 'grotto', kind: 'wellness', machine: 'grotto', name: 'Whirlpool grotto', x: 37.4, z: 69.0, rotY: -Math.PI / 2, seats: 8 },
+  { id: 'kneipp', kind: 'wellness', machine: 'kneipp', name: 'Kneipp walk', x: 32.9, z: 49.2, rotY: Math.PI / 2, seats: 4 },
+  { id: 'lappool', kind: 'wellness', machine: 'lappool', name: 'Lap pool', x: 19.5, z: 69.0, rotY: Math.PI / 2, seats: 16 },
 ];
 export const GYM_STATION_BY_ID = new Map(GYM_STATIONS.map((s) => [s.id, s]));
 

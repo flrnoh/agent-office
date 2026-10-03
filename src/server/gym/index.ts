@@ -1,11 +1,13 @@
 import { randomInt } from 'node:crypto';
 import { GYM_STATIONS, JUICE_BAR, type GymClientMsg, type GymKind, type GymServerMsg, type GymStationDef } from '../../shared/gym.js';
-import { WALK_IN_BY_STATION, WALK_IN_ENTER, WALK_IN_LEAVE, inRect, walkInAt } from '../../shared/gym-rooms.js';
+import { WALK_IN_BY_STATION, WALK_IN_ENTER, WALK_IN_LEAVE, stillIn as stillInRoom, walkInAt } from '../../shared/gym-rooms.js';
+import { GYM_RADIO } from '../../shared/gym-radio.js';
 import { Allowance } from '../casino/index.js';
 import { CardioMachine } from './cardio.js';
 import { Fitness } from './fitness.js';
 import type { GymContext, GymGame, GymTallies, Seated } from './game.js';
 import { JuiceBar } from './juicebar.js';
+import { GymRadio } from './radio.js';
 import { StrengthStation } from './strength.js';
 import { WellnessSpot } from './wellness.js';
 
@@ -26,7 +28,7 @@ export interface GymPlayer {
   name: string;
   send(msg: GymServerMsg): void;
   /** Where the office last saw them in the gym, and the seat they're on (fork: the walk-in rooms go by this). */
-  where?(): { x: number; z: number; seat?: string } | undefined;
+  where?(): { x: number; y?: number; z: number; seat?: string } | undefined;
 }
 
 /** How often timed games are ticked (ms). */
@@ -40,6 +42,7 @@ const GAMES: Record<GymKind, (s: GymStationDef) => GymGame> = {
   strength: (s) => new StrengthStation(s.id, s.machine),
   wellness: (s) => new WellnessSpot(s.id, s.machine, s.seats),
   juicebar: (s) => new JuiceBar(s.id, s.seats),
+  radio: (s) => new GymRadio(s.id),
 };
 
 export interface GymOptions {
@@ -77,6 +80,7 @@ export class Gym {
     if (!opts.empty) {
       for (const s of GYM_STATIONS) this.register(GAMES[s.kind](s));
       this.register(GAMES.juicebar({ id: JUICE_BAR.id, kind: 'juicebar', machine: 'juicebar', name: 'Juice bar', x: JUICE_BAR.x, z: JUICE_BAR.z, rotY: Math.PI / 2, seats: JUICE_BAR.seats }));
+      this.register(GAMES.radio({ id: GYM_RADIO.id, kind: 'radio', machine: 'radio', name: 'Gym FM', x: GYM_RADIO.x, z: GYM_RADIO.z, rotY: 0, seats: 0 }));
     }
     if (!opts.manualTick) {
       this.timer = setInterval(() => this.tick(), TICK_MS);
@@ -134,7 +138,8 @@ export class Gym {
     if (!p || !at) return;
     const was = this.roomOf.get(id);
     const wasRoom = was ? WALK_IN_BY_STATION.get(was) : undefined;
-    const room = wasRoom && inRect(wasRoom.inner, at.x, at.z, WALK_IN_LEAVE) ? wasRoom : walkInAt(at.x, at.z, WALK_IN_ENTER);
+    // Fork: and how far down (the basement's rooms and pools are under the spa's, shared/gym-basement.ts).
+    const room = wasRoom && stillInRoom(wasRoom, at.x, at.z, WALK_IN_LEAVE, at.y) ? wasRoom : walkInAt(at.x, at.z, WALK_IN_ENTER, at.y);
     if (room?.station === was) return;
     if (room) this.roomOf.set(id, room.station);
     else this.roomOf.delete(id);
@@ -201,7 +206,7 @@ export class Gym {
         const station = typeof msg.station === 'string' ? this.stations.get(msg.station) : undefined;
         if (!station) return warn('No such station');
         if (typeof msg.action !== 'string' || msg.action.length > 32) return warn('No such move', station.id);
-        if (this.seatOf.get(p.owner) !== station.id) return warn(WALK_IN_BY_STATION.has(station.id) ? 'Step inside first' : 'Step on first', station.id);
+        if (this.seatOf.get(p.owner) !== station.id && !station.walkUp) return warn(WALK_IN_BY_STATION.has(station.id) ? 'Step inside first' : 'Step on first', station.id);
         if (!this.acts.take([p.id, p.owner])) return warn('Easy there: catch your breath', station.id);
         const err = station.act(this.seated(p), msg.action, msg.data, this.ctx(station));
         if (err) warn(err, station.id);

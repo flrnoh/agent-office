@@ -5,7 +5,7 @@ import type { Pos } from './places';
 
 // ---- The gym (flrnoh fork, see client/gym.ts) --------------------------------------------------------
 
-export type GymSound = 'rep' | 'clank' | 'run' | 'ding' | 'splash' | 'cheer' | 'sip' | 'whoosh' | 'buzzer' | 'hiss';
+export type GymSound = 'rep' | 'clank' | 'run' | 'ding' | 'splash' | 'cheer' | 'sip' | 'whoosh' | 'buzzer' | 'hiss' | 'thunder';
 export type GymMachineSound = 'step' | 'whirr' | 'whoosh' | 'clank' | 'thud' | 'punch';
 
 /** The gym: a rep's thud, plates clanking, a treadmill's patter, a set landing, water and a smoothie. */
@@ -28,6 +28,23 @@ export function gym(a: AudioCore, kind: GymSound) {
       [1.6, 0.05],
       [2.8, 0],
     ]);
+    return;
+  }
+  if (kind === 'thunder') {
+    // Fork: the basement's storm shower: a crack, then a long low roll that grumbles away.
+    hiss(a, out, t0, 2600, 0.6, [
+      [0.01, 0.1],
+      [0.25, 0],
+    ]);
+    const n = a.noise(a.buf.brown);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(0.5, t0 + 0.08);
+    g.gain.setTargetAtTime(0.18, t0 + 0.4, 0.5);
+    g.gain.setTargetAtTime(0.0001, t0 + 1.6, 0.7);
+    n.connect(biquad(ctx, 'lowpass', 160, 0.8)).connect(g).connect(out);
+    n.start(t0, Math.random());
+    n.stop(t0 + 4.5);
     return;
   }
   if (kind === 'rep') a.blip(out, t0, 150, 0.7, 0.1, 0.16, 'triangle');

@@ -61,6 +61,8 @@ export interface GymGame {
   readonly kind: GymKind;
   /** How many use it at once. The gym keeps count: `sit` is only asked while there's a free place. */
   readonly seats: number;
+  /** Fork: used from where you stand, without stepping on (Gym FM): its acts don't need a seat. */
+  readonly walkUp?: boolean;
   /** `p` steps on (the gym checked there's room, and they're at no other station). An error keeps them off it. */
   sit(p: Seated, ctx: GymContext): string | void;
   /** `owner` stepped off, or left the gym, or the office: whatever they had going ends and is banked. */

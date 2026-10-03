@@ -5,6 +5,8 @@
  */
 import { SLAB, inElevator, roofDrop, streetBelow } from '../../shared/layout';
 import { ROOF } from '../../shared/rooftop';
+import { GYM } from '../../shared/gym';
+import { GYM_UNDER } from '../../shared/gym-basement'; // flrnoh fork: the gym's basement and its pools go further down than a street
 import type { Arrival, Grip } from '../features/climbing/controller';
 import { lastSpot, store } from '../state';
 import { $, clip, closeAllModals, modalOpen, toast } from '../ui/dom';
@@ -49,7 +51,7 @@ export function installTravel(ctx: Ctx, core: CoreState, parts: TravelParts) {
     const count = index < 0 ? 1 : floors.length;
     const wings = floorWings(floors);
     // A map of its own is a hall on the ground: nothing under its floor to fall to, but its dungeon's.
-    const street = inOffice() ? streetBelow(index) : streetOf(ctx.world());
+    const street = store.floor === GYM ? GYM_UNDER : inOffice() ? streetBelow(index) : streetOf(ctx.world()); // fork: GYM_UNDER
     // Floors in any order (flrnoh fork): your floor moved in the stack while you're down on the street, so you go with the street.
     if (store.floor === streetFloor && street !== player.street && player.pos.y < -SLAB - 0.05) player.pos.y += street - player.street;
     streetFloor = store.floor;

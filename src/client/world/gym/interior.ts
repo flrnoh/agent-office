@@ -9,6 +9,9 @@ import { buildGymSpa, type SpaView } from './spa'; // the spa: walk-in sauna and
 import { buildEquipment, type Equipment } from './equipment'; // the cardio and strength machines, alive
 import { buildSoak, type Soak } from './soak'; // getting into the jacuzzi and the plunge, onto a massage table
 import { buildChanging } from './changing'; // the changing room through the west wall
+import { buildGymBasement, type GymBasement } from './basement'; // fork: the basement down the spa's stair (pools, quiet room, salt grotto, Kneipp)
+import { buildGymRadio, type GymRadioSet } from './radio'; // fork: Gym FM on the reception counter
+import { downstairs } from '../../../shared/gym-basement';
 
 /*
  * Inside the gym (flrnoh fork, see FORK.md): a place of its own like the roof and the casino, built
@@ -30,12 +33,15 @@ export interface GymInterior {
   setStation(id: string, state: unknown): void;
   /** Every frame; `view` (you, your camera, everyone in the gym) opens the doors and turnstiles. */
   update(t: number, dt: number, view?: SpaView): void;
-  /** The walk-in room (sauna, steam room) at x, z, if any. */
-  walkInAt(x: number, z: number): string | undefined;
+  /** The walk-in room (sauna, steam room; fork: or a basement room or pool, with feet at `y`) at x, z, if any. */
+  walkInAt(x: number, z: number, y?: number): string | undefined;
   /** The cardio and strength machines, alive, and the people on them (equipment.ts). */
   equipment: Equipment;
   /** Fork: the jacuzzi, the plunge and the massage tables, and whoever's in them (soak.ts). */
   soak: Soak;
+  /** Fork: the basement (basement/), and Gym FM on the counter (radio.ts). */
+  basement: GymBasement;
+  radio: GymRadioSet;
 }
 
 const R = GYM_ROOM;
@@ -54,6 +60,8 @@ export function buildGymInterior(showCeiling = true): GymInterior {
   const spa = buildGymSpa(kit);
   const soak = buildSoak(kit);
   const changing = buildChanging(kit);
+  const basement = buildGymBasement(kit);
+  const radio = buildGymRadio(kit);
   for (const f of gymFixtures()) colliders.push({ minX: f.minX, maxX: f.maxX, minZ: f.minZ, maxZ: f.maxZ, bottom: f.bottom ?? 0, top: f.top });
 
   // ---- Stations -----------------------------------------------------------------------------------
@@ -91,7 +99,8 @@ export function buildGymInterior(showCeiling = true): GymInterior {
       rooms.setStation(id, state);
       spa.setStation(id, state);
       soak.setStation(id, state);
-    }
+      basement.setStation(id, state);
+    } else if (kind === 'radio') radio.setStation(state);
   };
 
   const update = (t: number, dt: number, view?: SpaView) => {
@@ -99,7 +108,8 @@ export function buildGymInterior(showCeiling = true): GymInterior {
     rooms.update(t, dt, v.people);
     spa.update(t, dt, v);
     changing.update(t, dt, v.people);
+    radio.update(t);
   };
 
-  return { group, colliders, interactables, pickables: [group], exit, setStation, update, walkInAt: (x, z) => spa.roomAt(x, z)?.station, equipment, soak };
+  return { group, colliders, interactables, pickables: [group], exit, setStation, update, walkInAt: (x, z, y) => (downstairs(y) ? basement.roomAt(x, z)?.station : spa.roomAt(x, z)?.station), equipment, soak, basement, radio };
 }

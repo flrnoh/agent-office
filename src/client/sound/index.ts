@@ -66,6 +66,7 @@ import { minigolf, MinigolfLoops, type MinigolfSound } from '../features/minigol
 import { BallRolls, bowlSound, type BowlSound } from '../features/bowlinggame/sound'; // fork: the bowling centre's lanes
 import { VenueSounds } from '../venue/sound'; // fork: the Schallwerk
 import { VenueShowSound } from '../features/venueshow/sound'; // fork: the Schallwerk's show
+import { GymRadioSound } from './gymradio'; // fork: Gym FM
 import { InstrumentSound } from '../features/instruments/sound/engine'; // fork: the Schallwerk's instruments
 import { proberaumSound, type ProberaumSound } from '../features/proberaum/sound'; // fork: the Schallwerk's rehearsal wing
 
@@ -106,6 +107,7 @@ export class OfficeSound {
   readonly venue = new VenueSounds(this.a);
   /** Fork: the Schallwerk's show: its house mix on the music volume, its crowd (features/venueshow/sound.ts). */
   readonly venueShow = new VenueShowSound(this.a, () => this.music.musicBus ?? null, () => this.music.musicGain());
+  readonly gymRadio = new GymRadioSound(this.a, () => this.music.musicGain()); // fork: the gym's radio (shared/gym-radio.ts)
   /** Fork: the Schallwerk's instruments, on the music volume (features/instruments/sound/engine.ts). */
   readonly instruments = new InstrumentSound(() => this.a.ctx, () => this.music.musicBus ?? null);
   /** A stream that won't play here. */
