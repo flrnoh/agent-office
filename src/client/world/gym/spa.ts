@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GYM_ROOM, GYM_STATION_BY_ID } from '../../../shared/gym';
 import type { WellnessView } from '../../../shared/gym-wellness';
-import { CABIN_HEIGHT, JACUZZI, MASSAGE_OPENING, MASSAGE_ROOM, MASSAGE_TABLES, MASSAGE_TOP, PLUNGE, SAUNA, SPA, SPA_DOOR, SPA_WALL, SPA_WALL_HEIGHT, STEAM, cabinWalls, inRect, type WalkInRoom } from '../../../shared/gym-rooms';
+import { CABIN_HEIGHT, JACUZZI, MASSAGE_OPENING, MASSAGE_ROOM, MASSAGE_TABLES, MASSAGE_TOP, PLUNGE, SAUNA, SPA, SPA_DOOR, SPA_WALL, SPA_WALL_HEIGHT, STEAM, TOWEL_SHELF, cabinWalls, inRect, type WalkInRoom } from '../../../shared/gym-rooms';
 import { STAIRWELL } from '../../../shared/gym-basement'; // fork: the stair down where the loungers stood
 import type { Interactable } from '../types';
 import { mesh, textPlane, toon } from '../toon';
@@ -134,14 +134,17 @@ export function buildGymSpa(p: GymParts): GymSpa {
   quiet.scale.setScalar(0.8);
   p.group.add(quiet);
   // Towels and candles by the way in, and a big plant.
-  blk(p, 1.6, 1.4, 0.4, '#c69c6d', 25.8, 0.7, SPA.minZ + SPA_WALL + 0.2);
+  // Fork: along the west wall past the stair down, out of its way (TOWEL_SHELF).
+  const TS = TOWEL_SHELF;
+  const tx = (TS.minX + TS.maxX) / 2;
+  blk(p, TS.maxX - TS.minX, 1.4, TS.maxZ - TS.minZ, '#c69c6d', tx, 0.7, (TS.minZ + TS.maxZ) / 2);
   for (let r = 0; r < 3; r++)
     for (let i = 0; i < 5; i++) {
-      const t = mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.36, 10), toon(r === 1 ? '#f4f4ee' : '#e8dccb'), 25.15 + i * 0.32, 0.25 + r * 0.42, SPA.minZ + SPA_WALL + 0.22, false);
-      t.rotation.x = Math.PI / 2;
+      const t = mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.36, 10), toon(r === 1 ? '#f4f4ee' : '#e8dccb'), tx + 0.02, 0.25 + r * 0.42, TS.minZ + 0.16 + i * 0.32, false);
+      t.rotation.z = Math.PI / 2;
       p.still.add(t);
     }
-  for (const x of [25.3, 25.8, 26.3]) candle(p, x, 1.4, SPA.minZ + SPA_WALL + 0.2, 0.08 + (x % 1) * 0.05);
+  for (const dz of [0.3, 0.8, 1.3]) candle(p, tx, 1.4, TS.minZ + dz, 0.08 + dz * 0.03);
   plant(p, 28.97, SPA.minZ + SPA_WALL + 0.27, 1.25, '#c69c6d');
 
   // ---- Cabins: the sauna and the steam room --------------------------------------------------------

@@ -37,7 +37,8 @@ import {
   type BFixture,
 } from '../src/shared/gym-basement.js';
 import { WALK_IN_BY_STATION, gymFixtures, walkInAt } from '../src/shared/gym-rooms.js';
-import { GYM_CHANNELS, GYM_DEFAULT_CHANNEL, GYM_RADIO, GYM_RADIO_COOLDOWN_MS, type GymRadioView } from '../src/shared/gym-radio.js';
+import { GYM_CHANNELS, GYM_DEFAULT_CHANNEL, GYM_DEFAULT_VOLUME, GYM_RADIO, GYM_RADIO_COOLDOWN_MS, GYM_VOLUME_MAX, type GymRadioView } from '../src/shared/gym-radio.js';
+import { TOWEL_SHELF } from '../src/shared/gym-rooms.js';
 import { WELLNESS_SPOTS, type WellnessView } from '../src/shared/gym-wellness.js';
 import { SEATING_BY_ID, seatHere, seatPlace } from '../src/shared/layout.js';
 import { Gym, type GymPlayer } from '../src/server/gym/index.js';
@@ -350,4 +351,39 @@ test('Gym FM: E at the sound system tunes the next station for everyone, a few s
     assert.equal(ada.station<GymRadioView>(GYM_RADIO.id)?.channel, 'off');
     for (const c of GYM_CHANNELS) assert.ok(c.url === '' || c.url.startsWith('https://'), `${c.id} streams over https`);
   });
+});
+
+test('Gym FM: one volume for everyone, clamped, and the station and volume survive a restart', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'gym-radio-'));
+  const clock = { t: Date.UTC(2026, 0, 1, 12, 0, 0) };
+  try {
+    const gym = new Gym(dir, { now: () => clock.t, random: () => 0, manualTick: true });
+    const ada = new Peer(gym, 'c1', 'account:1', 'Ada');
+    const bo = new Peer(gym, 'c2', 'account:2', 'Bo');
+    assert.equal(bo.station<GymRadioView>(GYM_RADIO.id)?.volume, GYM_DEFAULT_VOLUME);
+    gym.message('c1', { t: 'gym.act', station: GYM_RADIO.id, action: 'volume', data: { volume: 1.5 } });
+    assert.equal(bo.station<GymRadioView>(GYM_RADIO.id)?.volume, 1.5, 'everyone hears it louder');
+    assert.equal(bo.station<GymRadioView>(GYM_RADIO.id)?.volumeBy, 'Ada');
+    gym.message('c2', { t: 'gym.act', station: GYM_RADIO.id, action: 'volume', data: { volume: 99 } });
+    assert.equal(ada.station<GymRadioView>(GYM_RADIO.id)?.volume, GYM_VOLUME_MAX, 'never past the top');
+    gym.message('c2', { t: 'gym.act', station: GYM_RADIO.id, action: 'volume', data: { volume: 'loud' } });
+    assert.match(bo.results().at(-1) ?? '', /no such volume/i);
+    gym.message('c2', { t: 'gym.act', station: GYM_RADIO.id, action: 'tune', data: { channel: 'bass' } });
+    gym.stop();
+    const again = new Gym(dir, { now: () => clock.t, random: () => 0, manualTick: true });
+    const cy = new Peer(again, 'c3', 'account:3', 'Cy');
+    assert.equal(cy.station<GymRadioView>(GYM_RADIO.id)?.channel, 'bass', 'the station after a restart');
+    assert.equal(cy.station<GymRadioView>(GYM_RADIO.id)?.volume, GYM_VOLUME_MAX, 'the volume after a restart');
+    again.stop();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("the towel shelf stands clear of the stair's way down", () => {
+  const w = STAIRWELL;
+  const approach = { minX: w.minX, maxX: 29.0, minZ: 42.15, maxZ: w.minZ };
+  const overlaps = (a: typeof w, b: typeof w) => a.minX < b.maxX && a.maxX > b.minX && a.minZ < b.maxZ && a.maxZ > b.minZ;
+  assert.ok(!overlaps(TOWEL_SHELF, approach), 'not where you walk up to the stair');
+  assert.ok(!overlaps(TOWEL_SHELF, { ...w, minX: w.minX - 0.5, maxZ: w.maxZ + 0.3 }), 'not by the stairwell');
 });

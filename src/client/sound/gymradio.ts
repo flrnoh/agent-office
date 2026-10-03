@@ -29,8 +29,8 @@ export class GymRadioSound {
     private readonly musicGain: () => number,
   ) {}
 
-  /** Every frame in the gym: the station's stream (empty: none, or you're not in there) and how much reaches you (0…1). */
-  set(url: string, reach: number) {
+  /** Every frame in the gym: the station's stream (empty: none, or you're not in there), how much reaches you (0…1), and the speakers' volume everyone hears (0…2, set in the picker). */
+  set(url: string, reach: number, volume = 1) {
     const now = performance.now();
     const dt = this.last ? Math.min(0.2, (now - this.last) / 1000) : 0;
     this.last = now;
@@ -43,11 +43,14 @@ export class GymRadioSound {
       this.quiet += dt;
       if (this.audio && this.quiet > HOLD) this.drop();
     } else this.quiet = 0;
-    if (!url || (this.level < 0.01 && !this.audio)) return;
+    if (!url || volume <= 0 || (this.level < 0.01 && !this.audio)) {
+      if (volume <= 0 && this.audio) this.drop();
+      return;
+    }
     if (!this.audio && this.a.ctx) this.start(url);
     const el = this.audio;
     if (!el) return;
-    el.volume = Math.max(0, Math.min(1, this.musicGain() * LEVEL * this.level * this.level));
+    el.volume = Math.max(0, Math.min(1, this.musicGain() * LEVEL * this.level * this.level * volume));
     if (el.paused && now > this.retryAt && this.a.ctx?.state === 'running') {
       this.retryAt = now + RETRY_MS;
       void el.play().catch(() => {});

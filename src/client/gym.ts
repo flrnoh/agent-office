@@ -21,6 +21,7 @@ import './ui/gym/cardio'; // registers the cardio window
 import './ui/gym/strength'; // registers the strength window
 import './ui/gym/wellness'; // registers the wellness window
 import './ui/gym/juicebar'; // registers the juice-bar window
+import './ui/gym/radio'; // fork: registers Gym FM's picker
 import './ui/gym/gym.css';
 
 /*
@@ -51,7 +52,7 @@ export interface GymHost {
   spaPeople?(): { x: number; y: number; z: number }[];
   ambience?(level: number): void;
   /** Fork: Gym FM's stream (empty: none) and how much of it reaches you (0…1); the thunder in the storm shower. */
-  radio?(url: string, reach: number): void;
+  radio?(url: string, reach: number, volume: number): void;
   thunder?(): void;
   /** Everyone else in here, by name, as drawn (for posing whoever's on a machine), and you. */
   people(): { name: string; person: Person }[];
@@ -211,7 +212,7 @@ export class GymPlace {
       if (this.room) this.room.group.visible = false;
       this.letGo(false);
       this.pool.release();
-      this.host.radio?.('', 0);
+      this.host.radio?.('', 0, 0);
       this.closeUi();
       this.host.showOffice(true);
       this.host.player.colliders = this.host.officeColliders();
@@ -282,6 +283,7 @@ export class GymPlace {
 
   private defOf(id: string): GymStationDef | undefined {
     if (id === JUICE_BAR.id) return { id: JUICE_BAR.id, kind: 'juicebar', machine: 'juicebar', name: 'Juice bar', x: JUICE_BAR.x, z: JUICE_BAR.z, rotY: 0, seats: JUICE_BAR.seats };
+    if (id === GYM_RADIO.id) return { id: GYM_RADIO.id, kind: 'radio', machine: 'radio', name: 'Gym FM', x: GYM_RADIO.x, z: GYM_RADIO.z, rotY: 0, seats: 0 }; // fork
     return GYM_STATION_BY_ID.get(id);
   }
 
@@ -291,7 +293,9 @@ export class GymPlace {
     const open = gymUiFor(def.kind);
     if (!open) return;
     this.closeUi();
-    this.host.send({ t: 'gym.sit', station: id });
+    // Fork: Gym FM's picker is just a window: nobody sits at the sound system.
+    const seated = def.kind !== 'radio';
+    if (seated) this.host.send({ t: 'gym.sit', station: id });
     let ui: GymUi | null = null;
     ui = open({
       station: def,
@@ -303,7 +307,7 @@ export class GymPlace {
       closed: () => {
         if (this.open?.ui !== ui) return;
         this.open = null;
-        this.host.send({ t: 'gym.stand' });
+        if (seated) this.host.send({ t: 'gym.stand' });
       },
     });
     this.open = { station: id, ui };
@@ -315,7 +319,7 @@ export class GymPlace {
     o.ui.close();
     if (this.open === o) {
       this.open = null;
-      this.host.send({ t: 'gym.stand' });
+      if (o.station !== GYM_RADIO.id) this.host.send({ t: 'gym.stand' });
     }
   }
 
@@ -354,7 +358,8 @@ export class GymPlace {
     // Fork: Gym FM on the counter, and the lap pool's water.
     if (it.gymStation === GYM_RADIO.id) {
       const c = GYM_CHANNEL_BY_ID.get(this.room?.radio.channel() ?? '');
-      return { k: `radio|${c?.id}`, parts: [title('📻 Gym FM'), aside(c?.url ? `${c.name} · ${c.genre}` : 'off'), key('E', 'Next station')] };
+      const vol = Math.round((this.room?.radio.volume() ?? 1) * 100);
+      return { k: `radio|${c?.id}|${vol}`, parts: [title('📻 Gym FM'), aside(c?.url ? `${c.name} · ${vol} %` : 'off'), key('E', 'Station & volume')] };
     }
     if (it.gymStation === 'lappool') return this.pool.swimming ? { k: '', parts: [] } : { k: 'lappool', parts: [title('🏊 Lap pool'), aside('25 m · four lanes'), key('E', 'Jump in')] };
     const def = it.gymStation ? this.defOf(it.gymStation) : undefined;
@@ -484,7 +489,7 @@ export class GymPlace {
     const down = downstairs(me.y);
     const spa = !down && inRect(SPA, me.x, me.z);
     const url = GYM_CHANNEL_BY_ID.get(this.room?.radio.channel() ?? '')?.url ?? '';
-    this.host.radio?.(url, down || spa ? 0 : inChanging(me.x, me.z) ? 0.3 : 1);
+    this.host.radio?.(url, down || spa ? 0 : inChanging(me.x, me.z) ? 0.3 : 1, this.room?.radio.volume() ?? 1);
     const shower = down && !!bShowerAt(me.x, me.z);
     const quiet: Record<string, number> = { rest: 0.25, salt: 0.5, grotto: 1, kneipp: 0.8, lappool: 0.9 };
     const level = down ? (shower && showerOn ? 1 : room ? (quiet[room] ?? 0.6) : inB(HALL, me.x, me.z) ? 0.7 : inB(KNEIPP_ROOM, me.x, me.z) ? 0.6 : inB(FOYER, me.x, me.z) ? 0.3 : 0.4) : room ? 1 : spa ? 0.6 : 0;
