@@ -3,10 +3,13 @@ import { ZONES, type TFixture, type TRect } from './therme.js';
 
 /*
  * The Saunadorf (flrnoh fork, see FORK.md "The thermal baths", phase 5): the sauna village in the
- * baths' west part, through the door from the Thermenparadies. Huts round a cold pond: the Aufguss
- * arena with its tiers, a Finnish sauna, a Kelo log sauna, an earth sauna under a grass roof, a salt
- * sauna, a herbal sauna, a steam bath, the plunge pool, an ice fountain, a Kneipp trough, and the
- * Ruhehaus with its fireplace. Quiet in here: no radio, no music.
+ * baths' west part, through the door from the Thermenparadies: a garden under the open sky, a
+ * wooden fence round it where it isn't the house. Huts round a cold pond: the Aufguss arena with
+ * its tiers, a Finnish sauna, a Kelo log sauna, an earth sauna under a grass roof, a salt sauna, a
+ * herbal sauna, a steam bath, and the Ruhehaus with its fireplace; between them gravel paths, a
+ * lawn with loungers, a fire pit, pines and birches. Every water in it is for using: the pond and
+ * the plunge pool to swim in, the hot tub, the Kneipp trough to wade through, the ice fountain and
+ * the gush buckets (E). Quiet in here: no radio, no music.
  *
  * The Aufguss plan runs by the office's clock: every AUFGUSS_EVERY one of the saunas has one (the
  * arena every other time), for AUFGUSS_RUN; the Saunameister comes in, waves the towel, the steam
@@ -77,10 +80,55 @@ export const POND_POOL = pool('therme-pond', [
   { minX: POND.minX, maxX: JETTY.minX, minZ: JETTY.minZ, maxZ: JETTY.maxZ },
 ], -1.7, 1.25);
 export const PLUNGE_POOL = pool('therme-plunge', [PLUNGE], -1.5, 1.2);
-export const DORF_POOLS: readonly PoolDef[] = [POND_POOL, PLUNGE_POOL];
+/** The hot tub on the lawn: warm, bubbling, sat in up to the shoulders. */
+export const GARDEN_TUB: TRect = { minX: 44, maxX: 50, minZ: 86, maxZ: 92 };
+export const TUB_POOL: PoolDef = { ...pool('therme-gardentub', [GARDEN_TUB], -1.15, 0.95), surface: -0.15 };
+export const DORF_POOLS: readonly PoolDef[] = [POND_POOL, PLUNGE_POOL, TUB_POOL];
 
 /** The water in the Saunadorf: where the floor's open (the Kneipp trough too, its floor a little lower). */
-export const dorfWater = (): TRect[] => [POND, PLUNGE, KNEIPP];
+export const dorfWater = (): TRect[] => [POND, PLUNGE, GARDEN_TUB, KNEIPP];
+/** Whether your feet are in the Kneipp trough (wading: E does nothing, walking it through does). */
+export const inKneipp = (x: number, y: number, z: number) => y < 0.05 && x > KNEIPP.minX && x < KNEIPP.maxX && z > KNEIPP.minZ && z < KNEIPP.maxZ;
+
+/** The gush buckets on their wooden frame against the house (E under one: a bucketful of cold water over you). */
+export const BUCKETS: readonly { x: number; z: number }[] = [
+  { x: 53.1, z: 101.6 },
+  { x: 53.1, z: 105.2 },
+];
+/** The fire pit on the lawn, logs round it to sit on. */
+export const FIRE_PIT = { x: 9, z: 64, r: 0.8 } as const;
+const LOG_RING = 2.7;
+/** The lawn's loungers (lain on, like the Ruhehaus's), facing the pond. */
+const LAWN_LOUNGERS: readonly { x: number; z: number }[] = [5.5, 10.5].flatMap((x) => [75.5, 78, 80.5, 83, 85.5, 88, 90.5, 93].map((z) => ({ x, z })));
+/** The garden's trees: pines and birches (their trunks are solid). */
+export const DORF_TREES: readonly { x: number; z: number; h: number; kind: 'pine' | 'birch' }[] = [
+  { x: 33, z: 40, h: 8, kind: 'pine' },
+  { x: 20.6, z: 40, h: 9, kind: 'pine' },
+  { x: 52.4, z: 41, h: 7, kind: 'birch' },
+  { x: 20, z: 92, h: 10, kind: 'pine' },
+  { x: 35, z: 89, h: 8, kind: 'birch' },
+  { x: 53, z: 93, h: 9, kind: 'pine' },
+  { x: 2.4, z: 50, h: 11, kind: 'pine' },
+  { x: 2.4, z: 97, h: 10, kind: 'pine' },
+  { x: 14.5, z: 97, h: 7, kind: 'birch' },
+  { x: 27.6, z: 48.4, h: 8, kind: 'birch' },
+  { x: 53, z: 120, h: 9, kind: 'pine' },
+  { x: 52.8, z: 133, h: 11, kind: 'pine' },
+  { x: 33, z: 137.6, h: 8, kind: 'birch' },
+  { x: 20, z: 138.2, h: 10, kind: 'pine' },
+  { x: 2.2, z: 70, h: 9, kind: 'birch' },
+];
+/** The gravel paths between the huts (seen, and walked by the other bathers: shared/therme-bathers.ts). */
+export const DORF_PATHS: readonly TRect[] = [
+  { minX: 39.5, maxX: 42.5, minZ: 29.6, maxZ: 98.6 },
+  { minX: 42.5, maxX: D.maxX, minZ: 72, maxZ: 76 },
+  { minX: 3, maxX: 39.5, minZ: 29.6, maxZ: 33.4 },
+  { minX: 42.5, maxX: 54.5, minZ: 34.4, maxZ: 37.6 },
+  { minX: 15, maxX: 17.6, minZ: 33.4, maxZ: 96 },
+  { minX: 17.6, maxX: 39.5, minZ: 94, maxZ: 97.6 },
+  { minX: 30, maxX: 35, minZ: 97.6, maxZ: 115 },
+  { minX: 35, maxX: 54.5, minZ: 111, maxZ: 115 },
+];
 
 /** The board at the way in from the Thermenparadies, with the next Aufgüsse. */
 export const AUFGUSS_BOARD = { x: D.maxX - 2.5, z: 66.5, y: 1.6, w: 3.4, h: 2.2 } as const;
@@ -184,6 +232,15 @@ export const masterSpot = (s: SaunaDef) => {
   return { x: (st.minX + st.maxX) / 2 - 1.2, z: (st.minZ + st.maxZ) / 2 + 0.2 };
 };
 
+/** How high the logs round the fire pit are (you sit on them). */
+export const LOG_TOP = 0.42;
+/** The logs round the fire pit: six of them, each lying across the way to it (`rotY` turns a log lying along x to lie so). */
+export const fireLogs = (): { x: number; z: number; rotY: number }[] =>
+  Array.from({ length: 6 }, (_, i) => {
+    const a = (i / 6) * Math.PI * 2 + 0.3;
+    return { x: FIRE_PIT.x + Math.cos(a) * LOG_RING, z: FIRE_PIT.z + Math.sin(a) * LOG_RING, rotY: Math.PI / 2 - a };
+  });
+
 export function dorfFixtures(): TFixture[] {
   const f: TFixture[] = [];
   for (const s of SAUNAS) {
@@ -198,6 +255,12 @@ export function dorfFixtures(): TFixture[] {
   f.push({ id: 'plunge-floor', ...PLUNGE, bottom: PLUNGE_POOL.floor - 0.3, top: PLUNGE_POOL.floor });
   f.push({ id: 'kneipp-floor', ...KNEIPP, bottom: -0.6, top: KNEIPP_FLOOR });
   f.push({ id: 'ice-fountain', minX: ICE_FOUNTAIN.x - 0.6, maxX: ICE_FOUNTAIN.x + 0.6, minZ: ICE_FOUNTAIN.z - 0.6, maxZ: ICE_FOUNTAIN.z + 0.6, top: 1.1 });
+  f.push({ id: 'tub-floor', ...GARDEN_TUB, bottom: TUB_POOL.floor - 0.3, top: TUB_POOL.floor });
+  // The buckets' frame (a post each against the house; you stand under the bucket).
+  for (const [i, b] of BUCKETS.entries()) f.push({ id: `bucket-post-${i}`, minX: D.maxX - 0.9, maxX: D.maxX - 0.5, minZ: b.z - 0.1, maxZ: b.z + 0.1, top: 2.9 });
+  f.push({ id: 'fire-pit', minX: FIRE_PIT.x - FIRE_PIT.r, maxX: FIRE_PIT.x + FIRE_PIT.r, minZ: FIRE_PIT.z - FIRE_PIT.r, maxZ: FIRE_PIT.z + FIRE_PIT.r, top: 0.45 });
+  for (const [i, l] of fireLogs().entries()) f.push({ id: `fire-log-${i}`, minX: l.x - 0.35, maxX: l.x + 0.35, minZ: l.z - 0.35, maxZ: l.z + 0.35, top: LOG_TOP });
+  for (const [i, t] of DORF_TREES.entries()) f.push({ id: `dorf-tree-${i}`, minX: t.x - 0.3, maxX: t.x + 0.3, minZ: t.z - 0.3, maxZ: t.z + 0.3, top: t.h });
   f.push({ id: 'aufguss-board', minX: AUFGUSS_BOARD.x - 0.15, maxX: AUFGUSS_BOARD.x + 0.15, minZ: AUFGUSS_BOARD.z - AUFGUSS_BOARD.w / 2, maxZ: AUFGUSS_BOARD.z + AUFGUSS_BOARD.w / 2, top: AUFGUSS_BOARD.y + AUFGUSS_BOARD.h / 2 });
   return f;
 }
@@ -242,5 +305,8 @@ export function dorfSeats(): DorfSeat[] {
     out.push({ id: `therme-ruhe-${out.length}`, x: R.minX + 1.4, y: 0, z, rotY: Math.PI / 2, pose: 'lie' });
     out.push({ id: `therme-ruhe-${out.length}`, x: R.maxX - 1.4, y: 0, z, rotY: -Math.PI / 2, pose: 'lie' });
   }
+  for (const [i, l] of LAWN_LOUNGERS.entries()) out.push({ id: `therme-lawn-${i + 1}`, x: l.x, y: 0, z: l.z, rotY: Math.PI / 2, pose: 'lie' });
+  // On the logs round the fire pit, facing it.
+  for (const [i, l] of fireLogs().entries()) out.push({ id: `therme-fire-${i + 1}`, x: l.x, y: LOG_TOP, z: l.z, rotY: Math.atan2(FIRE_PIT.x - l.x, FIRE_PIT.z - l.z), pose: 'sit' });
   return out;
 }

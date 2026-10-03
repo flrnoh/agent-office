@@ -3,11 +3,13 @@ import { thermeFixtures as houseFixtures, thermeWhereabouts as zoneWords, type T
 import { BAR_COUNTER, GROTTO, ISLAND, PARADIES_POOLS, THERMAL_POOL, paradiesFixtures, paradiesWater } from './therme-paradies.js';
 import { BEACH, WAVE_POOL, waveFixtures } from './therme-waves.js';
 import { LANDING, LANDING_POOL, TOWER, slideFixtures } from './therme-slides.js';
-import { ISLE, LAGOON, LAGUNE_POOLS, RIVER, laguneFixtures, laguneWater } from './therme-lagune.js';
+import { ISLE, LAGOON, LAGUNE_POOLS, RIVER, laguneFixtures, laguneWater, outside } from './therme-lagune.js';
 import { cutOut } from './gym-basement.js';
 import { lobbyFixtures } from './therme-street.js';
-import { DORF_POOLS, JETTY, KNEIPP, PLUNGE_POOL, POND_POOL, dorfFixtures, dorfWater, inRuhehaus, saunaAt } from './therme-dorf.js';
-import { WELLENBAD } from './therme.js';
+import { DORF_POOLS, JETTY, KNEIPP, PLUNGE_POOL, POND_POOL, TUB_POOL, dorfFixtures, dorfWater, inRuhehaus, saunaAt } from './therme-dorf.js';
+import { WELLENBAD, inDorf } from './therme.js';
+import { showerFixtures, signFixtures } from './therme-pools.js';
+import { furnitureFixtures } from './therme-furniture.js';
 
 /*
  * The thermal baths put together (flrnoh fork, see FORK.md "The thermal baths"): the house (shared/
@@ -23,9 +25,12 @@ export const THERME_POOLS: readonly PoolDef[] = [...PARADIES_POOLS, WAVE_POOL, L
 /** Every wet rectangle outside (the lagoon, the river). */
 export const outsideWater = () => laguneWater();
 
+/** Whether (x, z) is under the open sky (the sauna garden, the lagoon): the weather falls there, the sky lights it. */
+export const underSky = (x: number, z: number) => inDorf(x, z) || outside(x, z);
+
 /** Everything solid in the baths: the house's floor (open over the water), walls and doors, and what stands in each part. */
 export function thermeFixtures(): TFixture[] {
-  return [...houseFixtures(thermeWater()), ...paradiesFixtures(), ...waveFixtures(), ...slideFixtures(), ...dorfFixtures(), ...laguneFixtures(cutOut), ...lobbyFixtures()];
+  return [...houseFixtures(thermeWater()), ...paradiesFixtures(), ...waveFixtures(), ...slideFixtures(), ...dorfFixtures(), ...laguneFixtures(cutOut), ...lobbyFixtures(), ...signFixtures(), ...showerFixtures(), ...furnitureFixtures()];
 }
 
 /** Where someone is in the baths, in words (the people list, the corner's line): in a pool, at the bar, or the zone they're in. */
@@ -39,6 +44,7 @@ export function thermeWhereabouts(x: number, y: number, z: number): string {
     if (swimming.id === LANDING_POOL.id) return '🛝 im Landebecken';
     if (swimming.id === POND_POOL.id) return '🧊 im Kaltwasserteich';
     if (swimming.id === PLUNGE_POOL.id) return '🧊 im Tauchbecken';
+    if (swimming.id === TUB_POOL.id) return '🫧 im Whirlpool im Saunagarten';
     if (swimming.id === RIVER.id) return '🌀 im Strömungskanal';
     if (swimming.id === LAGOON.id) return '🏝️ in der Außenlagune';
   }

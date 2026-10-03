@@ -51,8 +51,8 @@ function fill(x0: number, z0: number, ok: (x: number, z: number) => boolean) {
 }
 
 const walk = fill(THERME_ARRIVAL.x, THERME_ARRIVAL.z, (x, z) => onSlab(x, z) && freeAt(x, z));
-/** On the island, from its middle. */
-const island = fill(ISLAND.minX + 1.5, (ISLAND.minZ + ISLAND.maxZ) / 2, (x, z) => onSlab(x, z) && freeAt(x, z));
+/** On the island, from its south strip by the loungers (its middle is a planted bed). */
+const island = fill(ISLAND.minX + 1.5, ISLAND.maxZ - 1.2, (x, z) => onSlab(x, z) && freeAt(x, z));
 
 test('the pools are in the Thermenparadies, apart from each other and from the wave pool, with the floor open over them', () => {
   const P = ZONES.paradies;

@@ -28,8 +28,11 @@ declare module '../types' {
 }
 
 export interface SlideWorld {
-  /** Each slide's curve per lane, for riding it (client/therme/slides.ts). */
+  /** Each slide's curve per lane, for riding it (client/therme/slides.ts), and its frames along it. */
   curves: Map<string, THREE.CatmullRomCurve3>;
+  frames: Map<string, SlideFrames>;
+  /** Each tube's material (the ride photo lights it up for its flash). */
+  tubes: Map<string, THREE.MeshToonMaterial>;
   /** The board's face: redrawn with the boards. */
   board: { canvas: HTMLCanvasElement; texture: THREE.CanvasTexture };
   /** Black-hole rings: they flash as someone goes by. */
@@ -39,27 +42,56 @@ export interface SlideWorld {
 
 export const curveKey = (id: string, lane = 0) => `${id}:${lane}`;
 
-/** A trough round `curve` (the lower part of a tube, `arc` of the way round: 1 is a closed tube), carried along without twisting. */
-function troughGeometry(curve: THREE.Curve<THREE.Vector3>, r: number, segments: number, arc: number, radial = 14): THREE.BufferGeometry {
-  const pos: number[] = [];
-  const idx: number[] = [];
+/** A slide's frame every so often along its curve: the way down, which way is "down" in the tube (the floor you lie on), and across it; carried along without twisting, so loops and corkscrews don't flip it. */
+export interface SlideFrames {
+  n: number;
+  t: THREE.Vector3[];
+  down: THREE.Vector3[];
+  side: THREE.Vector3[];
+}
+
+export function slideFrames(curve: THREE.Curve<THREE.Vector3>, segments: number, open: boolean): SlideFrames {
+  const f: SlideFrames = { n: segments, t: [], down: [], side: [] };
   const up = new THREE.Vector3(0, 1, 0);
   let side = new THREE.Vector3();
-  const t = new THREE.Vector3();
-  const down = new THREE.Vector3();
+  for (let i = 0; i <= segments; i++) {
+    const t = curve.getTangentAt(i / segments).clone();
+    if (i === 0) side.crossVectors(t, up).normalize();
+    side.addScaledVector(t, -side.dot(t)).normalize();
+    if (!Number.isFinite(side.x) || side.lengthSq() < 0.5) side = new THREE.Vector3(1, 0, 0);
+    const down = new THREE.Vector3().crossVectors(side, t).normalize().negate();
+    // An open trough's floor is always the low side; a tube's goes round with the track (upside down in the loop).
+    if (down.y > 0 && open) down.negate();
+    f.t.push(t);
+    f.down.push(down);
+    f.side.push(side.clone());
+  }
+  return f;
+}
+
+/** The frame at `u` (0..1 along), between the two nearest samples. */
+export function frameAt(f: SlideFrames, u: number, out: { t: THREE.Vector3; down: THREE.Vector3; side: THREE.Vector3 }) {
+  const x = Math.max(0, Math.min(f.n, u * f.n));
+  const i = Math.min(f.n - 1, Math.floor(x));
+  const k = x - i;
+  out.t.copy(f.t[i]).lerp(f.t[i + 1], k).normalize();
+  out.down.copy(f.down[i]).lerp(f.down[i + 1], k).normalize();
+  out.side.copy(f.side[i]).lerp(f.side[i + 1], k).normalize();
+  return out;
+}
+
+/** A trough round `curve` (the lower part of a tube, `arc` of the way round: 1 is a closed tube), along its frames. */
+function troughGeometry(curve: THREE.Curve<THREE.Vector3>, frames: SlideFrames, r: number, arc: number, radial = 14): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const idx: number[] = [];
   const p = new THREE.Vector3();
   const a0 = -Math.PI * arc;
   const ring = radial + 1;
+  const segments = frames.n;
   for (let i = 0; i <= segments; i++) {
-    const u = i / segments;
-    curve.getPointAt(u, p);
-    curve.getTangentAt(u, t);
-    if (i === 0) side.crossVectors(t, up).normalize();
-    // Keep the side square to the way down (transported, so loops and corkscrews don't flip it).
-    side.addScaledVector(t, -side.dot(t)).normalize();
-    if (!Number.isFinite(side.x) || side.lengthSq() < 0.5) side = new THREE.Vector3(1, 0, 0);
-    down.crossVectors(side, t).normalize().negate();
-    if (down.y > 0 && arc < 1) down.negate();
+    curve.getPointAt(i / segments, p);
+    const down = frames.down[i];
+    const side = frames.side[i];
     for (let k = 0; k <= radial; k++) {
       const a = a0 + (2 * Math.PI * arc * k) / radial;
       // round from one side, under, to the other
@@ -127,23 +159,58 @@ function tower(p: ThermeParts) {
 }
 
 /** One slide: its tube or trough (each lane), stilts down to the ground, its gate on the platform, its name over the gate. */
-function slide(p: ThermeParts, s: SlideDef, curves: SlideWorld['curves'], rings: THREE.MeshBasicMaterial[]) {
+function slide(p: ThermeParts, s: SlideDef, world: Pick<SlideWorld, 'curves' | 'frames' | 'tubes'>, rings: THREE.MeshBasicMaterial[]) {
   const lanes = s.lanes?.length ?? 1;
+  const closed = s.kind !== 'open';
+  // A closed tube is see-through coloured plastic (you see the rider go by inside), lit by LED rings;
+  // the black hole is dark, its rings flashing.
   const mat =
     s.dark
       ? new THREE.MeshBasicMaterial({ color: '#1a1830', side: THREE.DoubleSide })
-      : new THREE.MeshToonMaterial({ color: s.color, side: THREE.DoubleSide, transparent: s.kind === 'tube', opacity: s.kind === 'tube' ? 0.82 : 1, gradientMap: toon('#ffffff').gradientMap });
+      : new THREE.MeshToonMaterial({ color: s.color, side: THREE.DoubleSide, transparent: closed, opacity: closed ? 0.58 : 1, depthWrite: !closed, gradientMap: toon('#ffffff').gradientMap });
+  if (mat instanceof THREE.MeshToonMaterial && closed) world.tubes.set(s.id, mat);
   const stilts: THREE.BufferGeometry[] = [];
+  const flanges: THREE.BufferGeometry[] = [];
+  const leds: THREE.BufferGeometry[] = [];
+  const rims: THREE.BufferGeometry[] = [];
+  const R = s.lanes ? 0.55 : SLIDE_RADIUS;
+  const m4 = new THREE.Object3D();
+  /** A ring square to the track at `d` metres along it (a torus round the curve there). */
+  const ringAt = (curve: THREE.Curve<THREE.Vector3>, len: number, d: number, r: number, tube: number) => {
+    const at = curve.getPointAt(d / len);
+    m4.position.copy(at);
+    m4.lookAt(at.clone().add(curve.getTangentAt(d / len)));
+    m4.updateMatrix();
+    return new THREE.TorusGeometry(r, tube, 5, 20).applyMatrix4(m4.matrix);
+  };
   for (let l = 0; l < lanes; l++) {
     const pts = lanePath(s, l).map(([x, y, z]) => new THREE.Vector3(x, y, z));
     const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.25);
-    curves.set(curveKey(s.id, l), curve);
+    world.curves.set(curveKey(s.id, l), curve);
     const len = curve.getLength();
     const segs = Math.ceil(len * 2.2);
-    const body = mesh(troughGeometry(curve, s.lanes ? 0.55 : SLIDE_RADIUS, segs, s.kind === 'open' ? 0.5 : 1, s.kind === 'open' ? 12 : 16), mat, 0, 0, 0, false);
-    body.userData.noOutline = s.kind === 'tube';
-    if (s.kind === 'tube') body.renderOrder = 1;
+    const frames = slideFrames(curve, segs, !closed);
+    world.frames.set(curveKey(s.id, l), frames);
+    const body = mesh(troughGeometry(curve, frames, R, closed ? 1 : 0.5, closed ? 18 : 12), mat, 0, 0, 0, false);
+    body.userData.noOutline = closed;
+    if (closed) body.renderOrder = 1;
     p.group.add(body);
+    if (closed) {
+      // The tube's sections, bolted together: a flange every 2 m; LED rings inside every 2.5 m (the black hole's below).
+      for (let d = 1; d < len - 0.5; d += 2) flanges.push(ringAt(curve, len, d, R + 0.035, 0.05));
+      if (!s.dark) for (let d = 2.2; d < len - 1; d += 2.5) leds.push(ringAt(curve, len, d, R - 0.03, 0.022));
+    } else {
+      // An open trough's rounded rims, along both its edges.
+      for (const sgn of [-1, 1]) {
+        const rim: THREE.Vector3[] = [];
+        const q = new THREE.Vector3();
+        for (let i = 0; i <= segs; i += 2) {
+          curve.getPointAt(i / segs, q);
+          rim.push(q.clone().addScaledVector(frames.side[i], sgn * R));
+        }
+        rims.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rim), rim.length * 2, 0.05, 5, false));
+      }
+    }
     // Stilts every few metres where it runs high, from the ground (or the pool's floor) up to under it.
     for (let d = 6; d < len - 2; d += 7) {
       const at = curve.getPointAt(d / len);
@@ -155,15 +222,7 @@ function slide(p: ThermeParts, s: SlideDef, curves: SlideWorld['curves'], rings:
     // The black hole: rings of light inside, every few metres, in four colours (one mesh a colour).
     if (s.dark) {
       const byColour: THREE.BufferGeometry[][] = [[], [], [], []];
-      const m4 = new THREE.Object3D();
-      for (let d = 3, k = 0; d < len - 2; d += 3.5, k++) {
-        const at = curve.getPointAt(d / len);
-        const tg = curve.getTangentAt(d / len);
-        m4.position.copy(at);
-        m4.lookAt(at.clone().add(tg));
-        m4.updateMatrix();
-        byColour[k % 4].push(new THREE.TorusGeometry(SLIDE_RADIUS - 0.04, 0.035, 5, 18).applyMatrix4(m4.matrix));
-      }
+      for (let d = 3, k = 0; d < len - 2; d += 3.5, k++) byColour[k % 4].push(ringAt(curve, len, d, SLIDE_RADIUS - 0.04, 0.035));
       ['#ff3dcb', '#3df2ff', '#ffe03d', '#7d3dff'].forEach((c, k) => {
         if (!byColour[k].length) return;
         const ringMat = new THREE.MeshBasicMaterial({ color: c });
@@ -184,10 +243,20 @@ function slide(p: ThermeParts, s: SlideDef, curves: SlideWorld['curves'], rings:
     pick.userData.noOutline = true;
     p.group.add(pick);
   }
-  if (stilts.length) {
-    p.still.add(mesh(mergeGeometries(stilts)!, toon('#dfe6ea'), 0, 0, 0, false));
-    for (const g of stilts) g.dispose();
-  }
+  const merge = (geos: THREE.BufferGeometry[], m: THREE.Material, into: THREE.Group) => {
+    if (!geos.length) return;
+    const one = mesh(mergeGeometries(geos)!, m, 0, 0, 0, false);
+    for (const g of geos) g.dispose();
+    into.add(one);
+    return one;
+  };
+  merge(stilts, toon('#dfe6ea'), p.still);
+  merge(flanges, toon(new THREE.Color(s.color).multiplyScalar(0.72).getStyle()), p.still);
+  merge(rims, toon('#f4f7f8'), p.still);
+  const led = new THREE.MeshBasicMaterial({ color: new THREE.Color(s.color).lerp(new THREE.Color('#ffffff'), 0.65) });
+  led.toneMapped = false;
+  const ledMesh = merge(leds, led, p.group);
+  if (ledMesh) ledMesh.userData.noOutline = true;
   // The name over its gate.
   const g = slideGate(s);
   const plate = mesh(new THREE.PlaneGeometry(2.6, 0.62), glow(sign(`${s.emoji} ${s.name.toUpperCase()}`, s.blurb, '#16324f', '#ffe08a', 1024, 248)), g.x, g.y + 2.4, g.z, false);
@@ -206,21 +275,16 @@ function slide(p: ThermeParts, s: SlideDef, curves: SlideWorld['curves'], rings:
 export function buildSlides(p: ThermeParts): SlideWorld {
   tower(p);
   const curves = new Map<string, THREE.CatmullRomCurve3>();
+  const frames = new Map<string, SlideFrames>();
+  const tubes = new Map<string, THREE.MeshToonMaterial>();
   const rings: THREE.MeshBasicMaterial[] = [];
-  for (const s of SLIDES) slide(p, s, curves, rings);
+  for (const s of SLIDES) slide(p, s, { curves, frames, tubes }, rings);
   // The landing pool: its basin, coping and water.
   const def = LANDING_POOL;
   const blue = wrap(mosaic('#2f9ec0', 16, 0.12, 111));
   p.group.add(mesh(rectsGeometry(def.rects, def.floor + 0.002, 2), tex(blue), 0, 0, 0, false));
   const edges = poolEdges(def);
-  p.group.add(mesh(edgeWallsGeometry(edges, def.floor, 0, 2), tex(blue), 0, 0, 0, false));
-  for (const e of edges) {
-    const len = e.to - e.from;
-    const mid = (e.from + e.to) / 2;
-    const off = e.at + e.out * 0.2;
-    if (e.axis === 'x') blk(p, len + 0.4, 0.04, 0.4, '#f3ede0', mid, 0.02, off);
-    else blk(p, 0.4, 0.04, len + 0.4, '#f3ede0', off, 0.02, mid);
-  }
+  p.group.add(mesh(edgeWallsGeometry(edges, def.floor, 0, 2), tex(blue, '#ffffff', { emissive: '#2f9ec0', emissiveIntensity: 0.6 }), 0, 0, 0, false));
   const water = ripples('#38b2d6', '#d6fbff', 53);
   const surface = mesh(rectsGeometry(def.rects, def.surface, 3), tex(water, '#ffffff', { transparent: true, opacity: 0.8, depthWrite: false }), 0, 0, 0, false);
   surface.userData.noOutline = true;
@@ -255,6 +319,8 @@ export function buildSlides(p: ThermeParts): SlideWorld {
   p.group.add(kpick);
   return {
     curves,
+    frames,
+    tubes,
     board: { canvas, texture },
     rings,
     update: (t) => {

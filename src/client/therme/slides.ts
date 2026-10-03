@@ -1,8 +1,10 @@
 import * as THREE from 'three';
-import { CAPSULE_COUNTDOWN, SLIDE_BY_ID, SLIDES, rideTime, type SlideBoards, type SlideId } from '../../shared/therme-slides';
+import { CAPSULE_COUNTDOWN, LANDING, RIDE_POSE, SLIDE_BY_ID, SLIDE_RADIUS, SLIDES, TOWER, rideTime, type SlideBoards, type SlideId } from '../../shared/therme-slides';
+import { inT } from '../../shared/therme';
 import type { ThermeServerMsg } from '../../shared/therme-msgs';
 import type { ClientMsg } from '../../shared/protocol';
-import { curveKey, type SlideWorld } from '../world/therme/slides';
+import { curveKey, frameAt, type SlideWorld } from '../world/therme/slides';
+import { SlidePoser } from './slide-pose';
 import type { Person } from '../world/character';
 import { toast } from '../ui/dom';
 
@@ -10,17 +12,25 @@ import { toast } from '../ui/dom';
  * Riding the thermal baths' slides (flrnoh fork, see shared/therme-slides.ts, phase 4): E at a slide's
  * gate on its platform and down you go (the Falltür's capsule counts you down first, then its floor
  * drops away). Gravity along the curve, the water's slip and the air's drag set the speed, so the
- * Turbo is fast and the Wellenrutsche gentle; the camera goes with you, in the tube. At the bottom you
- * drop into the landing pool (and the swimming takes over). The office clocks the ride (start and
- * finish are its to time); just before the end a camera by the slide takes your ride photo. Everyone
- * else sees you go from your moves.
+ * Turbo is fast and the Wellenrutsche gentle. Down a tube you lie in it on your back, feet first, and
+ * the camera rides inside with you (your eyes, or just behind you in third person), past the LED rings;
+ * on the open ones you sit, ride a tyre or a mat (client/therme/slide-pose.ts). At the bottom you drop
+ * into the landing pool (and the swimming takes over). The office clocks the ride (start and finish
+ * are its to time); just before the end a camera takes your ride photo: inside the tube, lit up, on
+ * the closed ones, from beside the trough on the open ones. Everyone else sees you go from your moves,
+ * lying in the same tube (the page finds whom by the nearest point of a track).
  */
 
 const G = 9.81;
-const FEET = 0.32;
+/** How far in from the curve (the tube's middle) the floor you ride on is. */
+const FLOOR = SLIDE_RADIUS * 0.92;
+const V = () => new THREE.Vector3();
+const FR = { t: V(), down: V(), side: V() };
 
 export interface RiderHost {
   player: { pos: THREE.Vector3; rig: ((dt: number) => void) | null; vy: number; grounded: boolean; facing: number; camYaw: number; lookPitch: number; view: 'first' | 'third'; moving: boolean; stopWalking(): void; seat: unknown };
+  /** The view: down a tube, the ride takes it over (your eyes in the tube). */
+  camera: THREE.PerspectiveCamera;
   send(m: ClientMsg): void;
   sound(k: 'whoosh' | 'splash' | 'beep' | 'go' | 'photo'): void;
   /** For the ride photo: the scene drawn from a camera by the slide, you in it. */
@@ -38,7 +48,11 @@ export interface RidePhoto {
 
 export class SlideRider {
   /** On the way down (or counting down in the capsule). */
-  riding: { slide: SlideId; lane: number; t: number; s: number; v: number; countdown: number; photo: boolean } | null = null;
+  riding: { slide: SlideId; lane: number; t: number; s: number; v: number; countdown: number; photo: boolean; yaw0: number } | null = null;
+  /** Who's posed on a slide (you and the others). */
+  private poser = new SlidePoser();
+  /** Every track's floor, sampled, for finding which one someone else is on. */
+  private samples: { key: string; slide: SlideId; lane: number; u: number; at: THREE.Vector3 }[] = [];
   boards: SlideBoards = {};
   /** Your last ride's photo, for the kiosk. */
   photo: RidePhoto | null = null;
@@ -52,7 +66,24 @@ export class SlideRider {
   constructor(private host: RiderHost) {}
 
   bind(world: SlideWorld) {
+    if (this.world === world) return;
     this.world = world;
+    this.samples = [];
+    for (const s of SLIDES)
+      for (let l = 0; l < (s.lanes?.length ?? 1); l++) {
+        const key = curveKey(s.id, l);
+        const curve = world.curves.get(key)!;
+        const f = world.frames.get(key)!;
+        for (let i = 0; i <= f.n; i++) this.samples.push({ key, slide: s.id, lane: l, u: i / f.n, at: curve.getPointAt(i / f.n).addScaledVector(f.down[i], FLOOR) });
+      }
+  }
+
+  /** Where on a track's floor `u` of the way along is, and its frame there. */
+  private floorAt(key: string, u: number, out = V()): THREE.Vector3 {
+    const w = this.world!;
+    const k = Math.max(0, Math.min(1, u));
+    frameAt(w.frames.get(key)!, k, FR);
+    return w.curves.get(key)!.getPointAt(k, out).addScaledVector(FR.down, FLOOR);
   }
 
   /** E at a slide's gate: off you go. */
@@ -63,10 +94,13 @@ export class SlideRider {
     if (!def || !curve || this.riding || p.rig || p.seat) return;
     p.stopWalking();
     p.vy = 0;
-    this.riding = { slide, lane, t: 0, s: 0, v: def.kind === 'capsule' ? 0 : 1.6, countdown: def.kind === 'capsule' ? CAPSULE_COUNTDOWN / 1000 : 0, photo: false };
+    this.riding = { slide, lane, t: 0, s: 0, v: def.kind === 'capsule' ? 0 : 1.6, countdown: def.kind === 'capsule' ? CAPSULE_COUNTDOWN / 1000 : 0, photo: false, yaw0: p.camYaw };
     this.beeped = 0;
-    const at = curve.getPointAt(0);
-    p.pos.set(at.x, at.y - FEET, at.z);
+    if (def.kind === 'capsule') {
+      // Standing in the capsule till its floor goes.
+      const at = curve.getPointAt(0);
+      p.pos.set(at.x, at.y - SLIDE_RADIUS, at.z);
+    } else p.pos.copy(this.floorAt(curveKey(slide, lane), 0));
     p.rig = (dt) => this.step(dt);
     if (def.kind !== 'capsule') this.go();
     else this.host.sound('beep');
@@ -83,6 +117,7 @@ export class SlideRider {
     if (!this.riding) return;
     this.riding = null;
     if (this.host.player.rig) this.host.player.rig = null;
+    this.poser.clear(this.host.me());
   }
 
   private step(dt: number) {
@@ -114,17 +149,12 @@ export class SlideRider {
     r.v = Math.max(1.4, Math.min(24, r.v + a * dt));
     r.s += r.v * dt;
     const k = Math.min(1, r.s / len);
-    const at = curve.getPointAt(k);
     const ahead = curve.getTangentAt(k);
-    p.pos.set(at.x, at.y - FEET, at.z);
+    p.pos.copy(this.floorAt(curveKey(r.slide, r.lane), k));
     p.facing = Math.atan2(ahead.x, ahead.z);
-    if (p.view === 'first') {
-      p.camYaw = Math.atan2(-ahead.x, -ahead.z);
-      p.lookPitch = Math.max(-1.2, Math.min(1.2, Math.asin(Math.max(-1, Math.min(1, ahead.y))) * 0.8));
-    }
     if (!r.photo && k > 0.86) {
       r.photo = true;
-      this.snap(r.slide, at, ahead);
+      this.snap(r.slide, r.lane, k, len);
     }
     if (k >= 1) this.land();
   }
@@ -138,20 +168,37 @@ export class SlideRider {
     p.vy = -1.5;
     p.grounded = false;
     p.lookPitch = 0;
+    p.camYaw = Math.atan2(-Math.sin(p.facing), -Math.cos(p.facing));
+    this.poser.clear(this.host.me());
     this.host.sound('splash');
     this.host.send({ t: 'therme.slide', slide: r.slide, phase: 'finish' });
   }
 
-  /** The ride photo: from beside the slide, a little ahead and up, looking back at you. */
-  private snap(slide: SlideId, at: THREE.Vector3, ahead: THREE.Vector3) {
+  /** The ride photo: inside a closed tube, from a little ahead looking back at you, the tube lit up for the flash; beside an open one, a little ahead and up. */
+  private snap(slide: SlideId, lane: number, k: number, len: number) {
     const W = 960;
     const H = 600;
-    const side = new THREE.Vector3(ahead.z, 0, -ahead.x).normalize();
-    const from = at.clone().addScaledVector(ahead, 3.2).addScaledVector(side, 2.6).add(new THREE.Vector3(0, 1.4, 0));
-    const cam = new THREE.PerspectiveCamera(50, W / H, 0.1, 400);
-    cam.position.copy(from);
-    cam.lookAt(at);
+    const def = SLIDE_BY_ID.get(slide)!;
+    const key = curveKey(slide, lane);
+    const curve = this.world!.curves.get(key)!;
+    const at = curve.getPointAt(k);
+    const ahead = curve.getTangentAt(k);
+    const cam = new THREE.PerspectiveCamera(def.kind === 'open' ? 50 : 84, W / H, 0.05, 400);
+    const tube = this.world!.tubes.get(slide);
+    if (def.kind !== 'open') {
+      frameAt(this.world!.frames.get(key)!, k, FR);
+      // Up under the tube's roof a little ahead of your feet, looking back down along you to your face.
+      cam.position.copy(curve.getPointAt(Math.min(1, k + 1.7 / len))).addScaledVector(FR.down, -0.42);
+      cam.up.copy(FR.down).negate();
+      cam.lookAt(this.floorAt(key, Math.max(0, k - 0.55 / len)).addScaledVector(FR.down, -0.2));
+    } else {
+      const side = new THREE.Vector3(ahead.z, 0, -ahead.x).normalize();
+      cam.position.copy(at).addScaledVector(ahead, 3.2).addScaledVector(side, 2.6).add(new THREE.Vector3(0, 1.4, 0));
+      cam.lookAt(at);
+    }
     cam.updateMatrixWorld();
+    const glow = tube?.emissive.clone();
+    if (tube) tube.emissive.set(def.color).multiplyScalar(0.55);
     const me = this.host.me().root;
     const shown = me.visible;
     me.visible = true;
@@ -166,6 +213,7 @@ export class SlideRider {
     renderer.setRenderTarget(was);
     target.dispose();
     me.visible = shown;
+    if (tube && glow) tube.emissive.copy(glow);
     const canvas = document.createElement('canvas');
     canvas.width = W;
     canvas.height = H;
@@ -173,7 +221,12 @@ export class SlideRider {
     const img = g.createImageData(W, H);
     for (let y = 0; y < H; y++) img.data.set(px.subarray((H - 1 - y) * W * 4, (H - y) * W * 4), y * W * 4);
     g.putImageData(img, 0, 0);
-    const def = SLIDE_BY_ID.get(slide)!;
+    // A soft vignette, darker at the corners, like a flash photo in a tube.
+    const vg = g.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.62);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(10,6,30,0.55)');
+    g.fillStyle = vg;
+    g.fillRect(0, 0, W, H);
     g.lineWidth = 14;
     g.strokeStyle = '#16324f';
     g.strokeRect(7, 7, W - 14, H - 14);
@@ -247,9 +300,66 @@ export class SlideRider {
     b.texture.needsUpdate = true;
   }
 
-  /** Each frame: the black hole's rings flash. */
-  update(t: number) {
+  /** Each frame: the black hole's rings flash; you and everyone else on a slide posed on it; down a tube, your eyes in it. */
+  update(t: number, people: readonly { id: string; x: number; y: number; z: number; person: Person | undefined }[], you: string) {
     const rings = this.world?.rings ?? [];
     for (const [i, m] of rings.entries()) m.color.setHSL((t * 0.15 + i * 0.07) % 1, 0.9, 0.55 + 0.25 * Math.sin(t * 6 + i));
+    if (!this.world) return;
+    const on = new Set<Person>();
+    const r = this.riding;
+    const me = this.host.me();
+    if (r && r.countdown <= 0) {
+      const key = curveKey(r.slide, r.lane);
+      const len = this.world.curves.get(key)!.getLength();
+      const u = Math.min(1, r.s / len);
+      this.poser.set(me, r.slide, this.world.frames.get(key)!, this.host.player.pos, u, r.lane);
+      on.add(me);
+      if (SLIDE_BY_ID.get(r.slide)!.kind !== 'open') this.inTube(key, u, len, RIDE_POSE[r.slide] === 'mat');
+    }
+    // The others: on a track's floor, out of the tower and over the deck, posed on the nearest bit of it.
+    for (const q of people) {
+      if (q.id === you || !q.person || q.y < 0.3 || inT(TOWER, q.x, q.z, -0.6) || q.x < LANDING.minX - 4 || q.z > LANDING.maxZ) continue;
+      let best: (typeof this.samples)[number] | null = null;
+      let bd = 0.8;
+      for (const s of this.samples) {
+        const d = Math.abs(s.at.x - q.x) + Math.abs(s.at.y - q.y) + Math.abs(s.at.z - q.z);
+        if (d < bd) {
+          bd = d;
+          best = s;
+        }
+      }
+      if (!best) continue;
+      this.poser.set(q.person, best.slide, this.world.frames.get(best.key)!, q.person.root.position, best.u, best.lane);
+      on.add(q.person);
+    }
+    this.poser.keep(on);
+  }
+
+  /** Down a closed tube the camera's in it: your eyes (lying back, feet first: a little behind your hips) or, in third person, a few metres behind you; the mouse looks round a little. */
+  private inTube(key: string, u: number, len: number, headFirst: boolean) {
+    const p = this.host.player;
+    const cam = this.host.camera;
+    const f = this.world!.frames.get(key)!;
+    const curve = this.world!.curves.get(key)!;
+    frameAt(f, u, FR);
+    const up = V().copy(FR.down).negate();
+    if (p.view === 'first') {
+      const eye = this.floorAt(key, u + (headFirst ? 0.75 : -0.78) / len).addScaledVector(up, 0.34);
+      const look = curve.getPointAt(Math.min(1, u + 4 / len)).addScaledVector(up, -0.15);
+      cam.position.copy(eye);
+      cam.up.copy(up);
+      cam.lookAt(look);
+      // A little of the mouse: turn your head in the tube.
+      const yaw = THREE.MathUtils.clamp(p.camYaw - this.riding!.yaw0, -1, 1);
+      cam.rotateY(yaw * 0.6);
+      cam.rotateX(THREE.MathUtils.clamp(p.lookPitch, -0.6, 0.6) * 0.6);
+    } else {
+      // Behind and over your head, as high as the tube lets it, looking down along you to your feet.
+      cam.position.copy(curve.getPointAt(Math.max(0, u - 4.3 / len))).addScaledVector(up, 0.47);
+      cam.up.copy(up);
+      cam.lookAt(this.floorAt(key, u + (headFirst ? -0.4 : 1.1) / len).addScaledVector(up, 0.1));
+    }
+    cam.updateMatrixWorld();
+    cam.up.set(0, 1, 0);
   }
 }

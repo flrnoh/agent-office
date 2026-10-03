@@ -12,9 +12,11 @@ import { BASEMENT_FLOOR, THERME_PASSAGE, cutOut } from './gym-basement.js';
  *
  *   z 0 ┌──────────────── the north band: the passage from the gym, the main entrance ────────────┐
  *  z 15 ├───────────┬────────────────────────────────────────────┬──────────────────────────────┤
- *       │ SAUNADORF │ THERMENPARADIES under the glass dome        │ RUTSCHENWELT                 │
- *       │ x 0..55   │ x 55..140; the WELLENBAD x 60..135, z 80..125│ x 140..200, the slide tower  │
- * z 140 └───────────┴────────────────────────────────────────────┴──────────────────────────────┘
+ *       ┊ SAUNADORF ┊ THERMENPARADIES under the glass dome        │ RUTSCHENWELT                 │
+ *       ┊ x 0..55   ┊ x 55..140; the WELLENBAD x 60..135, z 80..125│ x 140..200, the slide tower  │
+ *       ┊ open air, ┊                                             │                              │
+ *       ┊ fenced    ┊                                             │                              │
+ * z 140 └┈┈┈┈┈┈┈┈┈┈┈┴────────────────────────────────────────────┴──────────────────────────────┘
  *                     AUSSENLAGUNE + Strömungskanal (z 140..190, open sky)
  *
  * Pure data and maths, shared by the server (where someone lands, which zone they're in) and the
@@ -59,7 +61,7 @@ export const ZONES = {
   gang: { minX: 96, maxX: 104, minZ: 0, maxZ: NORTH_BAND_Z },
   /** The main entrance from the street (phase 7): the box office, turnstiles, changing rooms. */
   lobby: { minX: 110, maxX: 138, minZ: 0, maxZ: NORTH_BAND_Z },
-  /** The sauna village (phase 5): quiet, no radio, no music. */
+  /** The sauna village (phase 5): a garden under the open sky, fenced round, quiet, no radio, no music. */
   dorf: { minX: 0, maxX: 55, minZ: NORTH_BAND_Z, maxZ: 140 },
   /** The heart of it, under the glass dome (phase 2): the thermal pool, the swim-up bar, palm islands. */
   paradies: { minX: 55, maxX: 140, minZ: NORTH_BAND_Z, maxZ: 140 },
@@ -73,8 +75,10 @@ export type ThermeZone = keyof typeof ZONES;
 /** The wave pool, in the Thermenparadies's south half (phase 3): the beach at its north, shallow end. */
 export const WELLENBAD: TRect = { minX: 60, maxX: 135, minZ: 80, maxZ: 125 };
 
-/** How high each part's roof is: the north band's, the sauna village's, the eaves round the dome, the slide hall's (the tower's 30 m fits under it). */
-export const ROOFS = { band: 6, dorf: 9, paradies: 12, rutschen: 34 } as const;
+/** How high each part's roof is: the north band's, the eaves round the dome, the slide hall's (the tower's 30 m fits under it). The sauna village has none: it's a garden. */
+export const ROOFS = { band: 6, paradies: 12, rutschen: 34 } as const;
+/** How tall the sauna garden's wooden fence is (along the west and south, where it isn't the house). */
+export const DORF_FENCE = 2.8;
 /** The passage's tiled ceiling, under the north band's roof. */
 export const GANG_CEILING = 3.2;
 
@@ -156,13 +160,13 @@ const B = THERME_BOX;
 const Z = ZONES;
 const W = TWALL;
 
-/** Every wall: the outer ones (outside THERME_BOX), the north band's, the sauna village's, and the slide hall's skirt over the open side to the dome. */
+/** Every wall: the outer ones (outside THERME_BOX; round the sauna garden, its fence), the north band's, the house's west face to the garden, and the slide hall's skirt over the open side to the dome. */
 export function thermeWalls(): TFixture[] {
   return [
     // North (z 0): the band's height all along; the door back to the gym is a fixture of its own.
     ...wallLine('n', 'x', B.minZ, B.minX - W, B.maxX + W, ROOFS.band, -W / 2),
     // The band's south side (z 15): to each part's own roof; the passage and the entrance open through it.
-    ...wallLine('band-dorf', 'x', NORTH_BAND_Z, B.minX, Z.dorf.maxX, ROOFS.dorf),
+    ...wallLine('band-dorf', 'x', NORTH_BAND_Z, B.minX, Z.dorf.maxX, ROOFS.band),
     ...wallLine('band-par', 'x', NORTH_BAND_Z, Z.paradies.minX, Z.paradies.maxX, ROOFS.paradies),
     ...wallLine('band-rut', 'x', NORTH_BAND_Z, Z.rutschen.minX, B.maxX, ROOFS.rutschen),
     // The passage's and the entrance's side walls, inside the band.
@@ -172,14 +176,14 @@ export function thermeWalls(): TFixture[] {
     ...wallLine('lobby-e', 'z', Z.lobby.maxX, B.minZ, NORTH_BAND_Z, ROOFS.band),
     // West and east (outside the box), each part as tall as its roof.
     ...wallLine('w-band', 'z', B.minX, B.minZ, NORTH_BAND_Z, ROOFS.band, -W / 2),
-    ...wallLine('w-dorf', 'z', B.minX, NORTH_BAND_Z, B.maxZ + W, ROOFS.dorf, -W / 2),
+    ...wallLine('w-dorf', 'z', B.minX, NORTH_BAND_Z, B.maxZ + W, DORF_FENCE, -W / 2),
     ...wallLine('e-band', 'z', B.maxX, B.minZ, NORTH_BAND_Z, ROOFS.band, W / 2),
     ...wallLine('e-rut', 'z', B.maxX, NORTH_BAND_Z, B.maxZ + W, ROOFS.rutschen, W / 2),
     // South (z 140, outside the box), with the doors out to the lagoon.
-    ...wallLine('s-dorf', 'x', B.maxZ, B.minX - W, Z.dorf.maxX, ROOFS.dorf, W / 2),
+    ...wallLine('s-dorf', 'x', B.maxZ, B.minX - W, Z.dorf.maxX, DORF_FENCE, W / 2),
     ...wallLine('s-par', 'x', B.maxZ, Z.paradies.minX, Z.paradies.maxX, ROOFS.paradies, W / 2),
     ...wallLine('s-rut', 'x', B.maxZ, Z.rutschen.minX, B.maxX + W, ROOFS.rutschen, W / 2),
-    // The sauna village's east wall (x 55), up to the dome's eaves.
+    // The house's west face to the sauna garden (x 55), up to the dome's eaves.
     ...wallLine('dorf-e', 'z', Z.dorf.maxX, NORTH_BAND_Z, B.maxZ, ROOFS.paradies),
     // Over the open side between the dome and the slide hall (x 140): a skirt from the eaves up to its roof.
     { id: 'rut-skirt', minX: Z.rutschen.minX - W / 2, maxX: Z.rutschen.minX + W / 2, minZ: NORTH_BAND_Z, maxZ: B.maxZ, bottom: ROOFS.paradies, top: ROOFS.rutschen },
@@ -217,6 +221,9 @@ type Spot = { x: number; y: number; z: number; rotY: number };
 export const THERME_ARRIVAL: Spot = { x: GYM_DOOR.x, y: 0, z: B.minZ + 2.2, rotY: 0 };
 /** Where you land back in the gym's basement (gym coordinates): in its passage in front of the door, facing the pool hall (-z). */
 export const GYM_FROM_THERME: Spot = { x: (THERME_PASSAGE.minX + THERME_PASSAGE.maxX) / 2, y: BASEMENT_FLOOR, z: THERME_PASSAGE.door - 1.4, rotY: Math.PI };
+
+/** Whether (x, z) is in the sauna garden (under the open sky, like the lagoon). */
+export const inDorf = (x: number, z: number) => inT(ZONES.dorf, x, z);
 
 /** Whether (x, z) is somewhere you can be in the baths: the passage, the entrance, or one of the parts (the lagoon too). */
 export function inTherme(x: number, z: number): boolean {

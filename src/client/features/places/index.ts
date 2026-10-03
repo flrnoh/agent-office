@@ -15,6 +15,7 @@ import { SOCCER } from '../../../shared/soccer';
 import { BOWLING } from '../../../shared/bowling';
 import { VENUE } from '../../../shared/venue';
 import { THERME } from '../../../shared/therme';
+import { poolInfo } from '../../../shared/therme-pools';
 import type { Drink } from '../../../shared/rooftop';
 import type { ServerMsg } from '../../../shared/protocol';
 import type { Ctx, Hint } from '../../core/context';
@@ -77,6 +78,7 @@ declare module '../../world/types' {
     thermelift: true;
     thermeboard: true;
     thermestreet: true;
+    thermeuse: true;
   }
 }
 
@@ -289,6 +291,8 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   ctx.interactions.define('thermeboard', { reach: 3.5, hint: hintIn(therme), use });
   // The baths' main doors: on the street, and inside the entrance hall back out.
   ctx.interactions.define('thermestreet', { reach: 4, hint: hintIn(therme), use });
+  // What you use where it stands in the baths: the showers, the gush buckets, the ice fountain.
+  ctx.interactions.define('thermeuse', { reach: 2.5, hint: hintIn(therme), use });
   ctx.interactions.define('padel', {
     reach: 5,
     hint: (it) => {
@@ -349,8 +353,8 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     },
     hint: (el) =>
       ctx.hint.draw(el, `thermeswim|${bath.atEdge}|${therme.atBar}|${bath.pool?.id}`, () => [
-        hintTitle(bath.pool?.id.startsWith('therme-whirl') ? '🫧 Whirlpool' : bath.pool?.id === 'therme-grotto' ? '💎 Grotte' : bath.pool?.id === 'therme-waves' ? '🌊 Wellenbad' : bath.pool?.id === 'therme-landing' ? '🛝 Landebecken' : bath.pool?.id === 'therme-river' ? '🌀 Strömungskanal' : bath.pool?.id === 'therme-lagoon' ? '🏝️ Außenlagune' : bath.pool?.id === 'therme-pond' ? '🧊 Kaltwasserteich' : bath.pool?.id === 'therme-plunge' ? '🧊 Tauchbecken' : '🌊 Thermalbecken'),
-        aside(bath.pool?.id === 'therme-thermal' ? '34 °C' : bath.pool?.id === 'therme-waves' ? '30 °C · Wellen alle 8 Minuten' : bath.pool?.id === 'therme-landing' ? 'Bestzeiten am Kiosk' : bath.pool?.id === 'therme-river' ? '32 °C · lass dich treiben' : bath.pool?.id === 'therme-lagoon' ? '32 °C · unter freiem Himmel' : bath.pool?.id === 'therme-pond' || bath.pool?.id === 'therme-plunge' ? '16 °C · brrr' : '36 °C'),
+        hintTitle(`${poolInfo(bath.pool?.id)?.emoji ?? '🌊'} ${poolInfo(bath.pool?.id)?.name ?? 'Becken'}`),
+        aside(`${poolInfo(bath.pool?.id)?.temp ?? 32} °C · ${poolInfo(bath.pool?.id)?.note ?? ''}`),
         key('W A S D', 'Swim'),
         key('Shift', 'Faster'),
         key('Space', 'Splash'),

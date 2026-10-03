@@ -4,7 +4,7 @@ import { GYM_FROM_THERME, THERME, THERME_ARRIVAL, THERME_BOX, THERME_NAME, ZONES
 import type { ClientMsg, ServerMsg } from '../../shared/protocol';
 import type { SeatPlace } from '../../shared/layout';
 import type { Drink } from '../../shared/rooftop';
-import { THERME_POOLS, thermeWhereabouts as whereIn } from '../../shared/therme-all';
+import { THERME_POOLS, thermeWhereabouts as whereIn, underSky } from '../../shared/therme-all';
 import { BARTENDER, BAR_COUNTER, SWIMBAR_MENU } from '../../shared/therme-paradies';
 import { Swimmer } from '../swim';
 import { nextWaves, waveStrength } from '../../shared/therme-waves';
@@ -15,13 +15,11 @@ import type { ThermeSounds } from './sound';
 import { zoneAt } from '../../shared/therme';
 import { openBoards, openLift } from './slide-ui';
 import { LANDING, LEVELS, LIFT_DOOR, SLIDE_BY_ID, TOWER } from '../../shared/therme-slides';
-import { AUFGUSS_RUN, RUHEHAUS, SAUNA_BY_ID, aufgussAt, aufgussPlan, inRuhehaus, saunaAt, type SaunaId } from '../../shared/therme-dorf';
+import { SAUNA_BY_ID } from '../../shared/therme-dorf';
 import { thermeSeat } from './loungers';
-import { outside } from '../../shared/therme-lagune';
-import { drawAufgussBoard, drawInfoBoard } from './dorf-ui';
+import { DorfLife } from './dorf-life';
 import { LOBBY_ARRIVAL, THERME_STREET_SPOT } from '../../shared/therme-street';
 import { streetBelow } from '../../shared/layout';
-import { waveBoard } from '../../shared/therme-waves';
 import { toast } from '../ui/dom';
 import { openVenueMenu } from '../venue/ui';
 import type { Person } from '../world/character';
@@ -109,8 +107,8 @@ export class ThermePlace {
   readonly rider: SlideRider;
   /** The run of waves the horn last went for. */
   private hornFor = 0;
-  /** The Aufguss slot the page last said was starting, and when it last drew the board. */
-  private aufgussFor = -1;
+  /** The Saunadorf's goings-on, the showers, buckets and ice (client/therme/dorf-life.ts). */
+  private dorf: DorfLife | null = null;
   /** Out at the lagoon, under the open sky (the weather falls there). */
   private outdoors = false;
   /** The other bathers (client/therme/bathers.ts). */
@@ -118,7 +116,6 @@ export class ThermePlace {
   /** Who's on a slide now (they whooped already), and how high everyone was a moment ago (to hear them land). */
   private whooped = new Set<string>();
   private lastY = new Map<string, number>();
-  private boardAt = 0;
 
   constructor(private host: ThermeHost) {
     this.swim = new Swimmer(host.player, () => THERME_POOLS, {
@@ -126,7 +123,7 @@ export class ThermePlace {
       stroke: () => host.sound('stroke'),
       out: () => host.sound('ladder'),
     }, () => host.now());
-    this.rider = new SlideRider({ player: host.player, send: (m) => host.send(m), sound: (k) => host.sound(k), renderer: host.renderer, scene: host.scene, me: () => host.me(), name: () => host.name() });
+    this.rider = new SlideRider({ player: host.player, camera: host.camera as THREE.PerspectiveCamera, send: (m) => host.send(m), sound: (k) => host.sound(k), renderer: host.renderer, scene: host.scene, me: () => host.me(), name: () => host.name() });
     this.rider.onBoards = () => this.rider.drawBoard();
     this.loungers = new ThermeLoungers({ you: () => host.you(), people: () => host.people(), player: host.player, me: () => host.me(), npc: (id) => !!this.bathers?.takes(id) });
   }
@@ -138,16 +135,16 @@ export class ThermePlace {
     return this.active && p.x > C.minX - 2.6 && p.x < C.maxX + 0.5 && p.z > C.minZ - 0.6 && p.z < C.maxZ + 0.6;
   }
 
-  /** The bar's menu: Kai mixes it and slides it across the counter. */
-  bar() {
+  /** A bar's menu: Kai at the swim-up bar (or Lina at the beach bar) mixes it and slides it across the counter. */
+  bar(beach = false) {
     this.host.sound('pour');
     openVenueMenu({
-      title: '🍹 Schwimmbar',
-      doing: '🍹 at the swim-up bar',
-      footer: 'Alles aufs Haus. Im Wasser schmeckt’s doppelt.',
+      title: beach ? '🏝️ Strandbar' : '🍹 Schwimmbar',
+      doing: beach ? '🏝️ at the beach bar' : '🍹 at the swim-up bar',
+      footer: beach ? 'Alles aufs Haus. Mit Sand zwischen den Zehen.' : 'Alles aufs Haus. Im Wasser schmeckt’s doppelt.',
       menu: SWIMBAR_MENU,
       cut: this.host.cutOff(),
-      cutNote: 'Kai meint, für jetzt lieber ein Wasser',
+      cutNote: `${beach ? 'Lina' : 'Kai'} meint, für jetzt lieber ein Wasser`,
       order: (d) => {
         this.host.sound('pour');
         window.setTimeout(() => {
@@ -161,6 +158,7 @@ export class ThermePlace {
     if (!this.room) {
       this.room = buildThermeInterior();
       this.bathers = new Bathers(this.room.group);
+      this.dorf = new DorfLife(this.room, { camera: this.host.camera, audio: this.host.audio });
       this.host.noOutline(this.room.group);
       this.room.group.visible = false;
       this.host.scene.add(this.room.group);
@@ -306,7 +304,7 @@ export class ThermePlace {
       return true;
     }
     if (it.kind === 'thermebar') {
-      if (key === 'E') this.bar();
+      if (key === 'E') this.bar(it.z > THERME_BOX.maxZ);
       return true;
     }
     if (it.kind === 'thermestreet') {
@@ -332,6 +330,7 @@ export class ThermePlace {
       if (key === 'E') openBoards(this.rider.boards, this.rider.photo, this.host.name());
       return true;
     }
+    if (it.kind === 'thermeuse') return this.dorf?.use(it, key) ?? true;
     if (it.kind !== 'therme') return false;
     if (key === 'E') {
       if (this.active) this.leave();
@@ -344,9 +343,12 @@ export class ThermePlace {
     if (it.kind === 'thermeseat') {
       const seat = it.seatId ? thermeSeat(it.seatId) : undefined;
       const lie = seat?.pose !== 'sit';
-      const name = lie ? (it.seatId?.startsWith('therme-ruhe') ? '🛋️ Liege im Ruhehaus' : '🏖️ Liege') : `🪵 Saunabank · Stufe ${Math.round((seat?.y ?? 0.45) / 0.45)}`;
+      const id = it.seatId ?? '';
+      const fire = id.startsWith('therme-fire');
+      const name = fire ? '🔥 Feuerstelle' : lie ? (id.startsWith('therme-ruhe') ? '🛋️ Liege im Ruhehaus' : id.startsWith('therme-lawn') ? '🌿 Liege auf der Wiese' : '🏖️ Liege') : `🪵 Saunabank · Stufe ${Math.round((seat?.y ?? 0.45) / 0.45)}`;
       if (this.host.player.seat?.seatId === it.seatId) return { k: 'therme-up', parts: [title(name), key('E', 'Get up')] };
-      return { k: `therme-seat|${lie}`, parts: [title(name), aside(lie ? (it.seatId?.startsWith('therme-ruhe') ? 'am Kamin · Ruhe bitte' : 'unter Palmen') : 'oben ist es heißer'), key('E', lie ? 'Lie down' : 'Sit down')] };
+      const note = fire ? 'auf einem Holzstamm am Feuer' : lie ? (id.startsWith('therme-ruhe') ? 'am Kamin · Ruhe bitte' : id.startsWith('therme-lawn') ? 'im Saunagarten' : 'unter Palmen') : 'oben ist es heißer';
+      return { k: `therme-seat|${lie}|${fire}|${id.slice(0, 12)}`, parts: [title(name), aside(note), key('E', lie ? 'Lie down' : 'Sit down')] };
     }
     if (it.kind === 'thermeslide') {
       const s = it.thermeSlide ? SLIDE_BY_ID.get(it.thermeSlide) : undefined;
@@ -357,7 +359,8 @@ export class ThermePlace {
     if (it.kind === 'thermestreet') return this.active ? { k: 'therme-street-out', parts: [title('🚪 Straße'), key('E', 'Go out')] } : { k: 'therme-street-in', parts: [title(`🌴 ${THERME_NAME}`), aside('Thermalbad · Rutschen · Saunadorf · Lagune'), key('E', 'Go in')] };
     if (it.kind === 'thermelift') return { k: 'therme-lift', parts: [title('🛗 Aufzug'), aside('Rutschenturm · drei Ebenen'), key('E', 'Ride')] };
     if (it.kind === 'thermeboard') return { k: 'therme-board', parts: [title('🏁 Bestzeiten'), aside('jede Rutsche · dein Fahrfoto'), key('E', 'Look')] };
-    if (it.kind === 'thermebar') return { k: 'therme-bar', parts: [title('🍹 Schwimmbar'), aside('Cocktails · Bier · Wein · Wasser'), key('E', 'Order')] };
+    if (it.kind === 'thermeuse') return this.dorf?.hint(it, title, key, aside) ?? null;
+    if (it.kind === 'thermebar') return it.z > THERME_BOX.maxZ ? { k: 'therme-beachbar', parts: [title('🏝️ Strandbar'), aside('Cocktails · Bier · Wein · Wasser'), key('E', 'Order')] } : { k: 'therme-bar', parts: [title('🍹 Schwimmbar'), aside('Cocktails · Bier · Wein · Wasser'), key('E', 'Order')] };
     if (it.kind !== 'therme') return null;
     if (this.active) return { k: 'therme-out', parts: [title('🚪 Gym'), aside('Schwimmhalle · Untergeschoss'), key('E', 'Back to the gym')] };
     return { k: 'therme-in', parts: [title(`🌴 ${THERME_NAME}`), aside('Thermalbad · geöffnet'), key('E', 'Go in')] };
@@ -379,8 +382,8 @@ export class ThermePlace {
     const now = this.host.now();
     const temp = this.host.temp();
     this.room.update(t, dt, now, me, temp === undefined ? 0 : Math.max(0, Math.min(1, (10 - temp) / 14)));
-    // Out at the lagoon it's outdoors: the rain and the snow fall there, not under the dome.
-    const outdoors = outside(me.x, me.z);
+    // In the sauna garden and out at the lagoon it's outdoors: the rain and the snow fall there, not under the dome.
+    const outdoors = underSky(me.x, me.z);
     if (outdoors !== this.outdoors) {
       this.outdoors = outdoors;
       this.host.setIndoors(!outdoors);
@@ -394,30 +397,10 @@ export class ThermePlace {
       this.hornFor = run;
     }
     if (!this.rider.riding) this.swim.tick(dt);
-    // The Aufguss plan (shared/therme-dorf.ts): the steam and the Saunameister in the sauna with one, the board, a word as it starts.
-    const a = aufgussAt(now);
-    const into = now - a.start;
-    const sauna = a.running ? SAUNA_BY_ID.get(a.sauna) ?? null : null;
-    this.room.dorf.steam(sauna, sauna ? (into < 60_000 ? 1 : into < AUFGUSS_RUN - 20_000 ? 0.35 : 0.1) : 0, dt);
-    if (a.running && a.slot !== this.aufgussFor) {
-      if (this.aufgussFor !== -1 && into < 5000) toast(`${sauna?.emoji} Aufguss ${sauna?.inName}! ${saunaAt(me.x, me.y, me.z)?.id === a.sauna ? 'Bleib sitzen, gleich wird es heiß' : 'Jetzt rein, dann gibt es Energie zurück'}`);
-      this.aufgussFor = a.slot;
-    }
-    // In a hut with the camera outside it (third person): its walls and roof lift away so you can see in.
-    const hutIn = saunaAt(me.x, me.y, me.z)?.id ?? (inRuhehaus(me.x, me.z) ? 'ruhe' : null);
-    const cam = this.host.camera.position;
-    for (const [id, shell] of this.room.dorf.shells) {
-      const box = id === 'ruhe' ? RUHEHAUS.box : SAUNA_BY_ID.get(id as SaunaId)!.box;
-      const camIn = cam.x > box.minX && cam.x < box.maxX && cam.z > box.minZ && cam.z < box.maxZ && cam.y < (id === 'ruhe' ? RUHEHAUS.height : SAUNA_BY_ID.get(id as SaunaId)!.height);
-      shell.visible = !(hutIn === id && !camIn);
-    }
-    if (t - this.boardAt > 1) {
-      this.boardAt = t;
-      drawAufgussBoard(this.room.dorf.board, aufgussPlan(now, 4), now);
-      drawInfoBoard(this.room.lobby.board, waveBoard(now), aufgussPlan(now, 3));
-    }
-    this.rider.update(t);
+    this.dorf?.update(me, this.host.player.moving, now, t, dt);
     const people = this.host.people();
+    this.rider.update(t, people, this.host.you());
+    this.room.details.update(t, this.rider.riding && this.rider.riding.countdown <= 0 ? this.rider.riding.slide : null);
     this.swim.pose(people.filter((q): q is typeof q & { person: Person } => !!q.person));
     this.loungers.pose();
     this.room.lobby.update(t, dt, people);
@@ -436,7 +419,7 @@ export class ThermePlace {
   private hear(me: THREE.Vector3, people: { id: string; x: number; y: number; z: number; moving: boolean }[]) {
     const zone = zoneAt(me.x, me.z);
     const quiet = zone === 'dorf';
-    const hall = this.outdoors ? 0.35 : quiet ? 0.1 : zone === 'gang' || zone === 'lobby' ? 0.45 : 1;
+    const hall = quiet ? 0.1 : this.outdoors ? 0.35 : zone === 'gang' || zone === 'lobby' ? 0.45 : 1;
     const crowd = (this.bathers?.count(me) ?? 0) + people.filter((q) => Math.hypot(q.x - me.x, q.z - me.z) < 25).length;
     this.host.audio.air(hall, quiet ? 0 : Math.min(1, 0.25 + crowd * 0.08));
     const R = ZONES.rutschen;

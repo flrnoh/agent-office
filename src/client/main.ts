@@ -315,6 +315,7 @@ const { worlds, views, rooftop, bar, coffee, golf, bargames, hanging, climbing, 
 (window as any).__office.bikes = parts.ride; // flrnoh fork: bikes, pets, laundry
 (window as any).__office.coaster = parts.coaster; // flrnoh fork: DER BRECHER
 (window as any).__office.venue = parts.places.venue; // flrnoh fork: the Schallwerk
+(window as any).__office.therme = parts.places.therme; // flrnoh fork: the thermal baths
 (window as any).__voice = parts.voice;
 (window as any).__sound = parts.sound;
 (window as any).__notify = parts.notifier;

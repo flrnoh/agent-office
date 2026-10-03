@@ -6,7 +6,7 @@ import path from 'node:path';
 import { ZONES, inT, type TFixture, type TRect } from '../src/shared/therme.js';
 import { thermeFixtures, thermeWhereabouts } from '../src/shared/therme-all.js';
 import {
-  AUFGUSS_EVERY, AUFGUSS_LATE, AUFGUSS_ORDER, AUFGUSS_RUN, DOOR_WIDTH, JETTY, KNEIPP, KNEIPP_FLOOR, PLUNGE, POND, POND_POOL, RUHEHAUS, SAUNAS, aufgussAt, aufgussPlan, dorfSeats, innerOf, saunaAt, stoveOf,
+  AUFGUSS_EVERY, AUFGUSS_LATE, AUFGUSS_ORDER, AUFGUSS_RUN, DOOR_WIDTH, FIRE_PIT, JETTY, KNEIPP, KNEIPP_FLOOR, PLUNGE, POND, POND_POOL, RUHEHAUS, SAUNAS, aufgussAt, aufgussPlan, dorfSeats, dorfWater, innerOf, saunaAt, stoveOf,
 } from '../src/shared/therme-dorf.js';
 import { overPool } from '../src/shared/swim.js';
 import { Therme } from '../src/server/therme/index.js';
@@ -82,15 +82,28 @@ test('on foot from the door: into every sauna up to its stove, the Ruhehaus, the
   assert.ok(overPool(POND_POOL, (POND.minX + POND.maxX) / 2, POND.minZ + 2) && !overPool(POND_POOL, JETTY.minX + 1, (JETTY.minZ + JETTY.maxZ) / 2));
 });
 
-test('every seat is on its bench (or a lounger in the Ruhehaus), with room to sit, under its roof', () => {
+test('every seat is on its bench (or a lounger in the Ruhehaus or on the lawn, a log by the fire), with room to sit, under its roof', () => {
   const seats = dorfSeats();
   assert.ok(seats.length > 100, `${seats.length} seats`);
   const ids = new Set<string>();
+  const water = dorfWater();
   for (const s of seats) {
     assert.ok(!ids.has(s.id), `${s.id} twice`);
     ids.add(s.id);
+    if (s.pose === 'lie' && s.id.startsWith('therme-lawn')) {
+      // On the lawn, in the garden, on dry ground, nothing standing where it lies.
+      assert.ok(inT(ZONES.dorf, s.x, s.z, 1) && !water.some((w) => inT(w, s.x, s.z, -1.2)), `${s.id} isn't on the lawn`);
+      assert.ok(!FX.some((f) => f.top > 0.05 && (f.bottom ?? 0) < 1 && inT(f, s.x, s.z, -0.3)), `${s.id} lies in something`);
+      continue;
+    }
     if (s.pose === 'lie') {
       assert.ok(inT(innerOf(RUHEHAUS.box), s.x, s.z), `${s.id} is in the Ruhehaus`);
+      continue;
+    }
+    if (s.id.startsWith('therme-fire')) {
+      // On a log, its top the seat's height, facing the fire.
+      assert.ok(FX.some((f) => f.id.startsWith('fire-log') && inT(f, s.x, s.z, -1e-6) && Math.abs(f.top - s.y) < 1e-6), `${s.id} isn't on a log`);
+      assert.ok(Math.hypot(FIRE_PIT.x - s.x, FIRE_PIT.z - s.z) < 3.5);
       continue;
     }
     const sauna = saunaAt(s.x, s.y, s.z);
