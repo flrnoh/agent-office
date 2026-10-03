@@ -9,9 +9,11 @@ import { HALL } from '../../shared/hall.js';
 import { SOCCER } from '../../shared/soccer.js';
 import { BOWLING } from '../../shared/bowling.js';
 import { VENUE } from '../../shared/venue.js';
+import { THERME, THERME_BOX, ZONES as THERME_ZONES } from '../../shared/therme.js';
+import { THERME_PASSAGE, GYM_UNDER } from '../../shared/gym-basement.js';
 import type { Ctx } from '../office/context.js';
 import type { Client } from '../office/client.js';
-import type { Spot } from '../office/input.js';
+import { num, spotFrom, type Spot } from '../office/input.js';
 import { floorView } from '../office/views.js';
 import { DjBooth } from '../djset.js';
 import { Casino, type CasinoPlayer } from '../casino/index.js';
@@ -42,6 +44,7 @@ import { Minigolf } from '../bowling/minigolf.js';
 import { VENUE_ARRIVAL, VenueHouse, backInVenue, venueView } from '../venue/place.js';
 import { showOf, startVenueShow, stopVenueShow } from '../ws/handlers/venueshow.js'; // the Schallwerk's show
 import { gigStarted } from '../ws/handlers/venue.js'; // a gig starting switches the Schallwerk to its kind
+import { THERME_ENTRY, backInTherme, thermeDoorSpot, thermeView } from '../therme/place.js'; // the thermal baths behind the gym
 
 /** Made last, once upstream's stages are all there (see server.ts). */
 export interface Fork {
@@ -86,7 +89,7 @@ export interface Fork {
 }
 
 /** The places across the street: like the roof, places of their own with none of a floor's things. */
-export const PLACES = [CASINO, GYM, HALL, SOCCER, BOWLING, VENUE] as const;
+export const PLACES = [CASINO, GYM, HALL, SOCCER, BOWLING, VENUE, THERME] as const;
 export const isPlace = (floor: unknown): floor is (typeof PLACES)[number] => (PLACES as readonly unknown[]).includes(floor);
 
 /** Who someone is to the fork's keepers (the casino's wallets, the gym, the postcards). */
@@ -185,6 +188,7 @@ export function placeView(ctx: Ctx, place: (typeof PLACES)[number]): FloorView {
   if (place === SOCCER) return soccerView(empty);
   if (place === BOWLING) return bowlingView(empty);
   if (place === VENUE) return venueView(empty);
+  if (place === THERME) return thermeView(empty);
   return { ...empty, floor: place };
 }
 
@@ -196,6 +200,7 @@ const ENTRY: Record<(typeof PLACES)[number], Spot> = {
   [SOCCER]: SOCCER_ARRIVAL,
   [BOWLING]: BOWLING_ARRIVAL,
   [VENUE]: VENUE_ARRIVAL,
+  [THERME]: THERME_ENTRY,
 };
 
 /** Into one of the places once they're in: the casino, the gym and the soccer hall keep a list of who's there. */
@@ -211,7 +216,8 @@ export function enteredPlace(ctx: Ctx, c: Client, place: string | undefined) {
 export function goToPlace(ctx: Ctx, c: Client, floor: unknown): boolean {
   if (!isPlace(floor)) return false;
   if (!ctx.floors.size || c.peer.floor === floor) return true;
-  ctx.goSomewhere(c, floor, ENTRY[floor], placeView(ctx, floor), () => enteredPlace(ctx, c, floor));
+  const at = thermeDoorSpot(floor, c.peer.floor) ?? ENTRY[floor]; // the door between the gym's basement and the baths lands you by it
+  ctx.goSomewhere(c, floor, at, placeView(ctx, floor), () => enteredPlace(ctx, c, floor));
   return true;
 }
 
@@ -222,7 +228,29 @@ export function backInPlace(wanted: string | null, floors: number): (typeof PLAC
   if (wanted === SOCCER) return backInSoccer(wanted, floors) ? SOCCER : undefined;
   if (wanted === BOWLING) return backInBowling(wanted, floors) ? BOWLING : undefined;
   if (wanted === VENUE) return backInVenue(wanted, floors) ? VENUE : undefined;
+  if (wanted === THERME) return backInTherme(wanted, floors) ? THERME : undefined;
   return wanted;
+}
+
+/**
+ * How far from its middle someone coming back into a place may say they stood: wider than a floor's
+ * ±60 m (office/input.ts arrivalSpot) for the places that are bigger, so a reload keeps you where you
+ * were: the gym down to its basement's pool hall and passage, the baths all over.
+ */
+const PLACE_BOUNDS: Partial<Record<(typeof PLACES)[number], { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }>> = {
+  [GYM]: { minX: -60, maxX: 60, minY: GYM_UNDER, maxY: 10, minZ: -60, maxZ: THERME_PASSAGE.maxZ },
+  [THERME]: { minX: THERME_BOX.minX - 1, maxX: THERME_BOX.maxX + 1, minY: -10, maxY: 40, minZ: THERME_BOX.minZ - 1, maxZ: THERME_ZONES.lagune.maxZ + 1 },
+};
+
+/** The spot someone coming back into `place` says they stood (see Net.connect): a floor's, or within the place's own bounds. */
+export function placeSpotFrom(place: (typeof PLACES)[number] | undefined, q: URLSearchParams): Spot | undefined {
+  const b = place && PLACE_BOUNDS[place];
+  if (!b) return spotFrom(q);
+  const n = (k: string) => (q.get(k) ? Number(q.get(k)) : NaN);
+  const [x, y, z] = ['x', 'y', 'z'].map(n);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return undefined;
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, num(v)));
+  return { x: clamp(x, b.minX, b.maxX), y: clamp(y, b.minY, b.maxY), z: clamp(z, b.minZ, b.maxZ), rotY: num(n('rotY')) };
 }
 
 /** The roof's own things on top of an empty floor view. */
