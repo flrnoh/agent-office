@@ -16,6 +16,7 @@ import { store } from '../../state';
 import { $, h } from '../../ui/dom';
 import { atlas, PX } from './atlas';
 import { openBigMap } from './bigmap';
+import { drawBuses, drawStops } from './buses'; // the bus network
 import { ALL_POIS, HOME, OFFICE_RECT, compassWord, distanceWord, placeSpot, type Poi } from './pois';
 
 /** The minimap's size on screen (px, CSS), till it's laid out (ui.css has it smaller on a phone). */
@@ -149,6 +150,11 @@ export function installMinimap(ctx: Ctx) {
       g.font = `${(shop ? 11 : 15) * dpr}px system-ui, sans-serif`;
       g.fillText(p.icon, at.x, at.y);
     }
+    // The bus stops (zoomed in) and the buses round about (buses.ts).
+    if (zoom >= 1.2) drawStops(g, toDial, 2.6 * dpr);
+    drawBuses(g, toDial, ctx.office.town.buses.buses.filter((b) => inDial(toDial(b.pose.x, b.pose.z), 6 * dpr)), 11 * dpr);
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
     // The people on your floor.
     for (const peer of store.peers.values()) {
       if (peer.id === store.you || peer.lite || !store.onMyFloor(peer)) continue;
@@ -254,6 +260,7 @@ export function installMinimap(ctx: Ctx) {
       me: () => whereAmI(),
       target: () => target,
       setTarget: (p) => setTarget(p),
+      buses: () => ctx.office.town.buses.buses,
     });
   }
 

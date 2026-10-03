@@ -3,8 +3,10 @@
 // a shop to head there (the minimap points the way, with how far), or "Zum Büro" for the way back.
 
 import { store } from '../../state';
+import type { BusLine, BusPose } from '../../../shared/citybus';
 import { h, openModal } from '../../ui/dom';
 import { atlas, BOUNDS, COLORS, PX } from './atlas';
+import { drawBuses, drawRoutes, drawStops } from './buses'; // the bus network
 import type { Where } from './index';
 import { ALL_POIS, HOME, distanceWord, type Poi } from './pois';
 
@@ -12,6 +14,8 @@ export interface BigMapOptions {
   me(): Where | null;
   target(): Poi | null;
   setTarget(p: Poi | null): void;
+  /** The city's buses where they are now (buses.ts). */
+  buses(): readonly { line: BusLine; pose: BusPose }[];
 }
 
 /** Screen px to a meter: the least shows the whole map, shops get their names past SHOP_NAMES. */
@@ -80,6 +84,10 @@ export function openBigMap(opts: BigMapOptions) {
     g.imageSmoothingEnabled = zoom < PX * 1.5;
     g.drawImage(map.canvas, o.x, o.y, map.canvas.width * (zoom / PX), map.canvas.height * (zoom / PX));
 
+    // The bus lines and their stops, under the places (buses.ts).
+    const pt = (x: number, z: number) => toScreen(x, z, w, hgt);
+    drawRoutes(g, pt, Math.max(2, Math.min(5, zoom * 1.6)));
+    drawStops(g, pt, zoom >= 1.6 ? 4.5 : 3, zoom >= SHOP_NAMES);
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     taken.length = 0;
@@ -111,6 +119,7 @@ export function openBigMap(opts: BigMapOptions) {
     const rank = (n: { p: Poi; big: boolean }) => (n.p === HOME ? 0 : n.big ? 1 : n.p.kind === 'shop' ? 3 : 2);
     names.sort((a, b) => rank(a) - rank(b));
     for (const n of names) label(n.p.name, n.x, n.y, n.p === HOME, n.big);
+    drawBuses(g, pt, opts.buses(), 16);
     // The people on your floor.
     for (const peer of store.peers.values()) {
       if (peer.id === store.you || peer.lite || !store.onMyFloor(peer)) continue;

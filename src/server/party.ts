@@ -79,6 +79,7 @@ const PARTY_SEES = [
   'bike.rode', 'bike.bell', // fork: bikes from the city's bike shop
   'voice.ranged', // fork: how far someone's voice carries
   'dance.moved', // fork: someone dancing on the roof
+  'bus.rode', // fork: someone's place in a city bus
   'tankstelle', // fork: the petrol station and its car wash
   'coaster', // fork: DER BRECHER (its typists are the ground floor's workers by name, as party guests see them at their desks)
   'karaoke', 'karaoke.cheer', 'karaoke.rated', // fork: the bowling centre's karaoke bar

@@ -10,6 +10,7 @@ import { shopSeatHips } from '../../../shared/shop-rooms'; // flrnoh fork
 import { storeySeat } from '../../../shared/storey'; // flrnoh fork
 import { heardVolume } from '../../../shared/voicerange'; // flrnoh fork
 import { voiceWalled } from '../voicerange/walls'; // flrnoh fork: rooms voice doesn't get out of
+import { aboardBus } from '../citybus/riders'; // flrnoh fork: riding the city bus
 import type { PeerInfo } from '../../../shared/protocol';
 import { DRINK_BY_ID } from '../../../shared/rooftop';
 import { hipsOf } from '../../../shared/garage';
@@ -105,9 +106,10 @@ export function installPeers(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'puff
       const p = store.peers.get(id);
       if (!p) continue;
       // Sitting, they're wherever their seat puts them; in a car, right in it as it goes.
-      const ride = parts.cars.rideOf(id);
-      const sat = ride ?? (p.seat ? storeySeat(seatOn(plan(), p.seat), parts.worlds.inOffice() ? office.stack.state.index : 0) : undefined); // fork: the balcony's seats where this storey has them
-      const at = sat ?? p;
+      const bus = aboardBus(id, p, r.person); // flrnoh fork: in a city bus, standing or sitting, as it goes
+      const ride = parts.cars.rideOf(id) ?? bus;
+      const sat = bus && !bus.seated ? undefined : ride ?? (p.seat ? storeySeat(seatOn(plan(), p.seat), parts.worlds.inOffice() ? office.stack.state.index : 0) : undefined); // fork: the balcony's seats where this storey has them
+      const at = ride ?? sat ?? p;
       r.target.set(at.x, at.y, at.z);
       const pos = r.person.root.position;
       if (ride) {
@@ -121,7 +123,7 @@ export function installPeers(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'puff
       }
       // On their feet if they're standing on something: the floor, a desk, a stair, the loft.
       const ground = groundAt(player.colliders, p.x, p.z, p.y);
-      const airborne = !sat && p.y > ground + 0.05;
+      const airborne = !sat && !bus && p.y > ground + 0.05;
       // Or holding on to the ladder or a pole; off a pole onto the mat, the firehouse bell rings.
       const holding = sat || core.upTop || !inOffice() ? null : gripOf(p, office.stack.poles(), ground);
       if (r.grip === 'pole' && !holding && Math.abs(p.y) < 0.2) sound.poleLanding(6, { x: pos.x, y: 0.5, z: pos.z });

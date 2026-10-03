@@ -3,6 +3,7 @@ import { LOT, SIDE_LOT } from './garage.js';
 import { FLOOR, ROAD, WALL_T } from './layout.js';
 import { STREET_END, STREET_Z } from './scenic.js';
 import { BOLLARD_IN, BOLLARD_OFF, FURNITURE, LAMPS, LAMP_OFF, stretchSpan } from './streetside.js';
+import { POLE_OFF } from './busnet.js'; // fork: the bus stops that are only a pole
 import { SHOPS, shopPoint, type Shop } from './shops.js';
 
 // flrnoh fork (see FORK.md): where the city's passers-by may walk (shared/passersby.ts plans their
@@ -274,6 +275,12 @@ function furnish() {
     if (f.kind === 'bench') {
       const [x, z] = local(f, 0, 0.08);
       w.spots.push({ kind: 'bench', walk: w.id, along: f.along, x, z, yaw: f.yaw, spread: 0.45 });
+    } else if (f.kind === 'bus' && f.stop?.pole) {
+      // fork: a stop that's only its pole at the curb (shared/busnet.ts): wait beside it, on the sidewalk.
+      w.posts.push({ at: f.along, off: POLE_OFF, r: 0.06 });
+      // On the side the bus pulls up to (ahead of the pole, -x in its frame), so nobody walks round it to the doors.
+      const [sx, sz] = local(f, -0.75, -0.8);
+      w.spots.push({ kind: 'stop', walk: w.id, along: walkCoords(w, sx, sz)[0], x: sx, z: sz, yaw: f.yaw, spread: 0.5 });
     } else if (f.kind === 'bus') {
       const [x, z] = local(f, 0, -0.22);
       w.spots.push({ kind: 'bus', walk: w.id, along: f.along, x, z, yaw: f.yaw, spread: 0.45 });
