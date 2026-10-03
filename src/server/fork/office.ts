@@ -49,6 +49,7 @@ import { Therme } from '../therme/index.js';
 import { AUFGUSS_BONUS, type SaunaId } from '../../shared/therme-dorf.js';
 import { Fleet } from './waymo.js'; // the robotaxis
 import { Bags } from './bag.js'; // the rucksack
+import { Beaches } from '../volley.js'; // beach volleyball
 
 /** Made last, once upstream's stages are all there (see server.ts). */
 export interface Fork {
@@ -61,6 +62,7 @@ export interface Fork {
   interiors: Interiors; // how admins had floors furnished (interiors.json)
   rigs: Rigs; // the racing rig in the lounge, one driver a floor, one table for the building
   marinas: Marinas; // the jetskis and the motorboat at each floor's jetty on the beach
+  beaches: Beaches; // the beach volleyball court on each floor's beach (volley.ts)
   baumaerkte: Baumaerkte; // the Baumarkt on each floor's street: forklift, pallets, trolleys, tools
   kinos: KinoScreens; // the cinema's Saal 2 on each floor's street
   postcards: Postcards; // the Post's postcards, waiting for their recipients (postcards.json)
@@ -126,6 +128,10 @@ export function createFork(ctx: Ctx): Fork {
     interiors: new Interiors(cfg.dataDir),
     rigs,
     marinas: new Marinas(),
+    beaches: new Beaches((floorId, m) => {
+      const floor = ctx.floors.get(floorId);
+      if (floor) ctx.toFloor(floor, m);
+    }),
     baumaerkte: new Baumaerkte(),
     kinos: new KinoScreens(),
     postcards: new Postcards(cfg.dataDir),
@@ -296,6 +302,7 @@ function thermeAufguss(ctx: Ctx) {
 
 export function startFork(ctx: Ctx) {
   ctx.waymo.start(); // the robotaxis cruise, come, wait and take people places
+  ctx.beaches.start(); // the computer team at the beach plays its touches, balls come down
   ctx.turn.start();
   aufgussTimer = setInterval(() => thermeAufguss(ctx), 3000); // the baths' Aufgüsse
   aufgussTimer.unref?.();
@@ -311,6 +318,7 @@ export function stopFork(ctx: Ctx) {
   aufgussTimer = null;
   ctx.coaster.stop();
   ctx.waymo.stop();
+  ctx.beaches.stop();
   ctx.casino.stop();
   ctx.soccer.stop();
   ctx.karaoke.stop();
