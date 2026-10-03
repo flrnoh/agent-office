@@ -116,6 +116,9 @@ export interface TDoor {
   shift?: number;
 }
 
+/** The entrance hall's doors out to the street (shared/therme-street.ts), in the north wall: a fixture of their own, like the gym's door. */
+export const STREET_DOOR = { x: 124, z: 0, width: 4, height: 3.2 } as const;
+
 /** The glass door back to the gym, at the passage's north end (in the north wall). E there goes back. */
 export const GYM_DOOR = { x: (ZONES.gang.minX + ZONES.gang.maxX) / 2, z: THERME_BOX.minZ, width: THERME_PASSAGE.maxX - THERME_PASSAGE.minX, height: THERME_PASSAGE.height } as const;
 
@@ -123,7 +126,8 @@ export const GYM_DOOR = { x: (ZONES.gang.minX + ZONES.gang.maxX) / 2, z: THERME_
 export const DOORS: readonly TDoor[] = [
   { id: 'gym', axis: 'x', at: THERME_BOX.minZ, from: GYM_DOOR.x - GYM_DOOR.width / 2, to: GYM_DOOR.x + GYM_DOOR.width / 2, height: GYM_DOOR.height, shift: -TWALL / 2 },
   { id: 'gang', axis: 'x', at: NORTH_BAND_Z, from: ZONES.gang.minX, to: ZONES.gang.maxX, height: GANG_CEILING },
-  { id: 'lobby', axis: 'x', at: NORTH_BAND_Z, from: 113, to: 135, height: 4, shut: 'Haupteingang · Kasse · demnächst' },
+  { id: 'lobby', axis: 'x', at: NORTH_BAND_Z, from: 113, to: 135, height: 4 },
+  { id: 'street', axis: 'x', at: THERME_BOX.minZ, from: STREET_DOOR.x - STREET_DOOR.width / 2, to: STREET_DOOR.x + STREET_DOOR.width / 2, height: STREET_DOOR.height, shift: -TWALL / 2 },
   { id: 'dorf', axis: 'z', at: ZONES.dorf.maxX, from: 70, to: 78, height: 3.2 },
   { id: 'lagune', axis: 'x', at: THERME_BOX.maxZ, from: 88, to: 107, height: 4.5, shift: TWALL / 2 },
 ];
@@ -195,6 +199,7 @@ export function thermeFixtures(water: readonly TRect[] = []): TFixture[] {
   const f: TFixture[] = cutOut(all, water).map((r, i) => ({ id: i ? `floor-${i}` : 'floor', ...r, bottom: water.length ? SLAB_BOTTOM : -0.3, top: 0 }));
   f.push(...thermeWalls());
   f.push({ id: 'gym-door', minX: GYM_DOOR.x - GYM_DOOR.width / 2, maxX: GYM_DOOR.x + GYM_DOOR.width / 2, minZ: B.minZ - W, maxZ: B.minZ, top: GYM_DOOR.height });
+  f.push({ id: 'street-door', minX: STREET_DOOR.x - STREET_DOOR.width / 2, maxX: STREET_DOOR.x + STREET_DOOR.width / 2, minZ: B.minZ - W, maxZ: B.minZ, top: STREET_DOOR.height });
   for (const d of DOORS) {
     if (!d.shut) continue;
     const c = d.at + (d.shift ?? 0);

@@ -15,7 +15,10 @@ import { LEVELS, LIFT_DOOR, SLIDE_BY_ID } from '../../shared/therme-slides';
 import { AUFGUSS_RUN, RUHEHAUS, SAUNA_BY_ID, aufgussAt, aufgussPlan, inRuhehaus, saunaAt, type SaunaId } from '../../shared/therme-dorf';
 import { thermeSeat } from './loungers';
 import { outside } from '../../shared/therme-lagune';
-import { drawAufgussBoard } from './dorf-ui';
+import { drawAufgussBoard, drawInfoBoard } from './dorf-ui';
+import { LOBBY_ARRIVAL, THERME_STREET_SPOT } from '../../shared/therme-street';
+import { streetBelow } from '../../shared/layout';
+import { waveBoard } from '../../shared/therme-waves';
 import { toast } from '../ui/dom';
 import { openVenueMenu } from '../venue/ui';
 import type { Person } from '../world/character';
@@ -44,6 +47,8 @@ export interface ThermeHost {
   send(msg: ClientMsg): void;
   /** The floor you're on (store.floor): THERME while inside. */
   floor(): string | null;
+  /** The building's floors, bottom first (builtFloors): back out onto your floor's street. */
+  floors(): { id: string }[];
   /** On the office's map (the gym, and so the baths, are only on its street). */
   inOffice(): boolean;
   player: { pos: THREE.Vector3; colliders: Collider[]; room: Room; seat: SeatPlace | null; sit(p: SeatPlace): void; stand(): void; lookPitch: number } & ConstructorParameters<typeof Swimmer>[0];
@@ -76,11 +81,15 @@ export interface ThermeHost {
   name(): string;
 }
 
+const FROM_KEY = 'agent-office.therme.from';
+
 export class ThermePlace {
   private room: ThermeInterior | null = null;
   active = false;
-  /** Through the door from the gym: put you just inside it. */
-  private arriving = false;
+  /** In through a door: from the gym (just inside the passage) or off the street (at the box office). */
+  private arriving: 'gym' | 'street' | null = null;
+  /** Out through the street doors: where to put you once your floor's street is back. */
+  private outside: { x: number; y: number; z: number; rotY: number } | null = null;
   /** Back through the door to the gym: put you in front of it on the gym's side. */
   private backToGym = false;
   private day = new THREE.Color('#fff4e0');
@@ -159,9 +168,45 @@ export class ThermePlace {
   /** E at the glass door in the gym's basement: through to the baths. */
   go() {
     if (this.host.floor() !== GYM) return;
-    this.arriving = true;
+    this.arriving = 'gym';
     this.host.sound('door');
     this.host.trip(THERME);
+  }
+
+  /** E at the main doors on the street: in, at the box office. */
+  goFromStreet() {
+    const here = this.host.floor();
+    if (!here || here === THERME) return;
+    try {
+      sessionStorage.setItem(FROM_KEY, here);
+    } catch {
+      // fine
+    }
+    this.arriving = 'street';
+    this.host.sound('door');
+    this.host.trip(THERME);
+  }
+
+  /** The floor you came in from off the street (kept over a reload), else the bottom one. */
+  private from(): string | undefined {
+    let id: string | null = null;
+    try {
+      id = sessionStorage.getItem(FROM_KEY);
+    } catch {
+      // private mode: the bottom floor it is
+    }
+    const floors = this.host.floors();
+    return (floors.find((f) => f.id === id) ?? floors[0])?.id;
+  }
+
+  /** E at the entrance hall's doors: back out onto your floor's street, in front of the baths. */
+  leaveToStreet() {
+    const to = this.from();
+    if (!to) return toast('There is no floor to go back to', 'warn');
+    const i = this.host.floors().findIndex((f) => f.id === to);
+    this.outside = { x: THERME_STREET_SPOT.x, y: streetBelow(Math.max(0, i)), z: THERME_STREET_SPOT.z, rotY: THERME_STREET_SPOT.rotY };
+    this.host.sound('door');
+    this.host.trip(to, this.outside);
   }
 
   /** E at the door at the passage's end: back to the gym's basement. */
@@ -226,12 +271,18 @@ export class ThermePlace {
   arrived() {
     if (this.active) {
       // Back after a reload, where you were; coming through the door, just inside it.
-      if (this.arriving || !ThermePlace.inside(this.host.player.pos)) this.host.placeAt(THERME_ARRIVAL);
-      this.arriving = false;
+      if (this.arriving === 'street') this.host.placeAt(LOBBY_ARRIVAL);
+      else if (this.arriving || !ThermePlace.inside(this.host.player.pos)) this.host.placeAt(THERME_ARRIVAL);
+      this.arriving = null;
       this.backToGym = false;
+      this.outside = null;
       return;
     }
-    this.arriving = false;
+    this.arriving = null;
+    if (this.outside) {
+      this.host.placeAt(this.outside);
+      this.outside = null;
+    }
     if (this.backToGym && this.host.floor() === GYM) this.host.placeAt(GYM_FROM_THERME);
     this.backToGym = false;
   }
@@ -244,6 +295,13 @@ export class ThermePlace {
     }
     if (it.kind === 'thermebar') {
       if (key === 'E') this.bar();
+      return true;
+    }
+    if (it.kind === 'thermestreet') {
+      if (key === 'E') {
+        if (this.active) this.leaveToStreet();
+        else this.goFromStreet();
+      }
       return true;
     }
     if (it.kind === 'thermeslide') {
@@ -284,6 +342,7 @@ export class ThermePlace {
       const best = this.rider.boards[s.id]?.[0];
       return { k: `therme-slide|${s.id}|${it.thermeLane ?? 0}`, parts: [title(`${s.emoji} ${s.name}${s.lanes ? ` · Bahn ${(it.thermeLane ?? 0) + 1}` : ''}`), aside(best ? `${s.blurb} · Rekord ${best.name} ${(best.ms / 1000).toFixed(2).replace('.', ',')} s` : s.blurb), key('E', 'Go down')] };
     }
+    if (it.kind === 'thermestreet') return this.active ? { k: 'therme-street-out', parts: [title('🚪 Straße'), key('E', 'Go out')] } : { k: 'therme-street-in', parts: [title(`🌴 ${THERME_NAME}`), aside('Thermalbad · Rutschen · Saunadorf · Lagune'), key('E', 'Go in')] };
     if (it.kind === 'thermelift') return { k: 'therme-lift', parts: [title('🛗 Aufzug'), aside('Rutschenturm · drei Ebenen'), key('E', 'Ride')] };
     if (it.kind === 'thermeboard') return { k: 'therme-board', parts: [title('🏁 Bestzeiten'), aside('jede Rutsche · dein Fahrfoto'), key('E', 'Look')] };
     if (it.kind === 'thermebar') return { k: 'therme-bar', parts: [title('🍹 Schwimmbar'), aside('Cocktails · Bier · Wein · Wasser'), key('E', 'Order')] };
@@ -341,11 +400,13 @@ export class ThermePlace {
     if (t - this.boardAt > 1) {
       this.boardAt = t;
       drawAufgussBoard(this.room.dorf.board, aufgussPlan(now, 4), now);
+      drawInfoBoard(this.room.lobby.board, waveBoard(now), aufgussPlan(now, 3));
     }
     this.rider.update(t);
     const people = this.host.people();
     this.swim.pose(people.filter((q): q is typeof q & { person: Person } => !!q.person));
     this.loungers.pose();
+    this.room.lobby.update(t, dt, people);
     // Kai behind the bar turns to whoever swims up.
     const b = this.room.bartender;
     b.update(dt, t, false, false);

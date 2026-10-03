@@ -5,6 +5,7 @@ import { BEACH, WAVE_POOL, waveFixtures } from './therme-waves.js';
 import { LANDING, LANDING_POOL, TOWER, slideFixtures } from './therme-slides.js';
 import { ISLE, LAGOON, LAGUNE_POOLS, RIVER, laguneFixtures, laguneWater } from './therme-lagune.js';
 import { cutOut } from './gym-basement.js';
+import { lobbyFixtures } from './therme-street.js';
 import { DORF_POOLS, JETTY, KNEIPP, PLUNGE_POOL, POND_POOL, dorfFixtures, dorfWater, inRuhehaus, saunaAt } from './therme-dorf.js';
 import { WELLENBAD } from './therme.js';
 
@@ -24,7 +25,7 @@ export const outsideWater = () => laguneWater();
 
 /** Everything solid in the baths: the house's floor (open over the water), walls and doors, and what stands in each part. */
 export function thermeFixtures(): TFixture[] {
-  return [...houseFixtures(thermeWater()), ...paradiesFixtures(), ...waveFixtures(), ...slideFixtures(), ...dorfFixtures(), ...laguneFixtures(cutOut)];
+  return [...houseFixtures(thermeWater()), ...paradiesFixtures(), ...waveFixtures(), ...slideFixtures(), ...dorfFixtures(), ...laguneFixtures(cutOut), ...lobbyFixtures()];
 }
 
 /** Where someone is in the baths, in words (the people list, the corner's line): in a pool, at the bar, or the zone they're in. */

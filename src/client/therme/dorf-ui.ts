@@ -44,3 +44,35 @@ export function drawAufgussBoard(board: { canvas: HTMLCanvasElement; texture: { 
   });
   board.texture.needsUpdate = true;
 }
+
+/** The entrance hall's info board: when the next waves come, and the next Aufgüsse. */
+export function drawInfoBoard(board: { canvas: HTMLCanvasElement; texture: { needsUpdate: boolean } }, waves: { big: string; small: string }, plan: readonly { sauna: SaunaId; start: number; running: boolean }[]) {
+  const { canvas } = board;
+  const g = canvas.getContext('2d')!;
+  const W = canvas.width;
+  const H = canvas.height;
+  g.fillStyle = '#10303f';
+  g.fillRect(0, 0, W, H);
+  g.strokeStyle = '#3fb6c9';
+  g.lineWidth = 10;
+  g.strokeRect(8, 8, W - 16, H - 16);
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillStyle = '#bff4ff';
+  g.font = `900 40px ${FONT}`;
+  g.fillText('🌊 WELLENBAD', W / 2, 54);
+  g.fillStyle = '#ffffff';
+  g.font = `800 34px ${FONT}`;
+  g.fillText(`${waves.big} · ${waves.small}`, W / 2, 104, W - 40);
+  g.fillStyle = '#ffcf8a';
+  g.font = `900 40px ${FONT}`;
+  g.fillText('🔥 AUFGÜSSE IM SAUNADORF', W / 2, 176);
+  plan.slice(0, 3).forEach((a, i) => {
+    const s = SAUNA_BY_ID.get(a.sauna)!;
+    const time = a.running ? 'jetzt' : new Date(a.start).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    g.fillStyle = a.running ? '#ffffff' : '#f3dcc0';
+    g.font = `700 32px ${FONT}`;
+    g.fillText(`${time} · ${s.emoji} ${s.name}`, W / 2, 236 + i * 62);
+  });
+  board.texture.needsUpdate = true;
+}

@@ -11,6 +11,7 @@ import { buildWavePool } from './waves';
 import { buildSlides, type SlideWorld } from './slides';
 import { buildDorf, type Dorf } from './dorf';
 import { buildLagune } from './lagune';
+import { buildLobby, type Lobby } from './lobby';
 import type { Person } from '../character';
 
 /*
@@ -35,6 +36,8 @@ export interface ThermeInterior {
   slides: SlideWorld;
   /** The Saunadorf: its Saunameister, its board, the steam (world/therme/dorf.ts). */
   dorf: Dorf;
+  /** The entrance hall (world/therme/lobby.ts). */
+  lobby: Lobby;
   /** Every frame inside; `now` is the office's clock (the waves), `me` where you are (what's far off doesn't bubble). */
   update(t: number, dt: number, now: number, me: THREE.Vector3, cold: number): void;
 }
@@ -52,6 +55,7 @@ export function buildThermeInterior(): ThermeInterior {
   const slides = buildSlides(p);
   const dorf = buildDorf(p);
   const lagune = buildLagune(p);
+  const lobby = buildLobby(p);
   group.add(mergeByColor(still));
   // No toon outline round what's marked so (water, glass, pick boxes, signs): it's the material that says (core/outline.ts).
   group.traverse((o) => {
@@ -69,6 +73,7 @@ export function buildThermeInterior(): ThermeInterior {
     bartender: paradies.bartender,
     slides,
     dorf,
+    lobby,
     update: (t, dt, now, me, cold) => {
       paradies.update(t, dt, me);
       grotto.update(t, dt, me);

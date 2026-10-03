@@ -16,6 +16,7 @@ import { STATION } from '../../../shared/coaster'; // fork: DER BRECHER
 import { BOWLING, BOWLING_BOX, BOWLING_DOOR } from '../../../shared/bowling';
 import { VENUE, VENUE_BOX, VENUE_DOOR } from '../../../shared/venue';
 import { THERME } from '../../../shared/therme';
+import { THERME_STREET_BOX, THERME_STREET_DOOR } from '../../../shared/therme-street';
 
 export interface Poi {
   id: string;
@@ -61,6 +62,7 @@ export const PLACES_ON_MAP: readonly Poi[] = [
   { id: GYM, name: 'Gym', icon: '🏋️', x: GYM_STREET_DOOR.x, z: GYM_BOX.minZ, kind: 'place' },
   { id: BOWLING, name: 'Bowling', icon: '🎳', x: BOWLING_DOOR.x, z: BOWLING_BOX.maxZ, kind: 'place' },
   { id: VENUE, name: 'Schallwerk', icon: '🎸', x: VENUE_DOOR.x, z: VENUE_BOX.minZ, kind: 'place' },
+  { id: THERME, name: 'Thermenwelt', icon: '🌴', x: THERME_STREET_DOOR.x - 1, z: THERME_STREET_DOOR.z, kind: 'place' },
   { id: 'tankstelle', name: 'Tankstelle', icon: '⛽', x: tank.x, z: tank.z, kind: 'place' },
   { id: 'kino', name: 'Kino', icon: '🍿', x: kino.x, z: kino.z, kind: 'place' },
   { id: 'baumarkt', name: 'Baumarkt', icon: '🔨', x: BAUMARKT_DOOR.x, z: BAUMARKT_DOOR.z, kind: 'place' },
@@ -92,8 +94,9 @@ export function placeSpot(floor: string | null): { x: number; z: number } | null
     case CASINO:
       return box(CASINO_BOX);
     case GYM:
-    case THERME: // through the gym's basement, until the baths have a house of their own on the street
       return box(GYM_STREET_BOX);
+    case THERME:
+      return box(THERME_STREET_BOX);
     case HALL:
       return box(HALL_BOX);
     case SOCCER:

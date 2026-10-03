@@ -40,6 +40,7 @@ import { tankstelle } from '../tankstelle'; // flrnoh fork: the petrol station
 import { church } from '../church'; // flrnoh fork: the church on its park, whose bells strike the hours
 import { bowlingOut } from '../bowling'; // flrnoh fork: the bowling centre next door
 import { venueOut } from '../venue'; // flrnoh fork: the Schallwerk across the street
+import { thermeOut } from '../therme/exterior'; // flrnoh fork: the thermal baths south of the gym
 
 // The office floor, put together from its fixtures (see fixture.ts): the room and its walls, the desks
 // and everything else in it, the balcony, the loft and the meeting room under it, the back office, and
@@ -57,7 +58,7 @@ function floorPlan() {
     storeyWalls, // fork: upstream's `walls`, a storey at a time
     balcony,
     tee,
-    ...downstairs(cars, street, town, kino, baumarkt, casinoOut, gymOut, hallOut, soccerOut, bowlingOut, venueOut, green, scenic, tankstelle, church), // fork: town, kino, baumarkt, casinoOut … soccerOut, bowlingOut, venueOut, tankstelle, church
+    ...downstairs(cars, street, town, kino, baumarkt, casinoOut, gymOut, hallOut, soccerOut, bowlingOut, venueOut, thermeOut, green, scenic, tankstelle, church), // fork: town, kino, baumarkt, casinoOut … soccerOut, bowlingOut, venueOut, thermeOut, tankstelle, church
     plug,
     tower,
     facade, // fork: murals, fins, the storeys' bands, the signs on the building

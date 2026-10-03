@@ -75,6 +75,7 @@ declare module '../../world/types' {
     thermeslide: true;
     thermelift: true;
     thermeboard: true;
+    thermestreet: true;
   }
 }
 
@@ -284,6 +285,8 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   ctx.interactions.define('thermeslide', { reach: 3, hint: hintIn(therme), use });
   ctx.interactions.define('thermelift', { reach: 3, hint: hintIn(therme), use });
   ctx.interactions.define('thermeboard', { reach: 3.5, hint: hintIn(therme), use });
+  // The baths' main doors: on the street, and inside the entrance hall back out.
+  ctx.interactions.define('thermestreet', { reach: 4, hint: hintIn(therme), use });
   ctx.interactions.define('padel', {
     reach: 5,
     hint: (it) => {

@@ -17,6 +17,7 @@ import { SHOPS, SHOP_KIND_BY_ID } from '../../../shared/shops';
 import { SOCCER_BOX } from '../../../shared/soccer';
 import { BOWLING_BOX, BOWLING_DOOR } from '../../../shared/bowling';
 import { VENUE_BOX, VENUE_DOOR } from '../../../shared/venue';
+import { STREET_DOME, STREET_TOWER, THERME_STREET_DOOR, THERME_STREET_HALL } from '../../../shared/therme-street';
 import { BEER_GARDEN, DOCK, TOUR_BUS } from '../../../shared/venue-house';
 import { CANOPY } from '../../../shared/tankstelle';
 import { OFFICE_RECT } from './pois';
@@ -187,6 +188,11 @@ function draw(g: CanvasRenderingContext2D, px: (x: number) => number, pz: (z: nu
   rect({ minX: BOWLING_DOOR.x - 6, maxX: BOWLING_DOOR.x + 6, minZ: BOWLING_BOX.maxZ - 3, maxZ: BOWLING_BOX.maxZ + 1 }, '#e63946', COLORS.ink, 1);
   // The Schallwerk across the street: the brick hall, its marquee, the beer garden, the tour bus, the dock.
   rect(VENUE_BOX, '#8a3b26', COLORS.ink, 2);
+  // fork: the thermal baths: the hall, its dome, the slide tower, the doors on the side street
+  rect(THERME_STREET_HALL, '#e9dcc4', COLORS.ink, 2);
+  rect({ minX: STREET_DOME.cx - STREET_DOME.rx * 0.8, maxX: STREET_DOME.cx + STREET_DOME.rx * 0.8, minZ: STREET_DOME.cz - STREET_DOME.rz * 0.8, maxZ: STREET_DOME.cz + STREET_DOME.rz * 0.8 }, '#9fd8e6', COLORS.ink, 1);
+  rect({ minX: STREET_TOWER.x - STREET_TOWER.half, maxX: STREET_TOWER.x + STREET_TOWER.half, minZ: STREET_TOWER.z - STREET_TOWER.half, maxZ: STREET_TOWER.z + STREET_TOWER.half }, '#f5c518', COLORS.ink, 1);
+  rect({ minX: THERME_STREET_DOOR.x - 2.5, maxX: THERME_STREET_DOOR.x, minZ: THERME_STREET_DOOR.z - 4, maxZ: THERME_STREET_DOOR.z + 4 }, '#2a9d8f', COLORS.ink, 1);
   rect({ minX: VENUE_DOOR.x - 6.5, maxX: VENUE_DOOR.x + 6.5, minZ: VENUE_BOX.minZ - 2.7, maxZ: VENUE_BOX.minZ }, '#ff2d3d', COLORS.ink, 1);
   rect(BEER_GARDEN, '#b9b09e');
   rect(TOUR_BUS, '#1b1c21', COLORS.ink, 1);

@@ -90,7 +90,7 @@ test('every door is in a wall: a gap in it, with a lintel over it', () => {
     const c = d.at + (d.shift ?? 0);
     const mid = (d.from + d.to) / 2;
     const [x, z] = d.axis === 'x' ? [mid, c] : [c, mid];
-    const solid = fx.filter((f) => !f.id.startsWith('floor') && !f.id.startsWith('shut-') && f.id !== 'gym-door' && inB(f, x, z, -1e-6));
+    const solid = fx.filter((f) => !f.id.startsWith('floor') && !f.id.startsWith('shut-') && f.id !== 'gym-door' && f.id !== 'street-door' && inB(f, x, z, -1e-6));
     assert.ok(solid.length > 0, `${d.id} has a lintel over it`);
     for (const f of solid) assert.ok((f.bottom ?? 0) >= d.height - 1e-6, `${d.id}: ${f.id} stands in the opening`);
   }
@@ -107,6 +107,7 @@ test('from the door you come in by you can walk through the passage into the hal
     ['out of the passage into the hall', (ZONES.gang.minX + ZONES.gang.maxX) / 2, NORTH_BAND_Z + 2],
     ['under the dome', DOME.cx, DOME.cz],
     ['the Thermenparadies by the sauna village', P.minX + 1, (P.minZ + P.maxZ) / 2],
+    ['the box office in the entrance hall', ZONES.lobby.minX + 2.4, 7.5],
     ['the top of the wave pool\'s beach', (WELLENBAD.minX + WELLENBAD.maxX) / 2, WELLENBAD.minZ - 0.8],
     ['the slide world', (R.minX + R.maxX) / 2, (R.minZ + R.maxZ) / 2],
     ['the slide world, by the board', 179.5, 93.5],
@@ -122,15 +123,17 @@ test('from the door you come in by you can walk through the passage into the hal
     assert.ok(reach(x, z), `you can walk up to the ${d.id} door`);
   }
   const shut: [string, number, number][] = [
-    ['the entrance hall', (ZONES.lobby.minX + ZONES.lobby.maxX) / 2, NORTH_BAND_Z / 2],
     ['the plant rooms', 50, NORTH_BAND_Z / 2],
     ['through the door back to the gym', GYM_DOOR.x, THERME_BOX.minZ - 1],
+    ['through the doors out to the street', (ZONES.lobby.minX + ZONES.lobby.maxX) / 2, THERME_BOX.minZ - 1],
   ];
   for (const [what, x, z] of shut) assert.ok(!reach(x, z), `${what} is shut for now`);
 });
 
 test('the door between the gym and the baths: the office lands you by it on either side', () => {
   assert.deepEqual(thermeDoorSpot(THERME, GYM), THERME_ARRIVAL);
+  assert.equal(thermeDoorSpot(THERME, 'some-floor')?.z, 2.2, 'off the street: at the box office');
+  assert.ok(thermeDoorSpot(THERME, 'some-floor')!.x > ZONES.lobby.minX && thermeDoorSpot(THERME, 'some-floor')!.x < ZONES.lobby.maxX);
   assert.deepEqual(thermeDoorSpot(GYM, THERME), GYM_FROM_THERME);
   assert.equal(thermeDoorSpot(GYM, 'some-floor'), null, 'into the gym from the street is its front door');
   assert.equal(thermeDoorSpot('@casino', THERME), null);
