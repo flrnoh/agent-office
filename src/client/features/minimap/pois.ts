@@ -15,6 +15,7 @@ import { SOCCER, SOCCER_BOX } from '../../../shared/soccer';
 import { STATION } from '../../../shared/coaster'; // fork: DER BRECHER
 import { BOWLING, BOWLING_BOX, BOWLING_DOOR } from '../../../shared/bowling';
 import { VENUE, VENUE_BOX, VENUE_DOOR } from '../../../shared/venue';
+import { THERME } from '../../../shared/therme';
 
 export interface Poi {
   id: string;
@@ -91,6 +92,7 @@ export function placeSpot(floor: string | null): { x: number; z: number } | null
     case CASINO:
       return box(CASINO_BOX);
     case GYM:
+    case THERME: // through the gym's basement, until the baths have a house of their own on the street
       return box(GYM_STREET_BOX);
     case HALL:
       return box(HALL_BOX);

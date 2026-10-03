@@ -1,7 +1,8 @@
 /**
  * flrnoh fork (see FORK.md): the places across the street, each a place of its own like the roof:
  * the casino (casino.ts), the gym (gym.ts), the padel hall with its café and courts (hall.ts,
- * hall/padel.ts), the soccer hall (soccer/place.ts), the bowling centre (client/bowling) and the Schallwerk (client/venue). Their doors are on the office's street; inside,
+ * hall/padel.ts), the soccer hall (soccer/place.ts), the bowling centre (client/bowling), the Schallwerk (client/venue) and the thermal baths behind the gym
+ * (client/therme). Their doors are on the office's street (the baths' in the gym's basement); inside,
  * only what's in there is there to use.
  */
 import { setMirrorSelf } from '../../world/venue/mirror'; // fork: the Schallwerk's mirror
@@ -13,6 +14,7 @@ import { HALL } from '../../../shared/hall';
 import { SOCCER } from '../../../shared/soccer';
 import { BOWLING } from '../../../shared/bowling';
 import { VENUE } from '../../../shared/venue';
+import { THERME } from '../../../shared/therme';
 import type { Drink } from '../../../shared/rooftop';
 import type { ServerMsg } from '../../../shared/protocol';
 import type { Ctx, Hint } from '../../core/context';
@@ -30,6 +32,7 @@ import { SoccerPlace } from '../../soccer/place';
 import { soccerLook } from '../../world/soccer/look';
 import { BowlingPlace } from '../../bowling/place';
 import { VenuePlace } from '../../venue/place';
+import { ThermePlace } from '../../therme/place';
 import type { Booze } from '../bar/booze';
 import { toast } from '../../ui/dom';
 import { store } from '../../state';
@@ -66,6 +69,7 @@ declare module '../../world/types' {
     venuemix: true;
     venueseat: true;
     venuepart: true;
+    therme: true;
   }
 }
 
@@ -192,7 +196,10 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
       ctx.net.send({ t: 'emote', emote: id });
     },
   });
-  const all = [casino, gym, hall, soccer, bowling, venue] as const;
+  // The thermal baths behind the gym (client/therme): through the glass door at the end of its basement's passage.
+  const therme = new ThermePlace({ ...host, sound: () => ctx.sound.padelHall('door'), daylight: () => ctx.sky.daylight });
+  // The baths last: going back to the gym, they put you by their door after the gym has had its say.
+  const all = [casino, gym, hall, soccer, bowling, venue, therme] as const;
 
   /** The place you're in, if any. */
   const inside = () => all.find((p) => p.active) ?? null;
@@ -240,6 +247,8 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   ctx.interactions.define('venuemix', { reach: 3.5, hint: hintIn(venue), use });
   ctx.interactions.define('venuepart', { reach: 3.5, hint: hintIn(venue), use });
   ctx.interactions.define('venueseat', { reach: 3, hint: hintIn(venue), use });
+  // The glass door between the gym's basement and the baths, from either side.
+  ctx.interactions.define('therme', { reach: 3.5, hint: hintIn(therme), use });
   ctx.interactions.define('padel', {
     reach: 5,
     hint: (it) => {
@@ -294,7 +303,11 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     /** What the aim can land on in the place you're in; null outside them. */
     pickables: (): THREE.Object3D[] | null => inside()?.pickables ?? null,
     /** In or out of each place, as the floor you're on says (see setPlace in core/travel.ts). */
-    setPlace: () => all.forEach((p) => p.setPlace(store.floor === placeOf(p))),
+    // The ones you left first, then the one you're in: from one place straight to another (the gym and its baths), the one left mustn't hand you the office's walls after the new one gave you its own.
+    setPlace: () => {
+      for (const p of all) if (store.floor !== placeOf(p)) p.setPlace(false);
+      for (const p of all) if (store.floor === placeOf(p)) p.setPlace(true);
+    },
     /** The building changed maps: still in a place (or off to a floor, on a map without one). */
     refresh: () => all.forEach((p) => p.refresh()),
     /** The project corner's name and line, in a place. */
@@ -310,10 +323,11 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     padel,
     bowling,
     venue,
+    therme,
   };
 }
 
 /** The floor id each place is. */
-function placeOf(p: CasinoPlace | GymPlace | HallPlace | SoccerPlace | BowlingPlace | VenuePlace): string {
-  return p instanceof CasinoPlace ? CASINO : p instanceof GymPlace ? GYM : p instanceof HallPlace ? HALL : p instanceof BowlingPlace ? BOWLING : p instanceof VenuePlace ? VENUE : SOCCER;
+function placeOf(p: CasinoPlace | GymPlace | HallPlace | SoccerPlace | BowlingPlace | VenuePlace | ThermePlace): string {
+  return p instanceof ThermePlace ? THERME : p instanceof CasinoPlace ? CASINO : p instanceof GymPlace ? GYM : p instanceof HallPlace ? HALL : p instanceof BowlingPlace ? BOWLING : p instanceof VenuePlace ? VENUE : SOCCER;
 }

@@ -187,7 +187,7 @@ test('from the stair foot you can walk everywhere down there', () => {
   for (const [what, x, z] of spots) assert.ok(reach(x, z), `you can walk to ${what}`);
   // And not into the lap pool's water, nor past the closed door to the baths.
   assert.ok(!reach(20, 69), "the lap pool isn't walked on");
-  assert.ok(!reach((THERME_PASSAGE.minX + THERME_PASSAGE.maxX) / 2, THERME_PASSAGE.maxZ - 0.2), 'the baths are closed');
+  assert.ok(!reach((THERME_PASSAGE.minX + THERME_PASSAGE.maxX) / 2, THERME_PASSAGE.maxZ - 0.2), 'the baths are through the door, not walked into');
   // You can get up off every seat down here.
   for (const s of BASEMENT_SEATING) {
     assert.ok(SEATING_BY_ID.has(s.id), `${s.id} is in SEATING`);

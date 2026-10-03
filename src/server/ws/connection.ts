@@ -12,7 +12,7 @@ import { floorView, roofView, screensOf } from '../office/views.js';
 import { dispatch } from './dispatch.js';
 import { features } from './handlers/index.js';
 import { mapNews } from './handlers/settings.js';
-import { backInPlace, enteredPlace, isPlace, placeView } from '../fork/office.js'; // flrnoh fork
+import { backInPlace, enteredPlace, isPlace, placeSpotFrom, placeView } from '../fork/office.js'; // flrnoh fork
 import { partyGate } from '../party.js';
 import { settleLook } from '../fork/looks.js'; // flrnoh fork
 
@@ -35,7 +35,7 @@ export function onConnection(ctx: Ctx, ws: WebSocket, url: URL, session: Session
   const floor = onRoof || place ? undefined : arrivalFloor(wanted);
   // Back where they were standing on it too; anywhere else, they arrive by elevator.
   const back = !gone && wanted !== null && (onRoof || !!place || floor?.id === wanted);
-  const spot = (back && spotFrom(url.searchParams)) || { ...elevatorSpot(), y: 0, rotY: 0 };
+  const spot = (back && (place ? placeSpotFrom(place, url.searchParams) : spotFrom(url.searchParams))) || { ...elevatorSpot(), y: 0, rotY: 0 }; // placeSpotFrom: flrnoh fork
   const account = session.account;
   // An account's name is its own; on the shared password people pick one.
   const name = account?.name ?? (str(url.searchParams.get('name'), 24).trim() || `Guest ${id.slice(0, 3)}`);

@@ -9,6 +9,7 @@ import { roofDrop, streetBelow } from '../../../shared/layout';
 import { SOCCER } from '../../../shared/soccer';
 import { BOWLING } from '../../../shared/bowling';
 import { VENUE } from '../../../shared/venue';
+import { THERME } from '../../../shared/therme'; // fork: nor from the baths
 import type { Ctx } from '../../core/context';
 import { noOutline } from '../../core/outline';
 import { aside, hintTitle, key } from '../../core/hint';
@@ -38,7 +39,7 @@ export function installBungee(ctx: Ctx, deps: BungeeFeatureDeps): Bungee {
   // top (world/tower.ts), (count - index) storeys over your floor; not from the places across the street.
   const below = (): number | null => {
     const f = store.floor;
-    if (ctx.upTop() || !ctx.inOffice() || f === CASINO || f === GYM || f === HALL || f === SOCCER || f === BOWLING || f === VENUE) return null;
+    if (ctx.upTop() || !ctx.inOffice() || f === CASINO || f === GYM || f === HALL || f === SOCCER || f === BOWLING || f === VENUE || f === THERME) return null;
     const { index, count } = ctx.office.stack.state;
     return count >= 1 ? streetBelow(index) + roofDrop(count) : null;
   };

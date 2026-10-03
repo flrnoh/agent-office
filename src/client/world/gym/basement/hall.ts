@@ -14,7 +14,7 @@ import { fallingWater, laneFloor, laneRope, mosaic, paceClock, ripples, rock, si
  * the gym's south wall. The 25 m lap pool down its middle (four lanes, lane ropes, starting blocks at
  * the west end, backstroke flags, ladders, a pace clock), loungers along the north deck, a lifeguard's
  * chair, palms; at its east end the whirlpool grotto, a cave of rock with a waterfall into a bubbling
- * basin; in its south wall the passage to the thermal baths, closed for now behind a glass door.
+ * basin; in its south wall the passage to the thermal baths, through a glass door (E: client/therme).
  */
 
 const B = BASEMENT_FLOOR;
@@ -208,7 +208,7 @@ export function buildPoolHall(p: GymParts): PoolHall {
   ])
     palm(p, x, z);
 
-  // ---- The thermal baths' passage: tiled, a closed glass door, a coming-soon sign ----
+  // ---- The thermal baths' passage: tiled, the glass door through to the baths (client/therme), open ----
   const T = THERME_PASSAGE;
   const tl = tiles('#d8cbb6', '#b5a68e', 4, 0.06, 103);
   floorPatch(p, { minX: T.minX, maxX: T.maxX, minZ: HALL.maxZ, maxZ: T.door }, tl, 1.0);
@@ -218,13 +218,17 @@ export function buildPoolHall(p: GymParts): PoolHall {
   glass.rotation.y = Math.PI;
   glass.userData.noOutline = true;
   p.group.add(glass);
-  blk(p, 0.06, T.height, 0.08, '#2a2f35', (T.minX + T.maxX) / 2, B + T.height / 2, T.door);
-  picture(p, 3.2, 1.0, glow(sign('THERME', 'bald geöffnet · coming soon', '#3b2412', '#ffcf8a', 512, 160)), (T.minX + T.maxX) / 2, B + 1.6, T.door - 0.03, Math.PI);
-  picture(p, 4.2, 0.9, glow(sign('→ THERME', 'Thermalbad · demnächst', '#3b2412', '#ffcf8a', 768, 160)), (T.minX + T.maxX) / 2, B + T.height + 0.7, HALL.maxZ - 0.01, Math.PI);
-  // A barrier across in front of the door, red and white.
-  for (const x of [T.minX + 0.3, T.maxX - 0.3]) cyl(p, 0.04, 0.05, 0.9, '#2a2f35', x, B + 0.45, T.door - 0.8, 6);
-  const tape = mesh(new THREE.BoxGeometry(T.maxX - T.minX - 0.6, 0.08, 0.02), tex(stripes()), (T.minX + T.maxX) / 2, B + 0.82, T.door - 0.8, false);
-  p.group.add(tape);
+  // The middle stile and the push bars: what the crosshair lands on first, so they're the door too (not merged).
+  const stile = mesh(new THREE.BoxGeometry(0.06, T.height, 0.08), toon('#2a2f35'), (T.minX + T.maxX) / 2, B + T.height / 2, T.door, false);
+  p.group.add(stile);
+  const bars = [-1, 1].map((s) => mesh(new THREE.BoxGeometry(0.04, 0.9, 0.06), toon('#c9ccd0'), (T.minX + T.maxX) / 2 + s * 0.18, B + 1.05, T.door - 0.06, false));
+  p.group.add(...bars);
+  picture(p, 2.2, 0.62, glow(sign('THERME', 'geöffnet · Thermenwelt Flogge', '#3b2412', '#ffcf8a', 512, 144)), (T.minX + T.maxX) / 2, B + 2.35, T.door - 0.03, Math.PI);
+  picture(p, 4.2, 0.9, glow(sign('→ THERME', 'Thermalbad · Rutschen · Saunadorf', '#3b2412', '#ffcf8a', 768, 160)), (T.minX + T.maxX) / 2, B + T.height + 0.7, HALL.maxZ - 0.01, Math.PI);
+  // E at the door goes through (the kind is the baths', features/places).
+  const thermeIt: Interactable = { kind: 'therme', x: (T.minX + T.maxX) / 2, z: T.door - 0.4, y: B, radius: 3 };
+  p.interactables.push(thermeIt);
+  for (const m of [glass, stile, ...bars]) m.userData.interact = thermeIt;
 
   // ---- The whirlpool grotto: rock walls and roof, the basin, the waterfall ----
   const G = GROTTO;
@@ -322,21 +326,4 @@ export function buildPoolHall(p: GymParts): PoolHall {
       bubbles.update(dt);
     },
   };
-}
-
-/** Red and white barrier tape. */
-function stripes(): THREE.CanvasTexture {
-  const t = sign('', '', '#ffffff', '#ffffff', 128, 16);
-  const g = (t.image as HTMLCanvasElement).getContext('2d')!;
-  g.fillStyle = '#e53935';
-  for (let x = -16; x < 128; x += 32) {
-    g.beginPath();
-    g.moveTo(x, 16);
-    g.lineTo(x + 16, 0);
-    g.lineTo(x + 32, 0);
-    g.lineTo(x + 16, 16);
-    g.fill();
-  }
-  t.needsUpdate = true;
-  return wrap(t, 6, 1);
 }
