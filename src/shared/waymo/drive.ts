@@ -24,8 +24,11 @@ const LOOK = 30;
 /** The step it's worked out in, and how often where it is gets kept (s). */
 const STEP = 0.05;
 export const SAMPLE = 0.25;
-/** Longer than this (s) and it isn't a drive. */
+/** Longer than this (s) and it isn't a drive; held up by something that doesn't move on for this long, neither. */
 const LONGEST = 900;
+const STUCK = 200;
+/** How far short of a stop line it stops at red (m). */
+const KEEP_BACK = 2.5;
 
 /** Something on the road: where its middle is, which way it faces (unit vector), how long and wide it is. */
 export interface Body {
@@ -35,6 +38,8 @@ export interface Body {
   fz: number;
   l: number;
   w: number;
+  /** Something that'll be given a new way round this one if they'd meet (another robotaxi): kept out of the way of, but no crash. */
+  soft?: boolean;
 }
 
 /** A drive worked out: where along its path it is every SAMPLE s from `t0`, its last one where it stops. */
@@ -94,17 +99,19 @@ export function bodyAt(path: Path, s: number): Body {
  * stops at the end, or where and when something ran into it (`others(t)`: what else is on the road
  * then). `hold`: it waits at the start till then (pulling away from a stop).
  */
-export function drivePath(path: Path, t0: number, others: (t: number) => readonly Body[], v0 = 0, hold = t0): { drive: Drive } | { crash: { t: number; x: number; z: number } } {
+export function drivePath(path: Path, t0: number, others: (t: number) => readonly Body[], v0 = 0, hold = t0): { drive: Drive } | { crash: { t: number; x: number; z: number; stuck?: boolean } } {
   let s = 0;
   let v = v0;
   const out: number[] = [0];
+  /** How long it's stood held up by something in its way: past STUCK, it's no drive (it'd wait for ever). */
+  let stuck = 0;
   const steps = Math.round(SAMPLE / STEP);
   for (let i = 1; i * STEP < LONGEST; i++) {
     const t = t0 + i * STEP;
     let limit = t < hold ? 0 : path.length - s;
     for (const g of path.gates) {
-      // From its nose (s is its middle).
-      const ahead = g.s - (s + CAR_L / 2);
+      // From its nose (s is its middle), a little back from the line: a bus turning there swings its tail wide.
+      const ahead = g.s - KEEP_BACK - (s + CAR_L / 2);
       if (ahead < -0.01 || ahead > 60) continue;
       const turning = g.axis !== g.exit;
       if (!mayPass(g.l, g.axis, t, ahead, v, BRAKE * 2, turning ? g.exit : undefined)) limit = Math.min(limit, ahead);
@@ -120,11 +127,17 @@ export function drivePath(path: Path, t0: number, others: (t: number) => readonl
         for (let d = 0.5; d <= look; d += 1) {
           const mine = corners(bodyAt(path, Math.min(path.length, s + d)), SPARE);
           if (theirs.some((q) => overlaps(mine, q))) {
+            if (d - GAP <= 0 && v < 0.05) stuck += STEP;
+            else stuck = 0;
             limit = Math.min(limit, d - GAP);
             break;
           }
         }
       }
+    }
+    if (stuck > STUCK) {
+      const p = pathPoint(path, s);
+      return { crash: { t, x: p.x, z: p.z, stuck: true } };
     }
     let want = Math.min(CRUISE, Math.sqrt(2 * BRAKE * Math.max(0, limit)));
     for (const [a, b] of path.corners) {
@@ -136,7 +149,7 @@ export function drivePath(path: Path, t0: number, others: (t: number) => readonl
     // Run into?
     const me = corners(bodyAt(path, s));
     for (const o of now) {
-      if (Math.abs(o.x - me[0]) > 12 || Math.abs(o.z - me[1]) > 12) continue;
+      if (o.soft || Math.abs(o.x - me[0]) > 12 || Math.abs(o.z - me[1]) > 12) continue;
       if (overlaps(me, corners(o))) {
         const p = pathPoint(path, s);
         return { crash: { t, x: p.x, z: p.z } };

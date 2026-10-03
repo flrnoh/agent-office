@@ -179,3 +179,61 @@ test('names, initials and destinations', () => {
   assert.deepEqual(destOf({ name: 'Kino', x: 1, z: 2 }), { name: 'Kino', x: 1, z: 2 });
   for (const bad of [null, {}, { name: 1, x: 0, z: 0 }, { name: 'a', x: NaN, z: 0 }, { name: 'a', x: 5000, z: 0 }]) assert.equal(destOf(bad), null);
 });
+
+test('set off: from the curb by the office to anywhere in town, it gets going (round other robotaxis waiting, a bus at a light)', () => {
+  const t = { now: T0 + 20_000 };
+  const { fleet, warned } = fleetAt(t);
+  run(t, fleet, t.now + 10);
+  const places: [string, number, number][] = [
+    ['Kino', -56, -57],
+    ['Kirche', -45, -111],
+    ['Baumarkt', 57, -111],
+    ['Tankstelle', -112, -1],
+    ['Thermenwelt', 60, 90],
+    ['Strand', -239, 236],
+    ['Golf', -5, 58],
+  ];
+  places.forEach(([name, x, z], i) => {
+    const who = { id: `r${i}`, name: 'Rita Ride', color: '#123456' };
+    fleet.message(who, { t: 'waymo.book', x: 0, z: 22, dest: { name, x, z } });
+    const car = fleet.cars.find((c) => c.booker === who.id);
+    assert.ok(car, `no car for ${name}: ${warned.at(-1)}`);
+    run(t, fleet, waymoEta(car) + 2);
+    assert.equal(car.mode, 'waiting', `${name}: not waiting`);
+    fleet.message(who, { t: 'waymo.enter', car: car.id });
+    fleet.message(who, { t: 'waymo.go' });
+    // If not this second, it tries again by itself.
+    for (let k = 0; k < 30 && car.mode !== 'riding'; k++) run(t, fleet, t.now + 1);
+    assert.equal(car.mode, 'riding', `${name}: never set off (${JSON.stringify(fleet.lastCrash)})`);
+    fleet.gone(who.id);
+  });
+});
+
+test('ten minutes of bookings round town: every ride gets going, and nobody runs into anybody', () => {
+  const t = { now: T0 + 333_333 };
+  const { fleet } = fleetAt(t);
+  let started = 0;
+  const pat = (id: string) => ({ id, name: 'Pat Q', color: '#00ff00' });
+  for (let k = 0; k < 600; k++) {
+    run(t, fleet, t.now + 1);
+    if (k % 97 === 5) fleet.message(pat(`p${k}`), { t: 'waymo.book', x: ((k * 37) % 300) - 150, z: ((k * 53) % 300) - 150, dest: { name: 'X', x: ((k * 71) % 300) - 150, z: ((k * 29) % 300) - 150 } });
+    for (const c of fleet.cars) {
+      if (c.mode === 'waiting' && c.booker && !c.riders.includes(c.booker)) {
+        fleet.message(pat(c.booker), { t: 'waymo.enter', car: c.id });
+        fleet.message(pat(c.booker), { t: 'waymo.go' });
+      }
+      if (c.mode === 'riding' && c.riders.some(Boolean)) started++;
+      if (c.mode === 'arrived') for (const r of c.riders) if (r) fleet.message(pat(r), { t: 'waymo.leave' });
+    }
+    for (let u = 0; u < 1; u += 0.25) {
+      const all = bodies(fleet.cars, t.now + u);
+      for (let i = BUS_RUNS.length; i < all.length; i++) {
+        for (let j = 0; j < i; j++) {
+          if (Math.hypot(all[j].b.x - all[i].b.x, all[j].b.z - all[i].b.z) > 12) continue;
+          assert.ok(!overlaps(corners(all[i].b), corners(all[j].b)), `${all[i].what} runs into ${all[j].what} at ${k}`);
+        }
+      }
+    }
+  }
+  assert.ok(started > 100, `rides hardly went (${started})`);
+});
