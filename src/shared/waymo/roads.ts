@@ -84,11 +84,12 @@ export const KERB_SPOTS: readonly Place[] = LANES.filter((l) => !BUS_LANES.has(l
   return out;
 });
 
-/** The spot nearest (x, z) to stand and wait at, curb side toward it. */
-export function kerbNear(x: number, z: number): Place {
+/** The spot nearest (x, z) to stand and wait at, curb side toward it (not on the lanes in `taken`, where another waits). */
+export function kerbNear(x: number, z: number, taken: ReadonlySet<string> = new Set()): Place {
   let best = KERB_SPOTS[0];
   let bd = Infinity;
   for (const p of KERB_SPOTS) {
+    if (taken.has(laneKey(p))) continue;
     // The curb it stands at, which you walk up to.
     const at = placeAt(p, 2);
     const d = Math.hypot(at.x - x, at.z - z);
@@ -104,18 +105,18 @@ export function kerbNear(x: number, z: number): Place {
 
 /** How much longer (m) a turn feels than going straight on, left (across the traffic) and right. */
 const TURN_COST = { left: 25, right: 12 };
-/** How much longer a lane the buses drive feels: used only when there's no good way round. */
-const BUS_COST = 2.5;
+/** How much longer a lane the buses drive feels: used only when there's no way round (a bus would roll up behind it at a red light). */
+const BUS_COST = 12;
 
 /**
  * The crossings a robotaxi drives through from `from` to `to`, in order (the one its lane runs to
- * first, … , `to`'s own), or null if there's no way. `avoid`: lanes it mayn't take (someone's in the
- * way there). Never round on the spot.
+ * first, … , `to`'s own), or null if there's no way. `avoid`: lanes it'd rather not take (someone
+ * waits there), as much longer as `avoidCost` m (the default: never). Never round on the spot.
  */
-export function route(from: Place, to: Place, avoid: ReadonlySet<string> = new Set()): [number, number][] | null {
+export function route(from: Place, to: Place, avoid: ReadonlySet<string> = new Set(), avoidCost = 1e6): [number, number][] | null {
   // On the same lane, further along: straight there.
   if (from.a === to.a && from.b === to.b && from.d === to.d && to.along > from.along + 4) return [];
-  const cost = (l: Lane) => PERIOD * (BUS_LANES.has(laneKey(l)) ? BUS_COST : 1) + (avoid.has(laneKey(l)) ? 1e6 : 0);
+  const cost = (l: Lane) => PERIOD * (BUS_LANES.has(laneKey(l)) ? BUS_COST : 1) + (avoid.has(laneKey(l)) ? avoidCost : 0);
   // Dijkstra over lanes: the cost to the end of each (its next crossing).
   const dist = new Map<string, number>();
   const prev = new Map<string, string | null>();
@@ -143,7 +144,7 @@ export function route(from: Place, to: Place, avoid: ReadonlySet<string> = new S
       const turn = d === l.d ? 0 : (l.d + 1) % 4 === d ? TURN_COST.right : TURN_COST.left;
       const out: Lane = { a: n.a, b: n.b, d };
       if (out.a === to.a && out.b === to.b && out.d === to.d) {
-        const total = c + turn + to.along + (avoid.has(laneKey(out)) ? 1e6 : 0);
+        const total = c + turn + to.along + (avoid.has(laneKey(out)) ? avoidCost : 0);
         if (total < best) {
           best = total;
           goal = k;
