@@ -39,6 +39,7 @@ const GUEST = [
   'bus.ride', // fork: riding a city bus
   ...WAYMO_CLIENT_MSGS, // fork: the robotaxis
   'phone.hold', // fork: your phone out
+  'bag.look', 'bag.stow', 'bag.take', 'bag.drop', 'bag.pick', 'bag.give', // fork: the rucksack, and things put down
   'tank.fill', 'tank.wash', // fork: the petrol station and its car wash
   'coaster.board', 'coaster.leave', 'coaster.hands', // fork: DER BRECHER, the roller coaster round the tower
   'karaoke.hello', 'karaoke.queue', 'karaoke.unqueue', 'karaoke.mic', 'karaoke.stop', 'karaoke.done', 'karaoke.rate', 'karaoke.cheer', // fork: the bowling centre's karaoke bar

@@ -78,6 +78,7 @@ import { installRide } from './features/ride'; // flrnoh fork: bikes, pets, laun
 import { installCityBus } from './features/citybus'; // flrnoh fork: the city bus
 import { installMinimap } from './features/minimap'; // flrnoh fork: the minimap and the big map
 import { installPhone } from './features/phone'; // flrnoh fork: your phone
+import { installBag } from './features/bag'; // flrnoh fork: the rucksack, and things put down
 import { installWaymo } from './features/waymo'; // flrnoh fork: the robotaxis
 import { installKaraoke } from './features/karaoke'; // flrnoh fork: the bowling centre's karaoke bar
 import { installMinigolf } from './features/minigolf'; // flrnoh fork: the bowling centre's black-light mini golf
@@ -248,6 +249,8 @@ parts.coaster = installCoaster(ctx, { roof: parts.rooftop.roof, roofFloors: part
 (window as any).__bowlinggame = installBowlingGame(ctx, { personOf }); // fork: the bowling centre's lanes and league
 (window as any).__venueshow = installVenueShow(ctx, { personOf }); // fork: the Schallwerk's show (crowd, DJ booth, gigs)
 (window as any).__proberaum = installProberaum(ctx, { booze: () => parts.bar.booze, reach }); // fork: the Schallwerk's rehearsal wing
+parts.bag = installBag(ctx, { booze: () => parts.bar.booze, reach }); // fork: the rucksack (U, Q), and things put down
+(window as any).__bag = parts.bag;
 (window as any).__voicerange = installVoiceRange(ctx, { bodies: () => parts.peers.remotes }); // fork: Hörkreise, how far each voice carries
 (window as any).__instruments = installInstruments(ctx, { personOf }); // fork: the Schallwerk's instruments
 (window as any).__dance = installDance(ctx, { frame: parts.rooftop.frame, remotes: () => parts.peers.remotes }); // fork: dancing on the roof, on the beat

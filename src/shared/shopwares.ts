@@ -104,6 +104,8 @@ export interface ShopItem extends Drink {
   /** What the shopkeeper says as it's handed over. */
   says: string;
   treat: ShopTreat;
+  /** Fork: a thing to keep (not eaten or drunk): it doesn't run out, and goes in your rucksack or down somewhere (shared/bag.ts). */
+  keep?: boolean;
 }
 
 const food = (id: ShopItemId, section: string, name: string, emoji: string, blurb: string, glass: ShopGlass, color: string, label: string, says: string, more: Partial<ShopItem> = {}): ShopItem => ({
@@ -113,7 +115,7 @@ const drink = (id: ShopItemId, section: string, name: string, emoji: string, blu
   id, section, name, emoji, blurb, glass, color, label: '#ffffff', says, strength, seconds: 45, bite: false, caffeine: 0, treat: null,
 });
 const thing = (id: ShopItemId, section: string, name: string, emoji: string, blurb: string, glass: ShopGlass, color: string, label: string, says: string, treat: ShopTreat, seconds = 240): ShopItem => ({
-  id, section, name, emoji, blurb, glass, color, label, says, strength: 0, seconds, bite: false, caffeine: 0, treat,
+  id, section, name, emoji, blurb, glass, color, label, says, strength: 0, seconds, bite: false, caffeine: 0, treat, keep: true,
 });
 
 export const SHOP_ITEMS: readonly ShopItem[] = [

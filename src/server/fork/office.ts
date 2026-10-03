@@ -48,6 +48,7 @@ import { THERME_ENTRY, backInTherme, thermeDoorSpot, thermeView } from '../therm
 import { Therme } from '../therme/index.js';
 import { AUFGUSS_BONUS, type SaunaId } from '../../shared/therme-dorf.js';
 import { Fleet } from './waymo.js'; // the robotaxis
+import { Bags } from './bag.js'; // the rucksack
 
 /** Made last, once upstream's stages are all there (see server.ts). */
 export interface Fork {
@@ -77,6 +78,7 @@ export interface Fork {
   minigolf: Minigolf; // the bowling centre's black-light mini golf (bowling/minigolf.ts)
   venue: VenueHouse; // the Schallwerk's house: concert or club, the light desk, the effects, stamps, shirts, coats (venue/place.ts)
   therme: Therme; // the thermal baths: the slides' rides and boards (therme/index.ts)
+  bags: Bags; // everyone's rucksack, and what's been put down where (fork/bag.ts)
   /** To everyone up on the roof (or everyone but `except`). */
   toRoof(m: ServerMsg, except?: string, droppable?: boolean): void;
   /** To everyone in the padel hall. */
@@ -120,6 +122,7 @@ export function createFork(ctx: Ctx): Fork {
     turn: new Turn(readTurnKey(cfg.dataDir), cfg.iceServers),
     carKeys: new CarKeys(cfg.dataDir),
     looks: new AccountLooks(cfg.dataDir),
+    bags: new Bags(cfg.dataDir),
     interiors: new Interiors(cfg.dataDir),
     rigs,
     marinas: new Marinas(),

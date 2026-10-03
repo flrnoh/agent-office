@@ -54,9 +54,9 @@ export function installPointer(ctx: Ctx, core: CoreState, parts: PointerParts) {
   /** What you can use where you are, and what's in the way of looking at it. */
   function usable(): (readonly Interactable[])[] {
     const place = parts.places.usable(); // fork: inside a place across the street, only what's in there
-    if (place) return [place];
+    if (place) return [place, ...ctx.usables.anywhere().lists]; // fork: and things put down (features/bag)
     const roof = parts.rooftop.roof();
-    if (core.upTop && roof) return [roof.interactables];
+    if (core.upTop && roof) return [roof.interactables, ...ctx.usables.anywhere().lists]; // fork: features/bag
     return inOffice() ? [office.interactables, ...ctx.usables.lists()] : [ctx.world().interactables, parts.worlds.court()?.interactables ?? []];
   }
 
@@ -86,13 +86,21 @@ export function installPointer(ctx: Ctx, core: CoreState, parts: PointerParts) {
   const CROSSHAIR = new THREE.Vector2(0, 0);
   const eye = new THREE.Vector3();
 
+  /** Fork: what the aim can land on: a place's own things (and things put down there, features/bag), the roof's, the office's. */
+  function aimables(roof: ReturnType<typeof parts.rooftop.roof>): THREE.Object3D[] {
+    const place = parts.places.pickables();
+    if (place) return [...place, ...ctx.usables.anywhere().pickables];
+    if (core.upTop && roof) return [...roof.pickables, ...ctx.usables.anywhere().pickables];
+    return inOffice() ? [office.group, ...ctx.usables.pickables()] : ctx.world().pickables;
+  }
+
   /** What the ray through `ndc` lands on first, whether it is within reach (plus `slack` meters), and where it hit. */
   function aimedAt(ndc: THREE.Vector2, slack = 0): { it: Interactable; near: boolean; hit: THREE.Intersection } | null {
     raycaster.setFromCamera(ndc, camera);
     eye.set(player.pos.x, player.pos.y + EYE_HEIGHT, player.pos.z);
     // (Workers standing in line in the castle carry their spot's interactable: see Court.)
     const roof = parts.rooftop.roof();
-    for (const hit of raycaster.intersectObjects(parts.places.pickables() ?? (core.upTop && roof ? roof.pickables : inOffice() ? [office.group, ...ctx.usables.pickables()] : ctx.world().pickables), true)) { // places: flrnoh fork
+    for (const hit of raycaster.intersectObjects(aimables(roof), true)) { // fork: aimables
       let it: Interactable | undefined;
       let shown = true;
       for (let o: THREE.Object3D | null = hit.object; o; o = o.parent) {
