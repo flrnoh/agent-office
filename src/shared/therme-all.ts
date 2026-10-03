@@ -3,6 +3,7 @@ import { thermeFixtures as houseFixtures, thermeWhereabouts as zoneWords, type T
 import { BAR_COUNTER, GROTTO, ISLAND, PARADIES_POOLS, THERMAL_POOL, paradiesFixtures, paradiesWater } from './therme-paradies.js';
 import { BEACH, WAVE_POOL, waveFixtures } from './therme-waves.js';
 import { LANDING, LANDING_POOL, TOWER, slideFixtures } from './therme-slides.js';
+import { DORF_POOLS, JETTY, KNEIPP, PLUNGE_POOL, POND_POOL, dorfFixtures, dorfWater, inRuhehaus, saunaAt } from './therme-dorf.js';
 import { WELLENBAD } from './therme.js';
 
 /*
@@ -12,14 +13,14 @@ import { WELLENBAD } from './therme.js';
  */
 
 /** Every wet rectangle in the baths: where the floor is open. */
-export const thermeWater = () => [...paradiesWater(), WELLENBAD, LANDING];
+export const thermeWater = () => [...paradiesWater(), WELLENBAD, LANDING, ...dorfWater()];
 
 /** Every pool in the baths. */
-export const THERME_POOLS: readonly PoolDef[] = [...PARADIES_POOLS, WAVE_POOL, LANDING_POOL];
+export const THERME_POOLS: readonly PoolDef[] = [...PARADIES_POOLS, WAVE_POOL, LANDING_POOL, ...DORF_POOLS];
 
 /** Everything solid in the baths: the house's floor (open over the water), walls and doors, and what stands in each part. */
 export function thermeFixtures(): TFixture[] {
-  return [...houseFixtures(thermeWater()), ...paradiesFixtures(), ...waveFixtures(), ...slideFixtures()];
+  return [...houseFixtures(thermeWater()), ...paradiesFixtures(), ...waveFixtures(), ...slideFixtures(), ...dorfFixtures()];
 }
 
 /** Where someone is in the baths, in words (the people list, the corner's line): in a pool, at the bar, or the zone they're in. */
@@ -31,7 +32,14 @@ export function thermeWhereabouts(x: number, y: number, z: number): string {
     if (swimming.id === 'therme-grotto') return '💎 in der Tropfsteingrotte';
     if (swimming.id === WAVE_POOL.id) return '🌊 im Wellenbad';
     if (swimming.id === LANDING_POOL.id) return '🛝 im Landebecken';
+    if (swimming.id === POND_POOL.id) return '🧊 im Kaltwasserteich';
+    if (swimming.id === PLUNGE_POOL.id) return '🧊 im Tauchbecken';
   }
+  const sauna = saunaAt(x, y, z);
+  if (sauna) return `${sauna.emoji} ${sauna.inName}`;
+  if (inRuhehaus(x, z)) return '🛋️ im Ruhehaus';
+  if (x > JETTY.minX && x < JETTY.maxX && z > JETTY.minZ && z < JETTY.maxZ) return '🪵 auf dem Steg';
+  if (x > KNEIPP.minX && x < KNEIPP.maxX && z > KNEIPP.minZ && z < KNEIPP.maxZ) return '🦶 im Kneippbecken';
   if (x > TOWER.minX && x < TOWER.maxX && z > TOWER.minZ && z < TOWER.maxZ && y > 5) return '🗼 oben auf dem Rutschenturm';
   if (x > BEACH.minX && x < BEACH.maxX && z > BEACH.minZ && z < BEACH.maxZ) return '🏖️ am Wellenstrand';
   if (x > GROTTO.minX && x < GROTTO.maxX && z > GROTTO.minZ && z < GROTTO.maxZ) return '💎 in der Tropfsteingrotte';

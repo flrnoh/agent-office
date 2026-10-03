@@ -109,7 +109,8 @@ test('from the door you come in by you can walk through the passage into the hal
     ['the Thermenparadies by the sauna village', P.minX + 1, (P.minZ + P.maxZ) / 2],
     ['the top of the wave pool\'s beach', (WELLENBAD.minX + WELLENBAD.maxX) / 2, WELLENBAD.minZ - 0.8],
     ['the slide world', (R.minX + R.maxX) / 2, (R.minZ + R.maxZ) / 2],
-    ['the slide world, far corner', R.maxX - 1, R.maxZ - 1],
+    ['the slide world, by the board', 179.5, 93.5],
+    ['through the door into the Saunadorf', ZONES.dorf.maxX - 1.5, 74],
   ];
   for (const [what, x, z] of spots) assert.ok(reach(x, z), `you can walk to ${what}`);
   // In front of each shut door, from the hall's side.
@@ -120,7 +121,6 @@ test('from the door you come in by you can walk through the passage into the hal
     assert.ok(reach(x, z), `you can walk up to the ${d.id} door`);
   }
   const shut: [string, number, number][] = [
-    ['the sauna village', (ZONES.dorf.minX + ZONES.dorf.maxX) / 2, (ZONES.dorf.minZ + ZONES.dorf.maxZ) / 2],
     ['the entrance hall', (ZONES.lobby.minX + ZONES.lobby.maxX) / 2, NORTH_BAND_Z / 2],
     ['the lagoon', (ZONES.lagune.minX + ZONES.lagune.maxX) / 2, (ZONES.lagune.minZ + ZONES.lagune.maxZ) / 2],
     ['the plant rooms', 50, NORTH_BAND_Z / 2],

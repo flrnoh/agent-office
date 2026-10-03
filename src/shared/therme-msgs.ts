@@ -1,4 +1,5 @@
 import type { SlideBoards, SlideId } from './therme-slides.js';
+import type { SaunaId } from './therme-dorf.js';
 
 /*
  * The thermal baths' messages (flrnoh fork, see FORK.md "The thermal baths"): what a page tells the
@@ -14,4 +15,6 @@ export type ThermeServerMsg =
   /** Every slide's best rides (to everyone in the baths, on arriving and whenever one changes). */
   | { t: 'therme.slides'; boards: SlideBoards }
   /** Your ride, as the office clocked it: its time, where it went on the board (0: not on it), your best. */
-  | { t: 'therme.ride'; slide: SlideId; ms: number; rank: number; best: number; lane?: number };
+  | { t: 'therme.ride'; slide: SlideId; ms: number; rank: number; best: number; lane?: number }
+  /** You were in for an Aufguss: what it gave you back (the gym's energy and fitness points). */
+  | { t: 'therme.aufguss'; sauna: SaunaId; stamina: number; xp: number };

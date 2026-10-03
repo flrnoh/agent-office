@@ -1,5 +1,6 @@
 import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { AUFGUSS_LATE, aufgussAt, saunaAt } from '../../shared/therme-dorf.js';
 import { BOARD_SIZE, MAX_RIDE_MS, SLIDES, SLIDE_BY_ID, minRideMs, type SlideBoards, type SlideId, type SlideRow } from '../../shared/therme-slides.js';
 
 /*
@@ -76,6 +77,26 @@ export class Therme {
     const best = list.find((b) => b.owner === owner)!.ms;
     const at = list.findIndex((b) => b.owner === owner);
     return { ms, rank: at < BOARD_SIZE && best === ms ? at + 1 : 0, best, changed };
+  }
+
+  /** Who's had the Aufguss running now (by owner), so nobody gets its bonus twice. */
+  private aufgussFor = { slot: -1, had: new Set<string>() };
+
+  /**
+   * The Aufguss plan, looked at every few seconds (fork/office.ts): whoever's inside the sauna that
+   * has one, while it's young enough to count, gets its bonus once. What's returned is who to give it to.
+   */
+  aufguss(now: number, people: readonly { id: string; owner: string; x: number; y: number; z: number }[]): { id: string; owner: string; sauna: string }[] {
+    const a = aufgussAt(now);
+    if (a.slot !== this.aufgussFor.slot) this.aufgussFor = { slot: a.slot, had: new Set() };
+    if (!a.running || now - a.start > AUFGUSS_LATE) return [];
+    const out: { id: string; owner: string; sauna: string }[] = [];
+    for (const p of people) {
+      if (saunaAt(p.x, p.y, p.z)?.id !== a.sauna || this.aufgussFor.had.has(p.owner)) continue;
+      this.aufgussFor.had.add(p.owner);
+      out.push({ id: p.id, owner: p.owner, sauna: a.sauna });
+    }
+    return out;
   }
 
   /** Off the slide halfway (left the baths, or the page went). */

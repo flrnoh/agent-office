@@ -124,7 +124,7 @@ export const DOORS: readonly TDoor[] = [
   { id: 'gym', axis: 'x', at: THERME_BOX.minZ, from: GYM_DOOR.x - GYM_DOOR.width / 2, to: GYM_DOOR.x + GYM_DOOR.width / 2, height: GYM_DOOR.height, shift: -TWALL / 2 },
   { id: 'gang', axis: 'x', at: NORTH_BAND_Z, from: ZONES.gang.minX, to: ZONES.gang.maxX, height: GANG_CEILING },
   { id: 'lobby', axis: 'x', at: NORTH_BAND_Z, from: 113, to: 135, height: 4, shut: 'Haupteingang · Kasse · demnächst' },
-  { id: 'dorf', axis: 'z', at: ZONES.dorf.maxX, from: 70, to: 78, height: 3.2, shut: 'Saunadorf · demnächst' },
+  { id: 'dorf', axis: 'z', at: ZONES.dorf.maxX, from: 70, to: 78, height: 3.2 },
   { id: 'lagune', axis: 'x', at: THERME_BOX.maxZ, from: 88, to: 107, height: 4.5, shut: 'Außenlagune · demnächst', shift: TWALL / 2 },
 ];
 

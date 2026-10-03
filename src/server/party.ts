@@ -67,7 +67,7 @@ const PARTY_SEES = [
   'jukebox', 'cabinet', 'cabinet.frame', 'rig', 'rig.frame', 'tv', 'tables', 'table.sync', 'table.input', 'sky', 'theme', 'map', 'sit.refused', 'me', 'pong',
   'casino.wallet', 'casino.table', 'casino.result', // fork: the casino is open to party guests
   'gym.profile', 'gym.station', 'gym.result', // fork: the gym is open to party guests
-  'therme.slides', 'therme.ride', // fork: the thermal baths' slides
+  'therme.slides', 'therme.ride', 'therme.aufguss', // fork: the thermal baths' slides and Aufgüsse
   'padel', 'padel.sync', 'padel.input', // fork: padel in the hall
   'bungee', // fork: bungee off the roof
   'soccer', 'soccer.ball', 'soccer.slide', // fork: the soccer hall (and its slide tackles)

@@ -46,6 +46,7 @@ import { showOf, startVenueShow, stopVenueShow } from '../ws/handlers/venueshow.
 import { gigStarted } from '../ws/handlers/venue.js'; // a gig starting switches the Schallwerk to its kind
 import { THERME_ENTRY, backInTherme, thermeDoorSpot, thermeView } from '../therme/place.js'; // the thermal baths behind the gym
 import { Therme } from '../therme/index.js';
+import { AUFGUSS_BONUS, type SaunaId } from '../../shared/therme-dorf.js';
 
 /** Made last, once upstream's stages are all there (see server.ts). */
 export interface Fork {
@@ -263,8 +264,26 @@ export function placeSpotFrom(place: (typeof PLACES)[number] | undefined, q: URL
 /** The roof's own things on top of an empty floor view. */
 export const roofExtras = (ctx: Ctx): Partial<FloorView> => ({ dj: ctx.djBooth.state(), tables: ctx.roofTables.state() });
 
+/** The thermal baths' Aufguss plan: every few seconds, whoever's in the sauna with one gets its energy back (the gym's fitness). */
+let aufgussTimer: ReturnType<typeof setInterval> | null = null;
+function thermeAufguss(ctx: Ctx) {
+  const inside = [...ctx.clients.values()].filter((c) => c.peer.floor === THERME);
+  if (!inside.length) return;
+  const got = ctx.therme.aufguss(Date.now(), inside.map((c) => ({ id: c.id, owner: owner(c), x: c.peer.x, y: c.peer.y, z: c.peer.z })));
+  for (const g of got) {
+    const c = ctx.clients.get(g.id);
+    if (!c) continue;
+    ctx.gym.fitness.ensure(g.owner, c.peer.name);
+    ctx.gym.fitness.addStamina(g.owner, AUFGUSS_BONUS.stamina);
+    ctx.gym.fitness.addXp(g.owner, AUFGUSS_BONUS.xp);
+    ctx.sendTo(c, { t: 'therme.aufguss', sauna: g.sauna as SaunaId, stamina: AUFGUSS_BONUS.stamina, xp: AUFGUSS_BONUS.xp });
+  }
+}
+
 export function startFork(ctx: Ctx) {
   ctx.turn.start();
+  aufgussTimer = setInterval(() => thermeAufguss(ctx), 3000); // the baths' Aufgüsse
+  aufgussTimer.unref?.();
   ctx.minigolf.start();
   startVenueShow(ctx); // the Schallwerk's gig calendar: a gig starting
   showOf(ctx).onGigStart = (gig) => gigStarted(ctx, gig); // … turns the house into a concert or a club
@@ -273,6 +292,8 @@ export function startFork(ctx: Ctx) {
 }
 
 export function stopFork(ctx: Ctx) {
+  if (aufgussTimer) clearInterval(aufgussTimer);
+  aufgussTimer = null;
   ctx.coaster.stop();
   ctx.casino.stop();
   ctx.soccer.stop();

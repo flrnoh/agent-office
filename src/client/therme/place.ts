@@ -12,6 +12,10 @@ import { ThermeLoungers } from './loungers';
 import { SlideRider, type RiderHost } from './slides';
 import { openBoards, openLift } from './slide-ui';
 import { LEVELS, LIFT_DOOR, SLIDE_BY_ID } from '../../shared/therme-slides';
+import { AUFGUSS_RUN, RUHEHAUS, SAUNA_BY_ID, aufgussAt, aufgussPlan, inRuhehaus, saunaAt, type SaunaId } from '../../shared/therme-dorf';
+import { thermeSeat } from './loungers';
+import { drawAufgussBoard } from './dorf-ui';
+import { toast } from '../ui/dom';
 import { openVenueMenu } from '../venue/ui';
 import type { Person } from '../world/character';
 import type { Collider, Interactable } from '../world/types';
@@ -64,6 +68,8 @@ export interface ThermeHost {
   noOutline(o: THREE.Object3D): void;
   /** For the slides' ride photo. */
   renderer: RiderHost['renderer'];
+  /** Where the camera is (the saunas' walls lift away while you're inside one and it isn't). */
+  camera: THREE.Camera;
   name(): string;
 }
 
@@ -86,6 +92,9 @@ export class ThermePlace {
   readonly rider: SlideRider;
   /** The run of waves the horn last went for. */
   private hornFor = 0;
+  /** The Aufguss slot the page last said was starting, and when it last drew the board. */
+  private aufgussFor = -1;
+  private boardAt = 0;
 
   constructor(private host: ThermeHost) {
     this.swim = new Swimmer(host.player, () => THERME_POOLS, {
@@ -256,7 +265,13 @@ export class ThermePlace {
   }
 
   hint(it: Interactable, title: (t: string) => HTMLElement, key: (k: string, label: string) => HTMLElement, aside: (t: string) => HTMLElement): { k: string; parts: (HTMLElement | string)[] } | null {
-    if (it.kind === 'thermeseat') return this.host.player.seat?.seatId === it.seatId ? { k: 'therme-up', parts: [title('🏖️ Liege'), key('E', 'Get up')] } : { k: 'therme-lie', parts: [title('🏖️ Liege'), aside('unter Palmen'), key('E', 'Lie down')] };
+    if (it.kind === 'thermeseat') {
+      const seat = it.seatId ? thermeSeat(it.seatId) : undefined;
+      const lie = seat?.pose !== 'sit';
+      const name = lie ? (it.seatId?.startsWith('therme-ruhe') ? '🛋️ Liege im Ruhehaus' : '🏖️ Liege') : `🪵 Saunabank · Stufe ${Math.round((seat?.y ?? 0.45) / 0.45)}`;
+      if (this.host.player.seat?.seatId === it.seatId) return { k: 'therme-up', parts: [title(name), key('E', 'Get up')] };
+      return { k: `therme-seat|${lie}`, parts: [title(name), aside(lie ? (it.seatId?.startsWith('therme-ruhe') ? 'am Kamin · Ruhe bitte' : 'unter Palmen') : 'oben ist es heißer'), key('E', lie ? 'Lie down' : 'Sit down')] };
+    }
     if (it.kind === 'thermeslide') {
       const s = it.thermeSlide ? SLIDE_BY_ID.get(it.thermeSlide) : undefined;
       if (!s) return null;
@@ -278,6 +293,7 @@ export class ThermePlace {
 
   onMessage(msg: ServerMsg) {
     if (msg.t === 'therme.slides' || msg.t === 'therme.ride') this.rider.onMessage(msg);
+    if (msg.t === 'therme.aufguss') toast(`${SAUNA_BY_ID.get(msg.sauna)?.emoji ?? '🔥'} Aufguss ${SAUNA_BY_ID.get(msg.sauna)?.inName ?? 'in der Sauna'}: +${msg.stamina} Energie · +${msg.xp} Fitnesspunkte`);
   }
 
   update(t: number, dt: number) {
@@ -292,6 +308,27 @@ export class ThermePlace {
       this.hornFor = run;
     }
     if (!this.rider.riding) this.swim.tick(dt);
+    // The Aufguss plan (shared/therme-dorf.ts): the steam and the Saunameister in the sauna with one, the board, a word as it starts.
+    const a = aufgussAt(now);
+    const into = now - a.start;
+    const sauna = a.running ? SAUNA_BY_ID.get(a.sauna) ?? null : null;
+    this.room.dorf.steam(sauna, sauna ? (into < 60_000 ? 1 : into < AUFGUSS_RUN - 20_000 ? 0.35 : 0.1) : 0, dt);
+    if (a.running && a.slot !== this.aufgussFor) {
+      if (this.aufgussFor !== -1 && into < 5000) toast(`${sauna?.emoji} Aufguss ${sauna?.inName}! ${saunaAt(me.x, me.y, me.z)?.id === a.sauna ? 'Bleib sitzen, gleich wird es heiß' : 'Jetzt rein, dann gibt es Energie zurück'}`);
+      this.aufgussFor = a.slot;
+    }
+    // In a hut with the camera outside it (third person): its walls and roof lift away so you can see in.
+    const hutIn = saunaAt(me.x, me.y, me.z)?.id ?? (inRuhehaus(me.x, me.z) ? 'ruhe' : null);
+    const cam = this.host.camera.position;
+    for (const [id, shell] of this.room.dorf.shells) {
+      const box = id === 'ruhe' ? RUHEHAUS.box : SAUNA_BY_ID.get(id as SaunaId)!.box;
+      const camIn = cam.x > box.minX && cam.x < box.maxX && cam.z > box.minZ && cam.z < box.maxZ && cam.y < (id === 'ruhe' ? RUHEHAUS.height : SAUNA_BY_ID.get(id as SaunaId)!.height);
+      shell.visible = !(hutIn === id && !camIn);
+    }
+    if (t - this.boardAt > 1) {
+      this.boardAt = t;
+      drawAufgussBoard(this.room.dorf.board, aufgussPlan(now, 4), now);
+    }
     this.rider.update(t);
     const people = this.host.people();
     this.swim.pose(people.filter((q): q is typeof q & { person: Person } => !!q.person));

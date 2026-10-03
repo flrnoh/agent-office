@@ -222,6 +222,7 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     },
     cutOff: () => deps.booze().cutOff(performance.now() / 1000),
     renderer: ctx.renderer,
+    camera,
     name: () => store.peers.get(store.you)?.name ?? '',
   });
   // The baths last: going back to the gym, they put you by their door after the gym has had its say.
