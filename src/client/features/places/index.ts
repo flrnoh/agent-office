@@ -201,7 +201,7 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
   // The thermal baths behind the gym (client/therme): through the glass door at the end of its basement's passage.
   const therme = new ThermePlace({
     ...host,
-    sound: (k) => (k === 'door' ? ctx.sound.padelHall('door') : k === 'pour' ? ctx.sound.padelHall('pour') : k === 'stroke' ? ctx.sound.gym('whoosh') : ctx.sound.gym('splash')),
+    sound: (k) => (k === 'horn' ? ctx.sound.soccerCrowd('horn', 0.9) : k === 'door' ? ctx.sound.padelHall('door') : k === 'pour' ? ctx.sound.padelHall('pour') : k === 'stroke' ? ctx.sound.gym('whoosh') : ctx.sound.gym('splash')),
     daylight: () => ctx.sky.daylight,
     now: () => store.officeNow(),
     you: () => store.you,
@@ -333,8 +333,8 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     },
     hint: (el) =>
       ctx.hint.draw(el, `thermeswim|${bath.atEdge}|${therme.atBar}|${bath.pool?.id}`, () => [
-        hintTitle(bath.pool?.id.startsWith('therme-whirl') ? '🫧 Whirlpool' : bath.pool?.id === 'therme-grotto' ? '💎 Grotte' : '🌊 Thermalbecken'),
-        aside(bath.pool?.id === 'therme-thermal' ? '34 °C' : '36 °C'),
+        hintTitle(bath.pool?.id.startsWith('therme-whirl') ? '🫧 Whirlpool' : bath.pool?.id === 'therme-grotto' ? '💎 Grotte' : bath.pool?.id === 'therme-waves' ? '🌊 Wellenbad' : '🌊 Thermalbecken'),
+        aside(bath.pool?.id === 'therme-thermal' ? '34 °C' : bath.pool?.id === 'therme-waves' ? '30 °C · Wellen alle 8 Minuten' : '36 °C'),
         key('W A S D', 'Swim'),
         key('Shift', 'Faster'),
         key('Space', 'Splash'),

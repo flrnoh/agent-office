@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { THERME_ARRIVAL, THERME_BOX, WELLENBAD, ZONES, inT, type TFixture, type TRect } from '../src/shared/therme.js';
 import { THERME_POOLS, thermeFixtures, thermeWhereabouts } from '../src/shared/therme-all.js';
-import { BAMBOO, BAR_COUNTER, BAR_FLOOR, BAR_STOOLS, GROTTO, GROTTO_MOUTH, GROTTO_POOL, ISLAND, LOUNGERS, PALMS, THERMAL_POOL, WATERFALL, WHIRLPOOLS } from '../src/shared/therme-paradies.js';
+import { BAMBOO, BAR_COUNTER, BAR_FLOOR, BAR_STOOLS, GROTTO, GROTTO_MOUTH, GROTTO_POOL, ISLAND, LOUNGERS, PALMS, PARADIES_POOLS, THERMAL_POOL, WATERFALL, WHIRLPOOLS } from '../src/shared/therme-paradies.js';
 import { climbOutWays, overPool, poolEdges, type PoolDef } from '../src/shared/swim.js';
 
 // The Thermenparadies (flrnoh fork, see FORK.md "The thermal baths", phase 2): its pools, the island,
@@ -56,15 +56,15 @@ const island = fill(ISLAND.minX + 1.5, (ISLAND.minZ + ISLAND.maxZ) / 2, (x, z) =
 
 test('the pools are in the Thermenparadies, apart from each other and from the wave pool, with the floor open over them', () => {
   const P = ZONES.paradies;
-  for (const pool of THERME_POOLS)
+  for (const pool of PARADIES_POOLS)
     for (const r of pool.rects) {
       assert.ok(r.minX >= P.minX && r.maxX <= P.maxX && r.minZ >= P.minZ && r.maxZ <= P.maxZ, `${pool.id} is outside the paradise`);
       assert.ok(!overlap(r, WELLENBAD), `${pool.id} is in the wave pool's plot`);
       assert.ok(!onSlab((r.minX + r.maxX) / 2, (r.minZ + r.maxZ) / 2), `${pool.id} has floor over it`);
-      for (const other of THERME_POOLS) if (other !== pool) for (const o of other.rects) assert.ok(!overlap(r, o), `${pool.id} overlaps ${other.id}`);
+      for (const other of PARADIES_POOLS) if (other !== pool) for (const o of other.rects) assert.ok(!overlap(r, o), `${pool.id} overlaps ${other.id}`);
     }
   assert.equal(WHIRLPOOLS.length, 4);
-  for (const pool of THERME_POOLS) assert.ok(pool.floor < pool.surface - pool.sink, `${pool.id}: a swimmer's feet hang clear of its floor`);
+  for (const pool of PARADIES_POOLS) assert.ok(pool.floor < pool.surface - pool.sink, `${pool.id}: a swimmer's feet hang clear of its floor`);
 });
 
 test('every pool has walls only where its water meets the deck', () => {
@@ -106,7 +106,7 @@ test('swimming: all of the thermal pool is one stretch of water, the bar at its 
 });
 
 test('climbing out, anywhere along any wall, lands on dry floor with room to stand', () => {
-  for (const pool of THERME_POOLS)
+  for (const pool of PARADIES_POOLS)
     for (const e of poolEdges(pool))
       for (let s = e.from + 0.6; s < e.to - 0.6; s += 1.7) {
         const [x, z] = e.axis === 'x' ? [s, e.at - e.out * 0.5] : [e.at - e.out * 0.5, s];

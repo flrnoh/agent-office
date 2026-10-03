@@ -107,7 +107,7 @@ test('from the door you come in by you can walk through the passage into the hal
     ['out of the passage into the hall', (ZONES.gang.minX + ZONES.gang.maxX) / 2, NORTH_BAND_Z + 2],
     ['under the dome', DOME.cx, DOME.cz],
     ['the Thermenparadies by the sauna village', P.minX + 1, (P.minZ + P.maxZ) / 2],
-    ['the wave pool plot', (WELLENBAD.minX + WELLENBAD.maxX) / 2, (WELLENBAD.minZ + WELLENBAD.maxZ) / 2],
+    ['the top of the wave pool\'s beach', (WELLENBAD.minX + WELLENBAD.maxX) / 2, WELLENBAD.minZ - 0.8],
     ['the slide world', (R.minX + R.maxX) / 2, (R.minZ + R.maxZ) / 2],
     ['the slide world, far corner', R.maxX - 1, R.maxZ - 1],
   ];

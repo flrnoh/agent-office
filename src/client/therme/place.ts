@@ -7,6 +7,7 @@ import type { Drink } from '../../shared/rooftop';
 import { THERME_POOLS, thermeWhereabouts as whereIn } from '../../shared/therme-all';
 import { BARTENDER, BAR_COUNTER, SWIMBAR_MENU } from '../../shared/therme-paradies';
 import { Swimmer } from '../swim';
+import { nextWaves, waveStrength } from '../../shared/therme-waves';
 import { ThermeLoungers } from './loungers';
 import { openVenueMenu } from '../venue/ui';
 import type { Person } from '../world/character';
@@ -28,7 +29,7 @@ import { buildThermeInterior, type ThermeInterior } from '../world/therme';
 type Spot = { x: number; y: number; z: number; rotY: number };
 type Room = { minX: number; maxX: number; minZ: number; maxZ: number; wall: number; enclosed: boolean };
 
-export type ThermeSoundKind = 'door' | 'splash' | 'stroke' | 'pour' | 'ladder';
+export type ThermeSoundKind = 'door' | 'splash' | 'stroke' | 'pour' | 'ladder' | 'horn';
 
 export interface ThermeHost {
   scene: THREE.Scene;
@@ -73,6 +74,8 @@ export class ThermePlace {
   /** Swimming in any of the baths' pools (client/swim/, the pools in shared/therme-all.ts). */
   readonly swim: Swimmer;
   private loungers: ThermeLoungers;
+  /** The run of waves the horn last went for. */
+  private hornFor = 0;
 
   constructor(private host: ThermeHost) {
     this.swim = new Swimmer(host.player, () => THERME_POOLS, {
@@ -238,7 +241,14 @@ export class ThermePlace {
   update(t: number, dt: number) {
     if (!this.active || !this.room) return;
     const me = this.host.player.pos;
-    this.room.update(t, dt, me);
+    const now = this.host.now();
+    this.room.update(t, dt, now, me);
+    // The horn as each run of waves starts (once a run), for whoever's in the baths.
+    const run = nextWaves(now);
+    if (waveStrength(now) > 0 && run !== this.hornFor) {
+      if (now - run < 4000) this.host.sound('horn');
+      this.hornFor = run;
+    }
     this.swim.tick(dt);
     const people = this.host.people();
     this.swim.pose(people.filter((q): q is typeof q & { person: Person } => !!q.person));

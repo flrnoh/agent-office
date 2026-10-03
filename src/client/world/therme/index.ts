@@ -7,6 +7,7 @@ import type { ThermeParts } from './kit';
 import { buildShell } from './shell';
 import { buildParadies } from './paradies';
 import { buildGrotto } from './grotto';
+import { buildWavePool } from './waves';
 import type { Person } from '../character';
 
 /*
@@ -27,8 +28,8 @@ export interface ThermeInterior {
   /** The swim-up bar's counter, and who's behind it. */
   bar: Interactable;
   bartender: Person;
-  /** Every frame inside; `me` is where you are (what's far off doesn't bubble). */
-  update(t: number, dt: number, me: THREE.Vector3): void;
+  /** Every frame inside; `now` is the office's clock (the waves), `me` where you are (what's far off doesn't bubble). */
+  update(t: number, dt: number, now: number, me: THREE.Vector3): void;
 }
 
 export function buildThermeInterior(): ThermeInterior {
@@ -40,6 +41,7 @@ export function buildThermeInterior(): ThermeInterior {
   const { exit } = buildWayIn(p);
   const paradies = buildParadies(p);
   const grotto = buildGrotto(p);
+  const waves = buildWavePool(p);
   group.add(mergeByColor(still));
   return {
     group,
@@ -49,9 +51,10 @@ export function buildThermeInterior(): ThermeInterior {
     exit,
     bar: paradies.bar,
     bartender: paradies.bartender,
-    update: (t, dt, me) => {
+    update: (t, dt, now, me) => {
       paradies.update(t, dt, me);
       grotto.update(t, dt, me);
+      waves.update(t, dt, now, me);
     },
   };
 }
