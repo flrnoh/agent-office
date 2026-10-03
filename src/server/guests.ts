@@ -13,7 +13,7 @@ import { PROBE_CLIENT_MSGS } from '../shared/proberaum.js'; // flrnoh fork: the 
 const GUEST = [
   'move', 'act', 'golf', 'emote', 'sit', 'profile',
   'voice', 'rtc', 'chat', 'floor.go', 'ball.take', 'ball.throw',
-  'toss', 'dog.pet', 'gong', 'horn', 'dj.play', 'dj.stop', 'dj.tap', 'tv.play', 'tv.stop', 'car.enter', 'car.leave',
+  'toss', 'dog.pet', 'gong', 'horn', 'dj.play', 'dj.stop', 'dj.seek', 'dj.tap', 'tv.play', 'tv.stop', 'car.enter', 'car.leave',
   'car.drive', 'car.honk', 'worker.attach', 'worker.detach', 'wb.open', 'wb.close',
   'wb.update', 'wb.pointer', 'jukebox.play', 'jukebox.skip', 'jukebox.stop', 'cabinet.play',
   'cabinet.leave', 'cabinet.frame', 'ping',
@@ -44,7 +44,7 @@ const GUEST = [
   'bowl.look', 'bowl.join', 'bowl.leave', 'bowl.ball', 'bowl.new', 'bowl.skip', 'bowl.throw', 'bowl.stats', // fork: the bowling centre's lanes and league
   'venue.mode', 'venue.lights', 'venue.fx', 'venue.announce', 'venue.stamp', 'venue.coat', 'venue.merch', 'venue.hello', // fork: the Schallwerk's house
   'show.hello', 'show.act', 'show.surf', 'show.ball', 'show.wod', 'gig.list', // fork: the Schallwerk's crowd and its programme
-  'venuedj.take', 'venuedj.leave', 'venuedj.play', 'venuedj.stop', 'venuedj.tap', 'venuedj.house', 'venuedj.fx', // fork: the Schallwerk's DJ booth
+  'venuedj.take', 'venuedj.leave', 'venuedj.play', 'venuedj.stop', 'venuedj.seek', 'venuedj.tap', 'venuedj.house', 'venuedj.fx', // fork: the Schallwerk's DJ booth
   'instr.hello', 'instr.take', 'instr.leave', 'instr.note', 'instr.jam', 'instr.tone', // fork: the Schallwerk's instruments
   ...PROBE_CLIENT_MSGS, // fork: the Schallwerk's rehearsal wing (booking, doors, the recorders: play, open to guests)
 ] as const satisfies readonly ClientMsg['t'][];
@@ -62,7 +62,7 @@ const TEAM_ONLY = [
   'decor.add', 'decor.remove', 'decor.update', 'desk.label', 'dog.name',
   'floor.add', 'floor.cancel', 'floor.expand', 'floor.interior', 'floor.order', 'floor.projectsDir', 'floor.remove', 'floor.shrink',
   'gh.close', 'gh.comment', 'gh.labels', 'gh.merge', 'jukebox.speakers', 'leaveOnMerge.set',
-  'dj.volume', // fork: the party's volume on the roof is the host's
+  'dj.volume', 'venuedj.volume', // fork: the party's volume on the roof, and in the Schallwerk, is the host's
   'gig.save', 'gig.delete', // fork: the Schallwerk's gig calendar is the team's
   'machine.limit', 'map.set', 'meeting.clear', 'meeting.start', 'meeting.stop',
   'notify.test', 'notify.webhook', 'prompts.agent', 'prompts.set', 'queue.add',

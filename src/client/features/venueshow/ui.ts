@@ -1,5 +1,7 @@
 import { DJ_SET_SITES, parseDjSetUrl } from '../../../shared/djset';
 import { GIG_DEFAULT_MS, GIG_KINDS, GIG_TEXT_MAX, GIG_TITLE_MAX, HOUSE_STYLES, POSTER_COLORS, POSTER_STYLES, type Gig, type GigInput, type HouseStyle, type VenueDjState, type VenueShowClientMsg } from '../../../shared/venueshow';
+import type { DjSetPlayer } from '../../djset';
+import { partyVolumeControls, skipControls } from '../../ui/djcontrols';
 import { h, openModal, toast } from '../../ui/dom';
 import { drawPoster, gigDate, gigPoster } from './posters';
 import { drawTicket, myPhotos, tickets } from './souvenirs';
@@ -188,16 +190,29 @@ export interface DeskOptions {
   send(m: VenueShowClientMsg): void;
   watch(fn: () => void): () => void;
   tap(): number | null;
+  /** The booth's player here, for where the set is and how long. */
+  player: DjSetPlayer;
+  /** Whether you may set the house's volume (the team); guests see it. */
+  host: boolean;
 }
 
 /** The DJ desk: who's at the decks, a set of your own or the house mix, the buttons; take the decks or give them back. */
 export function openDjDesk(o: DeskOptions) {
   const close = h('button.btn.close', { type: 'button', 'aria-label': 'Schließen', title: 'Schließen (Esc)' }, '✕');
-  const body = h('div.body');
+  // What's on and the DJ's buttons, built anew on every change (above and below skipping); the sliders are kept, so one in your hand stays there.
+  const body = h('div.vs-part');
+  const lower = h('div.vs-part');
   const url = h('input', { type: 'text', placeholder: 'https://youtube.com/watch?v=… · soundcloud.com/… · mixcloud.com/…', 'aria-label': 'Link zu einem DJ-Set', spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
-  const el = h('div.modal.vs-desk', { role: 'dialog', 'aria-label': 'DJ-Pult' }, h('header', {}, h('h2', {}, '🎧 DJ-Pult · Schallwerk'), close), body, h('footer', {}, h('span.grow', {}, 'H am Pult: Airhorn · T: Tempo tippen')));
   let tapping = '';
   const send = (m: VenueShowClientMsg) => o.send(m);
+  // Skipping through the set (the DJ's), and the house's volume (the team's), kept across renders so a drag isn't cut off.
+  const skip = skipControls({ player: o.player, lang: 'de', seek: (at) => send({ t: 'venuedj.seek', at }) });
+  const volume = partyVolumeControls({ lang: 'de', host: o.host, setVolume: (v) => send({ t: 'venuedj.volume', volume: v }) });
+  const volumeHead = volume.head('🔊 Lautstärke im ganzen Haus');
+  const volumeNote = h('p.setting-note');
+  const skipBox = h('div.vs-part', {}, h('label', {}, 'Im Set spulen'), skip.el);
+  const volumeBox = h('div.vs-part', {}, volumeHead, volume.row, volumeNote);
+  const el = h('div.modal.vs-desk', { role: 'dialog', 'aria-label': 'DJ-Pult' }, h('header', {}, h('h2', {}, '🎧 DJ-Pult · Schallwerk'), close), h('div.body', {}, body, skipBox, lower, volumeBox), h('footer', {}, h('span.grow', {}, 'H am Pult: Airhorn · T: Tempo tippen')));
   const play = () => {
     const r = parseDjSetUrl(url.value);
     if ('error' in r) {
@@ -226,6 +241,14 @@ export function openDjDesk(o: DeskOptions) {
             h('div.vs-row', {}, url, h('button.btn.primary', { type: 'button', onclick: play }, '▶️ Auflegen')),
             h('p.setting-note', {}, 'Ein Link von YouTube, SoundCloud oder Mixcloud. Er läuft für das ganze Haus (in den Proberäumen nur gedämpft), bei allen vom selben Moment an; Licht und Crowd gehen im Takt mit, sobald das Büro ihn gehört hat.'),
             ...(s.set ? [h('div.vs-row', {}, h('button.btn', { type: 'button', onclick: () => send({ t: 'venuedj.stop' }) }, '🏠 Zurück zum Hausmix'), h('span.grow', {}, tapping || beat), h('button.btn', { type: 'button', onclick: tapOnce }, '🥁 Tippen'), ...(s.tap ? [h('button.btn', { type: 'button', onclick: () => send({ t: 'venuedj.tap', bpm: 0, at: Date.now() }) }, '↺ Gehörter Takt')] : []))] : []),
+          ]
+        : s.dj
+          ? [h('p.setting-note', {}, 'Wenn das Pult frei wird, kannst du übernehmen.')]
+          : [h('button.btn.primary', { type: 'button', onclick: () => send({ t: 'venuedj.take' }) }, '🎧 Pult übernehmen'), h('p.setting-note', {}, 'Ein DJ zur Zeit. Im Club-Modus läuft sonst der Hausmix von allein.')]),
+    );
+    lower.replaceChildren(
+      ...(mine
+        ? [
             h('label', {}, 'Hausmix'),
             h('div.vs-row', {}, ...(Object.keys(HOUSE_STYLES) as HouseStyle[]).map((k) => h('button.btn', { type: 'button', class: s.house.style === k ? 'primary' : '', onclick: () => send({ t: 'venuedj.house', style: k }) }, `${HOUSE_STYLES[k].name} · ${HOUSE_STYLES[k].bpm}`))),
             h('label', {}, 'Knöpfe'),
@@ -238,10 +261,13 @@ export function openDjDesk(o: DeskOptions) {
             ),
             h('div.vs-row.vs-end', {}, h('button.btn', { type: 'button', onclick: () => (send({ t: 'venuedj.leave' }), m.close()) }, '👋 Pult abgeben')),
           ]
-        : s.dj
-          ? [h('p.setting-note', {}, 'Wenn das Pult frei wird, kannst du übernehmen.')]
-          : [h('button.btn.primary', { type: 'button', onclick: () => send({ t: 'venuedj.take' }) }, '🎧 Pult übernehmen'), h('p.setting-note', {}, 'Ein DJ zur Zeit. Im Club-Modus läuft sonst der Hausmix von allein.')]),
+        : []),
     );
+    lower.classList.toggle('hidden', !mine);
+    skipBox.classList.toggle('hidden', !mine || !s.set);
+    volume.paint(s.volume);
+    skip.render();
+    volumeNote.textContent = [s.volumeBy && `Zuletzt gestellt von ${s.volumeBy}.`, o.host ? 'Hausmix und jedes Set spielen für alle im Schallwerk so laut; deine eigene Lautstärke kommt obendrauf. Über 100 % wird es für alle lauter, 200 % ist Disco.' : 'Die Lautstärke stellt das Team.'].filter(Boolean).join(' ');
   };
   el.addEventListener('keydown', (e) => {
     if (e.target === url || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -254,7 +280,7 @@ export function openDjDesk(o: DeskOptions) {
     }
   });
   const unwatch = o.watch(render);
-  const m = openModal(el, { doing: '🎧 am DJ-Pult im Schallwerk', onClose: unwatch });
+  const m = openModal(el, { doing: '🎧 am DJ-Pult im Schallwerk', onClose: () => (unwatch(), skip.stop()) });
   close.addEventListener('click', () => m.close());
   render();
   return m;

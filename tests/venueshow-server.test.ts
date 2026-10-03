@@ -31,7 +31,6 @@ function show(now: { t: number }, present = () => 1) {
     toVenue: (m) => sent.push(m),
     toAll: (m) => all.push(m),
     present,
-    partyVolume: () => 1.5,
     lookup: async () => 'Ein Set',
     hear: () => new Promise(() => {}),
   });
@@ -106,7 +105,7 @@ test('a gig starting is announced once, to the whole office, even across a resta
     assert.ok(g && g.t === 'gigs' && g.live, 'and which one is on');
     assert.equal(sent.length, 0, 'the house hears it with everyone');
     // The office restarts during the gig: no second announcement.
-    const again = new VenueShow({ dataDir: d, now: () => now.t, toVenue: () => {}, toAll: (m) => all.push(m), present: () => 0, partyVolume: () => 1, hear: () => new Promise(() => {}) });
+    const again = new VenueShow({ dataDir: d, now: () => now.t, toVenue: () => {}, toAll: (m) => all.push(m), present: () => 0, hear: () => new Promise(() => {}) });
     again.tick();
     assert.equal(all.filter((m) => m.t === 'gig.started').length, 1);
     assert.equal(liveGig(again.calendar.list(), now.t)?.title, 'Techno-Nacht');
@@ -126,7 +125,7 @@ test('the DJ booth: one DJ at a time, at the decks; only they put a set on, call
     assert.ok('error' in s.take(at(0, 0, 0)), 'from the floor: no');
     assert.ok('ok' in s.take(decks('a', 'Anna')));
     assert.equal(s.djState().dj?.name, 'Anna');
-    assert.equal(s.djState().volume, 1.5, 'at the party’s volume');
+    assert.equal(s.djState().volume, 1, 'at the DJ’s own level till the team turns it');
     const ben = s.take(decks('b', 'Ben'));
     assert.ok('error' in ben && /Anna/.test(ben.error), 'one at a time');
     assert.ok('error' in s.play(decks('b', 'Ben'), 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'), 'only the DJ');
@@ -154,6 +153,59 @@ test('the DJ booth: one DJ at a time, at the decks; only they put a set on, call
     assert.equal(s.djState().dj, null);
   } finally {
     rmSync(d, { recursive: true, force: true });
+  }
+});
+
+test('the booth: the DJ skips through the set for the whole house; the house has its own volume, kept, the team’s', () => {
+  const now = { t: 1_800_000_000_000 };
+  const { s, sent, dir: d } = show(now);
+  try {
+    assert.ok('error' in s.seek(decks('a'), 60), 'not without the decks');
+    assert.ok('ok' in s.take(decks('a', 'Anna')));
+    assert.ok('error' in s.seek(decks('a'), 60), 'nothing on to skip in');
+    assert.ok('ok' in s.play(decks('a'), 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
+    sent.length = 0;
+    assert.ok('error' in s.seek(decks('b', 'Ben'), 60), 'only the DJ');
+    const r = s.seek(decks('a', 'Anna'), 754);
+    assert.ok('ok' in r && /12:34/.test(r.toast ?? ''), 'told to the house');
+    assert.equal(s.djState().startedAt, now.t - 754_000, 'everyone 12:34 in, from now');
+    assert.ok(sent.some((m) => m.t === 'venuedj'));
+    now.t += 1000;
+    s.seek(decks('a', 'Anna'), -3);
+    assert.equal(s.djState().startedAt, now.t - 754_000 - 1000, 'no such spot: nothing changes');
+
+    // The house's volume: its own, not the roof's; kept in venue-volume.json (0600) for the next start.
+    sent.length = 0;
+    assert.ok(s.setVolume(1.6, 'Flogge'));
+    assert.equal(s.djState().volume, 1.6);
+    assert.equal(s.djState().volumeBy, 'Flogge');
+    assert.ok(sent.some((m) => m.t === 'venuedj' && m.state.volume === 1.6), 'the house hears it at once');
+    assert.ok(!s.setVolume(1.6, 'Flogge'), 'the same again changes nothing');
+    assert.ok(!s.setVolume(3, 'Flogge'), 'not past Disco');
+    assert.ok(!s.setVolume('laut', 'Flogge'));
+    assert.equal(statSync(path.join(d, 'venue-volume.json')).mode & 0o777, 0o600);
+    const again = new VenueShow({ dataDir: d, now: () => now.t, toVenue: () => {}, toAll: () => {}, present: () => 0, hear: () => new Promise(() => {}) });
+    assert.equal(again.djState().volume, 1.6);
+  } finally {
+    rmSync(d, { recursive: true, force: true });
+  }
+});
+
+test('the handlers: the house’s volume is the team’s, the skip the DJ’s', () => {
+  const o = office();
+  try {
+    const guest = o.person('guest', { guest: true });
+    const party = o.person('party', { party: true });
+    const team = o.person('team', { floor: 'proj' });
+    venueShowHandlers['venuedj.volume'](o.ctx, guest, { t: 'venuedj.volume', volume: 2 });
+    venueShowHandlers['venuedj.volume'](o.ctx, party, { t: 'venuedj.volume', volume: 2 });
+    assert.equal(o.venue.length, 0, 'not guests');
+    venueShowHandlers['venuedj.volume'](o.ctx, team, { t: 'venuedj.volume', volume: 0.5 });
+    assert.ok(o.venue.some((v) => v.m.t === 'venuedj' && v.m.state.volume === 0.5), 'the team, from anywhere');
+    venueShowHandlers['venuedj.seek'](o.ctx, guest, { t: 'venuedj.seek', at: 60 });
+    assert.match(o.warned.pop() ?? '', /Pult/, 'only whoever is at the decks');
+  } finally {
+    rmSync(o.dir, { recursive: true, force: true });
   }
 });
 
@@ -205,7 +257,6 @@ function office() {
     broadcast: (m: VenueShowServerMsg) => everyone.push(m),
     sendTo: () => {},
     warn: (_c: Client, e: string) => warned.push(e),
-    djBooth: { state: () => ({ volume: 1 }) },
   } as unknown as Ctx;
   const person = (id: string, o: { guest?: boolean; party?: boolean; floor?: string } = {}) => {
     const c = newClient(id, { readyState: 1, send() {} } as never, { accountId: undefined, admin: false, guest: o.guest, party: o.party }, { id, name: id, color: '#fff', look: { skin: 0, hair: 0, style: 0 }, x: 0, y: 0, z: 0, rotY: 0, moving: false, voice: false, muted: false, sharing: false, floor: o.floor ?? VENUE } as never);
@@ -248,11 +299,11 @@ test('the handlers: crowd acts relayed to the house from where the office has yo
 });
 
 test('guests and party guests may join the crowd and the booth, and read the programme; editing it is the team’s', () => {
-  for (const t of ['show.hello', 'show.act', 'show.surf', 'show.ball', 'show.wod', 'gig.list', 'venuedj.take', 'venuedj.leave', 'venuedj.play', 'venuedj.stop', 'venuedj.tap', 'venuedj.house', 'venuedj.fx']) {
+  for (const t of ['show.hello', 'show.act', 'show.surf', 'show.ball', 'show.wod', 'gig.list', 'venuedj.take', 'venuedj.leave', 'venuedj.play', 'venuedj.stop', 'venuedj.seek', 'venuedj.tap', 'venuedj.house', 'venuedj.fx']) {
     assert.ok(GUEST_MSGS.has(t), `${t} for guests`);
     assert.ok(PARTY_MSGS.has(t), `${t} for party guests`);
   }
-  for (const t of ['gig.save', 'gig.delete']) {
+  for (const t of ['gig.save', 'gig.delete', 'venuedj.volume']) {
     assert.ok(TEAM_ONLY_MSGS.has(t) && !GUEST_MSGS.has(t) && !PARTY_MSGS.has(t), `${t} is the team's`);
   }
   for (const t of ['show', 'show.act', 'show.surf', 'show.ball', 'show.wod', 'venuedj', 'venuedj.horn', 'gigs', 'gig.started']) assert.ok(PARTY_SEES_MSGS.has(t), `party guests see ${t}`);

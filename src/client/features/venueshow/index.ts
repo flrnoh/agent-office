@@ -175,7 +175,7 @@ export function installVenueShow(ctx: Ctx, deps: VenueShowDeps) {
 
   // ---- What you can use ------------------------------------------------------------------------------------
   function desk() {
-    openDjDesk({ state: () => show.dj, you: me(), title: () => dj.player.titleNow(), phase: () => PHASES[dj.player.phase()] ?? '', send, watch, tap });
+    openDjDesk({ state: () => show.dj, you: me(), title: () => dj.player.titleNow(), phase: () => PHASES[dj.player.phase()] ?? '', send, watch, tap, player: dj.player, host: !store.me.guest });
   }
   function useDecks() {
     if (show.dj.dj && !amDj()) return desk();

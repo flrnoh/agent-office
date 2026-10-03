@@ -1,5 +1,6 @@
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseDjSetUrl, sameDjSet, djSetTitle, DJ_SET_SITES, type DjSet } from '../../shared/djset.js';
+import { parseDjSetUrl, sameDjSet, djSetSeekable, djSetTitle, partyVolume, seekSpot, setClock, DJ_SET_SITES, type DjSet } from '../../shared/djset.js';
 import { validTap, type DjBeats, type DjTap } from '../../shared/djbeats.js';
 import { ZONES, STAGE_HEIGHT } from '../../shared/venue.js';
 import {
@@ -107,8 +108,6 @@ export interface ShowHooks {
   toAll(m: VenueShowServerMsg): void;
   /** How many are in the house now. */
   present(): number;
-  /** The party's volume (the roof's: the team's to set), so the house plays as loud. */
-  partyVolume(): number;
   lookup?: TitleLookup<DjSet>;
   hear?: Hear;
 }
@@ -126,6 +125,9 @@ export class VenueShow {
   private balls: (BallHit | undefined)[] = new Array(BALLS).fill(undefined);
   private wodAt = 0;
   private timer: NodeJS.Timeout | null = null;
+  /** The house's volume for everyone in it, and who set it (kept in venue-volume.json). */
+  private level = 1;
+  private levelBy = '';
   /**
    * The building's seam: a gig from the calendar has started (once each). The building switches the
    * house to the gig's mode here (FORK.md "The show": the integrator wires it to `venue.mode`).
@@ -136,6 +138,17 @@ export class VenueShow {
     this.calendar = new GigCalendar(h.dataDir, h.now());
     this.booth = new VenueDjBooth(h.dataDir, h.lookup, h.hear);
     this.booth.onBeats = () => this.djChanged();
+    try {
+      const saved = JSON.parse(readFileSync(this.levelFile(), 'utf8')) as { volume?: unknown; by?: unknown };
+      this.level = partyVolume(saved.volume) ?? 1;
+      this.levelBy = typeof saved.by === 'string' ? saved.by.slice(0, 24) : '';
+    } catch {
+      // none yet: the DJ's own level
+    }
+  }
+
+  private levelFile() {
+    return path.join(this.h.dataDir, 'venue-volume.json');
   }
 
   start() {
@@ -151,7 +164,7 @@ export class VenueShow {
   // ---- What's going on -----------------------------------------------------------------------------
 
   djState(): VenueDjState {
-    return { dj: this.dj, ...this.booth.playing(), house: { ...this.house }, volume: this.h.partyVolume() };
+    return { dj: this.dj, ...this.booth.playing(), house: { ...this.house }, volume: this.level, ...(this.levelBy ? { volumeBy: this.levelBy } : {}) };
   }
 
   state(): VenueShowState {
@@ -225,6 +238,34 @@ export class VenueShow {
     if (!this.booth.stop(p.name)) return ok();
     this.djChanged();
     return ok(`🏠 ${p.name} spielt wieder den Hausmix`);
+  }
+
+  /** Skip to `at` seconds into the set that's on, by the DJ. */
+  seek(p: ShowPerson, at: unknown): Result {
+    if (!this.isDj(p.id)) return { error: 'Nur wer am Pult steht, spult im Set' };
+    const set = this.booth.state().set;
+    if (!set) return { error: 'Erst ein Set auflegen' };
+    if (!djSetSeekable(set)) return { error: 'Ein SoundCloud-Set läuft nur von vorn, da lässt sich nicht spulen' };
+    const spot = seekSpot(at);
+    if (spot === null || !this.booth.allow(`seek:${p.id}`, this.h.now(), 400)) return ok();
+    if (!this.booth.seek(spot, this.h.now())) return ok();
+    this.djChanged();
+    return ok(`⏩ ${p.name} spult das Set auf ${setClock(spot)}`);
+  }
+
+  /** The house's volume, for everyone in it (the team's: guests.ts); false when it's no volume or already that. */
+  setVolume(v: unknown, by: string): boolean {
+    const level = partyVolume(v);
+    if (level === null || (level === this.level && by === this.levelBy)) return false;
+    this.level = level;
+    this.levelBy = by.slice(0, 24);
+    try {
+      writeFileSync(this.levelFile(), JSON.stringify({ volume: level, by: this.levelBy }), { mode: 0o600 });
+    } catch {
+      // disk issues shouldn't take the office down
+    }
+    this.djChanged();
+    return true;
   }
 
   tap(p: ShowPerson, bpm: unknown, at: unknown): Result {

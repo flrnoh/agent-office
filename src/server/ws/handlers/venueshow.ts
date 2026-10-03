@@ -19,7 +19,6 @@ export function showOf(ctx: Ctx): VenueShow {
       toVenue: (m, except) => ctx.toVenue(m, except),
       toAll: (m) => ctx.broadcast(m),
       present: () => [...ctx.clients.values()].filter((o) => o.peer.floor === VENUE).length,
-      partyVolume: () => ctx.djBooth.state().volume ?? 1,
     });
     shows.set(ctx, s);
   }
@@ -81,6 +80,14 @@ export const venueShowHandlers = {
   'venuedj.stop'(ctx, c) {
     if (!inside(c)) return;
     answer(ctx, c, showOf(ctx).stopSet(person(c)));
+  },
+  'venuedj.seek'(ctx, c, msg: Msg<'venuedj.seek'>) {
+    if (!inside(c)) return;
+    answer(ctx, c, showOf(ctx).seek(person(c), msg.at));
+  },
+  'venuedj.volume'(ctx, c, msg: Msg<'venuedj.volume'>) {
+    if (c.guest || c.party) return; // the team's (guests.ts says so too)
+    showOf(ctx).setVolume(msg.volume, c.peer.name);
   },
   'venuedj.tap'(ctx, c, msg: Msg<'venuedj.tap'>) {
     if (!inside(c)) return;

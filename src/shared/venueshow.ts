@@ -92,8 +92,10 @@ export interface VenueDjState {
   tap?: DjTap;
   /** The house mix: its style, and the last drop the DJ called (on the office's clock: the build starts at the next bar). */
   house: { style: HouseStyle; dropAt: number };
-  /** The party's volume (the roof's, 0..2: the team's to set there), so the house is as loud as the roof. */
+  /** The house's volume, 0..2 (1 the DJ's own level, 2 Disco), for everyone in it: the team's to set at the desk. */
   volume: number;
+  /** Who set it last. */
+  volumeBy?: string;
 }
 
 // ---- The gigs --------------------------------------------------------------------------------------
@@ -228,6 +230,9 @@ export type VenueShowClientMsg =
   | { t: 'venuedj.leave' }
   | { t: 'venuedj.play'; url: string }
   | { t: 'venuedj.stop' }
+  /** Skip to `at` seconds into the set that's on (the DJ's), and the house's volume, 0..2 (the team's). */
+  | { t: 'venuedj.seek'; at: number }
+  | { t: 'venuedj.volume'; volume: number }
   | { t: 'venuedj.tap'; bpm: number; at: number }
   | { t: 'venuedj.house'; style: HouseStyle }
   | { t: 'venuedj.fx'; fx: DjFx }

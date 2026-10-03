@@ -92,10 +92,25 @@ export class LinkPlayer<S extends Playable> {
     return true;
   }
 
-  /** Whether `who` may change it now (and, if so, counts it). */
-  allow(who: string, now = Date.now()): boolean {
+  /**
+   * Skips to `at` seconds into what's on (never before where its link starts it), for everyone from
+   * now on: the office only moves when it started. False when nothing's on or it's already there.
+   */
+  seek(at: number, now = Date.now()): boolean {
+    const { set, startedAt } = this.s;
+    if (!set) return false;
+    const start = (set as { start?: number }).start ?? 0;
+    const moved = now - Math.max(0, at - start) * 1000;
+    if (Math.abs(moved - startedAt) < 500) return false;
+    this.s = { ...this.s, startedAt: Math.round(moved) };
+    this.save();
+    return true;
+  }
+
+  /** Whether `who` may change it now (and, if so, counts it); `every` ms apart at most. */
+  allow(who: string, now = Date.now(), every = CHANGE_EVERY): boolean {
     const last = this.lastChange.get(who) ?? -Infinity;
-    if (now - last < CHANGE_EVERY) return false;
+    if (now - last < every) return false;
     this.lastChange.set(who, now);
     for (const [k, t] of this.lastChange) if (now - t > 60_000) this.lastChange.delete(k);
     return true;

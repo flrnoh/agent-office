@@ -34,6 +34,8 @@ export function installDjSets(ctx: Ctx, deps: DjSetDeps) {
   /** Whether you were hearing the set (for saySetOver). */
   let wasPlaying = false;
   const djSets = new DjSetPlayer({ now: () => store.officeNow(), volume: () => ctx.sound.djSetVolume(), toast, changed: () => (houseDj(), saySetOver(), watchers.forEach((fn) => fn())) });
+  // For quick checks from the console and the end-to-end tests.
+  (window as unknown as { __djsets?: DjSetPlayer }).__djsets = djSets;
   /** Once, as the set you're hearing runs out: it's quiet now, and how to get music back. */
   function saySetOver() {
     const phase = djSets.phase();
@@ -153,6 +155,7 @@ export function installDjSets(ctx: Ctx, deps: DjSetDeps) {
       tap,
       untap: () => ctx.net.send({ t: 'dj.tap', bpm: 0, at: store.officeNow() }),
       setVolume: (volume) => ctx.net.send({ t: 'dj.volume', volume }),
+      seek: (at) => ctx.net.send({ t: 'dj.seek', at }),
     });
   }
 
