@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import type { KioskItem } from '../../../shared/kiosk';
 import type { Ctx } from '../../core/context';
 import { aside, hintTitle, key, onE } from '../../core/hint';
@@ -50,7 +51,27 @@ export function beachKiosk(ctx: Ctx, deps: KioskDeps) {
     return (uschi = p);
   }
 
-  ctx.usables.add({ usable: () => (deps.onStreet() && spot() ? [it] : []) });
+  // What the crosshair lands on in first person: the kiosk itself is merged into the beach and carries
+  // nothing to use, so a box you can't see stands in front of the counter (window and all).
+  let pick: THREE.Mesh | null = null;
+  function picker(s: KioskSpot): THREE.Mesh {
+    if (pick) return pick;
+    pick = new THREE.Mesh(new THREE.BoxGeometry(s.face.width, 1.9, 0.5), new THREE.MeshBasicMaterial({ visible: false }));
+    pick.position.set(s.face.x, G + s.face.y, s.face.z);
+    pick.rotation.y = s.rotY;
+    pick.userData.interact = it;
+    ctx.office.scenic.group.add(pick);
+    return pick;
+  }
+  const nothing = new THREE.Group();
+
+  ctx.usables.add({
+    usable: () => (deps.onStreet() && spot() ? [it] : []),
+    pickable: () => {
+      const s = spot();
+      return s && deps.onStreet() ? picker(s) : nothing;
+    },
+  });
 
   ctx.ticks.add('world', ({ dt, t }) => {
     const s = spot();

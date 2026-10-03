@@ -29,6 +29,7 @@ import type { ThermeClientMsg, ThermeServerMsg } from '../therme-msgs.js';
 import type { WaymoClientMsg, WaymoServerMsg } from '../waymo/fleet.js';
 import type { PhoneClientMsg, PhoneServerMsg } from '../phone.js';
 import type { BagClientMsg, BagServerMsg } from '../bag.js';
+import type { VolleyClientMsg, VolleyServerMsg } from '../volley.js';
 
 export type ForkClientMsg =
   | CasinoClientMsg // the casino (shared/casino.ts)
@@ -55,6 +56,7 @@ export type ForkClientMsg =
   | WaymoClientMsg // the robotaxis (shared/waymo/fleet.ts)
   | PhoneClientMsg // your phone out or away (shared/phone.ts)
   | BagClientMsg // your rucksack, and things put down (shared/bag.ts)
+  | VolleyClientMsg // beach volleyball (shared/volley.ts)
   /** Put a YouTube, SoundCloud or Mixcloud set on at the DJ booth, for everyone on the roof (see shared/djset.ts). */
   | { t: 'dj.play'; url: string }
   /** Back to the house DJ. */
@@ -90,6 +92,7 @@ export type ForkClientMsg =
 
 export type ForkServerMsg =
   | CasinoServerMsg
+  | VolleyServerMsg // beach volleyball (shared/volley.ts)
   | GymServerMsg
   | PadelServerMsg
   | SoccerServerMsg

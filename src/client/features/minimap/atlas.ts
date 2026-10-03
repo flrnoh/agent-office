@@ -9,7 +9,9 @@ import { BLOCKS, CITY_ROAD, LOTS, PARK_TREES, PERIOD, STREETS, stretchRect } fro
 import { PAVEMENT } from '../../../shared/garage';
 import { GYM_STREET_BOX } from '../../../shared/gym';
 import { HALL_BOX } from '../../../shared/hall';
-import { JETTY } from '../../../shared/beach';
+import { BEACH_PARKING, JETTY } from '../../../shared/beach';
+import { LIGHT_TOUR } from '../../../shared/lighthouse';
+import { VOLLEY } from '../../../shared/volley';
 import { landmarkBox } from '../../../shared/landmarks';
 import { GOLF_HOLE, ROAD } from '../../../shared/layout';
 import { CREEK, FARM, FOOTHILLS, LAKE, LIGHTHOUSE, LOOP, LOOP_HALF, MOUNTAINS, STREET_END, TUNNEL, shoreX } from '../../../shared/scenic';
@@ -136,7 +138,12 @@ function draw(g: CanvasRenderingContext2D, px: (x: number) => number, pz: (z: nu
   // The jetty and the lighthouse's point.
   rect({ minX: JETTY.x1, maxX: JETTY.x0, minZ: JETTY.z - JETTY.width / 2, maxZ: JETTY.z + JETTY.width / 2 }, COLORS.buildingEdge);
   disc(LIGHTHOUSE.x, LIGHTHOUSE.z, 9, COLORS.mountain);
+  // fork: the mole out to it, its plinth, the volleyball court and the car park across the road.
+  rect({ minX: LIGHTHOUSE.x, maxX: LIGHTHOUSE.x + (shoreX(LIGHTHOUSE.z) + 3 - LIGHTHOUSE.x), minZ: LIGHTHOUSE.z - LIGHT_TOUR.mole.width / 2, maxZ: LIGHTHOUSE.z + LIGHT_TOUR.mole.width / 2 }, COLORS.buildingEdge);
+  disc(LIGHTHOUSE.x, LIGHTHOUSE.z, LIGHT_TOUR.plinth, COLORS.buildingEdge);
   disc(LIGHTHOUSE.x, LIGHTHOUSE.z, 3, '#ffffff');
+  rect({ minX: VOLLEY.x - VOLLEY.halfW, maxX: VOLLEY.x + VOLLEY.halfW, minZ: VOLLEY.z - VOLLEY.halfL, maxZ: VOLLEY.z + VOLLEY.halfL }, '#1d3fbb');
+  rect(BEACH_PARKING, '#4a4e57');
 
   // The lake and the creek.
   g.fillStyle = COLORS.water;

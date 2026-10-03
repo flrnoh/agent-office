@@ -1,8 +1,8 @@
 /**
  * flrnoh fork (see FORK.md "A day at the beach"): Sunset Beach on the scenic loop, for playing. The
- * snack shack is open (kiosk.ts), the sea is for swimming (swim.ts: walk in off the sand, or jump off
- * the jetty, and back up its ladder), and the jetskis and the motorboat at the jetty go out on it
- * (boats.ts). Everyone on the floor sees it all: swimmers from where they are, the boats from the office.
+ * snack shack is open (kiosk.ts), the volleyball court is for playing on (volley.ts), the sea is for
+ * swimming (swim.ts: walk in off the sand, or jump off the jetty, and back up its ladder), and the
+ * jetskis and the motorboat at the jetty go out on it (boats.ts). Everyone on the floor sees it all: swimmers from where they are, the boats from the office.
  */
 import { CRAFTS, CRAFT_SPECS } from '../../../shared/boats';
 import { SEA_LEVEL, SWIM_SINK, inSea, swimmingAt, wadingAt } from '../../../shared/beach';
@@ -19,6 +19,7 @@ import { SeaFx } from './fx';
 import { beachKiosk } from './kiosk';
 import { ridePose, seaPose } from './poses';
 import { Sea } from './swim';
+import { beachVolley } from './volley';
 
 export interface BeachDeps {
   booze(): Booze;
@@ -37,6 +38,7 @@ export function installBeach(ctx: Ctx, parts: Pick<Parts, 'places' | 'peers'>, d
   const water = () => ctx.player.street + SEA_LEVEL;
 
   const kiosk = beachKiosk(ctx, { booze: deps.booze, reach: deps.reach, onStreet });
+  const volley = beachVolley(ctx, { reach: deps.reach, onStreet });
 
   // ---- Swimming ---------------------------------------------------------------------------------
   const sea = new Sea(ctx.player, {
@@ -206,5 +208,5 @@ export function installBeach(ctx: Ctx, parts: Pick<Parts, 'places' | 'peers'>, d
     for (const id of [...was.keys()]) if (!remotes.has(id)) was.delete(id);
   });
 
-  return { kiosk, sea, boats, fx };
+  return { kiosk, sea, boats, fx, volley };
 }

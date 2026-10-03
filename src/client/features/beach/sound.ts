@@ -7,7 +7,7 @@ import type { Pos } from '../../sound/places';
 // Splashes, swimming strokes, the kiosk's bell and fryer, a seagull, the boats' horns and their
 // outboards. Synthesized like everything else; on the effects volume.
 
-export type BeachSound = 'splash' | 'stroke' | 'bell' | 'sizzle' | 'gull' | 'ladder' | 'slurp' | 'hornski' | 'hornboat';
+export type BeachSound = 'splash' | 'stroke' | 'bell' | 'sizzle' | 'gull' | 'ladder' | 'slurp' | 'hornski' | 'hornboat' | 'bump' | 'spike' | 'thud' | 'whistle';
 
 /** One of the beach's sounds at `at`; `strength` 0..1 scales a splash. */
 export function beach(a: AudioCore, kind: BeachSound, at: Pos, strength = 1) {
@@ -32,6 +32,31 @@ export function beach(a: AudioCore, kind: BeachSound, at: Pos, strength = 1) {
       ]);
       a.blip(out, t0, 160, 0.4, 0.2, 0.18 * k);
       for (let i = 0; i < 3 + Math.round(4 * k); i++) a.blip(out, t0 + rand(0.15, 0.7), rand(500, 1200), 1.8, 0.05, 0.03);
+      return;
+    case 'bump':
+    case 'spike':
+      // A hand on a beach volleyball: a hollow pop, harder and brighter for a spike.
+      a.blip(out, t0, kind === 'spike' ? 210 : 150, 0.45, kind === 'spike' ? 0.12 : 0.16, (kind === 'spike' ? 0.32 : 0.22) * k, 'sine');
+      hiss(a, out, t0, kind === 'spike' ? 2400 : 1500, 1.2, [
+        [0.005, (kind === 'spike' ? 0.16 : 0.08) * k],
+        [0.07, 0],
+      ]);
+      return;
+    case 'thud':
+      // The ball into the sand.
+      a.blip(out, t0, 90, 0.5, 0.14, 0.18 * k, 'sine');
+      hiss(a, out, t0, 900, 0.7, [
+        [0.01, 0.06 * k],
+        [0.25, 0],
+      ]);
+      return;
+    case 'whistle':
+      // The referee's whistle: a trill, then a long blast.
+      for (const [at, len] of [
+        [0, 0.12],
+        [0.18, 0.5],
+      ])
+        a.blip(out, t0 + at, 3150, 1, len, 0.06 * k, 'square');
       return;
     case 'stroke':
       hiss(a, out, t0, rand(900, 1400), 0.9, [

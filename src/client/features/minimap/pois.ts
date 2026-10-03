@@ -6,7 +6,8 @@ import { CASINO, CASINO_BOX, CASINO_DOOR } from '../../../shared/casino';
 import { CHURCH } from '../../../shared/church';
 import { GYM, GYM_BOX, GYM_STREET_BOX, GYM_STREET_DOOR } from '../../../shared/gym';
 import { HALL, HALL_BOX, HALL_DOOR } from '../../../shared/hall';
-import { JETTY } from '../../../shared/beach';
+import { BEACH_PARKING, JETTY } from '../../../shared/beach';
+import { VOLLEY } from '../../../shared/volley';
 import { landmarkBox } from '../../../shared/landmarks';
 import { EXIT_STAIRS, FLOOR, GOLF_HOLE } from '../../../shared/layout';
 import { FARM, LAKE, LIGHTHOUSE, LOOP, PLACES, TUNNEL } from '../../../shared/scenic';
@@ -69,7 +70,9 @@ export const PLACES_ON_MAP: readonly Poi[] = [
   { id: 'coaster', name: 'Der Brecher (Dach)', icon: '🎢', x: STATION.stopX, z: STATION.trackZ, kind: 'place' },
   ...(CHURCH ? [{ id: 'kirche', name: 'Kirche', icon: '⛪', x: CHURCH.x, z: CHURCH.z, kind: 'place' as const }] : []),
   { id: 'beach', name: PLACES.beach.name, icon: PLACES.beach.icon, x: JETTY.x0 + 6, z: JETTY.z, kind: 'scenery' },
-  { id: 'lighthouse', name: PLACES.coast.name, icon: PLACES.coast.icon, x: LIGHTHOUSE.x, z: LIGHTHOUSE.z, kind: 'scenery' },
+  { id: 'lighthouse', name: 'Leuchtturm', icon: '🗼', x: LIGHTHOUSE.x, z: LIGHTHOUSE.z, kind: 'scenery' },
+  { id: 'volleyball', name: 'Beachvolleyball', icon: '🏐', x: VOLLEY.x, z: VOLLEY.z, kind: 'scenery' },
+  { id: 'beachparking', name: 'Strandparkplatz', icon: '🅿️', x: (BEACH_PARKING.minX + BEACH_PARKING.maxX) / 2, z: (BEACH_PARKING.minZ + BEACH_PARKING.maxZ) / 2, kind: 'scenery' },
   { id: 'farm', name: PLACES.farm.name, icon: PLACES.farm.icon, x: FARM.barn.x, z: FARM.barn.z, kind: 'scenery' },
   { id: 'forest', name: PLACES.forest.name, icon: PLACES.forest.icon, ...loopAt('forest', 60), kind: 'scenery' },
   { id: 'lake', name: 'See', icon: '💧', x: LAKE.x, z: LAKE.z, kind: 'scenery' },

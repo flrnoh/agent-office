@@ -27,6 +27,7 @@ import { bowlingHandlers } from './bowling.js';
 import { venueHandlers } from './venue.js';
 import { thermeHandlers } from './therme.js';
 import { bagHandlers, bagHooks } from './bag.js';
+import { volleyHandlers, volleyHooks } from './volley.js';
 import { rideMessage } from '../../fork/ride.js';
 import { busLeft, busRideMessage } from '../../fork/busride.js';
 import { voiceRangeMessage } from '../../fork/voicerange.js';
@@ -188,6 +189,7 @@ export const forkHandlers = {
   ...venueHandlers, // the Schallwerk's house: concert or club, the light desk, stamp, cloakroom, merch (venue.ts)
   ...thermeHandlers, // the thermal baths' slides (therme.ts)
   ...bagHandlers, // the rucksack, and things put down (bag.ts)
+  ...volleyHandlers, // beach volleyball (volley.ts)
   'bike.ride': rideMessage, // a bike from the city's bike shop (fork/ride.ts)
   'bike.bell': rideMessage,
   'bus.ride': busRideMessage, // riding a city bus: where in it (fork/busride.ts)
@@ -243,6 +245,7 @@ export const forkHooks: FeatureHooks = {
     trolleyLeft(ctx, c, was?.id); // the supermarket's trolley stays behind
     coasterHooks.leaving?.(ctx, c, was); // out of DER BRECHER's train, off the roof
     waymoHooks.leaving?.(ctx, c, was); // out of a robotaxi
+    volleyHooks.leaving?.(ctx, c, was); // off the beach volleyball court
     busLeft(ctx, c); // off the city bus
   },
   closed(ctx, c) {
@@ -262,6 +265,7 @@ export const forkHooks: FeatureHooks = {
     boatLeft(ctx, c, floor.id); // out of a boat at the beach
     baumarktLeft(ctx, c, floor.id);
     trolleyLeft(ctx, c, floor.id); // and the supermarket's trolley
+    volleyHooks.closedOn?.(ctx, c, floor); // off the beach volleyball court
   },
 };
 

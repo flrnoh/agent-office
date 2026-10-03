@@ -83,6 +83,7 @@ const PARTY_SEES = [
   'dance.moved', // fork: someone dancing on the roof
   'bus.rode', // fork: someone's place in a city bus
   ...WAYMO_SERVER_MSGS, // fork: the robotaxis
+  'volley', // fork: beach volleyball
   'phone.held', // fork: someone's phone out
   'bag', 'bag.gift', 'placed', 'placed.add', 'placed.gone', // fork: the rucksack, and things put down
   'tankstelle', // fork: the petrol station and its car wash

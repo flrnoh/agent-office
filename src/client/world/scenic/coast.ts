@@ -7,6 +7,10 @@ import { boulder } from './flora';
 import { SAILBOATS } from '../../../shared/beach'; // flrnoh fork: a day at the beach
 import { LADDER_GAP, buildJettyFun } from './jetty'; // fork
 import { buildKiosk, type KioskSpot } from './kiosk'; // fork
+import { buildVolleyCourt } from './volleycourt'; // fork
+import { buildLighthouse } from './lighthouse'; // fork
+import { buildParking } from './parking'; // fork
+import { VOLLEY } from '../../../shared/volley'; // fork
 import { G, beside, box, indexAt, stretch, type ScenicKit } from './kit';
 
 /** A sailboat out on the water, and where it bobs. */
@@ -33,12 +37,17 @@ export function buildCoast(kit: ScenicKit): { boats: Boat[]; beam: THREE.Group; 
         const z = p.z + (rand() - 0.5) * 6;
         if (Math.abs(z - PIER.z) < 6) continue;
         const color = colors[Math.floor(rand() * colors.length)];
+        const tilt = (rand() - 0.5) * 0.3;
+        const towelColor = colors[Math.floor(rand() * colors.length)];
+        const towelTurn = rand() * 0.6;
+        // flrnoh fork: none on the volleyball court (its numbers taken all the same, or the trees move).
+        if (Math.abs(x - VOLLEY.x) < VOLLEY.halfW + 4 && Math.abs(z - VOLLEY.z) < VOLLEY.halfL + 5) continue;
         b.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.5, 6), toon('#f1f1ee'), x, G + 1.25, z));
         const top = mesh(new THREE.ConeGeometry(1.5, 0.6, 8), toon(color), x, G + 2.45, z);
-        top.rotation.z = (rand() - 0.5) * 0.3;
+        top.rotation.z = tilt;
         b.add(top);
-        const towel = mesh(box(0.9, 0.03, 1.9), toon(colors[Math.floor(rand() * colors.length)]), x + 1.1, G + 0.02, z + 0.4, false);
-        towel.rotation.y = rand() * 0.6;
+        const towel = mesh(box(0.9, 0.03, 1.9), toon(towelColor), x + 1.1, G + 0.02, z + 0.4, false);
+        towel.rotation.y = towelTurn;
         b.add(towel);
         taken.push({ x, z, r: 2.5 });
       }
@@ -66,16 +75,10 @@ export function buildCoast(kit: ScenicKit): { boats: Boat[]; beam: THREE.Group; 
       colliders.push({ minX: x - 1.3, maxX: x + 1.3, minZ: z - 1.3, maxZ: z + 1.3, bottom: G, top: G + 5 });
       taken.push({ x, z, r: 3 });
     }
-    // A beach volleyball net, and the snack shack by the road.
-    {
-      const p = LOOP[indexAt(stretch('beach')[0].from + 175)];
-      const x = shoreX(p.z) + 14;
-      const z = p.z;
-      for (const dz of [-4.5, 4.5]) b.add(mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.6, 6), toon('#f1f1ee'), x, G + 1.3, z + dz));
-      b.add(mesh(box(0.04, 0.9, 9), toon('#22223b'), x, G + 2.1, z));
-      b.add(mesh(new THREE.SphereGeometry(0.22, 10, 8), toon('#ffd166'), x + 3, G + 0.22, z - 1));
-      taken.push({ x, z, r: 6 });
-    }
+    // flrnoh fork: the beach volleyball court, for playing (volleycourt.ts; features/beach/volley.ts plays on it), where the net stood.
+    buildVolleyCourt(kit);
+    // flrnoh fork: the beach car park, across the road from the kiosk (parking.ts).
+    buildParking(kit);
     // flrnoh fork: the snack shack by the road is open (world/scenic/kiosk.ts; Uschi serves, features/beach).
     {
       const q = stretch('beach')[0].from + 130;
@@ -144,55 +147,8 @@ export function buildCoast(kit: ScenicKit): { boats: Boat[]; beam: THREE.Group; 
       boats.push({ g: boat, x, z, phase: rand() * 6 });
     }
   }
-  // The lighthouse out on its point, rocks to walk out along, and its beam going round at night.
-  const beam = new THREE.Group();
-  {
-    const c = light;
-    const L = LIGHTHOUSE;
-    const land = shoreX(L.z);
-    for (let x = land + 2; x > L.x; x -= 3.2) boulder(c, x, L.z + (rand() - 0.5) * 3, 1.8 + rand() * 1.4, rand() * 6, '#8d8a99');
-    boulder(c, L.x, L.z, 7.5, 0.4, '#8d8a99');
-    boulder(c, L.x - 3, L.z + 4, 4.5, 1.7, '#77738a');
-    const white = toon('#f8f9fa');
-    const red = toon('#d62828');
-    const base = G + 2.4;
-    c.add(mesh(new THREE.CylinderGeometry(3.4, 3.8, 2, 12), toon('#cdc5b4'), L.x, base - 0.9, L.z));
-    const H = 18;
-    for (let k = 0; k < 6; k++) {
-      const r0 = 2.6 - (k / 6) * 0.8;
-      const r1 = 2.6 - ((k + 1) / 6) * 0.8;
-      c.add(mesh(new THREE.CylinderGeometry(r1, r0, H / 6, 14), k % 2 ? red : white, L.x, base + (k + 0.5) * (H / 6), L.z));
-    }
-    c.add(mesh(new THREE.CylinderGeometry(2.4, 2.4, 0.3, 14), toon('#3d405b'), L.x, base + H + 0.15, L.z));
-    const glass = bulb(night, '#fff3b0', 0.35);
-    c.add(mesh(new THREE.CylinderGeometry(1.3, 1.3, 2, 12), glass, L.x, base + H + 1.3, L.z, false));
-    c.add(mesh(new THREE.ConeGeometry(1.8, 1.6, 12), red, L.x, base + H + 3.1, L.z));
-    c.add(mesh(new THREE.SphereGeometry(0.25, 8, 6), toon('#3d405b'), L.x, base + H + 4.05, L.z));
-    night.halos.push({ at: new THREE.Vector3(L.x, base + H + 1.3, L.z), size: 9, color: '#fff3b0', ground: true });
-    colliders.push({ minX: L.x - 3.8, maxX: L.x + 3.8, minZ: L.z - 3.8, maxZ: L.z + 3.8, bottom: G - 1, top: G + 30 });
-    // Two long cones of light, going round, brightest at the lamp and fading out along their length.
-    const fade = tilingCanvasTexture(4, 64, (g) => {
-      const grad = g.createLinearGradient(0, 0, 0, 64);
-      grad.addColorStop(0, 'rgba(255,255,255,1)');
-      grad.addColorStop(0.35, 'rgba(255,255,255,0.45)');
-      grad.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = grad;
-      g.fillRect(0, 0, 4, 64);
-    });
-    // Not wrapping round, or the faded end picks up the bright one.
-    fade.wrapT = THREE.ClampToEdgeWrapping;
-    const mat = new THREE.MeshBasicMaterial({ color: '#fff3b8', map: fade, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
-    mat.userData.outlineParameters = { visible: false };
-    night.glows.push({ mat, max: 0.4 });
-    for (const s of [-1, 1]) {
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(4.5, 70, 16, 1, true).translate(0, -35, 0), mat);
-      cone.rotation.z = (s * Math.PI) / 2;
-      beam.add(cone);
-    }
-    beam.position.set(L.x, base + H + 1.3, L.z);
-    root.add(beam);
-    around(beam, L.x, L.z, 70, H + 8);
-  }
+  // The lighthouse out on its point, its beam going round at night (flrnoh fork: you can go up it, lighthouse.ts).
+  const beam = buildLighthouse(kit);
 
   return { boats, beam, kiosk };
 }

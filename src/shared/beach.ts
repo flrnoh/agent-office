@@ -127,3 +127,33 @@ export function onWater(x: number, z: number): boolean {
   if (x > waterEdge(z) - 3) return false;
   return !SEA_SOLIDS.some((b) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ);
 }
+
+/**
+ * The beach car park across the road from the kiosk (flrnoh fork; world/scenic/parking.ts builds it):
+ * its edges, the driveway off the road, the bays (either side of the aisle down the middle, `depth`
+ * deep and `width` wide), and the cars parked there already (nose toward the aisle; 0 is +z).
+ */
+export const BEACH_PARKING = (() => {
+  const minX = -208;
+  const maxX = -190;
+  const minZ = 198;
+  const maxZ = 232;
+  const bay = { depth: 5, width: 2.6 };
+  const bayZ = (k: number) => minZ + 0.5 + (k + 0.5) * bay.width;
+  const west = minX + bay.depth / 2;
+  const east = maxX - bay.depth / 2;
+  return {
+    minX,
+    maxX,
+    minZ,
+    maxZ,
+    drive: { fromX: -216.5, z: 215, width: 6 },
+    bay,
+    parked: [
+      { kind: 'ferrari', color: '#d62828', x: west, z: bayZ(1), rotY: -Math.PI / 2 },
+      { kind: 'lambo', color: '#9ef01a', x: east, z: bayZ(3), rotY: Math.PI / 2 },
+      { kind: 'ferrari', color: '#ffd60a', x: east, z: bayZ(8), rotY: Math.PI / 2 },
+      { kind: 'lambo', color: '#ff8500', x: west, z: bayZ(10), rotY: -Math.PI / 2 },
+    ] as const,
+  };
+})();

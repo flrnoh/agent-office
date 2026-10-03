@@ -2,6 +2,7 @@ import type { ClientMsg } from '../shared/protocol.js';
 import { radioRequestShape } from './radio.js';
 import { PROBE_CLIENT_MSGS } from '../shared/proberaum.js'; // flrnoh fork: the Schallwerk's rehearsal wing
 import { WAYMO_CLIENT_MSGS } from '../shared/waymo/fleet.js'; // flrnoh fork: the robotaxis
+import { VOLLEY_CLIENT_MSGS } from './ws/handlers/volley.js'; // flrnoh fork: beach volleyball
 
 /*
  * The guest role (flrnoh fork, see FORK.md): guests walk around, chat, talk, play and watch the
@@ -38,6 +39,7 @@ const GUEST = [
   'dance.set', // fork: dancing on the roof
   'bus.ride', // fork: riding a city bus
   ...WAYMO_CLIENT_MSGS, // fork: the robotaxis
+  ...VOLLEY_CLIENT_MSGS, // fork: beach volleyball
   'phone.hold', // fork: your phone out
   'bag.look', 'bag.stow', 'bag.take', 'bag.drop', 'bag.pick', 'bag.give', // fork: the rucksack, and things put down
   'tank.fill', 'tank.wash', // fork: the petrol station and its car wash

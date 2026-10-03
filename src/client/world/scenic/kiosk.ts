@@ -19,6 +19,8 @@ export interface KioskSpot {
   vendor: { x: number; z: number; rotY: number };
   /** On the counter, where what you order is put down for a moment. */
   hatch: { x: number; y: number; z: number };
+  /** The counter's front face (its middle, up from the sand) and how wide it is: what the crosshair lands on to order. */
+  face: { x: number; y: number; z: number; width: number };
 }
 
 const W = 4.4;
@@ -172,8 +174,9 @@ export function buildKiosk(into: THREE.Group, labels: THREE.Group, x: number, z:
   const front = at(0, 0, -D / 2 - 1.25);
   const vendor = at(0.15, 0, -D / 2 + 0.75);
   const hatch = at(0.5, COUNTER + 0.05, -D / 2 + 0.05);
+  const face = at(0, 0.95, -D / 2 - 0.2);
   return {
-    spot: { x, z, rotY, counter: { x: front.x, z: front.z }, vendor: { x: vendor.x, z: vendor.z, rotY: rotY + Math.PI }, hatch: { x: hatch.x, y: hatch.y, z: hatch.z } },
+    spot: { x, z, rotY, counter: { x: front.x, z: front.z }, vendor: { x: vendor.x, z: vendor.z, rotY: rotY + Math.PI }, hatch: { x: hatch.x, y: hatch.y, z: hatch.z }, face: { x: face.x, y: face.y - G, z: face.z, width: W + 0.2 } },
     boxes,
   };
 }
