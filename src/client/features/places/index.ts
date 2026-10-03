@@ -112,7 +112,7 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     sound: (k) => ctx.sound.gym(k),
     spaPeople: () => [...store.peers.values()].filter((p) => p.id !== store.you && store.onMyFloor(p)).map((p) => ({ x: p.x, y: p.y, z: p.z })),
     ambience: (level) => ctx.sound.gymSpa(level),
-    radio: (url, reach) => ctx.sound.gymRadio.set(url, reach), // fork: Gym FM (shared/gym-radio.ts)
+    radio: (url, reach, volume) => ctx.sound.gymRadio.set(url, reach, volume), // fork: Gym FM (shared/gym-radio.ts)
     thunder: () => ctx.sound.gym('thunder'), // fork: the basement's storm shower
     people: () => [...parts.peers.remotes].map(([id, r]) => ({ name: store.peers.get(id)?.name ?? '', person: r.person })),
     you: () => ({ name: store.peers.get(store.you)?.name ?? '', person: ctx.me }),

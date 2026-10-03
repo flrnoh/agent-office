@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GYM_CHANNEL_BY_ID, GYM_DEFAULT_CHANNEL, GYM_RADIO, type GymRadioView } from '../../../shared/gym-radio';
+import { GYM_CHANNEL_BY_ID, GYM_DEFAULT_CHANNEL, GYM_DEFAULT_VOLUME, GYM_RADIO, type GymRadioView } from '../../../shared/gym-radio';
 import type { Interactable } from '../types';
 import { mesh, toon } from '../toon';
 import { blk, type GymParts } from './kit';
@@ -13,8 +13,9 @@ import { FONT, canvasTexture, glow } from './parts';
 
 export interface GymRadioSet {
   setStation(state: unknown): void;
-  /** The station playing now (its id). */
+  /** The station playing now (its id), and the speakers' volume for everyone. */
   channel(): string;
+  volume(): number;
   update(t: number): void;
 }
 
@@ -40,11 +41,12 @@ export function buildGymRadio(p: GymParts): GymRadioSet {
   }
   p.group.add(g);
   blk(p, 0.03, 0.03, 0.03, '#a3e635', x - 0.172, top + 0.15, z + 0.24);
-  const it: Interactable = { kind: 'gymstation', gymStation: GYM_RADIO.id, gymAct: 'next', x, z, y: 0, radius: 1.6 };
+  const it: Interactable = { kind: 'gymstation', gymStation: GYM_RADIO.id, x, z, y: 0, radius: 1.6 };
   p.interactables.push(it);
   g.traverse((o) => (o.userData.interact = it));
 
   let channel = GYM_DEFAULT_CHANNEL;
+  let volume = GYM_DEFAULT_VOLUME;
   const draw = () => {
     const c = GYM_CHANNEL_BY_ID.get(channel);
     const img = canvas.image as HTMLCanvasElement;
@@ -64,13 +66,16 @@ export function buildGymRadio(p: GymParts): GymRadioSet {
   return {
     setStation(state) {
       const v = state as GymRadioView | null;
-      if (!v || v.kind !== 'radio' || v.channel === channel) return;
+      if (!v || v.kind !== 'radio') return;
+      volume = typeof v.volume === 'number' ? v.volume : volume;
+      if (v.channel === channel) return;
       channel = v.channel;
       draw();
     },
     channel: () => channel,
+    volume: () => volume,
     update(t) {
-      const on = !!GYM_CHANNEL_BY_ID.get(channel)?.url;
+      const on = !!GYM_CHANNEL_BY_ID.get(channel)?.url && volume > 0;
       bars.forEach((b, i) => {
         const k = on ? 0.35 + 0.65 * Math.abs(Math.sin(t * (5 + i * 1.3) + i * 1.7) * Math.sin(t * 2.1 + i)) : 0.15;
         // From the bottom of the front up, never into the display.

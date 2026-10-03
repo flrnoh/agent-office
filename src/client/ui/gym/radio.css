@@ -1,0 +1,19 @@
+/* Gym FM's window (flrnoh fork, see ui/gym/radio.ts): the station cards and the speakers' slider. */
+
+.modal.gymfm { width: min(520px, 100%); }
+.gymfm-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0 14px; }
+.gymfm-card { position: relative; display: flex; gap: 10px; align-items: center; text-align: left; padding: 10px 12px; min-height: 58px; }
+.gymfm-card .ic { font-size: 24px; line-height: 1; }
+.gymfm-card .txt { display: flex; flex-direction: column; min-width: 0; }
+.gymfm-card b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gymfm-card small { color: var(--muted); font-weight: 700; }
+.gymfm-card .live { display: none; position: absolute; top: 6px; right: 8px; font-size: 10px; font-weight: 900; letter-spacing: .05em; color: #16241f; }
+.gymfm-card.on { background: #a3e635; }
+.gymfm-card.on small { color: #26402f; }
+.gymfm-card.on .live { display: block; }
+.gymfm-vol { display: grid; grid-template-columns: auto 1fr 56px; gap: 10px; align-items: center; }
+.gymfm-slider { width: 100%; accent-color: #34d399; }
+.gymfm-pct { text-align: right; font-weight: 900; font-variant-numeric: tabular-nums; }
+.gymfm-who { margin-top: 8px; font-size: 12px; font-weight: 700; color: var(--muted); min-height: 1.2em; }
+@media (max-width: 480px) { .gymfm-list { grid-template-columns: 1fr; } }
+.modal.gymfm .gym-message { color: #26402f; }

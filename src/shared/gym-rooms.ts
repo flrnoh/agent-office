@@ -165,6 +165,8 @@ export const MASSAGE_TABLES = [
 export const MASSAGE_TOP = 0.5;
 /** The masseurs: one at the side of each table, in the gap between the two, facing their table. */
 export const MASSEURS = MASSAGE_TABLES.map((t, i) => ({ table: t.id, x: t.x + 0.2, z: t.z + (i === 0 ? 0.6 : -0.6), rotY: i === 0 ? Math.PI : 0 }));
+/** The towel shelf (with candles on it), along the spa's west wall south of the stair down. */
+export const TOWEL_SHELF: Rect = { minX: SPA.minX + SPA_WALL, maxX: SPA.minX + SPA_WALL + 0.4, minZ: 47.65, maxZ: 49.25 };
 // Fork: the spa's loungers made way for the stair down to the basement (shared/gym-basement.ts STAIR); its quiet room has plenty.
 
 // ---- The rest of the gym -------------------------------------------------------------------------
@@ -259,7 +261,7 @@ export function gymFixtures(): Fixture[] {
   f.push({ id: 'plunge', minX: P.x - P.half, maxX: P.x + P.half, minZ: P.z - P.half, maxZ: P.z + P.half, top: P.rim });
   // The rail round the stair down to the basement (where the loungers stood), the towel shelf and a plant by the way in.
   f.push(...stairRails());
-  f.push({ id: 'towel-shelf', minX: 25.0, maxX: 26.6, minZ: S.minZ + w, maxZ: S.minZ + w + 0.4, top: 1.4 });
+  f.push({ id: 'towel-shelf', ...TOWEL_SHELF, top: 1.4 }); // fork: along the west wall past the stair, out of its way
   f.push({ id: 'spa-plant', minX: 28.75, maxX: 29.2, minZ: S.minZ + w + 0.05, maxZ: S.minZ + w + 0.5, top: 1.2 });
   // The lobby: reception (a counter facing the door, and its return), the turnstiles' posts.
   const Rc = RECEPTION;

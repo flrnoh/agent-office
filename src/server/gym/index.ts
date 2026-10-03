@@ -80,7 +80,7 @@ export class Gym {
     if (!opts.empty) {
       for (const s of GYM_STATIONS) this.register(GAMES[s.kind](s));
       this.register(GAMES.juicebar({ id: JUICE_BAR.id, kind: 'juicebar', machine: 'juicebar', name: 'Juice bar', x: JUICE_BAR.x, z: JUICE_BAR.z, rotY: Math.PI / 2, seats: JUICE_BAR.seats }));
-      this.register(GAMES.radio({ id: GYM_RADIO.id, kind: 'radio', machine: 'radio', name: 'Gym FM', x: GYM_RADIO.x, z: GYM_RADIO.z, rotY: 0, seats: 0 }));
+      this.register(new GymRadio(GYM_RADIO.id, dataDir)); // fork: Gym FM, its station and volume kept in gym-radio.json
     }
     if (!opts.manualTick) {
       this.timer = setInterval(() => this.tick(), TICK_MS);
