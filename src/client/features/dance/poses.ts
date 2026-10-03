@@ -385,6 +385,13 @@ export class Dancer {
   private readonly want: Shape = { ...REST };
   /** The move it's at, for the tests and the console. */
   pick: FreestylePick | null = null;
+  /** How high the hips are off where they'd stand (m), as last posed: for the first-person view (firstperson.ts). */
+  bodyY = 0;
+
+  /** The shape the body's in now, eased (see Shape). */
+  get shape(): Readonly<Shape> {
+    return this.now;
+  }
 
   constructor(readonly seed: number) {}
 
@@ -404,6 +411,7 @@ export class Dancer {
     }
     const spin = motion ? spinOf(pick, danceCounts(f), f) : 0;
     apply(b, s, spin);
+    this.bodyY = b.body.position.y;
   }
 }
 
