@@ -162,7 +162,8 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 
 /** How far the front wheels can turn at `speed`. */
 export function steerLimit(speed: number, t: DriveTuning = DRIVE): number {
-  return t.steer / (1 + Math.abs(speed) / 9);
+  // flrnoh fork: past the supercars' top (only the Bulli gets there) it tightens up a lot more.
+  return t.steer / (1 + Math.abs(speed) / 9) / (1 + Math.max(0, Math.abs(speed) - 22) / 20);
 }
 
 /** How car `car` (its place in CARS) drives. */

@@ -24,6 +24,7 @@ export interface BulliModel {
   open: THREE.Object3D;
   wheels: THREE.Object3D[];
   sway: Sway;
+  mirrors: THREE.Mesh[];
 }
 
 /** The body on its springs: how far it's leaning (roll, + to its right) and nodding (pitch, + nose down), and how fast. */
@@ -174,11 +175,22 @@ export function bulli(def: CarDef): BulliModel {
   // Always there: the mirrors.
   const always = new THREE.Group();
   for (const sx of [-1, 1]) {
-    const arm = mesh(new THREE.BoxGeometry(0.02, 0.02, 0.26), chrome, sx * (W + 0.12), 1.24, L - 0.3, false);
+    const arm = mesh(new THREE.BoxGeometry(0.025, 0.025, 0.3), chrome, sx * (W + 0.12), 1.24, L - 0.3, false);
     arm.rotation.y = sx * 0.6;
     always.add(arm);
-    always.add(mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 14).rotateX(Math.PI / 2), chrome, sx * (W + 0.2), 1.3, L - 0.2, false));
+    always.add(mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.025, 20).rotateX(Math.PI / 2), chrome, sx * (W + 0.2), 1.3, L - 0.2, false));
   }
+  // Their glass, facing back at whoever's up front: what's behind gets drawn on it while you're in it
+  // (features/cars/mirrors.ts), dull grey till then. Flipped left to right, the way a mirror is.
+  const mirrors = [-1, 1].map((sx) => {
+    const geo = new THREE.CircleGeometry(0.094, 28).rotateY(Math.PI);
+    const uv = geo.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setX(i, 1 - uv.getX(i));
+    const glass = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#8e9aa8' }));
+    glass.position.set(sx * (W + 0.2), 1.3, L - 0.2 - 0.0145);
+    glass.userData.side = sx;
+    return glass;
+  });
 
   // Roof off: the seats up front (and the bench behind) and the big thin bus wheel, nearly flat.
   const open = new THREE.Group();
@@ -198,7 +210,7 @@ export function bulli(def: CarDef): BulliModel {
   const top = mergeByMaterial(closed);
   const inside = mergeByMaterial(open);
   inside.visible = false;
-  body.add(mergeByMaterial(g), mergeByMaterial(always), top, inside);
+  body.add(mergeByMaterial(g), mergeByMaterial(always), top, inside, ...mirrors);
   // The plates aren't merged: they're drawn from a picture.
   if (def.plate) {
     const front = plate(def.plate);
@@ -210,7 +222,7 @@ export function bulli(def: CarDef): BulliModel {
   }
   const root = new THREE.Group();
   root.add(body, mergeByMaterial(rear), ...wheels);
-  return { root, top, open: inside, wheels, sway: { body, roll: 0, pitch: 0, vRoll: 0, vPitch: 0, speed: 0 } };
+  return { root, top, open: inside, wheels, mirrors, sway: { body, roll: 0, pitch: 0, vRoll: 0, vPitch: 0, speed: 0 } };
 }
 
 /** How soft its springs are: how often it rocks (Hz) and how little that dies away. */

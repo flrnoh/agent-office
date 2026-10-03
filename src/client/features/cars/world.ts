@@ -93,6 +93,8 @@ export interface CarModel {
   wheels: THREE.Object3D[];
   /** flrnoh fork: a body that rocks on soft springs (the Bulli's; see world/bulli.ts). */
   sway?: Sway;
+  /** flrnoh fork: wing mirrors that show what's behind (the Bulli's; see features/cars/mirrors.ts). */
+  mirrors?: THREE.Mesh[];
 }
 
 /**

@@ -11,6 +11,7 @@ import { aside, hintTitle, key, onE } from '../../core/hint';
 import { Driver } from './controller';
 import { DESK_KEYS } from '../../interaction';
 import { LapTimer, lapTime } from './laps';
+import { Mirrors } from './mirrors'; // flrnoh fork: the Bulli's wing mirrors
 import { store } from '../../state';
 import { clip, h, toast } from '../../ui/dom';
 
@@ -206,6 +207,9 @@ export function installCars(ctx: Ctx, deps: CarsDeps) {
       }
     }
   });
+  // flrnoh fork: wing mirrors that show what's behind, while you're sitting in a car that has them.
+  const mirrors = new Mirrors(ctx.renderer, ctx.scene);
+  ctx.ticks.add('hud', () => mirrors.update(driver.car !== null && ctx.inOffice() && !ctx.upTop() ? (office.cars.cars[driver.car] ?? null) : null));
   ctx.ticks.add('others', () => {
     // The engines of the cars being driven on this floor, yours (by how hard you're on the gas) and theirs.
     const engines: Parameters<typeof ctx.sound.setEngines>[0] = [];

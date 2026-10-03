@@ -2,16 +2,16 @@ import type { CarDef, CarSeat, DriveTuning } from './garage.js';
 
 // flrnoh fork: Flogge's Bulli, a split-window camper van in teal and cream, parked in its own corner
 // of the garage (its spot is in CARS, shared/garage.ts). Only its keyholders take the wheel
-// (server/carkeys.ts says who); anyone else may ride along beside them. It's the slow, soft one:
-// no supercar, but it gets there, rocking a little on its springs (world/bulli.ts draws it).
+// (server/carkeys.ts says who); anyone else may ride along beside them. It looks like the soft one
+// and rocks on its springs (world/bulli.ts draws it), but there's a lot more under its back hatch.
 
-/** How it drives: gentle off the line, no racer at the top, soft on the brakes, a big slow wheel. */
+/** How it drives: a slower start than the supercars, but it pulls on and on to 200 km/h, on a big slow wheel. */
 export const BULLI_DRIVE: DriveTuning = {
-  top: 12.5,
+  top: 200 / 3.6,
   reverse: 4,
-  accel: 3.2,
+  accel: 5.5,
   reverseAccel: 2.5,
-  brake: 9,
+  brake: 18,
   coast: 1.5,
   wheelbase: 2.4,
   steer: 0.55,
