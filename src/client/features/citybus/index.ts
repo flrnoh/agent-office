@@ -11,7 +11,7 @@
  * where it is.
  */
 import { BUS_RIDE_SEND_MS, type BusRide } from '../../../shared/busride';
-import { BUS_W, DOORS, nextStop, poseOf, type BusLine } from '../../../shared/citybus';
+import { BUS_L, BUS_W, DOORS, nextStop, poseOf, type BusLine } from '../../../shared/citybus';
 import { FLOOR_Y, SEATS, SEAT_HIPS, inDoor } from '../../../shared/buscabin';
 import { FURNITURE } from '../../../shared/streetside';
 import type { Ctx } from '../../core/context';
@@ -53,7 +53,7 @@ export function installCityBus(ctx: Ctx, deps: CityBusDeps) {
   let ride: Ride | null = null;
   let yaw = 0;
   let camWas: { dist: number } | null = null;
-  const doors: Interactable[][] = buses.map(() => DOORS.map(() => ({ kind: 'citybus', x: 0, z: 0, radius: 1.3 }) as Interactable));
+  const doors: Interactable[][] = buses.map(() => DOORS.map(() => ({ kind: 'citybus', x: 0, z: 0, radius: 4 }) as Interactable));
   const lastDoors = buses.map(() => 0);
   const announcer = new Announcer(ctx.settings, () => ride && ctx.sound.bus('gong', at(ride.bus, 2, 0)));
   /** Where (lx, lz) in bus `b`'s frame is in the world, a height `y` over the street. */
@@ -97,7 +97,8 @@ export function installCityBus(ctx: Ctx, deps: CityBusDeps) {
         if (b.pose.doors < 0.6) return;
         DOORS.forEach((u, k) => {
           const w = at(b, u, BUS_W / 2 + 0.2);
-          Object.assign(doors[i][k], { x: w.x, z: w.z });
+          // At the street's height: the office's own things are a floor (or more) up.
+          Object.assign(doors[i][k], { x: w.x, y: ctx.player.street, z: w.z });
           out.push(doors[i][k]);
         });
       });
@@ -105,8 +106,33 @@ export function installCityBus(ctx: Ctx, deps: CityBusDeps) {
     },
   });
 
-  const busOf = (it: Interactable) => buses[doors.findIndex((d) => d.includes(it))];
-  const doorOf = (it: Interactable) => Math.max(0, doors.find((d) => d.includes(it))?.indexOf(it) ?? 0);
+  // In first person E is for what the crosshair's on: the whole bus is, while its doors are open and you
+  // can get on (otherwise it's in the way like a wall), and you get on at the door nearer you.
+  const whole: Interactable[] = buses.map((b) => {
+    const it = { kind: 'citybus', x: 0, z: 0, radius: BUS_L / 2, off: true } as Interactable;
+    b.group.userData.interact = it;
+    // What the aim can land on: the town's buses aren't the office building's.
+    ctx.usables.add({ usable: () => [], pickable: () => b.group });
+    return it;
+  });
+  ctx.ticks.add('env', () => {
+    const can = !ride && onStreet();
+    buses.forEach((b, i) => Object.assign(whole[i], { x: b.pose.x, y: ctx.player.street, z: b.pose.z, off: !can || b.pose.doors < 0.6 }));
+  });
+
+  const busOf = (it: Interactable) => buses[Math.max(whole.indexOf(it), doors.findIndex((d) => d.includes(it)))];
+  /** The door to get on by: the one aimed at, or (aiming at the bus) the one nearer you. */
+  const doorOf = (it: Interactable) => {
+    const k = doors.find((d) => d.includes(it))?.indexOf(it);
+    if (k !== undefined && k >= 0) return k;
+    const b = busOf(it);
+    const me = ctx.player.pos;
+    const far = DOORS.map((u) => {
+      const w = at(b, u, BUS_W / 2 + 0.2);
+      return Math.hypot(w.x - me.x, w.z - me.z);
+    });
+    return far[0] <= far[1] ? 0 : 1;
+  };
 
   function getOn(b: CityBus, k: number) {
     if (ride || ctx.trip() || b.pose.doors < 0.6) return;
@@ -257,7 +283,8 @@ export function installCityBus(ctx: Ctx, deps: CityBusDeps) {
   }
 
   ctx.interactions.define('citybus', {
-    reach: 3,
+    // From the sidewalk or the shelter, and through an open door to the far side of the bus.
+    reach: 6.5,
     hint: (it) => {
       const b = busOf(it);
       const next = nextStop(b.line, b.pose);
