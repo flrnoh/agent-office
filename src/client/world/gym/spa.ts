@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { GYM_ROOM, GYM_STATION_BY_ID } from '../../../shared/gym';
 import type { WellnessView } from '../../../shared/gym-wellness';
-import { CABIN_HEIGHT, JACUZZI, LOUNGER, LOUNGER_ZS, MASSAGE_OPENING, MASSAGE_ROOM, MASSAGE_TABLES, MASSAGE_TOP, PLUNGE, SAUNA, SPA, SPA_DOOR, SPA_WALL, SPA_WALL_HEIGHT, STEAM, cabinWalls, inRect, type WalkInRoom } from '../../../shared/gym-rooms';
+import { CABIN_HEIGHT, JACUZZI, MASSAGE_OPENING, MASSAGE_ROOM, MASSAGE_TABLES, MASSAGE_TOP, PLUNGE, SAUNA, SPA, SPA_DOOR, SPA_WALL, SPA_WALL_HEIGHT, STEAM, cabinWalls, inRect, type WalkInRoom } from '../../../shared/gym-rooms';
+import { STAIRWELL } from '../../../shared/gym-basement'; // fork: the stair down where the loungers stood
 import type { Interactable } from '../types';
 import { mesh, textPlane, toon } from '../toon';
-import { blk, candle, cyl, decal, flameMat, picture, plant, seatable, tex, type GymParts } from './kit';
+import { blk, candle, cyl, decal, decalHoled, flameMat, picture, plant, seatable, tex, type GymParts } from './kit';
 import { Cloud } from './particles';
 import { canvasTexture, FONT, glow, neonSign } from './parts';
 import { curtain, planks, tiles, water } from './textures';
@@ -110,7 +111,7 @@ export function buildGymSpa(p: GymParts): GymSpa {
   const stone = tiles('#cbb8a0', '#9a8a76', 4, 0.07, 81);
   stone.wrapS = stone.wrapT = THREE.RepeatWrapping;
   stone.repeat.set((R.maxX - SPA.minX) / 1.2, (SPA.maxZ - SPA.minZ) / 1.2);
-  decal(p, { minX: SPA.minX + SPA_WALL, maxX: R.maxX, minZ: SPA.minZ + SPA_WALL, maxZ: R.maxZ }, tex(stone), 0.007);
+  decalHoled(p, { minX: SPA.minX + SPA_WALL, maxX: R.maxX, minZ: SPA.minZ + SPA_WALL, maxZ: R.maxZ }, tex(stone), 0.007, STAIRWELL); // fork: open over the stair down
   const slat = planks('#c69c6d', 6, 91);
   slat.wrapS = slat.wrapT = THREE.RepeatWrapping;
   const partition = (x0: number, x1: number, z0: number, z1: number) => {
@@ -401,22 +402,7 @@ export function buildGymSpa(p: GymParts): GymSpa {
 
   const P = PLUNGE; // the cold plunge itself is built with the places you get into (soak.ts)
 
-  // ---- Relaxation loungers along the west wall, a towel on each -----------------------------------
-  const L = LOUNGER;
-  LOUNGER_ZS.forEach((z, i) => {
-    const g = new THREE.Group();
-    g.add(mesh(new THREE.BoxGeometry(L.length, 0.3, L.width), toon('#8a6a44'), L.minX + L.length / 2, 0.15, z, false));
-    g.add(mesh(new THREE.BoxGeometry(L.length - 0.5, 0.12, L.width - 0.06), toon('#efe6d6'), L.minX + 0.25 + (L.length - 0.5) / 2 + 0.25, 0.36, z, false));
-    const back = mesh(new THREE.BoxGeometry(0.75, 0.1, L.width - 0.06), toon('#efe6d6'), L.minX + 0.35, 0.58, z, false);
-    back.rotation.z = -0.75;
-    g.add(back);
-    // The towel, folded over the backrest, in a spa colour.
-    const towel = mesh(new THREE.BoxGeometry(0.9, 0.03, L.width - 0.2), toon(i % 2 ? '#a3c9b8' : '#f4f4ee'), L.minX + 0.75, 0.46, z, false);
-    towel.rotation.z = -0.3;
-    g.add(towel);
-    p.still.add(g);
-    seatable(p, g, `gym-lounger-${i + 1}`, 1.2);
-  });
+  // Fork: where the loungers stood, the stair goes down to the basement (world/gym/basement).
 
   // ---- The massage room, behind a curtain ----------------------------------------------------------
   const M = MASSAGE_ROOM;

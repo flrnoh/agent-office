@@ -1,6 +1,7 @@
 import type { SeatDef } from './layout.js';
 import { GYM_DOOR, GYM_ENTRY, GYM_ROOM } from './gym.js';
 import { CHANGING_DOOR, CHANGING_SEATING, changingFixtures } from './gym-changing.js';
+import { BASEMENT_ROOMS, BASEMENT_SEATING, basementRoomAt, downstairs, stairRails, type BasementRoom } from './gym-basement.js';
 
 /*
  * The gym's rooms, spa and fixtures (flrnoh fork, see FORK.md "Rooms, spa and detail"): where
@@ -91,7 +92,9 @@ export const STEAM: WalkInRoom = {
 };
 
 export const WALK_INS: readonly WalkInRoom[] = [SAUNA, STEAM];
-export const WALK_IN_BY_STATION = new Map(WALK_INS.map((r) => [r.station, r]));
+/** Fork: any room you're in while you stand inside: a cabin up in the spa, or a room or pool in the basement (shared/gym-basement.ts). */
+export type AnyWalkIn = WalkInRoom | BasementRoom;
+export const WALK_IN_BY_STATION = new Map<string, AnyWalkIn>([...WALK_INS, ...BASEMENT_ROOMS].map((r) => [r.station, r]));
 
 /** Whether (x, z) is inside `r`, `margin` in from its edges (negative: that far out past them). */
 export const inRect = (r: Rect, x: number, z: number, margin = 0) => x > r.minX + margin && x < r.maxX - margin && z > r.minZ + margin && z < r.maxZ - margin;
@@ -101,10 +104,14 @@ export const inRect = (r: Rect, x: number, z: number, margin = 0) => x > r.minX 
  * to be that far in (stepping through the door), < 0 lets them be that far out (so a step back into
  * the doorway doesn't count as leaving): the server uses both, so the edge doesn't flicker.
  */
-export function walkInAt(x: number, z: number, margin = 0): WalkInRoom | undefined {
+export function walkInAt(x: number, z: number, margin = 0, y?: number): AnyWalkIn | undefined {
   if (!Number.isFinite(x) || !Number.isFinite(z)) return undefined;
+  // Fork: down in the basement (feet at `y`), its rooms and pools; up in the gym, the spa's cabins.
+  if (downstairs(y)) return basementRoomAt(x, z, margin);
   return WALK_INS.find((r) => inRect(r.inner, x, z, margin));
 }
+/** Whether someone at (x, z), feet at `y`, is still in `room` (`margin` as walkInAt's). */
+export const stillIn = (room: AnyWalkIn, x: number, z: number, margin: number, y?: number) => downstairs(y) === BASEMENT_ROOMS.includes(room as BasementRoom) && inRect(room.inner, x, z, margin);
 /** How far through the door you step before you count as in, and how far back out before you're out. */
 export const WALK_IN_ENTER = 0.25;
 export const WALK_IN_LEAVE = -0.2;
@@ -135,7 +142,7 @@ export function walkInFactor(onBench: boolean, lastAufguss: number, now: number)
 export const seatIdOf = (key: string | undefined): string | undefined => (key ? /^([\w-]+):\d+$/.exec(key)?.[1] : undefined);
 
 /** Whether a peer sitting on `seatKey` is on one of `room`'s benches. */
-export const onBenchIn = (room: WalkInRoom, seatKey: string | undefined): boolean => {
+export const onBenchIn = (room: AnyWalkIn, seatKey: string | undefined): boolean => {
   const id = seatIdOf(seatKey);
   return !!id && room.seats.includes(id);
 };
@@ -158,9 +165,7 @@ export const MASSAGE_TABLES = [
 export const MASSAGE_TOP = 0.5;
 /** The masseurs: one at the side of each table, in the gap between the two, facing their table. */
 export const MASSEURS = MASSAGE_TABLES.map((t, i) => ({ table: t.id, x: t.x + 0.2, z: t.z + (i === 0 ? 0.6 : -0.6), rotY: i === 0 ? Math.PI : 0 }));
-/** Relaxation loungers along the spa's west wall, looking east. */
-export const LOUNGER_ZS = [43.1, 44.2, 45.3, 46.4] as const;
-export const LOUNGER = { minX: SPA.minX + SPA_WALL + 0.1, length: 1.9, width: 0.7 } as const;
+// Fork: the spa's loungers made way for the stair down to the basement (shared/gym-basement.ts STAIR); its quiet room has plenty.
 
 // ---- The rest of the gym -------------------------------------------------------------------------
 
@@ -179,6 +184,9 @@ export const JUICE_COUNTER = { backMaxX: R.minX + 0.4, minX: 7.1, maxX: 7.7, min
 export const JUICE_STOOL_X = 8.15;
 export const JUICE_STOOL_ZS = [41.8, 42.9, 44.0, 45.1, 46.2] as const;
 
+/** Fork: every place to sit in the gym, up in it and down in its basement (SEATING has these: shared/layout.ts). */
+export const gymSeats = (): SeatDef[] => [...GYM_SEATING, ...BASEMENT_SEATING];
+
 /** The places to sit in the gym (SEATING has these, with `gym`): only in there (see seatHere). */
 export const GYM_SEATING: SeatDef[] = [
   // The sauna: two tiers along the east wall and the south wall. The upper tier's feet rest on the lower.
@@ -189,8 +197,6 @@ export const GYM_SEATING: SeatDef[] = [
   // The steam room: tiled benches along the east and south walls.
   { id: 'gym-steam-e', label: '💨 Steam bench', x: 33.35, y: 0, z: 48.1, rotY: -Math.PI / 2, places: [-1.1, 0, 1.1], hips: 0.47, depth: 0, out: 0.75, gym: true },
   { id: 'gym-steam-s', label: '💨 Steam bench', x: 31.6, y: 0, z: 50.25, rotY: Math.PI, places: [-0.7, 0.7], hips: 0.47, depth: 0, out: 0.75, gym: true },
-  // Relaxation loungers in the spa, a towel on each.
-  ...LOUNGER_ZS.map((z, i) => ({ id: `gym-lounger-${i + 1}`, label: '🛋️ Lounger', x: LOUNGER.minX + 0.95, y: 0, z, rotY: Math.PI / 2, places: [0], hips: 0.42, depth: -0.15, out: 1.5, gym: true })),
   // The changing room's bench (shared/gym-changing.ts).
   ...CHANGING_SEATING,
   // The juice bar's stools, facing the counter.
@@ -251,8 +257,8 @@ export function gymFixtures(): Fixture[] {
   f.push({ id: 'jacuzzi', minX: J.x - J.r, maxX: J.x + J.r, minZ: J.z - J.r, maxZ: J.z + J.r, top: J.rim });
   const P = PLUNGE;
   f.push({ id: 'plunge', minX: P.x - P.half, maxX: P.x + P.half, minZ: P.z - P.half, maxZ: P.z + P.half, top: P.rim });
-  // Loungers, the towel shelf and a plant by the way in.
-  for (const z of LOUNGER_ZS) f.push({ id: `lounger-${z}`, minX: LOUNGER.minX, maxX: LOUNGER.minX + LOUNGER.length, minZ: z - LOUNGER.width / 2, maxZ: z + LOUNGER.width / 2, top: 0.45 });
+  // The rail round the stair down to the basement (where the loungers stood), the towel shelf and a plant by the way in.
+  f.push(...stairRails());
   f.push({ id: 'towel-shelf', minX: 25.0, maxX: 26.6, minZ: S.minZ + w, maxZ: S.minZ + w + 0.4, top: 1.4 });
   f.push({ id: 'spa-plant', minX: 28.75, maxX: 29.2, minZ: S.minZ + w + 0.05, maxZ: S.minZ + w + 0.5, top: 1.2 });
   // The lobby: reception (a counter facing the door, and its return), the turnstiles' posts.

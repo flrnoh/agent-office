@@ -4,7 +4,7 @@
 
 import { RIG, RIG_SEAT } from './rig.js'; // flrnoh fork: the racing rig
 import { HALL_SEATING } from './hall-building.js'; // flrnoh fork: the padel hall
-import { GYM_SEATING } from './gym-rooms.js'; // flrnoh fork: the gym's benches, loungers and stools
+import { gymSeats } from './gym-rooms.js'; // flrnoh fork: the gym's benches, loungers and stools, up in it and in its basement
 import { SKYBAR_STOOLS } from './skybar.js'; // flrnoh fork: the sky bar's stools
 
 export const FLOOR = { minX: -18, maxX: 18, minZ: -13, maxZ: 13 } as const;
@@ -491,7 +491,7 @@ export const SEATING: SeatDef[] = [
   // …and sun loungers facing out over the city.
   ...LOUNGERS.map((x, i) => ({ id: `roof-lounger-${i + 1}`, label: '🏖️ Lounger', x, y: 0, z: FLOOR.maxZ - 1.5, rotY: 0, places: [0], hips: 0.42, depth: -0.2, out: -1, roof: true })),
   ...HALL_SEATING, // fork: the padel hall's stand, bench and café chairs (shared/hall-building.ts)
-  ...GYM_SEATING, // fork: the gym's sauna and steam benches, loungers, stools (shared/gym-rooms.ts)
+  ...gymSeats(), // fork: the gym's sauna and steam benches, stools, and its basement's loungers (shared/gym-rooms.ts, gym-basement.ts)
 ];
 export const SEATING_BY_ID = new Map(SEATING.map((s) => [s.id, s]));
 

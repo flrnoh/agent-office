@@ -174,7 +174,7 @@ export function createFork(ctx: Ctx): Fork {
     },
     onAWall: (imageUrl) => [...floors.values()].some((f) => f.decor.list().some((d) => d.url === imageUrl)),
     casinoPlayer: (c) => ({ id: c.id, owner: owner(c), name: c.peer.name, send: (m) => ctx.sendTo(c, m) }),
-    gymPlayer: (c) => ({ id: c.id, owner: owner(c), name: c.peer.name, send: (m) => ctx.sendTo(c, m), where: () => (c.peer.floor === GYM ? { x: c.peer.x, z: c.peer.z, seat: c.peer.seat } : undefined) }),
+    gymPlayer: (c) => ({ id: c.id, owner: owner(c), name: c.peer.name, send: (m) => ctx.sendTo(c, m), where: () => (c.peer.floor === GYM ? { x: c.peer.x, y: c.peer.y, z: c.peer.z, seat: c.peer.seat } : undefined) }),
   };
 }
 

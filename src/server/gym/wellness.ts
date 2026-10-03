@@ -1,5 +1,5 @@
 import { ACTION_STAMINA, ACTION_XP, WELLNESS_SPOTS, type WellnessView } from '../../shared/gym-wellness.js';
-import { AUFGUSS_BOOST_MS, WALK_IN_BY_STATION, aufgussWait, isSoak, onBenchIn, walkInFactor, type WalkInRoom } from '../../shared/gym-rooms.js';
+import { AUFGUSS_BOOST_MS, WALK_IN_BY_STATION, aufgussWait, isSoak, onBenchIn, walkInFactor, type AnyWalkIn } from '../../shared/gym-rooms.js';
 import type { GymContext, GymGame, Seated } from './game.js';
 
 /*
@@ -23,7 +23,7 @@ export class WellnessSpot implements GymGame {
   private puffBy = '';
   private spot: (typeof WELLNESS_SPOTS)[string];
   /** The cabin, for the sauna and the steam room: you walk in instead of sitting down. */
-  readonly room: WalkInRoom | undefined;
+  readonly room: AnyWalkIn | undefined;
   /** Fork: the jacuzzi, the plunge, a massage table: who's in which of its places (soakPlace), '' for empty. */
   private slots: string[] | null;
 
@@ -86,7 +86,7 @@ export class WellnessSpot implements GymGame {
     this.puffBy = p.name;
     ctx.award(p.owner, ACTION_XP);
     const secs = Math.round(AUFGUSS_BOOST_MS / 1000);
-    const what = this.room!.machine === 'sauna' ? 'Aufguss' : 'Eucalyptus burst';
+    const what = this.room!.machine === 'sauna' ? 'Aufguss' : this.room!.machine === 'salt' ? 'salt mist' : 'Eucalyptus burst'; // fork: the basement's salt grotto
     for (const owner of this.occ.keys()) {
       ctx.addStamina(owner, ACTION_STAMINA);
       if (owner === p.owner) ctx.result(owner, `${this.spot.icon} ${what}! Löyly for everyone · +${ACTION_XP} XP · ${secs} s of extra heat`, ACTION_XP, { aufguss: true });

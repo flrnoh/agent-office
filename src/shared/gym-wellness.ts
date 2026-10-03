@@ -29,6 +29,12 @@ export const WELLNESS_SPOTS: Record<string, WellnessSpot> = {
   coldplunge: { name: 'Cold plunge', icon: '🧊', temp: '4 °C', regenPerSec: 0.6, xpPerMin: 10, coldBurst: 35, note: 'In up to your neck. Brace — then feel the rush.' },
   massage: { name: 'Massage table', icon: '💆', temp: 'warm', regenPerSec: 2.2, xpPerMin: 9, note: 'Lie back and let the masseur work the knots out.' },
   yoga: { name: 'Stretch studio', icon: '🧘', temp: 'mild', regenPerSec: 0.8, xpPerMin: 6, note: 'Flow through the poses.', action: 'pose' },
+  // Fork: down in the basement (shared/gym-basement.ts).
+  salt: { name: 'Salt grotto', icon: '🧂', temp: '24 °C', regenPerSec: 1.3, xpPerMin: 7, note: 'Breathe the salty air by the graduation wall.', action: 'ladle' },
+  rest: { name: 'Quiet room', icon: '🌙', temp: '22 °C', regenPerSec: 2.4, xpPerMin: 5, note: 'Lie back under the stars. Not a word.' },
+  grotto: { name: 'Whirlpool grotto', icon: '🌊', temp: '36 °C', regenPerSec: 1.8, xpPerMin: 6, note: 'Bubbles, rocks and a waterfall.' },
+  kneipp: { name: 'Kneipp walk', icon: '🦶', temp: '12 °C', regenPerSec: 0.8, xpPerMin: 8, coldBurst: 12, note: 'Stork-step through the cold water.' },
+  lappool: { name: 'Lap pool', icon: '🏊', temp: '27 °C', regenPerSec: 0.4, xpPerMin: 12, note: 'Lengths in the 25 m pool.' },
 };
 
 /** XP for a single splash of water on the stones, or one held pose. */

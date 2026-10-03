@@ -5,6 +5,9 @@ import { EXERCISES } from '../shared/gym-strength';
 import { WELLNESS_SPOTS, type WellnessView } from '../shared/gym-wellness';
 import { AUFGUSS_BOOST_MS, SPA, WALK_IN_BY_STATION, inRect } from '../shared/gym-rooms';
 import { CHANGING_ROOM, inChanging } from '../shared/gym-changing';
+import { BASEMENT_ARRIVAL, BASEMENT_BOX, FOYER, HALL, KNEIPP_ROOM, REST, SALT, THERME_PASSAGE, bShowerAt, downstairs, inB } from '../shared/gym-basement'; // fork: the basement
+import { GYM_CHANNEL_BY_ID, GYM_RADIO } from '../shared/gym-radio'; // fork: Gym FM
+import { GymPool } from './gym-pool'; // fork: swimming in the basement's lap pool
 import type { ClientMsg, FloorInfo, ServerMsg } from '../shared/protocol';
 import { streetBelow } from '../shared/layout';
 import type { Collider, Interactable } from './world/types';
@@ -35,7 +38,7 @@ export interface GymHost {
   floor(): string | null;
   floors(): FloorInfo[];
   inOffice(): boolean;
-  player: Pick<PlayerController, 'pos' | 'colliders' | 'room' | 'rig' | 'facing' | 'moving' | 'view'>;
+  player: PlayerController;
   showOffice(on: boolean): void;
   officeColliders(): Collider[];
   officeRoom(): GymHost['player']['room'];
@@ -45,8 +48,11 @@ export interface GymHost {
   sound(kind: GymSoundKind): void;
   noOutline(o: THREE.Object3D): void;
   /** Fork (the spa): the camera, everyone else in the gym, and the spa's quiet ambience (0…1). */
-  spaPeople?(): { x: number; z: number }[];
+  spaPeople?(): { x: number; y: number; z: number }[];
   ambience?(level: number): void;
+  /** Fork: Gym FM's stream (empty: none) and how much of it reaches you (0…1); the thunder in the storm shower. */
+  radio?(url: string, reach: number): void;
+  thunder?(): void;
   /** Everyone else in here, by name, as drawn (for posing whoever's on a machine), and you. */
   people(): { name: string; person: Person }[];
   you(): { name: string; person: Person } | null;
@@ -101,19 +107,36 @@ export class GymPlace {
   private head = new THREE.Vector3();
   /** Whether you're in the changing room (the camera keeps to it there). */
   private changing = false;
-  /** The room the camera keeps to: the hall, or the changing room while you're in it. */
+  /** The room the camera keeps to: the hall, or the changing room while you're in it; fork: the basement, down there (a vault). */
   private roomBox() {
     const r = this.changing ? CHANGING_ROOM : GYM_ROOM;
-    return { minX: r.minX, maxX: r.maxX, minZ: r.minZ, maxZ: r.maxZ, wall: this.changing ? 0.15 : 0.3, enclosed: true };
+    const v = this.vault;
+    return { minX: r.minX, maxX: r.maxX, minZ: r.minZ, maxZ: r.maxZ, wall: this.changing ? 0.15 : 0.3, enclosed: true, vault: { minX: v.minX, maxX: v.maxX, minZ: v.minZ, maxZ: v.maxZ, top: 0 } };
   }
-  /** Whether (x, z) is somewhere in the gym: the hall or the changing room. */
-  private static within(x: number, z: number) {
+  /** Whether (x, z) is somewhere in the gym: the hall or the changing room; fork: or (feet at `y`) the basement. */
+  private static within(x: number, z: number, y = 0) {
+    if (downstairs(y)) return inB(BASEMENT_BOX, x, z) || inB(THERME_PASSAGE, x, z);
     return (x > GYM_ROOM.minX && x < GYM_ROOM.maxX && z > GYM_ROOM.minZ && z < GYM_ROOM.maxZ) || inChanging(x, z);
   }
+  /** Fork: the lap pool (gym-pool.ts), and how the light and the sound go where you are down there. */
+  readonly pool: GymPool;
+  private zone: 'gym' | 'rest' | 'salt' | 'pool' = 'gym';
+  /** The basement room the camera keeps to while you're in it (its walls), or the whole basement. */
+  private vault: { minX: number; maxX: number; minZ: number; maxZ: number } = BASEMENT_BOX;
+  private thunderAt = 0;
   private warm = new THREE.Color('#cfe8d6');
+  private amber = new THREE.Color('#ffc59a');
+  private cool = new THREE.Color('#d6eeff');
   private warmGround = new THREE.Color('#1b2a22');
 
-  constructor(private host: GymHost) {}
+  constructor(private host: GymHost) {
+    this.pool = new GymPool(host.player, {
+      splash: () => host.sound('splash'),
+      stroke: () => host.sound('whoosh'),
+      out: () => host.sound('splash'),
+      lap: (text) => toast(text),
+    });
+  }
 
   private theRoom(): GymInterior {
     if (!this.room) {
@@ -187,6 +210,8 @@ export class GymPlace {
     } else {
       if (this.room) this.room.group.visible = false;
       this.letGo(false);
+      this.pool.release();
+      this.host.radio?.('', 0);
       this.closeUi();
       this.host.showOffice(true);
       this.host.player.colliders = this.host.officeColliders();
@@ -207,14 +232,16 @@ export class GymPlace {
     this.host.player.colliders = this.room.colliders;
     this.host.player.room = this.roomBox();
     const p = this.host.player.pos;
-    if (!GymPlace.within(p.x, p.z)) this.host.placeAt({ x: GYM_ENTRY.x, y: 0, z: GYM_ENTRY.z, rotY: GYM_ENTRY.rotY });
+    if (!GymPlace.within(p.x, p.z, p.y)) this.host.placeAt({ x: GYM_ENTRY.x, y: 0, z: GYM_ENTRY.z, rotY: GYM_ENTRY.rotY });
   }
 
   arrived() {
     if (this.active) {
       const p = this.host.player.pos;
-      const inside = GymPlace.within(p.x, p.z) && Math.abs(p.y) < 1;
-      if (this.arriving || !inside) this.host.placeAt({ x: GYM_ENTRY.x, y: 0, z: GYM_ENTRY.z, rotY: GYM_ENTRY.rotY });
+      const inside = GymPlace.within(p.x, p.z, p.y) && (Math.abs(p.y) < 1 || downstairs(p.y));
+      // Fork: back in the pool after a reload is back on its deck, at the stair's foot.
+      if (!this.arriving && inside && downstairs(p.y) && p.y < BASEMENT_ARRIVAL.y - 0.5 && !this.pool.swimming) this.host.placeAt(BASEMENT_ARRIVAL);
+      else if (this.arriving || !inside) this.host.placeAt({ x: GYM_ENTRY.x, y: 0, z: GYM_ENTRY.z, rotY: GYM_ENTRY.rotY });
       this.arriving = false;
       this.outside = null;
       if (this.open) this.host.send({ t: 'gym.sit', station: this.open.station });
@@ -240,6 +267,10 @@ export class GymPlace {
     }
     if (it.kind !== 'gymstation') return false;
     if (key !== 'E' || !it.gymStation) return true;
+    if (it.gymStation === 'lappool') {
+      this.pool.jumpIn(); // fork: a header into the lap pool
+      return true;
+    }
     if (it.gymAct) {
       // Fork: the sauna's bucket, the steam room's bowl: straight to it, no window (you're in there).
       this.host.send({ t: 'gym.act', station: it.gymStation, action: it.gymAct });
@@ -320,6 +351,12 @@ export class GymPlace {
 
   hint(it: Interactable, title: (t: string) => HTMLElement, key: (k: string, label: string) => HTMLElement, aside: (t: string) => HTMLElement): { k: string; parts: (HTMLElement | string)[] } {
     if (it.kind === 'gym') return this.active ? { k: 'gym-out', parts: [title('🚪 Street'), key('E', 'Go out')] } : { k: 'gym-in', parts: [title(`🏋️ ${GYM_NAME}`), aside('work out & unwind'), key('E', 'Go in')] };
+    // Fork: Gym FM on the counter, and the lap pool's water.
+    if (it.gymStation === GYM_RADIO.id) {
+      const c = GYM_CHANNEL_BY_ID.get(this.room?.radio.channel() ?? '');
+      return { k: `radio|${c?.id}`, parts: [title('📻 Gym FM'), aside(c?.url ? `${c.name} · ${c.genre}` : 'off'), key('E', 'Next station')] };
+    }
+    if (it.gymStation === 'lappool') return this.pool.swimming ? { k: '', parts: [] } : { k: 'lappool', parts: [title('🏊 Lap pool'), aside('25 m · four lanes'), key('E', 'Jump in')] };
     const def = it.gymStation ? this.defOf(it.gymStation) : undefined;
     if (!def) return { k: '', parts: [] };
     if (it.gymAct) {
@@ -398,13 +435,16 @@ export class GymPlace {
       return;
     }
     const me = this.host.player.pos;
-    const people = [{ x: me.x, z: me.z }, ...(this.host.spaPeople?.() ?? [])];
+    const everyone = [{ x: me.x, y: me.y, z: me.z }, ...(this.host.spaPeople?.() ?? [])];
+    // Fork: up in the gym, and down in its basement (whose rooms are under the spa's).
+    const people = everyone.filter((q) => !downstairs(q.y));
+    const below = everyone.filter((q) => downstairs(q.y));
     const cam = this.host.camera ? this.camPos.setFromMatrixPosition(this.host.camera.matrixWorld) : null;
     this.room.update(t, dt, { me: { x: me.x, y: me.y, z: me.z }, cam, people });
-    const room = this.room.walkInAt(me.x, me.z) ?? null;
+    const showers = this.room.basement.update(t, dt, below);
+    const room = this.room.walkInAt(me.x, me.z, me.y) ?? null;
     if (room !== this.walkIn) this.setWalkIn(room);
-    // The spa's own quiet: soft water and air in there, a little more in the cabins.
-    this.host.ambience?.(room ? 1 : inRect(SPA, me.x, me.z) ? 0.6 : 0);
+    this.underground(me, room, showers.length > 0, dt);
     // On a machine: the office has you on the station whose window you have open.
     const you = this.host.you();
     const open = this.open?.station;
@@ -432,6 +472,41 @@ export class GymPlace {
       this.changing = changing;
       this.host.player.room = this.roomBox();
     }
+  }
+
+  /**
+   * Fork: what you hear and see where you are. Gym FM through the hall's speakers (quieter in the
+   * changing room, not at all in the spa or the basement: quiet is the point there); the spa's soft
+   * water and air, down here too (more in the pools and under a running shower, hushed in the quiet
+   * room); the light (dim in the quiet room, warm in the salt grotto); the pool holding a swimmer.
+   */
+  private underground(me: { x: number; y: number; z: number }, room: string | null, showerOn: boolean, dt: number) {
+    const down = downstairs(me.y);
+    const spa = !down && inRect(SPA, me.x, me.z);
+    const url = GYM_CHANNEL_BY_ID.get(this.room?.radio.channel() ?? '')?.url ?? '';
+    this.host.radio?.(url, down || spa ? 0 : inChanging(me.x, me.z) ? 0.3 : 1);
+    const shower = down && !!bShowerAt(me.x, me.z);
+    const quiet: Record<string, number> = { rest: 0.25, salt: 0.5, grotto: 1, kneipp: 0.8, lappool: 0.9 };
+    const level = down ? (shower && showerOn ? 1 : room ? (quiet[room] ?? 0.6) : inB(HALL, me.x, me.z) ? 0.7 : inB(KNEIPP_ROOM, me.x, me.z) ? 0.6 : inB(FOYER, me.x, me.z) ? 0.3 : 0.4) : room ? 1 : spa ? 0.6 : 0;
+    this.host.ambience?.(level);
+    this.zone = !down ? 'gym' : inB(REST, me.x, me.z) ? 'rest' : inB(SALT, me.x, me.z) ? 'salt' : 'pool';
+    // The camera keeps to the room you're in down there, so it never ends up in a wall between two.
+    const vault = [REST, SALT, KNEIPP_ROOM, FOYER, HALL, THERME_PASSAGE].find((r) => inB(r, me.x, me.z)) ?? BASEMENT_BOX;
+    if (vault !== this.vault) {
+      this.vault = vault;
+      this.host.player.room = this.roomBox();
+    }
+    // The storm shower's thunder, now and then while you stand under it.
+    this.thunderAt -= dt;
+    if (shower && bShowerAt(me.x, me.z)?.kind === 'storm' && this.thunderAt <= 0) {
+      this.thunderAt = 4 + Math.random() * 4;
+      this.host.thunder?.();
+    }
+    this.pool.tick(dt);
+    const you = this.host.you();
+    const bodies = this.host.people().map((b) => ({ person: b.person, moving: false, x: b.person.root.position.x, y: b.person.root.position.y, z: b.person.root.position.z }));
+    if (you) bodies.push({ person: you.person, moving: this.host.player.moving, x: me.x, y: me.y, z: me.z });
+    this.pool.pose(bodies);
   }
 
   /** Onto machine `id`: you stand (sit, lie) where it has you, and stay there until you step off. */
@@ -489,9 +564,11 @@ export class GymPlace {
     lights.sun.intensity = 0;
     lights.hemi.color.copy(this.warm);
     lights.hemi.groundColor.copy(this.warmGround);
-    lights.hemi.intensity = 1.3;
-    lights.ambient.color.copy(this.warm);
-    lights.ambient.intensity = 0.85;
+    // Fork: dim in the basement's quiet room, warm in its salt grotto, bright and cool by the pool.
+    const z = this.zone;
+    lights.hemi.intensity = z === 'rest' ? 0.45 : z === 'salt' ? 0.9 : 1.3;
+    lights.ambient.color.copy(z === 'salt' ? this.amber : z === 'pool' ? this.cool : this.warm);
+    lights.ambient.intensity = z === 'rest' ? 0.3 : 0.85;
     const fog = lights.scene.fog as THREE.Fog | null;
     if (fog) {
       fog.near = 400;
