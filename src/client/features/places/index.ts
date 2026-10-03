@@ -223,6 +223,7 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     cutOff: () => deps.booze().cutOff(performance.now() / 1000),
     renderer: ctx.renderer,
     camera,
+    temp: () => store.sky?.temp,
     name: () => store.peers.get(store.you)?.name ?? '',
   });
   // The baths last: going back to the gym, they put you by their door after the gym has had its say.
@@ -343,8 +344,8 @@ export function installPlaces(ctx: Ctx, core: CoreState, parts: PlacesParts, dep
     },
     hint: (el) =>
       ctx.hint.draw(el, `thermeswim|${bath.atEdge}|${therme.atBar}|${bath.pool?.id}`, () => [
-        hintTitle(bath.pool?.id.startsWith('therme-whirl') ? '🫧 Whirlpool' : bath.pool?.id === 'therme-grotto' ? '💎 Grotte' : bath.pool?.id === 'therme-waves' ? '🌊 Wellenbad' : bath.pool?.id === 'therme-landing' ? '🛝 Landebecken' : '🌊 Thermalbecken'),
-        aside(bath.pool?.id === 'therme-thermal' ? '34 °C' : bath.pool?.id === 'therme-waves' ? '30 °C · Wellen alle 8 Minuten' : bath.pool?.id === 'therme-landing' ? 'Bestzeiten am Kiosk' : '36 °C'),
+        hintTitle(bath.pool?.id.startsWith('therme-whirl') ? '🫧 Whirlpool' : bath.pool?.id === 'therme-grotto' ? '💎 Grotte' : bath.pool?.id === 'therme-waves' ? '🌊 Wellenbad' : bath.pool?.id === 'therme-landing' ? '🛝 Landebecken' : bath.pool?.id === 'therme-river' ? '🌀 Strömungskanal' : bath.pool?.id === 'therme-lagoon' ? '🏝️ Außenlagune' : bath.pool?.id === 'therme-pond' ? '🧊 Kaltwasserteich' : bath.pool?.id === 'therme-plunge' ? '🧊 Tauchbecken' : '🌊 Thermalbecken'),
+        aside(bath.pool?.id === 'therme-thermal' ? '34 °C' : bath.pool?.id === 'therme-waves' ? '30 °C · Wellen alle 8 Minuten' : bath.pool?.id === 'therme-landing' ? 'Bestzeiten am Kiosk' : bath.pool?.id === 'therme-river' ? '32 °C · lass dich treiben' : bath.pool?.id === 'therme-lagoon' ? '32 °C · unter freiem Himmel' : bath.pool?.id === 'therme-pond' || bath.pool?.id === 'therme-plunge' ? '16 °C · brrr' : '36 °C'),
         key('W A S D', 'Swim'),
         key('Shift', 'Faster'),
         key('Space', 'Splash'),

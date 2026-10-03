@@ -24,7 +24,7 @@ function walkable() {
   const nz = Math.ceil((ZONES.lagune.maxZ - z0 + 2) / STEP);
   const free = (x: number, z: number) => !fx.some((f) => x + BODY > f.minX && x - BODY < f.maxX && z + BODY > f.minZ && z - BODY < f.maxZ);
   // Only on the floor: inside the building (its slabs, a little past the walls' faces; not over the water).
-  const slabs = thermeFixtures().filter((f) => f.id.startsWith('floor'));
+  const slabs = thermeFixtures().filter((f) => f.id.startsWith('floor') || f.id.startsWith('out-ground'));
   const seen = new Uint8Array(nx * nz);
   const ix = (x: number) => Math.round((x - x0) / STEP);
   const iz = (z: number) => Math.round((z - z0) / STEP);
@@ -111,6 +111,7 @@ test('from the door you come in by you can walk through the passage into the hal
     ['the slide world', (R.minX + R.maxX) / 2, (R.minZ + R.maxZ) / 2],
     ['the slide world, by the board', 179.5, 93.5],
     ['through the door into the Saunadorf', ZONES.dorf.maxX - 1.5, 74],
+    ['out through the glass doors onto the lagoon\'s beach', 97.5, 143.5],
   ];
   for (const [what, x, z] of spots) assert.ok(reach(x, z), `you can walk to ${what}`);
   // In front of each shut door, from the hall's side.
@@ -122,7 +123,6 @@ test('from the door you come in by you can walk through the passage into the hal
   }
   const shut: [string, number, number][] = [
     ['the entrance hall', (ZONES.lobby.minX + ZONES.lobby.maxX) / 2, NORTH_BAND_Z / 2],
-    ['the lagoon', (ZONES.lagune.minX + ZONES.lagune.maxX) / 2, (ZONES.lagune.minZ + ZONES.lagune.maxZ) / 2],
     ['the plant rooms', 50, NORTH_BAND_Z / 2],
     ['through the door back to the gym', GYM_DOOR.x, THERME_BOX.minZ - 1],
   ];

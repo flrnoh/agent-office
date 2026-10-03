@@ -26,7 +26,7 @@ export interface Paradies {
 }
 
 /** A pool: its water (scrolling ripples), its basin's floor and walls in mosaic, its coping. */
-function basin(p: ThermeParts, def: PoolDef, water: THREE.CanvasTexture, color: string): THREE.CanvasTexture {
+export function basin(p: ThermeParts, def: PoolDef, water: THREE.CanvasTexture, color: string): THREE.CanvasTexture {
   const tiles = wrap(mosaic(color, 16, 0.12, def.id.length));
   p.group.add(mesh(rectsGeometry(def.rects, def.floor + 0.002, 2), tex(tiles), 0, 0, 0, false));
   const edges = poolEdges(def);

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GYM } from '../../shared/gym';
-import { GYM_FROM_THERME, THERME, THERME_ARRIVAL, THERME_BOX, THERME_NAME, inTherme } from '../../shared/therme';
+import { GYM_FROM_THERME, THERME, THERME_ARRIVAL, THERME_BOX, THERME_NAME, ZONES, inTherme } from '../../shared/therme';
 import type { ClientMsg, ServerMsg } from '../../shared/protocol';
 import type { SeatPlace } from '../../shared/layout';
 import type { Drink } from '../../shared/rooftop';
@@ -14,6 +14,7 @@ import { openBoards, openLift } from './slide-ui';
 import { LEVELS, LIFT_DOOR, SLIDE_BY_ID } from '../../shared/therme-slides';
 import { AUFGUSS_RUN, RUHEHAUS, SAUNA_BY_ID, aufgussAt, aufgussPlan, inRuhehaus, saunaAt, type SaunaId } from '../../shared/therme-dorf';
 import { thermeSeat } from './loungers';
+import { outside } from '../../shared/therme-lagune';
 import { drawAufgussBoard } from './dorf-ui';
 import { toast } from '../ui/dom';
 import { openVenueMenu } from '../venue/ui';
@@ -68,6 +69,8 @@ export interface ThermeHost {
   noOutline(o: THREE.Object3D): void;
   /** For the slides' ride photo. */
   renderer: RiderHost['renderer'];
+  /** It's this cold outside (°C, the office's real weather; undefined: unknown): steam off the lagoon. */
+  temp(): number | undefined;
   /** Where the camera is (the saunas' walls lift away while you're inside one and it isn't). */
   camera: THREE.Camera;
   name(): string;
@@ -94,6 +97,8 @@ export class ThermePlace {
   private hornFor = 0;
   /** The Aufguss slot the page last said was starting, and when it last drew the board. */
   private aufgussFor = -1;
+  /** Out at the lagoon, under the open sky (the weather falls there). */
+  private outdoors = false;
   private boardAt = 0;
 
   constructor(private host: ThermeHost) {
@@ -167,7 +172,7 @@ export class ThermePlace {
   }
 
   private roomBox(): Room {
-    return { minX: THERME_BOX.minX, maxX: THERME_BOX.maxX, minZ: THERME_BOX.minZ, maxZ: THERME_BOX.maxZ, wall: 0.3, enclosed: true };
+    return { minX: THERME_BOX.minX, maxX: THERME_BOX.maxX, minZ: THERME_BOX.minZ, maxZ: ZONES.lagune.maxZ, wall: 0.3, enclosed: true };
   }
 
   private static inside(p: THREE.Vector3): boolean {
@@ -191,6 +196,7 @@ export class ThermePlace {
       this.host.player.colliders = r.colliders;
       this.host.player.room = this.roomBox();
       this.host.setIndoors(true);
+      this.outdoors = false;
     } else {
       if (this.room) this.room.group.visible = false;
       this.swim.release();
@@ -300,7 +306,14 @@ export class ThermePlace {
     if (!this.active || !this.room) return;
     const me = this.host.player.pos;
     const now = this.host.now();
-    this.room.update(t, dt, now, me);
+    const temp = this.host.temp();
+    this.room.update(t, dt, now, me, temp === undefined ? 0 : Math.max(0, Math.min(1, (10 - temp) / 14)));
+    // Out at the lagoon it's outdoors: the rain and the snow fall there, not under the dome.
+    const outdoors = outside(me.x, me.z);
+    if (outdoors !== this.outdoors) {
+      this.outdoors = outdoors;
+      this.host.setIndoors(!outdoors);
+    }
     // The horn as each run of waves starts (once a run), for whoever's in the baths.
     const run = nextWaves(now);
     if (waveStrength(now) > 0 && run !== this.hornFor) {
@@ -347,6 +360,15 @@ export class ThermePlace {
   /** Under the dome it's as light as it is outside: the sun by day; at night the dome goes dark and the hall's own warm light takes over. */
   mood(lights: { sun: THREE.DirectionalLight; hemi: THREE.HemisphereLight; ambient: THREE.AmbientLight; scene: THREE.Scene }) {
     if (!this.active) return;
+    const fog0 = lights.scene.fog as THREE.Fog | null;
+    if (this.outdoors) {
+      // Outside, the sky lights it as it is.
+      if (fog0) {
+        fog0.near = 600;
+        fog0.far = 800;
+      }
+      return;
+    }
     const d = Math.max(0, Math.min(1, this.host.daylight()));
     this.light.copy(this.night).lerp(this.day, d);
     lights.sun.intensity *= 0.85;

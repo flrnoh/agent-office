@@ -1,5 +1,6 @@
 import { LOUNGERS, LOUNGER_HIPS } from '../../shared/therme-paradies';
 import { dorfSeats } from '../../shared/therme-dorf';
+import { SUN_LOUNGERS } from '../../shared/therme-lagune';
 import type { SeatPlace } from '../../shared/layout';
 import type { Person } from '../world/character';
 import { liePose } from '../features/lounging';
@@ -20,7 +21,7 @@ interface Seat {
   pose: 'sit' | 'lie';
 }
 
-const SEATS: readonly Seat[] = [...LOUNGERS.map((l) => ({ ...l, y: 0, pose: 'lie' as const })), ...dorfSeats()];
+const SEATS: readonly Seat[] = [...[...LOUNGERS, ...SUN_LOUNGERS].map((l) => ({ ...l, y: 0, pose: 'lie' as const })), ...dorfSeats()];
 const BY_ID = new Map(SEATS.map((s) => [s.id, s]));
 /** How close to a seat's spot someone must stand still to be on it. */
 const ON_SEAT = 0.3;
