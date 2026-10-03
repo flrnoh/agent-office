@@ -168,6 +168,7 @@ export function buildLagune(p: ThermeParts): Lagune {
   for (let x = L.minX + 6; x < L.maxX; x += 12) {
     p.still.add(mesh(new THREE.CylinderGeometry(0.05, 0.06, 3, 6), toon('#2a2f35'), x, 1.5, 147.6, false));
     lamps.add(mesh(new THREE.SphereGeometry(0.2, 10, 8), lamp, x, 3.1, 147.6, false));
+    p.halos.push({ x, y: 3.1, z: 147.6, color: '#ffd09a' });
   }
   p.group.add(mergeTextured(lamps));
   // Torches on the island and by the beach bar, burning day and night.
@@ -181,6 +182,7 @@ export function buildLagune(p: ThermeParts): Lagune {
     f.userData.noOutline = true;
     p.group.add(f);
     torches.push(f);
+    p.halos.push({ x, y: 2.1, z, color: '#ff9a3c' });
   }
   const { bar, keeper } = strandbar(p);
   const steam = new Cloud(200, '#ffffff');

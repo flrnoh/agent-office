@@ -155,6 +155,7 @@ export function buildGarden(p: ThermeParts): Garden {
     p.group.add(m);
     return m;
   });
+  p.halos.push({ x: F.x, y: 0.9, z: F.z, color: '#ff8a3a' });
   const sparks = new Cloud(80, '#ffb347');
   sparks.lift = 1.2;
   sparks.drag = 0.6;

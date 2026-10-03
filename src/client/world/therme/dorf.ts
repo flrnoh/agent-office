@@ -79,6 +79,8 @@ function hut(p: ThermeParts, s: SaunaDef, wallTex: THREE.Texture, steamRoom: boo
   const ceil = mesh(new THREE.PlaneGeometry(r.maxX - r.minX, r.maxZ - r.minZ), insideMat, (r.minX + r.maxX) / 2, s.height - 0.01, (r.minZ + r.maxZ) / 2, false);
   ceil.rotation.x = Math.PI / 2;
   shell.add(ceil);
+  // Its floor: duckboards, the steam bath's white tiles (it stays when the walls lift away).
+  p.group.add(mesh(rectsGeometry([r], 0.018, 1.6), steamRoom ? tex(wrap(mosaic('#dde9ec', 12, 0.05, 23))) : tex(wrap(planks('#b4865a', 8, 41))), 0, 0, 0, false));
   // The roof: pitched along the hut's longer side (the earth sauna's a grass mound).
   const w = b.maxX - b.minX;
   const d = b.maxZ - b.minZ;
@@ -183,6 +185,7 @@ export function buildDorf(p: ThermeParts): Dorf {
     const bottom = f.bottom ?? 0;
     ruhe.add(mesh(new THREE.BoxGeometry(f.maxX - f.minX, f.top - bottom, f.maxZ - f.minZ), tex(wood, '#b7895c'), (f.minX + f.maxX) / 2, (f.top + bottom) / 2, (f.minZ + f.maxZ) / 2, false));
   }
+  p.group.add(mesh(rectsGeometry([innerOf(R.box)], 0.018, 2), tex(wrap(planks('#9a7048', 8, 43))), 0, 0, 0, false));
   const fire = dorfFixtures().find((f) => f.id === 'ruhe-fire')!;
   blk(p, fire.maxX - fire.minX, 2.8, fire.maxZ - fire.minZ, '#8a8580', (fire.minX + fire.maxX) / 2, 1.4, (fire.minZ + fire.maxZ) / 2);
   const flame = new THREE.MeshBasicMaterial({ color: '#ff8a3a' });
@@ -286,6 +289,7 @@ export function buildDorf(p: ThermeParts): Dorf {
     p.still.add(mesh(new THREE.BoxGeometry(0.34, 0.06, 0.34), toon('#2a2f35'), x, 2.24, z, false));
     p.still.add(mesh(new THREE.ConeGeometry(0.28, 0.2, 4), toon('#2a2f35'), x, 2.72, z, false).rotateY(Math.PI / 4));
     lamps.add(mesh(new THREE.BoxGeometry(0.24, 0.36, 0.24), lamp, x, 2.45, z, false));
+    p.halos.push({ x, y: 2.45, z, color: '#ffc27a' });
   }
   p.group.add(mergeTextured(lamps));
   // The board by the way in.

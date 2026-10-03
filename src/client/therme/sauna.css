@@ -1,0 +1,102 @@
+/* flrnoh fork: how a sauna feels from in front of the screen (client/therme/sauna-feel.ts). */
+.therme-sauna {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  display: none;
+  overflow: hidden;
+}
+.therme-sauna.on {
+  display: block;
+}
+/* The heat: the edges of the view glowing hot, a warm cast over it all. */
+.therme-sauna-heat {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse at 50% 55%, rgba(255, 150, 60, 0) 38%, rgba(255, 110, 30, 0.38) 78%, rgba(190, 50, 10, 0.62) 100%),
+    rgba(255, 140, 60, 0.1);
+  animation: therme-sauna-throb 5.5s ease-in-out infinite;
+}
+@keyframes therme-sauna-throb {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+/* The steam: big soft clouds drifting across. */
+.therme-sauna-steam {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.therme-sauna-cloud {
+  position: absolute;
+  width: 90vmax;
+  height: 70vmax;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(250, 248, 244, 0.85), rgba(250, 248, 244, 0.35) 55%, rgba(250, 248, 244, 0));
+  filter: blur(18px);
+  animation: therme-sauna-drift 26s ease-in-out infinite alternate;
+}
+.therme-sauna-cloud-0 { left: -40vmax; top: -10vmax; }
+.therme-sauna-cloud-1 { left: 30vmax; top: 10vmax; animation-duration: 33s; animation-delay: -9s; }
+.therme-sauna-cloud-2 { left: -10vmax; top: 40vmax; animation-duration: 29s; animation-delay: -17s; }
+.therme-sauna-cloud-3 { left: 50vmax; top: -30vmax; animation-duration: 37s; animation-delay: -4s; }
+@keyframes therme-sauna-drift {
+  from { transform: translate(-6vmax, 3vmax) scale(1); }
+  to { transform: translate(8vmax, -5vmax) scale(1.15); }
+}
+/* Sweat: a bead that slides slowly down the screen, a trail behind it. */
+.therme-sauna-drops {
+  position: absolute;
+  inset: 0;
+}
+.therme-sauna-drop {
+  position: absolute;
+  width: var(--size, 10px);
+  height: calc(var(--size, 10px) * 1.3);
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.95), rgba(220, 235, 245, 0.35) 45%, rgba(160, 190, 210, 0.15) 70%, rgba(255, 255, 255, 0));
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+  animation: therme-sauna-run var(--run, 7s) cubic-bezier(0.5, 0, 0.8, 0.6) forwards;
+}
+.therme-sauna-drop::after {
+  content: '';
+  position: absolute;
+  left: 30%;
+  bottom: 100%;
+  width: 40%;
+  height: 4em;
+  background: linear-gradient(to top, rgba(230, 240, 248, 0.35), rgba(230, 240, 248, 0));
+}
+@keyframes therme-sauna-run {
+  0% { transform: translateY(0); opacity: 0; }
+  8% { opacity: 1; }
+  40% { transform: translateY(6vh); }
+  100% { transform: translateY(60vh); opacity: 0; }
+}
+/* How hot and how damp, top middle. */
+.therme-sauna-card {
+  position: absolute;
+  left: 50%;
+  top: 74px;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(60, 30, 14, 0.72);
+  color: #ffe2b8;
+  font: 700 14px/1.2 Nunito, ui-rounded, system-ui, sans-serif;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.6s;
+}
+.therme-sauna-card.on {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .therme-sauna-heat,
+  .therme-sauna-cloud {
+    animation: none;
+  }
+}
