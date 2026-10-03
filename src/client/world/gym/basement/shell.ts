@@ -109,7 +109,7 @@ export function buildShell(p: GymParts) {
   const railX = s.maxX - 0.08;
   const slope = Math.atan2(-B, len);
   const rail = mesh(new THREE.CylinderGeometry(0.025, 0.025, Math.hypot(len, -B), 8), steel, railX, B / 2 + 0.95, (s.topZ + STAIR_FOOT_Z) / 2, false);
-  rail.rotation.x = Math.PI / 2 - slope;
+  rail.rotation.x = slope - Math.PI / 2; // high at the top step (north), low at the foot
   p.still.add(rail);
   for (let k = 1; k < 7; k++) {
     const z = s.topZ + (len * k) / 7;

@@ -2,6 +2,7 @@
  * Sitting down: on a chair, a stool, the couch, the throne. Sitting there already, E gets you up, or
  * does what the seat's for (the TV from the couch, Minesweeper from the boss's chair, the bar's menu).
  */
+import { lieOn } from '../../../shared/lounging'; // flrnoh fork
 import { seatPlace, type SeatDef, type SeatPlace } from '../../../shared/layout';
 import { storeySeat } from '../../../shared/storey'; // flrnoh fork
 import type { Ctx } from '../../core/context';
@@ -118,11 +119,11 @@ export function installSeating(ctx: Ctx, deps: SeatingDeps) {
       if (ctx.player.seat?.seatId === seat.id) {
         const tv = !!seat.tv && tvShowing();
         const use = tv ? 'Watch the TV' : seat.game ? deps.bossDesk().useLabel() : seat.bar ? 'Order a drink' : '';
-        return { k: `${seat.id}|sitting|${tv}|${use}`, parts: [hintTitle(seat.label), aside('sitting'), ...(use ? [key('E', use), key('W A S D', 'Get up')] : [key('E', 'Get up')])] };
+        return { k: `${seat.id}|sitting|${tv}|${use}`, parts: [hintTitle(seat.label), aside(lieOn(seat.id) ? 'lying back' : 'sitting'), ...(use ? [key('E', use), key('W A S D', 'Get up')] : [key('E', 'Get up')])] }; // lieOn: flrnoh fork
       }
       const full = !freePlace(seat);
       const monitor = seat.game ? deps.bossDesk().aside() : ''; // fork: the boss desk (features/bossdesk)
-      return { k: `${seat.id}|${full}|${monitor}`, parts: [hintTitle(seat.label), monitor ? aside(monitor) : '', full ? aside('no room') : key('E', 'Sit down')] };
+      return { k: `${seat.id}|${full}|${monitor}`, parts: [hintTitle(seat.label), monitor ? aside(monitor) : '', full ? aside('no room') : key('E', lieOn(seat.id) ? 'Lie down' : 'Sit down')] }; // lieOn: flrnoh fork
     },
     use: onE((it) => {
       if (it.seatId) useSeat(it.seatId);

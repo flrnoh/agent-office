@@ -92,7 +92,27 @@ export function seatable(p: GymParts, obj: THREE.Object3D | null, seatId: string
   const it: Interactable = { kind: 'seat', seatId, x: seat.x, y: seat.y, z: seat.z, radius };
   p.interactables.push(it);
   obj?.traverse((o) => (o.userData.interact = it));
+  // Fork: plain pieces in `still` are merged at the end and lose what they carry, so the crosshair
+  // lands on an invisible box over the seat instead (see aimedAt in input/pointer.ts).
+  if (obj) {
+    obj.updateWorldMatrix(true, true);
+    const box = new THREE.Box3().setFromObject(obj);
+    if (!box.isEmpty()) {
+      const size = box.getSize(new THREE.Vector3());
+      const pick = new THREE.Mesh(new THREE.BoxGeometry(size.x + 0.04, size.y + 0.04, size.z + 0.04), PICK);
+      box.getCenter(pick.position);
+      pick.userData.interact = it;
+      p.group.add(pick);
+    }
+  }
 }
+
+/** What the crosshair lands on but nobody sees: a seat's box over its merged pieces (seatable). */
+const PICK = (() => {
+  const m = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+  m.userData.outlineParameters = { visible: false };
+  return m;
+})();
 
 /** A potted plant: a pot and a few leafy blobs. */
 export function plant(p: GymParts, x: number, z: number, h = 1.2, pot = '#e9e4da') {
